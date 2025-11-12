@@ -1,0 +1,49 @@
+{
+  "name": "claude-plugins",
+  "owner": {
+    "name": "Étienne St-Pierre",
+    "email": "me@estpierre.dev",
+    "url": "https://github.com/e-stpierre/claude-plugins"
+  },
+  "metadata": {
+    "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "id": "appsec",
+      "name": "Application Security Plugin",
+      "version": "1.0.0",
+      "description": "Comprehensive application security toolkit for identifying vulnerabilities, analyzing risks, and validating dependencies at an expert level",
+      "author": {
+        "name": "Étienne St-Pierre",
+        "email": "me@estpierre.dev"
+      },
+      "tags": ["security", "appsec", "vulnerability", "risk-analysis", "dependencies", "audit"],
+      "category": "security",
+      "agents": [
+        {
+          "id": "appsec-specialist",
+          "name": "AppSec Specialist Agent",
+          "description": "Expert security analyst for comprehensive codebase security reviews",
+          "path": "plugins/appsec/agents/appsec-specialist.md"
+        }
+      ],
+      "commands": [
+        {
+          "id": "security-review",
+          "name": "Security Review",
+          "description": "Perform comprehensive security analysis of codebase using the AppSec Specialist agent",
+          "path": "plugins/appsec/commands/security-review.md"
+        }
+      ],
+      "skills": [],
+      "hooks": [],
+      "installation": {
+        "instructions": "Copy the agents and commands to your project's .claude/ directory structure",
+        "requirements": ["Claude Code CLI", "Access to codebase for analysis"]
+      },
+      "documentation": "plugins/appsec/README.md"
+    }
+  ]
+}

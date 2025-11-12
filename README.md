@@ -146,4 +146,4 @@ Built with and for the Claude Code community. Special thanks to all contributors
 
 ---
 
-**Note**: This is a community-driven project. Plugin quality and compatibility may vary. Always review plugins before using them in production environments.
+**Note**: These are ready-to-use plugins. Plugin quality and compatibility may vary. Always review plugins before using them in production environments.
