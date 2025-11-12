@@ -10,25 +10,40 @@
   "plugins": [
     {
       "name": "appsec",
-      "source": "./plugins/appsec",
+      "source": "./",
       "description": "Comprehensive application security toolkit for identifying vulnerabilities, analyzing risks, and validating dependencies at an expert level",
       "version": "1.0.0",
       "category": "security",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
-      }
+      },
+      "license": "MIT",
+      "keywords": ["security", "appsec", "vulnerability", "risk-analysis", "dependencies", "audit"],
+      "strict": false,
+      "commands": [
+        "./plugins/appsec/commands/security-review.md"
+      ],
+      "agents": [
+        "./plugins/appsec/agents/appsec-specialist.md"
+      ]
     },
     {
       "name": "development",
-      "source": "./plugins/development",
+      "source": "./",
       "description": "Comprehensive development toolkit for planning and accelerating software feature implementation with intelligent codebase analysis and interactive requirement gathering",
       "version": "1.0.0",
       "category": "development",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
-      }
+      },
+      "license": "MIT",
+      "keywords": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation"],
+      "strict": false,
+      "commands": [
+        "./plugins/development/commands/plan-dev.md"
+      ]
     }
   ]
 }
