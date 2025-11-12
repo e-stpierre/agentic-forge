@@ -1,11 +1,13 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "claude-plugins",
-  "version": "1.0.0",
-  "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
   "owner": {
     "name": "Étienne St-Pierre",
-    "email": "me@estpierre.dev"
+    "email": "me@estpierre.dev",
+    "url": "https://github.com/e-stpierre/claude-plugins"
+  },
+  "metadata": {
+    "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
+    "version": "1.0.0"
   },
   "plugins": [
     {
