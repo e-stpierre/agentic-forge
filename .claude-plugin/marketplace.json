@@ -40,8 +40,8 @@
       "skills": [],
       "hooks": [],
       "installation": {
-        "instructions": "Copy the agents and commands to your project's .claude/ directory structure",
-        "requirements": ["Claude Code CLI", "Access to codebase for analysis"]
+        "instructions": "Install via Claude Code plugin marketplace: /plugin install appsec@e-stpierre/claude-plugins",
+        "requirements": ["Claude Code CLI v2.0.13 or higher", "Access to codebase for analysis"]
       },
       "documentation": "plugins/appsec/README.md"
     }

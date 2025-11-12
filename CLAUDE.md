@@ -118,27 +118,50 @@ Real-world example implementations showing plugins in action. Examples should:
 
 ## Integration with Claude Code
 
-### Commands
+### Plugin Marketplace Installation
+
+This repository is designed to be used as a Claude Code plugin marketplace. Users should install plugins via the marketplace system rather than manually copying files:
+
+```bash
+# Add this repository as a marketplace
+/plugin marketplace add e-stpierre/claude-plugins
+
+# Browse available plugins via the menu
+/plugin menu
+
+# Or install specific plugins directly
+/plugin install appsec@e-stpierre/claude-plugins
+```
+
+**For Private Repositories**: Claude Code supports private Git repositories as marketplaces. Users need proper Git authentication configured (SSH keys or GitHub personal access token) to access private marketplace repositories.
+
+**Marketplace Configuration**: This repository includes a `.claude-plugin/marketplace.json` file that defines all available plugins, their metadata, and installation requirements.
+
+### Plugin Components
+
+#### Commands
 Commands are stored in `.claude/commands/` and invoked with `/command-name`. When a user types a slash command, the markdown file content becomes the prompt.
 
-### Agents
+#### Agents
 Sub-agents are invoked via the Task tool with `subagent_type` parameter. They run autonomously to complete specific tasks.
 
-### Skills
+#### Skills
 Skills are activated using the Skill tool with the skill name. They provide specialized capabilities that can be called during a session.
 
-### Hooks
+#### Hooks
 Hooks execute automatically on configured events. They can inject context, monitor state, or adapt behavior dynamically.
 
 ## Best Practices for Plugin Usage
 
 ### For End Users
 
-1. **Review Before Use**: Always examine plugin code before installing
-2. **Test in Safe Environment**: Try plugins in non-production contexts first
-3. **Understand Behavior**: Read documentation to understand what plugins do
-4. **Provide Feedback**: Report issues and suggest improvements
-5. **Share Knowledge**: Contribute your own plugins back to the community
+1. **Add the Marketplace**: Use `/plugin marketplace add e-stpierre/claude-plugins` to access plugins
+2. **Browse Before Installing**: Use `/plugin menu` to explore available plugins and their descriptions
+3. **Review Before Use**: Always examine plugin code and documentation before installing
+4. **Test in Safe Environment**: Try plugins in non-production contexts first
+5. **Understand Behavior**: Read documentation to understand what plugins do
+6. **Provide Feedback**: Report issues and suggest improvements
+7. **Share Knowledge**: Contribute your own plugins back to the community
 
 ### For Plugin Developers
 
@@ -232,11 +255,12 @@ How to activate and use this skill
 
 This repository is designed to evolve with the Claude Code ecosystem:
 
-- **Plugin Marketplace**: Potential for discovery and installation tools
+- **Plugin Marketplace**: ✅ Implemented via `.claude-plugin/marketplace.json` - users can now browse and install plugins directly
 - **Version Management**: Better handling of plugin versions and dependencies
 - **Testing Framework**: Automated testing for plugin quality
 - **Community Curation**: Ratings and reviews for popular plugins
 - **Cross-Project Sharing**: Easy ways to share configurations across teams
+- **Team Marketplaces**: Support for team-wide marketplace configuration in `.claude/settings.json`
 
 ## Getting Help
 
