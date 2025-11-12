@@ -71,34 +71,50 @@ claude-plugins/
 
 - Claude Code CLI installed and configured
 - Basic familiarity with Claude Code concepts (commands, agents, hooks)
+- Git authentication configured for private repositories (if applicable)
 
 ### Installation
 
-1. Clone this repository:
+Add this repository as a plugin marketplace in Claude Code:
+
 ```bash
-git clone https://github.com/yourusername/claude-plugins.git
-cd claude-plugins
+/plugin marketplace add e-stpierre/claude-plugins
 ```
 
-2. Browse available plugins in their respective directories
+**For private repositories**: Ensure you have proper Git authentication configured (SSH keys or GitHub personal access token).
 
-3. Copy desired plugins to your project's `.claude/` directory:
+### Browse & Install Plugins
+
+Once the marketplace is added, browse and install plugins using the plugin menu:
+
 ```bash
-# Example: Install a command
-cp commands/example-command.md /path/to/your/project/.claude/commands/
+/plugin menu
+```
 
-# Example: Install a hook
-cp hooks/example-hook.sh /path/to/your/project/.claude/hooks/
+This opens an interactive menu where you can:
+- Browse all available plugins from the marketplace
+- View plugin descriptions and capabilities
+- Install plugins directly to your project
+- Manage installed plugins
+
+### Install Specific Plugins
+
+You can also install specific plugins directly by name:
+
+```bash
+/plugin install appsec@e-stpierre/claude-plugins
 ```
 
 ### Usage
 
-Refer to individual plugin documentation for specific usage instructions. Generally:
+After installation, plugins are immediately available in your Claude Code session:
 
-- **Commands**: Available via `/command-name` in Claude Code
-- **Agents**: Invoked via Task tool or specific command triggers
+- **Commands**: Available via `/command-name` (e.g., `/security-review`)
+- **Agents**: Invoked automatically via commands or Task tool
 - **Skills**: Activated via `Skill` tool or skill name
 - **Hooks**: Execute automatically on configured events
+
+Refer to individual plugin documentation for specific usage instructions and examples.
 
 ## 🤝 Contributing
 
@@ -134,7 +150,7 @@ Detailed documentation for each plugin type can be found in the `docs/` director
 
 - [Claude Code Documentation](https://docs.claude.com/en/docs/claude-code)
 - [Claude Code GitHub](https://github.com/anthropics/claude-code)
-- [Community Discussions](https://github.com/yourusername/claude-plugins/discussions)
+- [Community Discussions](https://github.com/e-stpierre/claude-plugins/discussions)
 
 ## 📄 License
 

@@ -61,7 +61,30 @@ Performs a comprehensive security assessment of your codebase using the AppSec S
 
 ## Installation
 
-### Option 1: Manual Installation
+### Marketplace Installation (Recommended)
+
+Install via the Claude Code plugin marketplace:
+
+1. Add the claude-plugins marketplace (if not already added):
+```bash
+/plugin marketplace add e-stpierre/claude-plugins
+```
+
+2. Install the AppSec plugin:
+```bash
+/plugin install appsec@e-stpierre/claude-plugins
+```
+
+Or use the interactive menu:
+```bash
+/plugin menu
+```
+
+**For private repositories**: Ensure you have proper Git authentication configured (SSH keys or GitHub personal access token).
+
+### Manual Installation (Alternative)
+
+If you prefer manual installation or want to customize the plugin:
 
 1. Copy the agent definition to your project:
 ```bash
@@ -73,13 +96,6 @@ cp plugins/appsec/agents/appsec-specialist.md .claude/agents/
 ```bash
 mkdir -p .claude/commands
 cp plugins/appsec/commands/security-review.md .claude/commands/
-```
-
-### Option 2: Full Plugin Installation
-
-Copy the entire plugin directory:
-```bash
-cp -r plugins/appsec/* .claude/
 ```
 
 ## Usage
@@ -375,7 +391,7 @@ This plugin is part of the claude-plugins repository and is licensed under the M
 ## Support
 
 For issues, questions, or contributions:
-- Open an issue in the [claude-plugins repository](https://github.com/yourusername/claude-plugins)
+- Open an issue in the [claude-plugins repository](https://github.com/e-stpierre/claude-plugins)
 - Join the community discussions
 - Check the documentation in `/docs/`
 
