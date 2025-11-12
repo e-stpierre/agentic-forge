@@ -1,77 +1,34 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "claude-plugins",
+  "version": "1.0.0",
+  "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
   "owner": {
     "name": "Étienne St-Pierre",
-    "email": "me@estpierre.dev",
-    "url": "https://github.com/e-stpierre/claude-plugins"
-  },
-  "metadata": {
-    "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
-    "version": "1.0.0"
+    "email": "me@estpierre.dev"
   },
   "plugins": [
     {
-      "id": "appsec",
-      "name": "Application Security Plugin",
-      "version": "1.0.0",
+      "name": "appsec",
+      "source": "./plugins/appsec",
       "description": "Comprehensive application security toolkit for identifying vulnerabilities, analyzing risks, and validating dependencies at an expert level",
+      "version": "1.0.0",
+      "category": "security",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
-      },
-      "tags": ["security", "appsec", "vulnerability", "risk-analysis", "dependencies", "audit"],
-      "category": "security",
-      "agents": [
-        {
-          "id": "appsec-specialist",
-          "name": "AppSec Specialist Agent",
-          "description": "Expert security analyst for comprehensive codebase security reviews",
-          "path": "plugins/appsec/agents/appsec-specialist.md"
-        }
-      ],
-      "commands": [
-        {
-          "id": "security-review",
-          "name": "Security Review",
-          "description": "Perform comprehensive security analysis of codebase using the AppSec Specialist agent",
-          "path": "plugins/appsec/commands/security-review.md"
-        }
-      ],
-      "skills": [],
-      "hooks": [],
-      "installation": {
-        "instructions": "Install via Claude Code plugin marketplace: /plugin install appsec@e-stpierre/claude-plugins",
-        "requirements": ["Claude Code CLI v2.0.13 or higher", "Access to codebase for analysis"]
-      },
-      "documentation": "plugins/appsec/README.md"
+      }
     },
     {
-      "id": "development",
-      "name": "Development Plugin",
-      "version": "1.0.0",
+      "name": "development",
+      "source": "./plugins/development",
       "description": "Comprehensive development toolkit for planning and accelerating software feature implementation with intelligent codebase analysis and interactive requirement gathering",
+      "version": "1.0.0",
+      "category": "development",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
-      },
-      "tags": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation"],
-      "category": "development",
-      "agents": [],
-      "commands": [
-        {
-          "id": "plan-dev",
-          "name": "Plan Development",
-          "description": "Create comprehensive feature implementation plans by analyzing codebase, gathering requirements interactively, and producing detailed implementation guides",
-          "path": "plugins/development/commands/plan-dev.md"
-        }
-      ],
-      "skills": [],
-      "hooks": [],
-      "installation": {
-        "instructions": "Install via Claude Code plugin marketplace: /plugin install development@e-stpierre/claude-plugins",
-        "requirements": ["Claude Code CLI v2.0.13 or higher", "Access to codebase for analysis"]
-      },
-      "documentation": "plugins/development/README.md"
+      }
     }
   ]
 }

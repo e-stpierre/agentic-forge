@@ -1,0 +1,15 @@
+{
+  "name": "appsec",
+  "version": "1.0.0",
+  "description": "Comprehensive application security toolkit for identifying vulnerabilities, analyzing risks, and validating dependencies at an expert level",
+  "author": {
+    "name": "Étienne St-Pierre",
+    "email": "me@estpierre.dev"
+  },
+  "homepage": "https://github.com/e-stpierre/claude-plugins/tree/main/plugins/appsec",
+  "repository": "https://github.com/e-stpierre/claude-plugins",
+  "license": "MIT",
+  "keywords": ["security", "appsec", "vulnerability", "risk-analysis", "dependencies", "audit"],
+  "commands": "./commands/",
+  "agents": "./agents/"
+}
