@@ -44,6 +44,34 @@
         "requirements": ["Claude Code CLI v2.0.13 or higher", "Access to codebase for analysis"]
       },
       "documentation": "plugins/appsec/README.md"
+    },
+    {
+      "id": "development",
+      "name": "Development Plugin",
+      "version": "1.0.0",
+      "description": "Comprehensive development toolkit for planning and accelerating software feature implementation with intelligent codebase analysis and interactive requirement gathering",
+      "author": {
+        "name": "Étienne St-Pierre",
+        "email": "me@estpierre.dev"
+      },
+      "tags": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation"],
+      "category": "development",
+      "agents": [],
+      "commands": [
+        {
+          "id": "plan-dev",
+          "name": "Plan Development",
+          "description": "Create comprehensive feature implementation plans by analyzing codebase, gathering requirements interactively, and producing detailed implementation guides",
+          "path": "plugins/development/commands/plan-dev.md"
+        }
+      ],
+      "skills": [],
+      "hooks": [],
+      "installation": {
+        "instructions": "Install via Claude Code plugin marketplace: /plugin install development@e-stpierre/claude-plugins",
+        "requirements": ["Claude Code CLI v2.0.13 or higher", "Access to codebase for analysis"]
+      },
+      "documentation": "plugins/development/README.md"
     }
   ]
 }
