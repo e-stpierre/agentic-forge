@@ -59,6 +59,12 @@ Performs a comprehensive security assessment of your codebase using the AppSec S
 
 **Path**: `plugins/appsec/commands/security-review.md`
 
+### Command: /nuget-vuln
+
+Scans .NET solutions and projects for vulnerable NuGet packages, including both direct and transitive dependencies. Provides detailed vulnerability reports with CVE information, severity ratings, and remediation guidance.
+
+**Path**: `plugins/appsec/commands/nuget-vuln.md`
+
 ## Installation
 
 ### Marketplace Installation (Recommended)
@@ -139,6 +145,32 @@ Perform a rapid scan focusing only on critical issues:
 /security-review --quick
 ```
 
+### NuGet Vulnerability Scan (.NET Projects)
+
+Scan .NET solutions and projects for vulnerable NuGet packages:
+
+```
+/nuget-vuln
+```
+
+Scan a specific solution:
+
+```
+/nuget-vuln MySolution.sln
+```
+
+Scan a specific project:
+
+```
+/nuget-vuln src/MyProject/MyProject.csproj
+```
+
+Focus on critical and high severity only:
+
+```
+/nuget-vuln --critical-only
+```
+
 ## What Gets Checked
 
 ### Code-Level Security
@@ -159,6 +191,8 @@ Perform a rapid scan focusing only on critical issues:
 - **Transitive Dependencies**: Analyzing indirect dependency risks
 - **License Issues**: Flagging problematic licenses
 - **Supply Chain**: Assessing package source trustworthiness
+- **NuGet Vulnerabilities** (.NET): Direct scanning of .NET packages using `dotnet list package --vulnerable`
+- **Deprecated Packages**: Identification of packages no longer maintained
 
 ### Configuration Security
 
@@ -383,6 +417,7 @@ Found a new security pattern to detect? Want to improve the agent?
 - [Semgrep](https://semgrep.dev/) - Static analysis
 - [Snyk](https://snyk.io/) - Dependency scanning
 - [npm audit](https://docs.npmjs.com/cli/v8/commands/npm-audit) - Node.js dependencies
+- [dotnet list package](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-list-package) - .NET/NuGet vulnerabilities
 
 ## License
 
