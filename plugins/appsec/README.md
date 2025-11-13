@@ -65,6 +65,12 @@ Scans .NET solutions and projects for vulnerable NuGet packages, including both 
 
 **Path**: `plugins/appsec/commands/nuget-vuln.md`
 
+### Command: /scope-security
+
+Performs a focused, rapid security analysis of a single file and its direct dependencies. Designed for quick security reviews during development when you need fast feedback without a comprehensive codebase scan. Ideal for pre-commit checks, code reviews, and iterative development.
+
+**Path**: `plugins/appsec/commands/scope-security.md`
+
 ## Installation
 
 ### Marketplace Installation (Recommended)
@@ -170,6 +176,22 @@ Focus on critical and high severity only:
 ```
 /nuget-vuln --critical-only
 ```
+
+### Focused Scope Security Analysis
+
+Perform a quick, targeted security analysis of a single file and its direct dependencies:
+
+```
+/scope-security src/auth/login.js
+```
+
+This is ideal for:
+- Pre-commit security checks on modified files
+- Quick validation during code review
+- Targeted analysis of security-critical components
+- Rapid feedback during active development
+
+Analyzes in 1-2 minutes focusing on critical and high-severity issues only.
 
 ## What Gets Checked
 
