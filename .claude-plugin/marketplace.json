@@ -12,7 +12,7 @@
       "name": "appsec",
       "source": "./",
       "description": "Comprehensive application security toolkit for identifying vulnerabilities, analyzing risks, and validating dependencies at an expert level",
-      "version": "1.1.0",
+      "version": "1.3.0",
       "category": "security",
       "author": {
         "name": "Étienne St-Pierre",
@@ -23,7 +23,8 @@
       "strict": false,
       "commands": [
         "./plugins/appsec/commands/security-review.md",
-        "./plugins/appsec/commands/nuget-vuln.md"
+        "./plugins/appsec/commands/nuget-vuln.md",
+        "./plugins/appsec/commands/scope-security.md"
       ],
       "agents": [
         "./plugins/appsec/agents/appsec-specialist.md"
