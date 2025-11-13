@@ -97,12 +97,44 @@ This opens an interactive menu where you can:
 - Install plugins directly to your project
 - Manage installed plugins
 
+### Marketplace Versioning
+
+#### Latest Version
+Install the latest version of the marketplace:
+
+```bash
+/plugin marketplace add e-stpierre/claude-plugins
+```
+
+#### Specific Version
+Install a specific version using git tags:
+
+```bash
+/plugin marketplace add e-stpierre/claude-plugins#v1.1.0
+```
+
+#### Update Marketplace
+Update the marketplace to the latest version:
+
+```bash
+/plugin marketplace update claude-plugins
+```
+
+#### Remove Marketplace
+Remove the marketplace from your configuration:
+
+```bash
+/plugin marketplace remove claude-plugins
+```
+
+**⚠️ Warning**: Removing a marketplace will uninstall all plugins from that marketplace. This is useful when you need to install a previous version of the marketplace or its plugins.
+
 ### Install Specific Plugins
 
 You can also install specific plugins directly by name:
 
 ```bash
-/plugin install appsec@e-stpierre/claude-plugins
+/plugin install appsec
 ```
 
 ### Usage
