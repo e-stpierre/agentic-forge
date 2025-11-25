@@ -203,7 +203,7 @@ dotnet add package [ParentPackage] --version [SafeVersion]
 
 ## Update Strategy
 
-### Recommended Approach:
+### Recommended Approach
 
 1. **Test Environment Setup**
 
@@ -250,12 +250,6 @@ dotnet add package [PackageName] --version [Version]
 - Subscribe to security advisories for critical packages
 
 ---
-
-## References
-
-- [NuGet Package Vulnerabilities Documentation](https://learn.microsoft.com/en-us/nuget/concepts/security-best-practices)
-- [.NET Security Advisories](https://github.com/dotnet/announcements/labels/Security)
-- [National Vulnerability Database](https://nvd.nist.gov/)
 
 ```
 
@@ -466,6 +460,9 @@ jobs:
 
 ## References
 
+- [NuGet Package Vulnerabilities Documentation](https://learn.microsoft.com/en-us/nuget/concepts/security-best-practices)
+- [.NET Security Advisories](https://github.com/dotnet/announcements/labels/Security)
+- [National Vulnerability Database](https://nvd.nist.gov/)
 - [NuGet Security Best Practices](https://learn.microsoft.com/en-us/nuget/concepts/security-best-practices)
 - [dotnet list package Command](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-list-package)
 - [.NET Dependency Management](https://learn.microsoft.com/en-us/dotnet/core/tools/dependencies)
