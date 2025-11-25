@@ -1,8 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(npx prettier:*)"
-    ],
+    "allow": ["Bash(npx prettier:*)"],
     "deny": [],
     "ask": []
   }

@@ -4,23 +4,27 @@ Comprehensive development toolkit for Claude Code that accelerates feature imple
 
 ## Overview
 
-The Development plugin provides tools to help you plan and implement new features systematically. It combines automated codebase exploration with interactive requirement clarification to produce detailed, actionable implementation plans that coding agents can follow.
+The Development plugin provides tools to help you plan and implement new features systematically. It combines automated codebase exploration with interactive requirement clarification to produce detailed, actionable implementation plans
+that coding agents can follow.
 
 ## Features
 
 ### Intelligent Codebase Analysis
+
 - **Parallel Exploration**: Launches 3 specialized Explore agents simultaneously to analyze your codebase from different perspectives
 - **Architecture Understanding**: Identifies project structure, patterns, and conventions
 - **Feature Context Discovery**: Finds related code, integration points, and affected components
 - **Dependency Mapping**: Identifies reusable utilities, libraries, and existing patterns
 
 ### Interactive Requirement Gathering
+
 - **Smart Questioning**: Asks 0-20 targeted clarifying questions based on feature complexity
 - **Recommended Answers**: Provides suggested options for common decisions
 - **Paginated Interface**: Breaks complex requirements into digestible pages of 4 questions
 - **Flexible Input**: Allows users to skip questions or defer decisions
 
 ### Comprehensive Planning
+
 - **Detailed Implementation Plans**: Creates markdown documents with complete implementation instructions
 - **Milestone Support**: Breaks large features into manageable phases
 - **Actionable Steps**: Includes specific file paths, code references, and step-by-step guidance
@@ -42,16 +46,19 @@ Creates comprehensive feature implementation plans through codebase analysis and
 Install via the Claude Code plugin marketplace:
 
 1. Add the claude-plugins marketplace (if not already added):
+
 ```bash
 /plugin marketplace add e-stpierre/claude-plugins
 ```
 
 2. Install the Development plugin:
+
 ```bash
 /plugin install development@e-stpierre/claude-plugins
 ```
 
 Or use the interactive menu:
+
 ```bash
 /plugin menu
 ```
@@ -63,6 +70,7 @@ Or use the interactive menu:
 If you prefer manual installation or want to customize the plugin:
 
 1. Copy the command to your project:
+
 ```bash
 mkdir -p .claude/commands
 cp plugins/development/commands/plan-dev.md .claude/commands/
@@ -79,11 +87,13 @@ Plan a new feature by providing a description:
 ```
 
 Then describe your feature when prompted:
+
 ```
 I want to add user authentication with email and password
 ```
 
 This will:
+
 1. Launch 3 Explore agents to analyze your codebase in parallel
 2. Synthesize findings to understand your project structure
 3. Ask clarifying questions about requirements and implementation details
@@ -93,6 +103,7 @@ This will:
 ### Planning Process Flow
 
 #### Step 1: Feature Description
+
 ```
 /plan-dev
 
@@ -102,6 +113,7 @@ User: I want to add a real-time notification system for user messages
 ```
 
 #### Step 2: Codebase Analysis
+
 ```
 Analyzing your codebase with 3 specialized agents...
 
@@ -117,6 +129,7 @@ Synthesis complete. I've identified:
 ```
 
 #### Step 3: Clarifying Questions
+
 ```
 I have 12 clarifying questions to help create a complete implementation plan.
 These will be presented in 3 pages of 4 questions each.
@@ -153,6 +166,7 @@ Ready for the next set of questions? (yes/no): yes
 ```
 
 #### Step 4: Plan Generation
+
 ```
 Creating comprehensive implementation plan...
 
@@ -171,6 +185,7 @@ Default location: /docs/plans/real-time-notification-system-plan.md
 ```
 
 #### Step 5: Summary
+
 ```
 ## Implementation Plan Created ✓
 
@@ -201,56 +216,67 @@ Would you like me to:
 The generated plan includes:
 
 #### Overview
+
 - Clear feature description
 - High-level approach
 - Key architectural decisions
 
 #### Prerequisites
+
 - Required dependencies
 - Setup steps
 - Access requirements
 
 #### Feature Requirements
+
 - Complete list of functional requirements
 - Non-functional requirements
 - Acceptance criteria
 
 #### Architecture & Design Decisions
+
 - Key technical decisions
 - Rationale for each decision
 - Alternatives considered
 
 #### Implementation Details (per Milestone)
+
 - **Files to Create**: Full paths with purpose and key components
 - **Files to Modify**: Specific changes needed with line references
 - **Implementation Steps**: Ordered, actionable steps with details
 - **Code References**: Links to existing patterns to follow
 
 #### Testing Strategy
+
 - Unit test locations and cases
 - Integration test scenarios
 - Manual testing checklist
 
 #### Edge Cases & Error Handling
+
 - Identified edge cases with handling approach
 - Error conditions with messages and recovery
 
 #### Security Considerations
+
 - Security implications
 - Mitigation strategies
 - Best practices to follow
 
 #### Performance Considerations
+
 - Performance-critical areas
 - Optimization approaches
 - Monitoring recommendations
 
 #### Documentation Updates
+
 - Files to update
 - What to document
 - API documentation changes
 
 #### Validation Checklist
+
 - Completion criteria
 - Quality checks
 - Review points
@@ -263,15 +289,17 @@ Here's an excerpt from a generated plan:
 # Feature Implementation Plan: Dark Mode Toggle
 
 ## Overview
-Implement a user-configurable dark mode toggle in the application settings
-that persists user preference and applies theme consistently across all components.
+
+Implement a user-configurable dark mode toggle in the application settings that persists user preference and applies theme consistently across all components.
 
 ## Prerequisites
+
 - CSS variables or styled-components theme provider
 - Local storage or user preference API
 - React Context or state management setup
 
 ## Feature Requirements
+
 - User can toggle dark mode on/off from settings page
 - Preference persists across sessions
 - Theme applies immediately without page reload
@@ -281,10 +309,12 @@ that persists user preference and applies theme consistently across all componen
 ## Architecture & Design Decisions
 
 **Decision 1: Use CSS Variables for Theming**
+
 - Rationale: Allows dynamic theme switching without CSS-in-JS overhead
 - Alternative: styled-components ThemeProvider (more complex)
 
 **Decision 2: Store Preference in localStorage**
+
 - Rationale: Simple, works offline, no backend changes needed
 - Alternative: User profile API (requires authentication)
 
@@ -313,7 +343,7 @@ that persists user preference and applies theme consistently across all componen
 
 2. **`src/index.css`**
    - Changes needed: Import themes.css and use CSS variables
-   - Lines affected: Replace hardcoded colors with var(--color-*)
+   - Lines affected: Replace hardcoded colors with var(--color-\*)
    - Reason: Make existing styles theme-aware
 
 #### Implementation Steps
@@ -457,6 +487,7 @@ Claude will use the plan as a detailed guide for implementation.
 ### When to Use /plan-dev
 
 **Good Use Cases**:
+
 - Adding new features to existing codebase
 - Refactoring complex systems
 - Implementing cross-cutting concerns
@@ -464,6 +495,7 @@ Claude will use the plan as a detailed guide for implementation.
 - Building multi-component features
 
 **Not Ideal For**:
+
 - Simple bug fixes (just fix directly)
 - Trivial additions (one-line changes)
 - Experimental prototyping (too rigid)
@@ -496,6 +528,7 @@ The /plan-dev command uses three specialized Explore agents running in parallel:
 3. **Dependency Agent**: Identifies reusable utilities and patterns
 
 This parallel approach provides:
+
 - **Speed**: 3x faster than sequential exploration
 - **Breadth**: Multiple perspectives on the codebase
 - **Depth**: Thorough understanding of context
@@ -503,12 +536,14 @@ This parallel approach provides:
 ### Intelligent Question Generation
 
 Questions are generated based on:
+
 - Feature complexity
 - Identified uncertainties from codebase analysis
 - Common decision points for similar features
 - Project-specific considerations
 
 Questions include:
+
 - Context explaining why it matters
 - Recommended answer options
 - Flexibility to skip or provide custom answers
@@ -516,6 +551,7 @@ Questions include:
 ### Plan Generation
 
 The plan is created by:
+
 1. Synthesizing codebase analysis results
 2. Incorporating user answers to clarifying questions
 3. Identifying files to create/modify
@@ -526,6 +562,7 @@ The plan is created by:
 ## Limitations
 
 The Development plugin:
+
 - ✅ Analyzes static codebase structure and patterns
 - ✅ Generates detailed implementation plans
 - ✅ Identifies related code and dependencies
@@ -538,18 +575,22 @@ The Development plugin:
 ## Troubleshooting
 
 ### Agent Takes Too Long
+
 - **Issue**: Explore agents running slowly
 - **Solution**: Codebase might be very large; consider specifying focused directories
 
 ### Questions Not Relevant
+
 - **Issue**: Clarifying questions don't apply to your feature
 - **Solution**: Skip irrelevant questions, agent adapts
 
 ### Plan Missing Details
+
 - **Issue**: Generated plan lacks specific information
 - **Solution**: Run /plan-dev again with more specific feature description
 
 ### Plan Doesn't Match Codebase
+
 - **Issue**: Plan suggests patterns not used in your project
 - **Solution**: Agents may have misunderstood; provide feedback and regenerate
 
@@ -565,6 +606,7 @@ Have ideas to improve the Development plugin?
 ## Future Enhancements
 
 Planned improvements:
+
 - Additional development commands (refactor-plan, test-plan, etc.)
 - Custom question templates for specific feature types
 - Plan templates for common patterns
@@ -574,11 +616,13 @@ Planned improvements:
 ## Resources
 
 ### Feature Planning Best Practices
+
 - [Requirements Engineering](https://en.wikipedia.org/wiki/Requirements_engineering)
 - [Software Design Patterns](https://refactoring.guru/design-patterns)
 - [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 
 ### Development Process
+
 - [Test-Driven Development](https://martinfowler.com/bliki/TestDrivenDevelopment.html)
 - [Refactoring Techniques](https://refactoring.guru/refactoring)
 - [Code Review Best Practices](https://google.github.io/eng-practices/review/)
@@ -590,6 +634,7 @@ This plugin is part of the claude-plugins repository and is licensed under the M
 ## Support
 
 For issues, questions, or contributions:
+
 - Open an issue in the [claude-plugins repository](https://github.com/e-stpierre/claude-plugins)
 - Join the community discussions
 - Check the documentation in `/docs/`

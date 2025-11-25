@@ -1,28 +1,28 @@
 {
   "folders": [
     {
-      "path": "."
-    }
+      "path": ".",
+    },
   ],
   "settings": {
     "markdownlint.config": {
-      "MD040": false // Fenced code blocks should have a language specified
+      "MD040": false, // Fenced code blocks should have a language specified
     },
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true,
     "files.associations": {
-      "*.md": "markdown"
+      "*.md": "markdown",
     },
     "editor.wordWrap": "on",
     "markdown.preview.breaks": true,
     "files.exclude": {
-      "**/.git": true
+      "**/.git": true,
     },
     "search.exclude": {
-      "**/.git": true
-    }
+      "**/.git": true,
+    },
   },
   "extensions": {
-    "recommendations": ["davidanson.vscode-markdownlint"]
-  }
+    "recommendations": ["davidanson.vscode-markdownlint"],
+  },
 }

@@ -87,7 +87,6 @@ You have access to all standard Claude Code tools:
 ### Initial Assessment
 
 1. **Discovery Phase**
-
    - Identify application type, language, and framework
    - Map the technology stack
    - Understand authentication and authorization mechanisms
@@ -103,14 +102,12 @@ You have access to all standard Claude Code tools:
 ### Deep Analysis
 
 3. **Code Review**
-
    - Systematic review of security-critical components
    - Pattern matching for common vulnerabilities
    - Manual analysis of complex logic
    - Review of security configurations
 
 4. **Dependency Audit**
-
    - Enumerate all dependencies (direct and transitive)
    - Check versions against known vulnerability databases
    - Assess update availability and breaking changes
@@ -125,7 +122,6 @@ You have access to all standard Claude Code tools:
 ### Reporting
 
 6. **Findings Documentation**
-
    - Detailed description of each vulnerability
    - Proof of concept or example exploit (if safe)
    - CVSS score and severity rating
@@ -197,9 +193,7 @@ password.{0,50}(length|size).{0,20}[<>=]{1,2}\s*[0-7]
 ```markdown
 ## Security Assessment Summary
 
-**Codebase**: [Project Name]
-**Assessment Date**: [Date]
-**Severity Breakdown**: X Critical, Y High, Z Medium, W Low
+**Codebase**: [Project Name] **Assessment Date**: [Date] **Severity Breakdown**: X Critical, Y High, Z Medium, W Low
 
 ---
 
@@ -207,24 +201,15 @@ password.{0,50}(length|size).{0,20}[<>=]{1,2}\s*[0-7]
 
 #### 1. SQL Injection in User Authentication (CRITICAL)
 
-**File**: `src/auth/login.js:45`
-**Severity**: CVSS 9.8 (Critical)
+**File**: `src/auth/login.js:45` **Severity**: CVSS 9.8 (Critical)
 
 **Issue**: The login function concatenates user input directly into SQL query without parameterization.
 
-**Vulnerable Code**:
-\`\`\`javascript
-const query = "SELECT \* FROM users WHERE username = '" + req.body.username + "'";
-db.execute(query);
-\`\`\`
+**Vulnerable Code**: \`\`\`javascript const query = "SELECT \* FROM users WHERE username = '" + req.body.username + "'"; db.execute(query); \`\`\`
 
 **Impact**: Attacker can bypass authentication or extract entire database contents.
 
-**Remediation**:
-\`\`\`javascript
-const query = "SELECT \* FROM users WHERE username = ?";
-db.execute(query, [req.body.username]);
-\`\`\`
+**Remediation**: \`\`\`javascript const query = "SELECT \* FROM users WHERE username = ?"; db.execute(query, [req.body.username]); \`\`\`
 
 **References**:
 
@@ -237,30 +222,22 @@ db.execute(query, [req.body.username]);
 
 #### 2. Outdated Express with Known CVEs (HIGH)
 
-**Package**: express@4.16.0
-**Current Version**: 4.16.0
-**Latest Version**: 4.18.2
-**Known CVEs**: CVE-2022-24999 (CVSS 7.5)
+**Package**: express@4.16.0 **Current Version**: 4.16.0 **Latest Version**: 4.18.2 **Known CVEs**: CVE-2022-24999 (CVSS 7.5)
 
 **Issue**: The current version of Express has a known denial of service vulnerability in the qs dependency.
 
-**Remediation**:
-\`\`\`bash
-npm update express@^4.18.2
-\`\`\`
+**Remediation**: \`\`\`bash npm update express@^4.18.2 \`\`\`
 
 ---
 
 ## Recommendations
 
 1. **Immediate Actions**:
-
    - Implement parameterized queries for all database operations
    - Update critical dependencies with known CVEs
    - Rotate any exposed credentials
 
 2. **Short-term Improvements**:
-
    - Add input validation and sanitization layer
    - Implement rate limiting on authentication endpoints
    - Enable security headers (HSTS, CSP, X-Frame-Options)
@@ -269,8 +246,7 @@ npm update express@^4.18.2
    - Adopt security linting tools (ESLint security plugin)
    - Implement automated dependency scanning in CI/CD
    - Conduct regular security training for development team
-   - Establish security review process for all PRs
-     \`\`\`
+   - Establish security review process for all PRs \`\`\`
 
 ## Behavior Guidelines
 

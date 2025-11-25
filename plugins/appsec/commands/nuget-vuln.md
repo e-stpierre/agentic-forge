@@ -91,19 +91,16 @@ Parse and analyze the output to identify:
 For each vulnerability found:
 
 1. **Identify the Issue**
-
    - Package name and vulnerable version
    - CVE identifier(s)
    - Severity rating
    - Advisory URL for detailed information
 
 2. **Determine Root Cause**
-
    - For direct dependencies: which project references it
    - For transitive dependencies: the dependency chain leading to it
 
 3. **Provide Fix Recommendations**
-
    - Specific version to upgrade to
    - Command to update the package
    - Breaking change warnings if applicable
@@ -122,9 +119,7 @@ Structure the output as follows:
 ````markdown
 ## NuGet Vulnerability Assessment
 
-**Solution/Project**: [name]
-**Scan Date**: [date]
-**Total Vulnerabilities**: [count]
+**Solution/Project**: [name] **Scan Date**: [date] **Total Vulnerabilities**: [count]
 
 ---
 
@@ -139,13 +134,9 @@ Structure the output as follows:
 
 #### [Package Name] [Vulnerable Version]
 
-**Severity**: Critical/High
-**CVE**: [CVE-ID]
-**Type**: Direct/Transitive dependency
-**Affected Projects**: [list]
+**Severity**: Critical/High **CVE**: [CVE-ID] **Type**: Direct/Transitive dependency **Affected Projects**: [list]
 
-**Description**:
-[Brief description of the vulnerability]
+**Description**: [Brief description of the vulnerability]
 
 **Remediation**:
 
@@ -206,18 +197,15 @@ dotnet add package [ParentPackage] --version [SafeVersion]
 ### Recommended Approach
 
 1. **Test Environment Setup**
-
    - Create a feature branch for package updates
    - Ensure comprehensive test coverage
 
 2. **Critical Updates First**
-
    - Update critical vulnerabilities one at a time
    - Run full test suite after each update
    - Verify application functionality
 
 3. **Batch Lower Severity Updates**
-
    - Group moderate/low severity updates
    - Test thoroughly before merging
 
@@ -355,25 +343,21 @@ Parse this to extract:
 ### Best Practices
 
 1. **Always Include Transitive Dependencies**
-
    - Use `--include-transitive` flag
    - Many vulnerabilities hide in indirect dependencies
    - Full visibility is critical for security
 
 2. **Cross-Reference Multiple Sources**
-
    - Combine dotnet CLI results with other tools
    - Check NuGet.org for additional security info
    - Verify CVE details in National Vulnerability Database
 
 3. **Provide Context**
-
    - Explain what each vulnerability means
    - Assess actual risk based on usage
    - Not all vulnerabilities are exploitable in every context
 
 4. **Make It Actionable**
-
    - Provide exact commands to fix issues
    - Prioritize remediation efforts
    - Offer migration guides for breaking changes
@@ -388,13 +372,11 @@ Parse this to extract:
 After completing the vulnerability scan:
 
 1. **Offer Next Steps**
-
    - Would you like me to update critical packages now?
    - Should I create GitHub issues for tracking remediation?
    - Want me to set up automated vulnerability scanning in CI/CD?
 
 2. **Provide Learning Resources**
-
    - Link to .NET security best practices
    - Share dependency management guidelines
    - Recommend security training materials

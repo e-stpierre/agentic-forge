@@ -2,7 +2,8 @@
 
 ## Project Overview
 
-This repository is a community-driven collection of modular extensions for Claude Code. It serves as a centralized hub for reusable commands, sub-agents, skills, hooks, and configuration templates that enhance Claude Code's capabilities across various development scenarios.
+This repository is a community-driven collection of modular extensions for Claude Code. It serves as a centralized hub for reusable commands, sub-agents, skills, hooks, and configuration templates that enhance Claude Code's capabilities
+across various development scenarios.
 
 ## Purpose
 

@@ -1,6 +1,7 @@
 # Scope Security Analysis Command
 
-You are being invoked to perform a focused, rapid security analysis of a single file and its direct dependencies. This command is designed for quick security reviews during development when you need fast feedback without a comprehensive codebase scan.
+You are being invoked to perform a focused, rapid security analysis of a single file and its direct dependencies. This command is designed for quick security reviews during development when you need fast feedback without a comprehensive
+codebase scan.
 
 ## Objective
 
@@ -160,11 +161,8 @@ Fast security validation before committing payment processing code.
 
 ## Agent Configuration
 
-**Agent Type**: appsec-specialist
-**Model**: Haiku or Sonnet (prioritize speed)
-**Autonomy Level**: High - agent should work independently
-**Tools Available**: Read, Grep, Glob (minimal Bash usage for speed)
-**Time Expectation**: 1-2 minutes for analysis
+**Agent Type**: appsec-specialist **Model**: Haiku or Sonnet (prioritize speed) **Autonomy Level**: High - agent should work independently **Tools Available**: Read, Grep, Glob (minimal Bash usage for speed) **Time Expectation**: 1-2
+minutes for analysis
 
 ## Implementation
 
@@ -184,13 +182,11 @@ Task(
 After the agent completes its work:
 
 1. **Summarize Findings**
-
    - Total critical/high severity issues found
    - Most important security concern
    - Quick win fixes
 
 2. **Provide Next Steps**
-
    - If issues found: Specific remediation guidance
    - If clean: Acknowledge good security practices
    - Suggest running full `/security-review` periodically
@@ -214,9 +210,7 @@ I'll perform a focused security analysis of `src/auth/login.js` and its direct d
 
 ## Focused Security Analysis Complete
 
-**Target**: src/auth/login.js
-**Dependencies Analyzed**: 3 files
-**Analysis Time**: ~90 seconds
+**Target**: src/auth/login.js **Dependencies Analyzed**: 3 files **Analysis Time**: ~90 seconds
 
 ### Summary
 
@@ -234,7 +228,6 @@ I'll perform a focused security analysis of `src/auth/login.js` and its direct d
 ### High Severity Findings:
 
 2. **Hardcoded Secret Key** (src/auth/login.js:12)
-
    - **Severity**: High (CVSS 7.5)
    - **Issue**: JWT secret hardcoded in source
    - **Fix**: Move to environment variable: `process.env.JWT_SECRET`

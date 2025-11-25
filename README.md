@@ -2,7 +2,8 @@
 
 A modular collection of commands, sub-agents, skills, and hooks designed to extend and customize Claude Code for both generic and specialized development scenarios.
 
-This repository provides a plug-and-play framework to define reusable automation units — from lightweight code utilities to fully autonomous agent behaviors — that enhance Claude's coding workflow, environment integration, and project orchestration capabilities.
+This repository provides a plug-and-play framework to define reusable automation units — from lightweight code utilities to fully autonomous agent behaviors — that enhance Claude's coding workflow, environment integration, and project
+orchestration capabilities.
 
 ## 🚀 Features
 
@@ -177,6 +178,14 @@ Contributions are welcome! Whether you're adding new plugins, improving existing
 - Provide example usage scenarios
 - Test plugins in multiple contexts before submitting
 - Use descriptive names and comments
+
+### Style
+
+Prettier format:
+
+```
+npx prettier --write .
+```
 
 ## 📚 Documentation
 

@@ -1,6 +1,7 @@
 # Plan Development Command
 
-You are being invoked to help the user create a comprehensive feature implementation plan. Your task is to analyze the codebase, clarify requirements through interactive questions, and produce a detailed implementation plan that a coding agent can follow.
+You are being invoked to help the user create a comprehensive feature implementation plan. Your task is to analyze the codebase, clarify requirements through interactive questions, and produce a detailed implementation plan that a coding
+agent can follow.
 
 ## Objective
 
@@ -208,7 +209,6 @@ After all questions are answered, create a comprehensive implementation plan in 
 #### Implementation Steps
 
 1. [Step 1 - specific action]
-
    - Details: [What to do]
    - Considerations: [What to watch out for]
 

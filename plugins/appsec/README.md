@@ -4,7 +4,8 @@ Comprehensive application security toolkit for Claude Code that enables expert-l
 
 ## Overview
 
-The AppSec plugin provides specialized tools and agents for identifying security vulnerabilities, analyzing risks, and validating dependencies. It combines automated pattern matching with expert-level security analysis to help you build more secure applications.
+The AppSec plugin provides specialized tools and agents for identifying security vulnerabilities, analyzing risks, and validating dependencies. It combines automated pattern matching with expert-level security analysis to help you build
+more secure applications.
 
 ## Features
 
@@ -72,7 +73,8 @@ Scans .NET solutions and projects for vulnerable NuGet packages, including both 
 
 ### Command: /scope-security
 
-Performs a focused, rapid security analysis of a single file and its direct dependencies. Designed for quick security reviews during development when you need fast feedback without a comprehensive codebase scan. Ideal for pre-commit checks, code reviews, and iterative development.
+Performs a focused, rapid security analysis of a single file and its direct dependencies. Designed for quick security reviews during development when you need fast feedback without a comprehensive codebase scan. Ideal for pre-commit checks,
+code reviews, and iterative development.
 
 **Path**: `plugins/appsec/commands/scope-security.md`
 
@@ -278,9 +280,7 @@ For each vulnerability:
 ````markdown
 ## Security Assessment Summary
 
-**Codebase**: myapp
-**Assessment Date**: 2025-01-15
-**Severity Breakdown**: 2 Critical, 5 High, 12 Medium, 8 Low
+**Codebase**: myapp **Assessment Date**: 2025-01-15 **Severity Breakdown**: 2 Critical, 5 High, 12 Medium, 8 Low
 
 ---
 
@@ -288,17 +288,14 @@ For each vulnerability:
 
 #### 1. SQL Injection in User Authentication
 
-**File**: `src/auth/login.js:45`
-**Severity**: CVSS 9.8 (Critical)
+**File**: `src/auth/login.js:45` **Severity**: CVSS 9.8 (Critical)
 
-User input is concatenated directly into SQL query without parameterization,
-allowing attackers to bypass authentication or extract database contents.
+User input is concatenated directly into SQL query without parameterization, allowing attackers to bypass authentication or extract database contents.
 
 **Vulnerable Code**:
 
 ```javascript
-const query =
-  "SELECT * FROM users WHERE username = '" + req.body.username + "'";
+const query = "SELECT * FROM users WHERE username = '" + req.body.username + "'";
 ```
 ````
 

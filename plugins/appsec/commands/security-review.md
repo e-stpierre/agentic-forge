@@ -93,10 +93,8 @@ Performs a high-level scan focusing on critical issues only.
 
 ## Agent Configuration
 
-**Agent Type**: appsec-specialist
-**Model**: Use Opus for complex codebases, Sonnet for standard reviews
-**Autonomy Level**: High - agent should work independently and report back
-**Tools Available**: All (Read, Grep, Glob, Bash, WebFetch, etc.)
+**Agent Type**: appsec-specialist **Model**: Use Opus for complex codebases, Sonnet for standard reviews **Autonomy Level**: High - agent should work independently and report back **Tools Available**: All (Read, Grep, Glob, Bash, WebFetch,
+etc.)
 
 ## Implementation
 
@@ -116,13 +114,11 @@ Task(
 After the agent completes its work:
 
 1. **Summarize Findings**
-
    - Total vulnerabilities by severity
    - Most critical issues requiring immediate attention
    - Key dependency concerns
 
 2. **Provide Next Steps**
-
    - Suggest creating issues for each critical/high finding
    - Recommend security tools to integrate (ESLint security, Snyk, etc.)
    - Offer to help implement specific remediations
@@ -157,7 +153,6 @@ I'll perform a comprehensive security assessment of your codebase using the AppS
 ### Critical Findings Requiring Immediate Attention:
 
 1. **SQL Injection in Authentication** (src/auth/login.js:45)
-
    - CVSS Score: 9.8
    - Immediate remediation required
 
