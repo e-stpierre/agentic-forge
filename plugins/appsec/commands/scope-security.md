@@ -5,6 +5,7 @@ You are being invoked to perform a focused, rapid security analysis of a single 
 ## Objective
 
 Analyze a specific file and its immediate dependencies for security vulnerabilities, providing actionable results quickly. This is ideal for:
+
 - Pre-commit security checks on modified files
 - Quick validation during code review
 - Targeted analysis of security-critical components
@@ -15,6 +16,7 @@ Analyze a specific file and its immediate dependencies for security vulnerabilit
 ### 1. Determine Target File
 
 Identify which file to analyze:
+
 - If the user specified a file path, use that
 - If no file specified, ask the user which file to analyze
 - Validate that the file exists
@@ -24,26 +26,31 @@ Identify which file to analyze:
 Quickly identify the file's immediate dependencies:
 
 **For JavaScript/TypeScript**:
+
 - Look for `import` or `require` statements
 - Focus on local file imports (not node_modules)
 - Identify any direct module dependencies
 
 **For Python**:
+
 - Look for `import` or `from ... import` statements
 - Focus on local module imports
 - Identify any direct dependencies from requirements
 
 **For C#/.NET**:
+
 - Look for `using` statements
 - Identify direct class dependencies
 - Check for direct NuGet package usage
 
 **For other languages**:
+
 - Identify include/import statements
 - Focus on local dependencies
 - Note any external library usage
 
 Limit the scope to:
+
 - The target file itself
 - Up to 5 most critical direct dependencies (based on security relevance)
 - This ensures the analysis completes quickly
@@ -111,6 +118,7 @@ Think efficiency: What are the most likely security issues in this specific file
 ### 4. Present Results
 
 Once the agent completes its analysis:
+
 - Provide a concise summary of findings
 - Highlight any critical or high-severity issues found
 - Give quick action items
@@ -119,27 +127,35 @@ Once the agent completes its analysis:
 ## Usage Examples
 
 ### Basic Usage - Analyze Current File
+
 ```
 /scope-security src/auth/login.js
 ```
+
 Performs a focused security analysis of the login.js file and its direct dependencies.
 
 ### Interactive Mode
+
 ```
 /scope-security
 ```
+
 Prompts you to specify which file to analyze.
 
 ### Analyze Authentication Logic
+
 ```
 /scope-security src/middleware/auth.ts
 ```
+
 Quickly checks authentication middleware for common security issues.
 
 ### Pre-Commit Check
+
 ```
 /scope-security src/api/payment.py
 ```
+
 Fast security validation before committing payment processing code.
 
 ## Agent Configuration
@@ -168,11 +184,13 @@ Task(
 After the agent completes its work:
 
 1. **Summarize Findings**
+
    - Total critical/high severity issues found
    - Most important security concern
    - Quick win fixes
 
 2. **Provide Next Steps**
+
    - If issues found: Specific remediation guidance
    - If clean: Acknowledge good security practices
    - Suggest running full `/security-review` periodically
@@ -201,6 +219,7 @@ I'll perform a focused security analysis of `src/auth/login.js` and its direct d
 **Analysis Time**: ~90 seconds
 
 ### Summary
+
 - **Critical Issues**: 1
 - **High Severity**: 2
 - **Total Findings**: 3
@@ -215,6 +234,7 @@ I'll perform a focused security analysis of `src/auth/login.js` and its direct d
 ### High Severity Findings:
 
 2. **Hardcoded Secret Key** (src/auth/login.js:12)
+
    - **Severity**: High (CVSS 7.5)
    - **Issue**: JWT secret hardcoded in source
    - **Fix**: Move to environment variable: `process.env.JWT_SECRET`
@@ -225,6 +245,7 @@ I'll perform a focused security analysis of `src/auth/login.js` and its direct d
    - **Fix**: Implement rate limiting middleware
 
 ### Quick Action Checklist:
+
 - [ ] Fix SQL injection (URGENT - 15 min)
 - [ ] Move secret to env var (URGENT - 5 min)
 - [ ] Add rate limiting (HIGH - 30 min)
@@ -243,6 +264,7 @@ I'll perform a focused security analysis of `src/auth/login.js` and its direct d
 ## When to Use Scope Security vs Full Security Review
 
 **Use `/scope-security` when**:
+
 - Working on a specific file and want quick feedback
 - Pre-commit security validation
 - Reviewing a PR for a single component
@@ -250,6 +272,7 @@ I'll perform a focused security analysis of `src/auth/login.js` and its direct d
 - Time-sensitive security verification
 
 **Use `/security-review` when**:
+
 - Preparing for production release
 - Comprehensive security audit needed
 - Onboarding a new codebase

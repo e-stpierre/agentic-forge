@@ -5,6 +5,7 @@ You are being invoked to perform a comprehensive NuGet package vulnerability ass
 ## Objective
 
 Scan .NET projects and solutions for vulnerable NuGet packages, including:
+
 - Direct dependencies with known CVEs
 - Transitive (indirect) dependencies with security issues
 - Outdated packages with available security patches
@@ -30,6 +31,7 @@ dotnet --version
 ```
 
 If `dotnet` is not available:
+
 - Inform the user that .NET SDK is required
 - Provide installation instructions for their platform
 - Offer to continue with manual NuGet package analysis if possible
@@ -45,6 +47,7 @@ dotnet list [solution-or-project] package --vulnerable --include-transitive
 ```
 
 This command:
+
 - Identifies packages with known CVEs
 - Shows both direct and transitive dependencies
 - Displays severity levels (Critical, High, Moderate, Low)
@@ -67,15 +70,18 @@ dotnet list [solution-or-project] package --outdated
 Parse and analyze the output to identify:
 
 **Vulnerability Severity Breakdown**:
+
 - Critical vulnerabilities requiring immediate action
 - High severity issues needing urgent remediation
 - Moderate and Low severity issues for planned updates
 
 **Dependency Type**:
+
 - Direct dependencies (explicitly referenced in project files)
 - Transitive dependencies (pulled in by other packages)
 
 **Impact Assessment**:
+
 - Number of projects affected by each vulnerability
 - Common vulnerability patterns across the solution
 - Supply chain risk factors
@@ -85,16 +91,19 @@ Parse and analyze the output to identify:
 For each vulnerability found:
 
 1. **Identify the Issue**
+
    - Package name and vulnerable version
    - CVE identifier(s)
    - Severity rating
    - Advisory URL for detailed information
 
 2. **Determine Root Cause**
+
    - For direct dependencies: which project references it
    - For transitive dependencies: the dependency chain leading to it
 
 3. **Provide Fix Recommendations**
+
    - Specific version to upgrade to
    - Command to update the package
    - Breaking change warnings if applicable
@@ -110,7 +119,7 @@ For each vulnerability found:
 
 Structure the output as follows:
 
-```markdown
+````markdown
 ## NuGet Vulnerability Assessment
 
 **Solution/Project**: [name]
@@ -129,6 +138,7 @@ Structure the output as follows:
 ### Critical & High Severity Findings
 
 #### [Package Name] [Vulnerable Version]
+
 **Severity**: Critical/High
 **CVE**: [CVE-ID]
 **Type**: Direct/Transitive dependency
@@ -138,6 +148,7 @@ Structure the output as follows:
 [Brief description of the vulnerability]
 
 **Remediation**:
+
 ```bash
 # For direct dependencies
 dotnet add package [PackageName] --version [SafeVersion]
@@ -145,6 +156,7 @@ dotnet add package [PackageName] --version [SafeVersion]
 # For transitive dependencies (update parent package)
 dotnet add package [ParentPackage] --version [SafeVersion]
 ```
+````
 
 **Advisory**: [URL]
 
@@ -171,16 +183,20 @@ dotnet add package [ParentPackage] --version [SafeVersion]
 ## Remediation Priority Matrix
 
 **Immediate Action Required** (Critical):
+
 - [ ] [Package] in [Project]: Update to version [X]
 - [ ] [Package] in [Project]: Update to version [X]
 
 **Urgent** (High - within 1 week):
+
 - [ ] [Package] in [Project]: Update to version [X]
 
 **Planned** (Moderate - within 1 month):
+
 - [ ] [Package] in [Project]: Update to version [X]
 
 **Track** (Low - address when convenient):
+
 - [ ] [Package] in [Project]: Update to version [X]
 
 ---
@@ -190,15 +206,18 @@ dotnet add package [ParentPackage] --version [SafeVersion]
 ### Recommended Approach:
 
 1. **Test Environment Setup**
+
    - Create a feature branch for package updates
    - Ensure comprehensive test coverage
 
 2. **Critical Updates First**
+
    - Update critical vulnerabilities one at a time
    - Run full test suite after each update
    - Verify application functionality
 
 3. **Batch Lower Severity Updates**
+
    - Group moderate/low severity updates
    - Test thoroughly before merging
 
@@ -237,32 +256,41 @@ dotnet add package [PackageName] --version [Version]
 - [NuGet Package Vulnerabilities Documentation](https://learn.microsoft.com/en-us/nuget/concepts/security-best-practices)
 - [.NET Security Advisories](https://github.com/dotnet/announcements/labels/Security)
 - [National Vulnerability Database](https://nvd.nist.gov/)
+
 ```
 
 ## Usage Examples
 
 ### Basic Usage - Scan Current Directory
 ```
+
 /nuget-vuln
+
 ```
 Scans all .NET solutions and projects in the current directory.
 
 ### Scan Specific Solution
 ```
+
 /nuget-vuln MySolution.sln
+
 ```
 Scans only the specified solution file.
 
 ### Scan Specific Project
 ```
+
 /nuget-vuln src/MyProject/MyProject.csproj
+
 ```
 Scans only the specified project file.
 
 ### Quick Scan (Critical/High Only)
 ```
+
 /nuget-vuln --critical-only
-```
+
+````
 Focus only on critical and high severity vulnerabilities.
 
 ## Error Handling
@@ -306,7 +334,7 @@ dotnet list [path] package --deprecated
 dotnet list [path] package --outdated
 
 # Parse output and generate report
-```
+````
 
 ### Output Parsing
 
@@ -323,6 +351,7 @@ Project 'MyProject' has the following vulnerable packages
 ```
 
 Parse this to extract:
+
 - Package names
 - Versions (requested vs resolved)
 - Severity levels
@@ -332,21 +361,25 @@ Parse this to extract:
 ### Best Practices
 
 1. **Always Include Transitive Dependencies**
+
    - Use `--include-transitive` flag
    - Many vulnerabilities hide in indirect dependencies
    - Full visibility is critical for security
 
 2. **Cross-Reference Multiple Sources**
+
    - Combine dotnet CLI results with other tools
    - Check NuGet.org for additional security info
    - Verify CVE details in National Vulnerability Database
 
 3. **Provide Context**
+
    - Explain what each vulnerability means
    - Assess actual risk based on usage
    - Not all vulnerabilities are exploitable in every context
 
 4. **Make It Actionable**
+
    - Provide exact commands to fix issues
    - Prioritize remediation efforts
    - Offer migration guides for breaking changes
@@ -361,11 +394,13 @@ Parse this to extract:
 After completing the vulnerability scan:
 
 1. **Offer Next Steps**
+
    - Would you like me to update critical packages now?
    - Should I create GitHub issues for tracking remediation?
    - Want me to set up automated vulnerability scanning in CI/CD?
 
 2. **Provide Learning Resources**
+
    - Link to .NET security best practices
    - Share dependency management guidelines
    - Recommend security training materials
@@ -384,10 +419,10 @@ name: NuGet Vulnerability Scan
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
   schedule:
-    - cron: '0 0 * * 1'  # Weekly on Mondays
+    - cron: "0 0 * * 1" # Weekly on Mondays
 
 jobs:
   scan:
@@ -398,7 +433,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
       - name: Restore dependencies
         run: dotnet restore

@@ -21,6 +21,7 @@ Before asking clarifying questions, you need to understand the existing codebase
 Use the Task tool to launch three Explore agents simultaneously (in a single message with three Task calls):
 
 **Agent 1 - Architecture Analysis**:
+
 ```
 Analyze the overall architecture and project structure of this codebase.
 
@@ -43,6 +44,7 @@ Be thorough but concise. Explore the codebase systematically using medium thorou
 ```
 
 **Agent 2 - Feature-Related Code Discovery**:
+
 ```
 Find existing code that is related to or will be affected by implementing: [FEATURE DESCRIPTION]
 
@@ -66,6 +68,7 @@ Use medium thoroughness to explore multiple areas and naming conventions.
 ```
 
 **Agent 3 - Dependencies and Integration Points**:
+
 ```
 Identify dependencies, utilities, and integration points relevant to: [FEATURE DESCRIPTION]
 
@@ -114,6 +117,7 @@ Based on the feature request and codebase analysis, formulate 0-20 clarifying qu
 - Be prioritized (most critical questions first)
 
 **Question Format**:
+
 ```
 ## Question [N]: [Clear, specific question]
 
@@ -129,6 +133,7 @@ d) Other (please specify)
 ```
 
 **IMPORTANT INTERACTION RULES**:
+
 - If you have 0-4 questions: Present all questions in a single interaction
 - If you have 5+ questions: Break them into pages of 4 questions each
 - For multiple pages: Present questions page by page, waiting for user responses before showing the next page
@@ -138,6 +143,7 @@ d) Other (please specify)
 - Allow users to skip questions or say "use your best judgment"
 
 **Example Questions** (adapt based on actual feature):
+
 - Where should this feature be accessible? (UI location, API endpoint, etc.)
 - What permissions/authorization is required?
 - How should this integrate with [existing feature]?
@@ -158,20 +164,26 @@ After all questions are answered, create a comprehensive implementation plan in 
 # Feature Implementation Plan: [Feature Name]
 
 ## Overview
+
 [Brief description of what will be implemented and why]
 
 ## Prerequisites
+
 - [Any setup, dependencies, or preparation needed]
 - [Tools or access requirements]
 
 ## Feature Requirements
+
 [Clear, concise list of what the feature must do]
+
 - Requirement 1
 - Requirement 2
 - ...
 
 ## Architecture & Design Decisions
+
 [Key architectural decisions and rationale]
+
 - Decision 1: [What and why]
 - Decision 2: [What and why]
 
@@ -180,19 +192,23 @@ After all questions are answered, create a comprehensive implementation plan in 
 ### Milestone 1: [Milestone Name] (if applicable for large features)
 
 #### Files to Create
+
 1. **`path/to/new/file.ext`**
    - Purpose: [What this file does]
    - Key components: [Main classes, functions, exports]
    - Dependencies: [What it imports/uses]
 
 #### Files to Modify
+
 1. **`path/to/existing/file.ext`**
    - Changes needed: [Specific modifications]
    - Lines/sections affected: [Approximate location]
    - Reason: [Why this change is needed]
 
 #### Implementation Steps
+
 1. [Step 1 - specific action]
+
    - Details: [What to do]
    - Considerations: [What to watch out for]
 
@@ -203,44 +219,54 @@ After all questions are answered, create a comprehensive implementation plan in 
 [Continue for all steps in this milestone]
 
 ### Milestone 2: [Milestone Name] (if applicable)
+
 [Repeat structure for additional milestones]
 
 ## Testing Strategy
 
 ### Unit Tests
+
 - Test file: `path/to/test/file.test.ext`
 - Test cases:
   - [Test case 1]
   - [Test case 2]
 
 ### Integration Tests
+
 - [What integration points to test]
 - [Expected behaviors to verify]
 
 ### Manual Testing
+
 - [ ] [Test scenario 1]
 - [ ] [Test scenario 2]
 
 ## Edge Cases & Error Handling
+
 - **Edge Case 1**: [Description] → [How to handle]
 - **Edge Case 2**: [Description] → [How to handle]
 - **Error Condition 1**: [Description] → [Error message and recovery]
 
 ## Security Considerations
+
 - [Security concern 1 and mitigation]
 - [Security concern 2 and mitigation]
 
 ## Performance Considerations
+
 - [Performance concern 1 and approach]
 - [Performance concern 2 and approach]
 
 ## Documentation Updates
+
 - [ ] Update `path/to/doc.md` with [what to add]
 - [ ] Add inline code documentation
 - [ ] Update API documentation if applicable
 
 ## Validation Checklist
+
 Before considering this feature complete, verify:
+
 - [ ] All requirements are met
 - [ ] Tests are passing
 - [ ] Code follows project conventions
@@ -250,11 +276,14 @@ Before considering this feature complete, verify:
 - [ ] Performance is acceptable
 
 ## Notes for Implementation
+
 [Any additional context, tips, or warnings for the implementing agent]
+
 - Note 1
 - Note 2
 
 ## References
+
 - Existing code to reference: `path/to/reference.ext:line`
 - Related patterns: [Where to find similar implementations]
 - Documentation: [Links or file paths]
@@ -307,12 +336,14 @@ Would you like me to:
 ## Best Practices
 
 ### Codebase Analysis
+
 - **Be Thorough**: Use all three Explore agents to understand the full context
 - **Run in Parallel**: Launch agents simultaneously for faster results
 - **Synthesize Well**: Combine findings into coherent understanding
 - **Identify Gaps**: Note what you couldn't find or need clarification on
 
 ### Asking Questions
+
 - **Be Strategic**: Only ask questions that affect implementation
 - **Provide Context**: Explain why each question matters
 - **Offer Options**: Give recommended answers when possible
@@ -321,6 +352,7 @@ Would you like me to:
 - **Allow Flexibility**: Let users skip or defer questions
 
 ### Writing Plans
+
 - **Be Specific**: Include file paths, function names, and code references
 - **Be Complete**: Include all details needed for implementation
 - **Be Concise**: Don't include unnecessary information
@@ -330,6 +362,7 @@ Would you like me to:
 - **No Project Management**: Avoid time estimates, story points, or assignment
 
 ### Plan Organization
+
 - **Use Milestones**: Break large features into logical phases
 - **Sequence Properly**: Order steps in a logical implementation sequence
 - **Show Dependencies**: Make clear what depends on what
@@ -340,6 +373,7 @@ Would you like me to:
 ## Example Usage
 
 ### Simple Feature
+
 ```
 User: /plan-dev
 User: I want to add a "dark mode" toggle to the settings page
@@ -351,6 +385,7 @@ User: I want to add a "dark mode" toggle to the settings page
 ```
 
 ### Complex Feature
+
 ```
 User: /plan-dev
 User: I want to implement a real-time chat system with message history, typing indicators, and file attachments
@@ -374,17 +409,20 @@ User: I want to implement a real-time chat system with message history, typing i
 ## Configuration
 
 **Explore Agent Settings**:
+
 - Thoroughness: "medium" (balances speed and completeness)
 - Model: "sonnet" (cost-effective for exploration)
 - Run mode: Parallel (all 3 agents simultaneously)
 
 **Question Interaction**:
+
 - Max questions per page: 4
 - Total question range: 0-20
 - Allow skipping: Yes
 - Provide recommended answers: Yes
 
 **Plan Output**:
+
 - Format: Markdown (.md)
 - Default location: `/docs/plans/`
 - Naming convention: `[feature-name-kebab-case]-plan.md`

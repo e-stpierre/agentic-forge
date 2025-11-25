@@ -11,6 +11,7 @@ Analyze the codebase for security vulnerabilities, risks, and dependency issues 
 ### 1. Understand the Scope
 
 First, determine the scope of the security review:
+
 - If the user specified particular directories, files, or components, focus on those
 - If no scope was specified, analyze the entire codebase
 - Identify the primary language(s) and framework(s) in use
@@ -50,6 +51,7 @@ Please be thorough and systematic in your analysis. Think like an attacker tryin
 ### 3. Present Results
 
 Once the agent completes its analysis:
+
 - Summarize the key findings
 - Highlight critical and high-severity issues
 - Provide a quick action checklist for immediate remediation
@@ -58,27 +60,35 @@ Once the agent completes its analysis:
 ## Usage Examples
 
 ### Basic Usage
+
 ```
 /security-review
 ```
+
 Performs a comprehensive security review of the entire codebase.
 
 ### Focused Review
+
 ```
 /security-review src/auth/
 ```
+
 Reviews only the authentication module.
 
 ### Dependency Audit Focus
+
 ```
 /security-review --dependencies
 ```
+
 Focuses specifically on dependency vulnerabilities.
 
 ### Quick Scan
+
 ```
 /security-review --quick
 ```
+
 Performs a high-level scan focusing on critical issues only.
 
 ## Agent Configuration
@@ -106,11 +116,13 @@ Task(
 After the agent completes its work:
 
 1. **Summarize Findings**
+
    - Total vulnerabilities by severity
    - Most critical issues requiring immediate attention
    - Key dependency concerns
 
 2. **Provide Next Steps**
+
    - Suggest creating issues for each critical/high finding
    - Recommend security tools to integrate (ESLint security, Snyk, etc.)
    - Offer to help implement specific remediations
@@ -136,6 +148,7 @@ I'll perform a comprehensive security assessment of your codebase using the AppS
 ## Security Assessment Complete
 
 ### Summary
+
 - **Critical Issues**: 2
 - **High Severity**: 5
 - **Medium Severity**: 12
@@ -144,6 +157,7 @@ I'll perform a comprehensive security assessment of your codebase using the AppS
 ### Critical Findings Requiring Immediate Attention:
 
 1. **SQL Injection in Authentication** (src/auth/login.js:45)
+
    - CVSS Score: 9.8
    - Immediate remediation required
 
@@ -152,11 +166,13 @@ I'll perform a comprehensive security assessment of your codebase using the AppS
    - Rotate keys immediately
 
 ### Dependency Alerts:
+
 - 3 packages with known CVEs
 - 12 outdated dependencies
 - 2 packages with critical security updates available
 
 ### Quick Action Checklist:
+
 - [ ] Fix SQL injection in authentication
 - [ ] Rotate exposed API keys
 - [ ] Update express to latest version (CVE-2022-24999)
@@ -164,6 +180,7 @@ I'll perform a comprehensive security assessment of your codebase using the AppS
 - [ ] Add input validation middleware
 
 Would you like me to:
+
 - Deep-dive into any specific finding?
 - Help implement remediations?
 - Set up automated security scanning?
