@@ -2,5 +2,6 @@
   "proseWrap": "always",
   "printWidth": 240,
   "tabWidth": 2,
-  "useTabs": false
+  "useTabs": false,
+  "trailingComma": "none"
 }
