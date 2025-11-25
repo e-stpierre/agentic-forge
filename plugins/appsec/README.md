@@ -9,6 +9,7 @@ The AppSec plugin provides specialized tools and agents for identifying security
 ## Features
 
 ### 🔍 Comprehensive Vulnerability Detection
+
 - **OWASP Top 10**: Complete coverage of critical web application security risks
 - **Injection Flaws**: SQL injection, command injection, XPath injection, LDAP injection
 - **Cross-Site Scripting**: Reflected, stored, and DOM-based XSS
@@ -19,6 +20,7 @@ The AppSec plugin provides specialized tools and agents for identifying security
 - **Known Vulnerabilities**: Outdated dependencies with CVEs
 
 ### 🛡️ Expert Security Analysis
+
 - Threat modeling and attack surface analysis
 - Secure code review with security-focused patterns
 - Cryptographic implementation validation
@@ -26,6 +28,7 @@ The AppSec plugin provides specialized tools and agents for identifying security
 - Business logic flaw detection
 
 ### 📦 Dependency Security
+
 - Identify outdated packages and libraries
 - Check for known CVEs in dependencies
 - Analyze transitive dependencies
@@ -33,6 +36,7 @@ The AppSec plugin provides specialized tools and agents for identifying security
 - License compliance checking
 
 ### 📊 Risk Assessment & Reporting
+
 - CVSS-based severity scoring
 - Exploitability analysis
 - Business impact assessment
@@ -44,6 +48,7 @@ The AppSec plugin provides specialized tools and agents for identifying security
 ### Agent: appsec-specialist
 
 An expert security analyst agent with deep knowledge of:
+
 - Application security best practices
 - OWASP Top 10 vulnerabilities
 - Threat modeling and risk assessment
@@ -78,16 +83,19 @@ Performs a focused, rapid security analysis of a single file and its direct depe
 Install via the Claude Code plugin marketplace:
 
 1. Add the claude-plugins marketplace (if not already added):
+
 ```bash
 /plugin marketplace add e-stpierre/claude-plugins
 ```
 
 2. Install the AppSec plugin:
+
 ```bash
 /plugin install appsec@e-stpierre/claude-plugins
 ```
 
 Or use the interactive menu:
+
 ```bash
 /plugin menu
 ```
@@ -99,12 +107,14 @@ Or use the interactive menu:
 If you prefer manual installation or want to customize the plugin:
 
 1. Copy the agent definition to your project:
+
 ```bash
 mkdir -p .claude/agents
 cp plugins/appsec/agents/appsec-specialist.md .claude/agents/
 ```
 
 2. Copy the command to your project:
+
 ```bash
 mkdir -p .claude/commands
 cp plugins/appsec/commands/security-review.md .claude/commands/
@@ -121,6 +131,7 @@ Perform a comprehensive security assessment of your entire codebase:
 ```
 
 This will:
+
 1. Launch the AppSec Specialist agent
 2. Analyze your codebase for vulnerabilities
 3. Check dependencies for known CVEs
@@ -186,6 +197,7 @@ Perform a quick, targeted security analysis of a single file and its direct depe
 ```
 
 This is ideal for:
+
 - Pre-commit security checks on modified files
 - Quick validation during code review
 - Targeted analysis of security-critical components
@@ -229,12 +241,15 @@ Analyzes in 1-2 minutes focusing on critical and high-severity issues only.
 The security review produces a comprehensive report including:
 
 ### Summary
+
 - Total vulnerabilities by severity (Critical, High, Medium, Low)
 - Quick statistics and overview
 - Executive summary of findings
 
 ### Detailed Findings
+
 For each vulnerability:
+
 - **Title**: Clear description of the issue
 - **Location**: Exact file path and line number
 - **Severity**: CVSS score and rating
@@ -245,12 +260,14 @@ For each vulnerability:
 - **References**: OWASP, CWE, and other standard references
 
 ### Dependency Report
+
 - List of vulnerable dependencies
 - CVE numbers and descriptions
 - Update recommendations
 - Breaking change warnings
 
 ### Action Plan
+
 - Immediate actions (critical issues)
 - Short-term improvements (high priority)
 - Long-term strategy (security posture)
@@ -258,11 +275,11 @@ For each vulnerability:
 
 ## Example Output
 
-```markdown
+````markdown
 ## Security Assessment Summary
 
 **Codebase**: myapp
-**Assessment Date**: 2024-01-15
+**Assessment Date**: 2025-01-15
 **Severity Breakdown**: 2 Critical, 5 High, 12 Medium, 8 Low
 
 ---
@@ -270,6 +287,7 @@ For each vulnerability:
 ### Critical Findings
 
 #### 1. SQL Injection in User Authentication
+
 **File**: `src/auth/login.js:45`
 **Severity**: CVSS 9.8 (Critical)
 
@@ -277,11 +295,15 @@ User input is concatenated directly into SQL query without parameterization,
 allowing attackers to bypass authentication or extract database contents.
 
 **Vulnerable Code**:
+
 ```javascript
-const query = "SELECT * FROM users WHERE username = '" + req.body.username + "'";
+const query =
+  "SELECT * FROM users WHERE username = '" + req.body.username + "'";
 ```
+````
 
 **Remediation**:
+
 ```javascript
 const query = "SELECT * FROM users WHERE username = ?";
 db.execute(query, [req.body.username]);
@@ -294,9 +316,11 @@ db.execute(query, [req.body.username]);
 ### Dependency Vulnerabilities
 
 #### express@4.16.0 → 4.18.2
+
 **CVE-2022-24999** (CVSS 7.5): Denial of Service via qs dependency
 
 **Update Command**:
+
 ```bash
 npm update express@^4.18.2
 ```
@@ -306,19 +330,23 @@ npm update express@^4.18.2
 ## Recommendations
 
 **Immediate Actions**:
+
 - [ ] Fix SQL injection in authentication
 - [ ] Update Express to patch CVE-2022-24999
 - [ ] Rotate exposed API keys
 
 **Short-term**:
+
 - [ ] Add input validation middleware
 - [ ] Implement security headers
 - [ ] Enable rate limiting
 
 **Long-term**:
+
 - [ ] Integrate ESLint security plugin
 - [ ] Set up automated dependency scanning
 - [ ] Conduct security training for team
+
 ```
 
 ## Best Practices
@@ -354,13 +382,16 @@ npm update express@^4.18.2
 You can customize the agent's focus by modifying the agent definition or providing specific instructions:
 
 ```
+
 /security-review
 
 Please focus specifically on:
+
 - Payment processing security
 - PII data handling
 - GDPR compliance
-```
+
+````
 
 ### Integration with CI/CD
 
@@ -377,11 +408,12 @@ jobs:
       - uses: actions/checkout@v2
       - name: Run Security Review
         run: claude-code --command "security-review --ci"
-```
+````
 
 ### Combining with Other Tools
 
 The AppSec plugin works well alongside:
+
 - **SAST Tools**: SonarQube, Semgrep, Bandit
 - **Dependency Scanners**: Snyk, Dependabot, npm audit
 - **DAST Tools**: OWASP ZAP, Burp Suite
@@ -390,6 +422,7 @@ The AppSec plugin works well alongside:
 ## Limitations
 
 The AppSec plugin:
+
 - ✅ Performs static analysis (SAST) of source code
 - ✅ Checks dependencies for known vulnerabilities
 - ✅ Reviews security configurations in code
@@ -401,13 +434,17 @@ The AppSec plugin:
 ## Troubleshooting
 
 ### Agent Not Found
+
 Ensure the agent file is in `.claude/agents/appsec-specialist.md`
 
 ### Command Not Working
+
 Verify the command file is in `.claude/commands/security-review.md`
 
 ### Incomplete Analysis
+
 For large codebases, consider:
+
 - Breaking analysis into focused reviews
 - Using `--quick` flag for initial scan
 - Upgrading to Opus model for complex analysis
@@ -424,17 +461,20 @@ Found a new security pattern to detect? Want to improve the agent?
 ## Resources
 
 ### Security Standards
+
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
 - [CWE Top 25](https://cwe.mitre.org/top25/)
 - [SANS Top 25](https://www.sans.org/top25-software-errors/)
 
 ### Learning Resources
+
 - [OWASP Cheat Sheets](https://cheatsheetseries.owasp.org/)
 - [PortSwigger Web Security Academy](https://portswigger.net/web-security)
 - [Secure Coding Guidelines](https://www.securecoding.cert.org/)
 
 ### Tools
+
 - [OWASP ZAP](https://www.zaproxy.org/) - Dynamic security testing
 - [Semgrep](https://semgrep.dev/) - Static analysis
 - [Snyk](https://snyk.io/) - Dependency scanning
@@ -448,6 +488,7 @@ This plugin is part of the claude-plugins repository and is licensed under the M
 ## Support
 
 For issues, questions, or contributions:
+
 - Open an issue in the [claude-plugins repository](https://github.com/e-stpierre/claude-plugins)
 - Join the community discussions
 - Check the documentation in `/docs/`

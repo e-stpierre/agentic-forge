@@ -1,8 +1,14 @@
 # Claude Code hook to format markdown files with Prettier after editing/creating
 # This hook runs after Edit or Write tool calls on .md files
 
-$input = [Console]::In.ReadToEnd()
-$data = $input | ConvertFrom-Json
+# Read JSON from stdin - use $Input automatic variable for pipeline input
+$jsonInput = @($Input) -join "`n"
+if (-not $jsonInput) {
+    # Fallback to Console.In for direct stdin
+    $jsonInput = [Console]::In.ReadToEnd()
+}
+
+$data = $jsonInput | ConvertFrom-Json
 
 # Get the file path from the tool input
 $filePath = $null
