@@ -38,6 +38,25 @@
       "keywords": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation"],
       "strict": false,
       "commands": ["./plugins/development/commands/plan-dev.md"]
+    },
+    {
+      "name": "core",
+      "source": "./",
+      "description": "Foundational prompts and utilities that serve as building blocks for other plugins and common development workflows",
+      "version": "1.0.0",
+      "category": "core",
+      "author": {
+        "name": "Étienne St-Pierre",
+        "email": "me@estpierre.dev"
+      },
+      "license": "MIT",
+      "keywords": ["core", "foundation", "utilities", "building-blocks", "git"],
+      "strict": false,
+      "commands": [
+        "./plugins/core/commands/git-branch.md",
+        "./plugins/core/commands/git-commit.md",
+        "./plugins/core/commands/git-pr.md"
+      ]
     }
   ]
 }
