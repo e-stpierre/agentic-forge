@@ -36,6 +36,7 @@
       },
       "license": "MIT",
       "keywords": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation"],
+      "dependencies": ["core"],
       "strict": false,
       "commands": ["./plugins/development/commands/plan-dev.md"]
     },

@@ -61,3 +61,39 @@ Define the expected output format and content:
 - Specify output structure (markdown, JSON, plain text)
 - Define what information must be included
 - Note any formatting requirements
+
+## Optional Sections
+
+The following sections are optional and should be included for complex commands that require additional detail.
+
+### Templates (optional)
+
+Embedded templates for structured outputs the command generates:
+
+- Use code blocks to show template structure
+- Include placeholders with clear naming (e.g., `[Feature Name]`)
+- Document each section of the template
+
+### Examples (optional)
+
+Usage scenarios demonstrating the command in action:
+
+- Show simple and complex usage patterns
+- Include expected inputs and outputs
+- Illustrate edge cases when relevant
+
+### Configuration (optional)
+
+Settings, defaults, and tunables for the command:
+
+- List configurable parameters with defaults
+- Explain when to adjust settings
+- Group related settings together
+
+### Best Practices (optional)
+
+Guidelines beyond core principles for optimal usage:
+
+- Organize by topic or phase of execution
+- Provide actionable recommendations
+- Explain rationale when helpful
