@@ -21,7 +21,7 @@
       "license": "MIT",
       "keywords": ["security", "appsec", "vulnerability", "risk-analysis", "dependencies", "audit"],
       "strict": false,
-      "commands": ["./plugins/appsec/commands/security-review.md", "./plugins/appsec/commands/nuget-vuln.md", "./plugins/appsec/commands/scope-security.md"],
+      "commands": ["./plugins/appsec/commands/security-review.md", "./plugins/appsec/commands/scope-security.md"],
       "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
     },
     {

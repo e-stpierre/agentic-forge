@@ -65,12 +65,6 @@ Performs a comprehensive security assessment of your codebase using the AppSec S
 
 **Path**: `plugins/appsec/commands/security-review.md`
 
-### Command: /nuget-vuln
-
-Scans .NET solutions and projects for vulnerable NuGet packages, including both direct and transitive dependencies. Provides detailed vulnerability reports with CVE information, severity ratings, and remediation guidance.
-
-**Path**: `plugins/appsec/commands/nuget-vuln.md`
-
 ### Command: /scope-security
 
 Performs a focused, rapid security analysis of a single file and its direct dependencies. Designed for quick security reviews during development when you need fast feedback without a comprehensive codebase scan. Ideal for pre-commit checks,
@@ -162,32 +156,6 @@ Perform a rapid scan focusing only on critical issues:
 
 ```
 /security-review --quick
-```
-
-### NuGet Vulnerability Scan (.NET Projects)
-
-Scan .NET solutions and projects for vulnerable NuGet packages:
-
-```
-/nuget-vuln
-```
-
-Scan a specific solution:
-
-```
-/nuget-vuln MySolution.sln
-```
-
-Scan a specific project:
-
-```
-/nuget-vuln src/MyProject/MyProject.csproj
-```
-
-Focus on critical and high severity only:
-
-```
-/nuget-vuln --critical-only
 ```
 
 ### Focused Scope Security Analysis
