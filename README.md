@@ -2,11 +2,13 @@
 
 A modular collection of commands, sub-agents, skills, and hooks designed to extend and customize Claude Code for both generic and specialized development scenarios.
 
-This repository provides a plug-and-play framework to define reusable automation units — from lightweight code utilities to fully autonomous agent behaviors — that enhance Claude's coding workflow, environment integration, and project orchestration capabilities.
+This repository provides a plug-and-play framework to define reusable automation units — from lightweight code utilities to fully autonomous agent behaviors — that enhance Claude's coding workflow, environment integration, and project
+orchestration capabilities.
 
 ## 🚀 Features
 
 ### 📦 Command Packs
+
 Ready-to-use slash commands for automation, scripting, and file manipulation. Commands provide quick access to common development workflows and can be composed to build complex automation pipelines.
 
 - **Quick Actions**: Instant access to frequently-used development tasks
@@ -14,6 +16,7 @@ Ready-to-use slash commands for automation, scripting, and file manipulation. Co
 - **Context-Aware**: Commands can adapt based on project context
 
 ### 🤖 Sub-Agents
+
 Specialized agent personalities and workflows for focused domains. Sub-agents bring domain expertise and autonomous task execution to specific problem areas.
 
 - **Domain Experts**: DevOps, testing, code review, documentation, and more
@@ -21,6 +24,7 @@ Specialized agent personalities and workflows for focused domains. Sub-agents br
 - **Customizable Behavior**: Configure agent personalities and capabilities
 
 ### 🧩 Skill Modules
+
 Composable building blocks for logic, data processing, and system interaction. Skills are reusable components that agents and commands can leverage.
 
 - **Reusable Logic**: Share common functionality across commands and agents
@@ -28,6 +32,7 @@ Composable building blocks for logic, data processing, and system interaction. S
 - **Interoperable**: Skills work seamlessly with all plugin types
 
 ### 🔌 Hooks
+
 Extend Claude Code's runtime behavior to inject context, monitor state, or adapt responses dynamically. Hooks enable event-driven customization of the development environment.
 
 - **Event-Driven**: React to session start, tool calls, and other events
@@ -35,6 +40,7 @@ Extend Claude Code's runtime behavior to inject context, monitor state, or adapt
 - **Dynamic Context**: Inject relevant information based on current state
 
 ### ⚙️ Configuration Templates
+
 Easily register or override behaviors for project-specific use cases. Templates provide starting points for common development scenarios.
 
 - **Quick Setup**: Bootstrap new projects with pre-configured plugins
@@ -92,6 +98,7 @@ Once the marketplace is added, browse and install plugins using the plugin menu:
 ```
 
 This opens an interactive menu where you can:
+
 - Browse all available plugins from the marketplace
 - View plugin descriptions and capabilities
 - Install plugins directly to your project
@@ -100,6 +107,7 @@ This opens an interactive menu where you can:
 ### Marketplace Versioning
 
 #### Latest Version
+
 Install the latest version of the marketplace:
 
 ```bash
@@ -107,6 +115,7 @@ Install the latest version of the marketplace:
 ```
 
 #### Specific Version
+
 Install a specific version using git tags:
 
 ```bash
@@ -114,6 +123,7 @@ Install a specific version using git tags:
 ```
 
 #### Update Marketplace
+
 Update the marketplace to the latest version:
 
 ```bash
@@ -121,6 +131,7 @@ Update the marketplace to the latest version:
 ```
 
 #### Remove Marketplace
+
 Remove the marketplace from your configuration:
 
 ```bash
@@ -167,6 +178,14 @@ Contributions are welcome! Whether you're adding new plugins, improving existing
 - Provide example usage scenarios
 - Test plugins in multiple contexts before submitting
 - Use descriptive names and comments
+
+### Style
+
+Prettier format:
+
+```
+npx prettier --write .
+```
 
 ## 📚 Documentation
 

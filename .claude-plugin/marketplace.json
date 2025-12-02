@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "claude-plugins",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
   "owner": {
     "name": "Étienne St-Pierre",
@@ -12,7 +12,7 @@
       "name": "appsec",
       "source": "./",
       "description": "Comprehensive application security toolkit for identifying vulnerabilities, analyzing risks, and validating dependencies at an expert level",
-      "version": "1.2.0",
+      "version": "1.0.0",
       "category": "security",
       "author": {
         "name": "Étienne St-Pierre",
@@ -21,14 +21,8 @@
       "license": "MIT",
       "keywords": ["security", "appsec", "vulnerability", "risk-analysis", "dependencies", "audit"],
       "strict": false,
-      "commands": [
-        "./plugins/appsec/commands/security-review.md",
-        "./plugins/appsec/commands/nuget-vuln.md",
-        "./plugins/appsec/commands/scope-security.md"
-      ],
-      "agents": [
-        "./plugins/appsec/agents/appsec-specialist.md"
-      ]
+      "commands": ["./plugins/appsec/commands/security-review.md", "./plugins/appsec/commands/scope-security.md"],
+      "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
     },
     {
       "name": "development",
@@ -42,9 +36,27 @@
       },
       "license": "MIT",
       "keywords": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation"],
+      "dependencies": ["core"],
+      "strict": false,
+      "commands": ["./plugins/development/commands/plan-dev.md"]
+    },
+    {
+      "name": "core",
+      "source": "./",
+      "description": "Foundational prompts and utilities that serve as building blocks for other plugins and common development workflows",
+      "version": "1.0.0",
+      "category": "core",
+      "author": {
+        "name": "Étienne St-Pierre",
+        "email": "me@estpierre.dev"
+      },
+      "license": "MIT",
+      "keywords": ["core", "foundation", "utilities", "building-blocks", "git"],
       "strict": false,
       "commands": [
-        "./plugins/development/commands/plan-dev.md"
+        "./plugins/core/commands/git-branch.md",
+        "./plugins/core/commands/git-commit.md",
+        "./plugins/core/commands/git-pr.md"
       ]
     }
   ]

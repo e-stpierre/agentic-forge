@@ -2,7 +2,8 @@
 
 ## Project Overview
 
-This repository is a community-driven collection of modular extensions for Claude Code. It serves as a centralized hub for reusable commands, sub-agents, skills, hooks, and configuration templates that enhance Claude Code's capabilities across various development scenarios.
+This repository is a community-driven collection of modular extensions for Claude Code. It serves as a centralized hub for reusable commands, sub-agents, skills, hooks, and configuration templates that enhance Claude Code's capabilities
+across various development scenarios.
 
 ## Purpose
 
@@ -16,49 +17,63 @@ The claude-plugins repository aims to:
 ## Repository Structure
 
 ### `/commands/`
+
 Slash command definitions (`.md` files) that users can invoke directly in Claude Code sessions. Commands should:
+
 - Have clear, descriptive names
 - Include usage examples
 - Be well-documented
 - Handle edge cases gracefully
 
 ### `/agents/`
+
 Sub-agent configurations for specialized, autonomous task execution. Agents should:
+
 - Focus on specific domains (DevOps, testing, documentation, etc.)
 - Have well-defined capabilities and limitations
 - Include clear invocation instructions
 - Provide example use cases
 
 ### `/skills/`
+
 Reusable skill modules that provide composable functionality. Skills should:
+
 - Be modular and single-purpose
 - Work across different contexts
 - Have clear input/output contracts
 - Be composable with other skills
 
 ### `/hooks/`
+
 Runtime hooks that execute on specific events (session start, tool calls, etc.). Hooks should:
+
 - Be lightweight and performant
 - Handle errors gracefully
 - Include clear documentation on events and triggers
 - Provide configuration options
 
 ### `/templates/`
+
 Project configuration templates for common scenarios. Templates should:
+
 - Include a complete `.claude/` directory structure
 - Provide sensible defaults
 - Include documentation on customization
 - Cover common use cases
 
 ### `/docs/`
+
 Comprehensive documentation for plugin development and usage. Documentation should:
+
 - Be clear and beginner-friendly
 - Include examples and code snippets
 - Cover common pitfalls and solutions
 - Stay up-to-date with Claude Code changes
 
 ### `/examples/`
+
 Real-world example implementations showing plugins in action. Examples should:
+
 - Demonstrate practical use cases
 - Include complete, working code
 - Show integration between different plugin types
@@ -140,15 +155,19 @@ This repository is designed to be used as a Claude Code plugin marketplace. User
 ### Plugin Components
 
 #### Commands
+
 Commands are stored in `.claude/commands/` and invoked with `/command-name`. When a user types a slash command, the markdown file content becomes the prompt.
 
 #### Agents
+
 Sub-agents are invoked via the Task tool with `subagent_type` parameter. They run autonomously to complete specific tasks.
 
 #### Skills
+
 Skills are activated using the Skill tool with the skill name. They provide specialized capabilities that can be called during a session.
 
 #### Hooks
+
 Hooks execute automatically on configured events. They can inject context, monitor state, or adapt behavior dynamically.
 
 ## Best Practices for Plugin Usage
@@ -174,51 +193,67 @@ Hooks execute automatically on configured events. They can inject context, monit
 ## Common Patterns
 
 ### Command Pattern: Automation Workflow
+
 ```markdown
 # Command Description
+
 Brief description of what this command does
 
 ## Usage
+
 /command-name [optional-args]
 
 ## Example
+
 /command-name --flag value
 
 ## Implementation
+
 Detailed prompt that Claude executes when command is invoked
 ```
 
 ### Agent Pattern: Specialized Domain Expert
+
 ```markdown
 # Agent Name
+
 Description of agent's expertise and capabilities
 
 ## Domain
+
 Specific area of focus (DevOps, Testing, etc.)
 
 ## Tools Available
+
 List of tools this agent can use
 
 ## Behavior
+
 Description of how agent approaches tasks
 ```
 
 ### Skill Pattern: Reusable Capability
+
 ```markdown
 # Skill Name
+
 Description of what this skill does
 
 ## Inputs
+
 What the skill expects
 
 ## Outputs
+
 What the skill produces
 
 ## Usage
+
 How to activate and use this skill
 ```
 
 ### Hook Pattern: Event Handler
+
 ```bash
 #!/bin/bash
 # Hook Name: description
@@ -231,21 +266,25 @@ How to activate and use this skill
 ## Technical Considerations
 
 ### Performance
+
 - Keep hooks lightweight (they run frequently)
 - Cache expensive operations
 - Avoid blocking operations in event handlers
 
 ### Security
+
 - Never commit secrets or credentials
 - Validate inputs to prevent injection attacks
 - Use secure practices for shell scripts
 
 ### Compatibility
+
 - Test across different operating systems
 - Handle different shell environments
 - Consider Claude Code version differences
 
 ### Maintainability
+
 - Use clear, descriptive names
 - Comment complex logic
 - Keep files focused and modular
@@ -275,6 +314,7 @@ When working with this repository:
 ## Contributing
 
 All contributions are welcome! Whether you're:
+
 - Adding a new plugin
 - Improving documentation
 - Fixing bugs

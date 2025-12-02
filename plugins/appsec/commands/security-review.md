@@ -11,6 +11,7 @@ Analyze the codebase for security vulnerabilities, risks, and dependency issues 
 ### 1. Understand the Scope
 
 First, determine the scope of the security review:
+
 - If the user specified particular directories, files, or components, focus on those
 - If no scope was specified, analyze the entire codebase
 - Identify the primary language(s) and framework(s) in use
@@ -50,6 +51,7 @@ Please be thorough and systematic in your analysis. Think like an attacker tryin
 ### 3. Present Results
 
 Once the agent completes its analysis:
+
 - Summarize the key findings
 - Highlight critical and high-severity issues
 - Provide a quick action checklist for immediate remediation
@@ -58,35 +60,41 @@ Once the agent completes its analysis:
 ## Usage Examples
 
 ### Basic Usage
+
 ```
 /security-review
 ```
+
 Performs a comprehensive security review of the entire codebase.
 
 ### Focused Review
+
 ```
 /security-review src/auth/
 ```
+
 Reviews only the authentication module.
 
 ### Dependency Audit Focus
+
 ```
 /security-review --dependencies
 ```
+
 Focuses specifically on dependency vulnerabilities.
 
 ### Quick Scan
+
 ```
 /security-review --quick
 ```
+
 Performs a high-level scan focusing on critical issues only.
 
 ## Agent Configuration
 
-**Agent Type**: appsec-specialist
-**Model**: Use Opus for complex codebases, Sonnet for standard reviews
-**Autonomy Level**: High - agent should work independently and report back
-**Tools Available**: All (Read, Grep, Glob, Bash, WebFetch, etc.)
+**Agent Type**: appsec-specialist **Model**: Use Opus for complex codebases, Sonnet for standard reviews **Autonomy Level**: High - agent should work independently and report back **Tools Available**: All (Read, Grep, Glob, Bash, WebFetch,
+etc.)
 
 ## Implementation
 
@@ -136,6 +144,7 @@ I'll perform a comprehensive security assessment of your codebase using the AppS
 ## Security Assessment Complete
 
 ### Summary
+
 - **Critical Issues**: 2
 - **High Severity**: 5
 - **Medium Severity**: 12
@@ -152,11 +161,13 @@ I'll perform a comprehensive security assessment of your codebase using the AppS
    - Rotate keys immediately
 
 ### Dependency Alerts:
+
 - 3 packages with known CVEs
 - 12 outdated dependencies
 - 2 packages with critical security updates available
 
 ### Quick Action Checklist:
+
 - [ ] Fix SQL injection in authentication
 - [ ] Rotate exposed API keys
 - [ ] Update express to latest version (CVE-2022-24999)
@@ -164,6 +175,7 @@ I'll perform a comprehensive security assessment of your codebase using the AppS
 - [ ] Add input validation middleware
 
 Would you like me to:
+
 - Deep-dive into any specific finding?
 - Help implement remediations?
 - Set up automated security scanning?
