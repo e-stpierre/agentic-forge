@@ -94,7 +94,7 @@ def run_claude(
         stderr = process.stderr.read() if process.stderr else ""
 
         return ClaudeResult(
-            returncode=process.returncode or 1,
+            returncode=process.returncode if process.returncode is not None else 1,
             stdout="".join(stdout_lines),
             stderr=stderr,
             prompt=prompt,
