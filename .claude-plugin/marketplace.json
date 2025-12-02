@@ -27,18 +27,23 @@
     {
       "name": "development",
       "source": "./",
-      "description": "Comprehensive development toolkit for planning and accelerating software feature implementation with intelligent codebase analysis and interactive requirement gathering",
-      "version": "1.0.0",
+      "description": "Comprehensive development toolkit with Python orchestration for planning, parallel execution, and SDLC workflows using Claude Code CLI",
+      "version": "1.1.0",
       "category": "development",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation"],
+      "keywords": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation", "orchestration", "workflows", "parallel"],
       "dependencies": ["core"],
       "strict": false,
-      "commands": ["./plugins/development/commands/plan-dev.md"]
+      "commands": [
+        "./plugins/development/commands/plan-dev.md",
+        "./plugins/development/commands/demo-hello.md",
+        "./plugins/development/commands/create-readme-plan.md",
+        "./plugins/development/commands/implement-from-plan.md"
+      ]
     },
     {
       "name": "core",
