@@ -43,6 +43,7 @@ def run_claude(
     cwd: Path | None = None,
     timeout: int | None = 300,
     print_output: bool = False,
+    skip_permissions: bool = True,
 ) -> ClaudeResult:
     """
     Run claude -p with the given prompt.
@@ -52,11 +53,14 @@ def run_claude(
         cwd: Working directory for the Claude session
         timeout: Timeout in seconds (default 5 minutes)
         print_output: Whether to print output as it arrives
+        skip_permissions: Whether to skip permission prompts (default True for non-interactive use)
 
     Returns:
         ClaudeResult with captured output
     """
     cmd = ["claude", "-p", prompt]
+    if skip_permissions:
+        cmd.append("--dangerously-skip-permissions")
 
     # Convert cwd to string if it's a Path
     cwd_str = str(cwd) if cwd else None
