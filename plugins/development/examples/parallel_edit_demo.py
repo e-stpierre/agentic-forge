@@ -25,7 +25,7 @@ from typing import Any
 workflows_path = Path(__file__).parent.parent / "workflows"
 sys.path.insert(0, str(workflows_path.parent))
 
-from workflows.runner import run_claude, run_claude_with_command, check_claude_available
+from workflows.runner import run_claude, check_claude_available
 from workflows.worktree import (
     Worktree,
     create_worktree,
@@ -89,28 +89,19 @@ Use the Edit tool to make this change. If README.md doesn't exist, create it.
 
         print(f"[{branch_name}] Edit complete, committing...")
 
-        # Step 2: Commit using core plugin command
-        commit_result = run_claude_with_command(
-            "git-commit",
-            args=f"Add {edit_instruction} section to README",
-            cwd=worktree_path,
-            timeout=60,
-        )
-        result["commit_output"] = commit_result.stdout
-
-        if not commit_result.success:
-            # Try a simple git commit as fallback
-            print(f"[{branch_name}] Slash command failed, trying direct git commit...")
-            try:
-                _run_git(["add", "README.md"], cwd=worktree_path)
-                _run_git(
-                    ["commit", "-m", f"Add {edit_instruction} section to README"],
-                    cwd=worktree_path,
-                )
-                result["commit_output"] = "Committed via direct git"
-            except RuntimeError as e:
-                result["error"] = f"Commit failed: {e}"
-                return result
+        # Step 2: Commit using direct git commands
+        try:
+            _run_git(["add", "README.md"], cwd=worktree_path)
+            commit_output = _run_git(
+                ["commit", "-m", f"Add {edit_instruction} section to README"],
+                cwd=worktree_path,
+            )
+            result["commit_output"] = str(commit_output)
+            print(f"[{branch_name}] Commit successful")
+        except RuntimeError as e:
+            result["error"] = f"Commit failed: {e}"
+            print(f"[{branch_name}] Commit failed: {e}")
+            return result
 
         result["success"] = True
         print(f"[{branch_name}] Task completed successfully!")
