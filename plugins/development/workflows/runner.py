@@ -58,7 +58,8 @@ def run_claude(
     Returns:
         ClaudeResult with captured output
     """
-    cmd = ["claude", "-p", prompt]
+    # Build command - use stdin for prompt to avoid shell escaping issues
+    cmd = ["claude", "--print"]
     if skip_permissions:
         cmd.append("--dangerously-skip-permissions")
 
@@ -69,12 +70,18 @@ def run_claude(
         # Stream output in real-time
         process = subprocess.Popen(
             cmd,
+            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             cwd=cwd_str,
             shell=True,  # Required on Windows for PATH resolution
         )
+
+        # Send prompt via stdin
+        if process.stdin:
+            process.stdin.write(prompt)
+            process.stdin.close()
 
         stdout_lines: list[str] = []
 
@@ -104,6 +111,7 @@ def run_claude(
         try:
             result = subprocess.run(
                 cmd,
+                input=prompt,
                 capture_output=True,
                 text=True,
                 cwd=cwd_str,
