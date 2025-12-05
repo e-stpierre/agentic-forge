@@ -620,44 +620,118 @@ The Development plugin includes Python scripts for orchestrating complex Claude 
 - Claude Code CLI installed and in PATH
 - Git repository
 
-### Available Scripts
+### Installation (Recommended)
 
-Located in `plugins/development/examples/`:
+After installing the plugin via the Claude Code marketplace, install the Python CLI tools.
 
-#### hello_demo.py (POC 1)
+#### Using uv (Recommended)
 
-Basic demonstration of invoking Claude from Python:
+[uv](https://github.com/astral-sh/uv) is a fast Python package manager by Astral.
 
-```bash
-python plugins/development/examples/hello_demo.py
+**Windows (PowerShell):**
+
+```powershell
+uv pip install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
 ```
 
-#### parallel_edit_demo.py (POC 2)
+**Windows (Command Prompt):**
 
-Parallel editing in separate git worktrees:
-
-```bash
-python plugins/development/examples/parallel_edit_demo.py
+```cmd
+uv pip install %USERPROFILE%\.claude\plugins\marketplaces\claude-plugins\plugins\development
 ```
 
-Creates two worktrees, edits README.md in parallel, and commits changes to separate branches.
-
-#### plan_then_implement_demo.py (POC 3)
-
-Sequential workflow: plan first, then implement:
+**macOS/Linux:**
 
 ```bash
-python plugins/development/examples/plan_then_implement_demo.py "Feature Name"
-python plugins/development/examples/plan_then_implement_demo.py --no-commit "Test Feature"
+uv pip install ~/.claude/plugins/marketplaces/claude-plugins/plugins/development
 ```
 
-### Workflow Library
+#### Using pip
 
-The `workflows/` module provides reusable components:
+**Windows (PowerShell):**
+
+```powershell
+pip install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
+```
+
+**Windows (Command Prompt):**
+
+```cmd
+pip install %USERPROFILE%\.claude\plugins\marketplaces\claude-plugins\plugins\development
+```
+
+**macOS/Linux:**
+
+```bash
+pip install ~/.claude/plugins/marketplaces/claude-plugins/plugins/development
+```
+
+### CLI Commands
+
+After installation, the following commands are available globally:
+
+| Command                  | Description                                   |
+| ------------------------ | --------------------------------------------- |
+| `claude-hello`           | Basic hello world demo - tests CLI invocation |
+| `claude-parallel`        | Parallel editing in separate git worktrees    |
+| `claude-plan <feature>`  | Plan then implement workflow                  |
+| `claude-workflows <cmd>` | Main CLI with all subcommands                 |
+
+**Examples:**
+
+```powershell
+# Test basic Claude CLI invocation
+claude-hello
+
+# Run parallel edits in git worktrees
+claude-parallel
+
+# Create and implement a plan
+claude-plan "Add user authentication"
+
+# Create plan only, skip implementation
+claude-plan --skip-implement "API Documentation"
+
+# Use main CLI with subcommands
+claude-workflows hello
+claude-workflows plan "New Feature"
+```
+
+### Running with uv (No Install)
+
+You can run CLI commands directly using `uv run` without installing the package:
+
+**Windows (PowerShell):**
+
+```powershell
+# Navigate to the plugin directory
+cd "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
+
+# Run commands directly
+uv run claude-hello
+uv run claude-parallel
+uv run claude-plan "My Feature"
+```
+
+**macOS/Linux:**
+
+```bash
+cd ~/.claude/plugins/marketplaces/claude-plugins/plugins/development
+uv run claude-hello
+uv run claude-plan "My Feature"
+```
+
+### Python Library
+
+After installing, you can use `claude_workflows` as a library in your own scripts:
 
 ```python
-from workflows.runner import run_claude, run_claude_with_command
-from workflows.worktree import temporary_worktree, get_repo_root
+from claude_workflows import run_claude, run_claude_with_command
+from claude_workflows import temporary_worktree, get_repo_root
+
+# Run a prompt
+result = run_claude("Explain this code", print_output=True)
+print(f"Success: {result.success}")
 
 # Run a slash command
 result = run_claude_with_command("git-commit", args="Fix bug")
@@ -667,7 +741,7 @@ with temporary_worktree("feature/my-branch") as wt:
     run_claude("Edit README.md", cwd=wt.path)
 ```
 
-### Additional Commands
+### Related Commands
 
 - `/demo-hello` - Simple response for testing CLI invocation
 - `/create-readme-plan <feature>` - Create a plan for README modifications
