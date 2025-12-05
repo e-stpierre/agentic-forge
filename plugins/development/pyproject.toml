@@ -45,6 +45,7 @@ Documentation = "https://github.com/e-stpierre/claude-plugins/tree/main/plugins/
 
 [project.scripts]
 claude-hello = "claude_workflows.cli:hello"
+claude-bye = "claude_workflows.cli:bye"
 claude-parallel = "claude_workflows.cli:parallel"
 claude-plan = "claude_workflows.cli:plan"
 claude-workflows = "claude_workflows.cli:main"
