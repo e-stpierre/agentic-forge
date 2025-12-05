@@ -628,42 +628,14 @@ After installing the plugin via the Claude Code marketplace, install the Python 
 
 [uv](https://github.com/astral-sh/uv) is a fast Python package manager by Astral.
 
-**Windows (PowerShell):**
-
 ```powershell
-uv pip install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
+uv venv
 ```
-
-**Windows (Command Prompt):**
-
-```cmd
-uv pip install %USERPROFILE%\.claude\plugins\marketplaces\claude-plugins\plugins\development
-```
-
-**macOS/Linux:**
-
-```bash
-uv pip install ~/.claude/plugins/marketplaces/claude-plugins/plugins/development
-```
-
-#### Using pip
 
 **Windows (PowerShell):**
 
 ```powershell
-pip install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
-```
-
-**Windows (Command Prompt):**
-
-```cmd
-pip install %USERPROFILE%\.claude\plugins\marketplaces\claude-plugins\plugins\development
-```
-
-**macOS/Linux:**
-
-```bash
-pip install ~/.claude/plugins/marketplaces/claude-plugins/plugins/development
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
 ```
 
 ### CLI Commands
@@ -695,30 +667,6 @@ claude-plan --skip-implement "API Documentation"
 # Use main CLI with subcommands
 claude-workflows hello
 claude-workflows plan "New Feature"
-```
-
-### Running with uv (No Install)
-
-You can run CLI commands directly using `uv run` without installing the package:
-
-**Windows (PowerShell):**
-
-```powershell
-# Navigate to the plugin directory
-cd "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
-
-# Run commands directly
-uv run claude-hello
-uv run claude-parallel
-uv run claude-plan "My Feature"
-```
-
-**macOS/Linux:**
-
-```bash
-cd ~/.claude/plugins/marketplaces/claude-plugins/plugins/development
-uv run claude-hello
-uv run claude-plan "My Feature"
 ```
 
 ### Python Library
