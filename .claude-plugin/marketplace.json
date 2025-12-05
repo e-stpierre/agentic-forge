@@ -37,7 +37,7 @@
       "license": "MIT",
       "keywords": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation", "orchestration", "workflows", "parallel"],
       "strict": false,
-      "commands": ["./plugins/development/commands/plan-dev.md", "./plugins/development/commands/demo-hello.md", "./plugins/development/commands/create-readme-plan.md", "./plugins/development/commands/implement-from-plan.md"]
+      "commands": ["./plugins/development/commands/plan-dev.md", "./plugins/development/commands/demo-hello.md", "./plugins/development/commands/demo-bye.md", "./plugins/development/commands/create-readme-plan.md", "./plugins/development/commands/implement-from-plan.md"]
     },
     {
       "name": "core",

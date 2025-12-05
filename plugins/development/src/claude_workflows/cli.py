@@ -7,6 +7,7 @@ directly after installing the package with pip.
 
 Available commands:
     claude-hello      - Basic hello world demo
+    claude-bye        - Basic bye demo
     claude-parallel   - Parallel editing in git worktrees
     claude-plan       - Plan then implement workflow
     claude-workflows  - Main CLI with subcommands
@@ -60,6 +61,56 @@ def hello() -> int:
 
     # Run the demo-hello command
     prompt = "/demo-hello"
+    print(f"Running: claude -p \"{prompt}\"")
+    print("-" * 50)
+
+    result = run_claude(prompt, print_output=True)
+
+    print("-" * 50)
+    print()
+
+    # Report results
+    print("Results:")
+    print(f"  Return code: {result.returncode}")
+    print(f"  Success: {result.success}")
+
+    if result.stderr:
+        print(f"  Stderr: {result.stderr}")
+
+    print()
+    print("=" * 50)
+
+    if result.success:
+        print("SUCCESS: Claude invocation completed")
+    else:
+        print("FAILED: Claude invocation failed")
+
+    return 0 if result.success else 1
+
+
+def bye() -> int:
+    """
+    POC: Basic bye demo.
+
+    Invokes Claude with a simple bye command and captures output.
+    """
+    print("=" * 50)
+    print("Claude Workflows: Bye Demo")
+    print("=" * 50)
+    print()
+
+    # Check if Claude is available
+    print("Checking Claude CLI availability...")
+    if not check_claude_available():
+        print("ERROR: Claude CLI is not available.")
+        print("Please ensure 'claude' is installed and in your PATH.")
+        return 1
+
+    print("Claude CLI is available.")
+    print()
+
+    # Run the demo-bye command
+    prompt = "/demo-bye"
     print(f"Running: claude -p \"{prompt}\"")
     print("-" * 50)
 
@@ -554,16 +605,19 @@ def main() -> int:
         epilog="""
 Commands:
     hello       Basic hello world demo
+    bye         Basic bye demo
     parallel    Parallel editing in git worktrees
     plan        Plan then implement workflow
 
 Examples:
     claude-workflows hello
+    claude-workflows bye
     claude-workflows parallel
     claude-workflows plan "Add authentication"
 
 Or use the direct commands:
     claude-hello
+    claude-bye
     claude-parallel
     claude-plan "Feature Name"
         """,
@@ -578,6 +632,9 @@ Or use the direct commands:
 
     # Hello subcommand
     subparsers.add_parser("hello", help="Basic hello world demo")
+
+    # Bye subcommand
+    subparsers.add_parser("bye", help="Basic bye demo")
 
     # Parallel subcommand
     subparsers.add_parser("parallel", help="Parallel editing in git worktrees")
@@ -597,6 +654,8 @@ Or use the direct commands:
 
     if args.command == "hello":
         return hello()
+    elif args.command == "bye":
+        return bye()
     elif args.command == "parallel":
         return parallel()
     elif args.command == "plan":
