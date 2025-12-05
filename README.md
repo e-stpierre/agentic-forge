@@ -130,6 +130,22 @@ Update the marketplace to the latest version:
 /plugin marketplace update claude-plugins
 ```
 
+#### Update Python Tools
+
+Some plugins include Python CLI tools (e.g., `claude-workflows`). Update them with uv:
+
+**Windows (PowerShell):**
+
+```powershell
+uv tool install --force "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
+```
+
+**macOS/Linux:**
+
+```bash
+uv tool install --force ~/.claude/plugins/marketplaces/claude-plugins/plugins/development
+```
+
 #### Remove Marketplace
 
 Remove the marketplace from your configuration:
