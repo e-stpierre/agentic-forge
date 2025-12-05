@@ -98,6 +98,13 @@ Real-world example implementations showing plugins in action. Examples should:
 - **Hooks**: Include event name (e.g., `session-start-hook.sh`, `tool-call-hook.sh`)
 - **Templates**: Use project type (e.g., `nodejs-template`, `python-template`)
 
+### Documentation Guidelines
+
+- **Keep READMEs concise**: Plugin READMEs should only contain plugin-specific information
+- **Avoid duplication**: Do not repeat information from the root README (installation, marketplace setup, contributing guidelines, license, support)
+- **CHANGELOGs should be brief**: Focus on what changed, not detailed explanations
+- **Link to root docs**: Reference the root README or `/docs/` for general information
+
 ### File Formats
 
 - **Commands**: Markdown (`.md`) files in `.claude/commands/`
