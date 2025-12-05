@@ -44,10 +44,10 @@ Repository = "https://github.com/e-stpierre/claude-plugins"
 Documentation = "https://github.com/e-stpierre/claude-plugins/tree/main/plugins/development"
 
 [project.scripts]
-claude-hello = "claude_workflows.cli:hello"
-claude-bye = "claude_workflows.cli:bye"
-claude-parallel = "claude_workflows.cli:parallel"
-claude-plan = "claude_workflows.cli:plan"
+claude-hello = "claude_workflows.commands.hello:hello"
+claude-bye = "claude_workflows.commands.bye:bye"
+claude-parallel = "claude_workflows.commands.parallel:parallel"
+claude-plan = "claude_workflows.commands.plan:plan"
 claude-workflows = "claude_workflows.cli:main"
 
 [tool.hatch.build.targets.wheel]
