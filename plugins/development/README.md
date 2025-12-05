@@ -603,10 +603,106 @@ Have ideas to improve the Development plugin?
 3. Test with various project types and feature complexities
 4. Submit a pull request with examples
 
+## Python Orchestration (Experimental)
+
+The Development plugin includes Python scripts for orchestrating complex Claude Code workflows from the command line.
+
+### Features
+
+- **CLI Invocation**: Run Claude via `claude -p` from Python scripts
+- **Git Worktree Support**: Execute parallel tasks in separate branches
+- **Parallel Execution**: Run multiple Claude instances simultaneously
+- **Sequential Workflows**: Chain planning and implementation phases
+
+### Requirements
+
+- Python 3.10+
+- Claude Code CLI installed and in PATH
+- Git repository
+
+### Installation (Recommended)
+
+After installing the plugin via the Claude Code marketplace, install the Python CLI tools.
+
+#### Using uv (Recommended)
+
+[uv](https://github.com/astral-sh/uv) is a fast Python package manager by Astral.
+
+```powershell
+uv venv
+```
+
+**Windows (PowerShell):**
+
+```powershell
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
+```
+
+### CLI Commands
+
+After installation, the following commands are available globally:
+
+| Command                  | Description                                   |
+| ------------------------ | --------------------------------------------- |
+| `claude-hello`           | Basic hello world demo - tests CLI invocation |
+| `claude-parallel`        | Parallel editing in separate git worktrees    |
+| `claude-plan <feature>`  | Plan then implement workflow                  |
+| `claude-workflows <cmd>` | Main CLI with all subcommands                 |
+
+**Examples:**
+
+```powershell
+# Test basic Claude CLI invocation
+claude-hello
+
+# Run parallel edits in git worktrees
+claude-parallel
+
+# Create and implement a plan
+claude-plan "Add user authentication"
+
+# Create plan only, skip implementation
+claude-plan --skip-implement "API Documentation"
+
+# Use main CLI with subcommands
+claude-workflows hello
+claude-workflows plan "New Feature"
+```
+
+### Python Library
+
+After installing, you can use `claude_workflows` as a library in your own scripts:
+
+```python
+from claude_workflows import run_claude, run_claude_with_command
+from claude_workflows import temporary_worktree, get_repo_root
+
+# Run a prompt
+result = run_claude("Explain this code", print_output=True)
+print(f"Success: {result.success}")
+
+# Run a slash command
+result = run_claude_with_command("git-commit", args="Fix bug")
+
+# Work in a temporary worktree
+with temporary_worktree("feature/my-branch") as wt:
+    run_claude("Edit README.md", cwd=wt.path)
+```
+
+### Related Commands
+
+- `/demo-hello` - Simple response for testing CLI invocation
+- `/create-readme-plan <feature>` - Create a plan for README modifications
+- `/implement-from-plan <path>` - Execute a plan file
+
 ## Future Enhancements
 
 Planned improvements:
 
+- Full SDLC workflow orchestration (plan → implement → test → review → PR)
+- Coordinated parallel execution with shared state
+- Template library for common plan patterns
+- Configuration via `workflows.json`
 - Additional development commands (refactor-plan, test-plan, etc.)
 - Custom question templates for specific feature types
 - Plan templates for common patterns
