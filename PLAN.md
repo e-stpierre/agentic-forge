@@ -271,7 +271,135 @@ interactive: false
 - `list` - List existing worktrees
 - `remove <branch>` - Remove worktree
 
+#### `create-gh-issue` (NEW)
+
+Creates a GitHub issue with structured content.
+
+```yaml
+---
+name: create-gh-issue
+description: Create a GitHub issue with title, body, and labels
+argument-hint: <title> [--body <body>] [--labels <labels>]
+---
+```
+
+**Usage**:
+
+- `/create-gh-issue "Fix login bug" --body "Users cannot login" --labels bug,priority`
+- Integrates with `gh` CLI
+
+#### `read-gh-issue` (NEW)
+
+Reads a GitHub issue and returns its content for use in workflows.
+
+```yaml
+---
+name: read-gh-issue
+description: Read a GitHub issue by number
+argument-hint: <issue-number>
+---
+```
+
+**Usage**:
+
+- `/read-gh-issue 123`
+- Returns issue title, body, labels, and comments
+- Used by SDLC workflows to get task instructions
+
 ### SDLC Commands
+
+#### `design` (NEW)
+
+Design technical implementation from product requirements and create GitHub issues.
+
+```yaml
+---
+name: design
+description: Design technical implementation and create GitHub issues
+argument-hint: <requirement-description> [--interactive] [--epic]
+---
+```
+
+**Modes**:
+
+- `/design user authentication system` - Autonomous design with default decisions
+- `/design user authentication system --interactive` - Asks clarifying questions before designing
+- `/design user authentication system --epic` - Creates a GitHub Epic with linked issues
+
+**Output**: Technical design document + GitHub issues for each implementation task.
+
+#### `plan-build` (NEW)
+
+All-in-one workflow for simple tasks: branch, plan, implement, commit, PR.
+
+```yaml
+---
+name: plan-build
+description: Execute simple task end-to-end with git management
+argument-hint: <task-description | issue-number> [--interactive]
+---
+```
+
+**Modes**:
+
+- `/plan-build "Add loading spinner to dashboard"` - Autonomous execution
+- `/plan-build 123` - Reads GitHub issue #123 for instructions
+- `/plan-build "Add loading spinner" --interactive` - Asks clarifying questions first
+
+**Flow**: Create branch → Explore code → Build in-memory plan → Implement → Commit → Push → Open PR
+
+#### `plan` (NEW)
+
+Meta-command that selects the appropriate planning command based on task complexity.
+
+```yaml
+---
+name: plan
+description: Auto-select and execute appropriate planning command
+argument-hint: <task-description> [--interactive]
+---
+```
+
+**Behavior**:
+
+- Analyzes task description to determine type (feature, bug, chore)
+- Delegates to `plan-feature`, `plan-bug`, or `plan-chore`
+- Passes through `--interactive` flag if provided
+
+#### `implement` (NEW)
+
+Implements a plan from a markdown plan file.
+
+```yaml
+---
+name: implement
+description: Implement changes from a plan file
+argument-hint: <plan-file-path>
+---
+```
+
+**Usage**:
+
+- `/implement docs/plans/feature-auth-plan.md`
+- Reads plan, executes implementation steps, commits after milestones
+
+#### `review` (NEW)
+
+Reviews code changes and provides feedback.
+
+```yaml
+---
+name: review
+description: Review code changes for quality and correctness
+argument-hint: [branch | commit-range]
+---
+```
+
+**Usage**:
+
+- `/review` - Reviews uncommitted changes
+- `/review feature/auth` - Reviews changes on branch vs main
+- `/review HEAD~3..HEAD` - Reviews specific commit range
 
 #### `plan-feature`
 
@@ -365,6 +493,23 @@ tools: [Tool1, Tool2] # Agents only
 - `pyproject.toml` for packaging
 - Dependencies explicitly declared
 
+### Prompt References
+
+All prompts (commands, agents, skills) must follow the structure defined in the reference documents:
+
+| Component | Reference Document                  |
+| --------- | ----------------------------------- |
+| Commands  | `docs/commands-prompt-reference.md` |
+| Agents    | `docs/agents-prompt-reference.md`   |
+| Skills    | `docs/skills-prompt-reference.md`   |
+
+**Key Requirements**:
+
+- All prompts must include valid YAML frontmatter
+- Commands: Definition, Parameters, Objective, Core Principles, Instructions, Output Guidance
+- Agents: Purpose, Methodology, Tools Available, Capabilities, Knowledge Base, Output Guidance
+- Skills: Definition, Parameters, Objective, Core Principles, Instructions, Output Guidance
+
 ---
 
 ## Implementation Roadmap
@@ -380,9 +525,15 @@ tools: [Tool1, Tool2] # Agents only
    - Create `git-worktree.md` in core/commands
    - Remove `worktree.py` from Python (functionality now in command)
 
-3. **Update frontmatter**
+3. **Add GitHub commands**
+   - Create `create-gh-issue.md` in core/commands
+   - Create `read-gh-issue.md` in core/commands
+   - Both integrate with `gh` CLI
+
+4. **Update frontmatter**
    - Verify all commands have required frontmatter fields
    - Add `--interactive` to argument-hint for commands that support it
+   - Ensure all prompts follow `docs/*-prompt-reference.md` structure
 
 ### Phase 2: Rename development → sdlc
 
@@ -402,20 +553,42 @@ tools: [Tool1, Tool2] # Agents only
    - Remove: `demo-hello.md`, `demo-bye.md`, `plan-dev.md` (POC only, replaced by plan-feature)
    - Remove: `create-readme-plan.md` (POC only)
 
-### Phase 3: Add Planning Commands
+### Phase 3: Add SDLC Commands
 
-1. **Create plan-feature.md**
+1. **Create design.md**
+   - Supports `--interactive` and `--epic` flags
+   - Creates technical design + GitHub issues
+   - Uses `/create-gh-issue` for issue creation
+
+2. **Create plan-build.md**
+   - Supports `--interactive` flag
+   - Accepts prompt or GitHub issue number
+   - Full workflow: branch → plan → implement → commit → PR
+
+3. **Create plan.md**
+   - Meta-command that delegates to plan-feature/bug/chore
+   - Supports `--interactive` flag passthrough
+
+4. **Create plan-feature.md**
    - Supports `--interactive` flag for user Q&A
    - Uses Explore agents for codebase analysis
    - Outputs structured plan
 
-2. **Create plan-bug.md**
+5. **Create plan-bug.md**
    - Supports `--interactive` flag
    - Focuses on diagnosis and fix strategy
 
-3. **Create plan-chore.md**
+6. **Create plan-chore.md**
    - Supports `--interactive` flag
    - For refactoring, updates, cleanup
+
+7. **Create implement.md**
+   - Reads plan file and executes steps
+   - Commits after milestones
+
+8. **Create review.md**
+   - Reviews uncommitted changes, branch, or commit range
+   - Outputs structured feedback
 
 ### Phase 4: Python Orchestration
 
@@ -490,15 +663,28 @@ pip install claude-plugins-sdlc
 ### New Files
 
 ```
+# Core Plugin - Python
 plugins/core/src/claude_core/__init__.py
 plugins/core/src/claude_core/runner.py
 plugins/core/src/claude_core/orchestrator.py
 plugins/core/src/pyproject.toml
-plugins/core/commands/git-worktree.md
 
+# Core Plugin - Commands
+plugins/core/commands/git-worktree.md
+plugins/core/commands/create-gh-issue.md
+plugins/core/commands/read-gh-issue.md
+
+# SDLC Plugin - Commands
+plugins/sdlc/commands/design.md
+plugins/sdlc/commands/plan-build.md
+plugins/sdlc/commands/plan.md
 plugins/sdlc/commands/plan-feature.md
 plugins/sdlc/commands/plan-bug.md
 plugins/sdlc/commands/plan-chore.md
+plugins/sdlc/commands/implement.md
+plugins/sdlc/commands/review.md
+
+# SDLC Plugin - Python
 plugins/sdlc/src/claude_sdlc/__init__.py
 plugins/sdlc/src/claude_sdlc/cli.py
 plugins/sdlc/src/claude_sdlc/workflows/feature.py
@@ -533,23 +719,33 @@ plugins/development/src/claude_workflows/commands/bye.py
 - [ ] `runner.py` works standalone
 - [ ] `orchestrator.py` can run parallel tasks
 - [ ] `git-worktree` command creates/removes worktrees
+- [ ] `create-gh-issue` creates GitHub issues via `gh` CLI
+- [ ] `read-gh-issue` reads GitHub issues via `gh` CLI
 - [ ] Python package installs correctly
-- [ ] All commands have correct frontmatter
+- [ ] All commands follow `docs/commands-prompt-reference.md` structure
 
 ### SDLC Plugin
 
 - [ ] Depends on core (pip level)
+- [ ] `design` creates technical design + GitHub issues
+- [ ] `design --interactive` asks clarifying questions
+- [ ] `plan-build` executes full workflow (branch → PR)
+- [ ] `plan-build 123` reads instructions from GitHub issue
+- [ ] `plan` delegates to correct sub-command
 - [ ] `plan-feature` generates valid plans (autonomous mode)
 - [ ] `plan-feature --interactive` asks clarifying questions
 - [ ] `plan-bug` generates valid plans
 - [ ] `plan-chore` generates valid plans
-- [ ] `implement-from-plan` executes plans
+- [ ] `implement` executes plan from file
+- [ ] `review` reviews code changes
 - [ ] Python workflows execute end-to-end
+- [ ] All commands follow `docs/commands-prompt-reference.md` structure
 
 ### Integration
 
 - [ ] Commands work in Claude Code sessions
 - [ ] Commands work via `claude -p`
+- [ ] `--interactive` flag enables user Q&A
 - [ ] Python scripts orchestrate multiple sessions
 - [ ] Worktrees enable parallel execution
 
