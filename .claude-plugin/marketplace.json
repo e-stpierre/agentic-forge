@@ -42,7 +42,7 @@
     {
       "name": "core",
       "source": "./",
-      "description": "Foundational prompts and utilities that serve as building blocks for other plugins and common development workflows",
+      "description": "Foundation plugin with git commands, GitHub integration, and Python orchestration utilities for building other plugins",
       "version": "1.0.0",
       "category": "core",
       "author": {
@@ -50,9 +50,9 @@
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": ["core", "foundation", "utilities", "building-blocks", "git"],
+      "keywords": ["core", "foundation", "utilities", "building-blocks", "git", "worktree", "github", "orchestration"],
       "strict": false,
-      "commands": ["./plugins/core/commands/git-branch.md", "./plugins/core/commands/git-commit.md", "./plugins/core/commands/git-pr.md"]
+      "commands": ["./plugins/core/commands/git-branch.md", "./plugins/core/commands/git-commit.md", "./plugins/core/commands/git-pr.md", "./plugins/core/commands/git-worktree.md", "./plugins/core/commands/create-gh-issue.md", "./plugins/core/commands/read-gh-issue.md"]
     }
   ]
 }
