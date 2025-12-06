@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
-CLI entry points for Claude Workflows.
+CLI entry points for Claude SDLC.
 
 This module provides command-line entry points that can be invoked
 directly after installing the package with pip.
 
 Available commands:
-    claude-hello      - Basic hello world demo
-    claude-bye        - Basic bye demo
     claude-parallel   - Parallel editing in git worktrees
     claude-plan       - Plan then implement workflow
-    claude-workflows  - Main CLI with subcommands
+    claude-sdlc       - Main CLI with subcommands
 """
 
 from __future__ import annotations
@@ -19,7 +17,7 @@ import argparse
 import sys
 
 # Re-export commands for backwards compatibility with entry points
-from claude_workflows.commands import hello, bye, parallel, plan
+from claude_sdlc.commands import parallel, plan
 
 
 def main() -> int:
@@ -27,31 +25,23 @@ def main() -> int:
     Main CLI entry point with subcommands.
 
     Usage:
-        claude-workflows hello
-        claude-workflows bye
-        claude-workflows parallel
-        claude-workflows plan "Feature Name"
+        claude-sdlc parallel
+        claude-sdlc plan "Feature Name"
     """
     parser = argparse.ArgumentParser(
-        prog="claude-workflows",
-        description="Python orchestration toolkit for Claude Code CLI workflows",
+        prog="claude-sdlc",
+        description="Software Development Lifecycle workflows for Claude Code",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Commands:
-    hello       Basic hello world demo
-    bye         Basic bye demo
     parallel    Parallel editing in git worktrees
     plan        Plan then implement workflow
 
 Examples:
-    claude-workflows hello
-    claude-workflows bye
-    claude-workflows parallel
-    claude-workflows plan "Add authentication"
+    claude-sdlc parallel
+    claude-sdlc plan "Add authentication"
 
 Or use the direct commands:
-    claude-hello
-    claude-bye
     claude-parallel
     claude-plan "Feature Name"
         """,
@@ -59,16 +49,10 @@ Or use the direct commands:
     parser.add_argument(
         "--version",
         action="version",
-        version="claude-workflows 1.0.0",
+        version="claude-plugins-sdlc 2.0.0",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
-
-    # Hello subcommand
-    subparsers.add_parser("hello", help="Basic hello world demo")
-
-    # Bye subcommand
-    subparsers.add_parser("bye", help="Basic bye demo")
 
     # Parallel subcommand
     subparsers.add_parser("parallel", help="Parallel editing in git worktrees")
@@ -86,11 +70,7 @@ Or use the direct commands:
 
     args = parser.parse_args()
 
-    if args.command == "hello":
-        return hello()
-    elif args.command == "bye":
-        return bye()
-    elif args.command == "parallel":
+    if args.command == "parallel":
         return parallel()
     elif args.command == "plan":
         # Re-parse with plan's parser

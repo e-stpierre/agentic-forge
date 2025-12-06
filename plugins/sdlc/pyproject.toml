@@ -3,22 +3,24 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claude-workflows"
-version = "1.0.0"
-description = "Python orchestration toolkit for Claude Code CLI workflows"
+name = "claude-plugins-sdlc"
+version = "2.0.0"
+description = "Software Development Lifecycle workflows for Claude Code - planning, implementation, review, and testing"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Étienne St-Pierre", email = "me@estpierre.dev" }
+    { name = "Etienne St-Pierre", email = "me@estpierre.dev" }
 ]
 keywords = [
     "claude",
     "claude-code",
-    "cli",
-    "orchestration",
-    "workflows",
-    "automation"
+    "sdlc",
+    "planning",
+    "implementation",
+    "review",
+    "testing",
+    "workflows"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -35,27 +37,26 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
-# No external dependencies required - uses only stdlib
-dependencies = []
+# Depends on claude-plugins-core for runner and orchestrator
+dependencies = [
+    "claude-plugins-core>=1.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/e-stpierre/claude-plugins"
 Repository = "https://github.com/e-stpierre/claude-plugins"
-Documentation = "https://github.com/e-stpierre/claude-plugins/tree/main/plugins/development"
+Documentation = "https://github.com/e-stpierre/claude-plugins/tree/main/plugins/sdlc"
 
 [project.scripts]
-claude-hello = "claude_workflows.commands.hello:hello"
-claude-bye = "claude_workflows.commands.bye:bye"
-claude-parallel = "claude_workflows.commands.parallel:parallel"
-claude-plan = "claude_workflows.commands.plan:plan"
-claude-workflows = "claude_workflows.cli:main"
+claude-sdlc = "claude_sdlc.cli:main"
+claude-parallel = "claude_sdlc.commands.parallel:parallel"
+claude-plan = "claude_sdlc.commands.plan:plan"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/claude_workflows"]
+packages = ["src/claude_sdlc"]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "/src",
     "/README.md",
-    "/LICENSE",
 ]

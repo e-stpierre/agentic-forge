@@ -25,19 +25,19 @@
       "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
     },
     {
-      "name": "development",
+      "name": "sdlc",
       "source": "./",
-      "description": "Comprehensive development toolkit with Python orchestration for planning, parallel execution, and SDLC workflows using Claude Code CLI",
-      "version": "1.1.0",
-      "category": "development",
+      "description": "Software Development Lifecycle toolkit with planning, implementation, review, and testing workflows",
+      "version": "2.0.0",
+      "category": "sdlc",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation", "orchestration", "workflows", "parallel"],
+      "keywords": ["sdlc", "planning", "implementation", "review", "testing", "workflows", "features", "bugs", "chores"],
       "strict": false,
-      "commands": ["./plugins/development/commands/plan-dev.md", "./plugins/development/commands/demo-hello.md", "./plugins/development/commands/demo-bye.md", "./plugins/development/commands/create-readme-plan.md", "./plugins/development/commands/implement-from-plan.md"]
+      "commands": ["./plugins/sdlc/commands/implement-from-plan.md"]
     },
     {
       "name": "core",

@@ -42,6 +42,18 @@ from claude_core.logging import (
     configure_logging,
     get_logger,
 )
+from claude_core.worktree import (
+    Worktree,
+    get_repo_root,
+    get_current_branch,
+    get_default_branch,
+    branch_exists,
+    list_worktrees,
+    create_worktree,
+    remove_worktree,
+    get_worktree_base_path,
+    temporary_worktree,
+)
 
 __version__ = "1.0.0"
 __author__ = "Etienne St-Pierre"
@@ -63,4 +75,15 @@ __all__ = [
     "StructuredLogger",
     "configure_logging",
     "get_logger",
+    # Worktree
+    "Worktree",
+    "get_repo_root",
+    "get_current_branch",
+    "get_default_branch",
+    "branch_exists",
+    "list_worktrees",
+    "create_worktree",
+    "remove_worktree",
+    "get_worktree_base_path",
+    "temporary_worktree",
 ]

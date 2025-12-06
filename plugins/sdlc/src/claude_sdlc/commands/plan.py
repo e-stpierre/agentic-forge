@@ -5,11 +5,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from claude_workflows.runner import (
+from claude_core import (
     run_claude_with_command,
     check_claude_available,
+    get_repo_root,
 )
-from claude_workflows.worktree import get_repo_root
 
 
 def _create_plan(feature_name: str, cwd: Path) -> tuple[bool, Path | None]:

@@ -7,8 +7,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from claude_workflows.runner import run_claude, check_claude_available
-from claude_workflows.worktree import (
+from claude_core import run_claude, check_claude_available
+from claude_core.worktree import (
     Worktree,
     create_worktree,
     remove_worktree,
