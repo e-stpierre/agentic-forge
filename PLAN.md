@@ -47,7 +47,8 @@ claude-plugins/
 
 **Contents**:
 
-- Git commands: `git-branch`, `git-commit`, `git-pr`, `git-worktree`
+- Git commands: `git-branch`, `git-commit`, `git-pr`, `git-worktree`,
+- GitHub commands: `create-gh-issue`, `read-gh-issue`
 - Base Python package: `claude-plugins-core`
   - `runner.py` - Claude CLI wrapper
   - `orchestrator.py` - Parallel execution engine
@@ -62,11 +63,16 @@ claude-plugins/
 
 **Contents**:
 
-- All-in-one: `plan-build`,
-- Planning commands: `plan`, `plan-feature`, `plan-bug`, `plan-chore`, The plan command is a prompt that select which sub-plan command to use based on the complexity of the task.
+- Design: `design` This command is used to start from a product requirement, design the technical implementation, then create a GitHub Epic (optional) and GitHub issues for every task that must be completed to implement this feature. It can
+  be used in interactive mode to ask clarifying questions to the user.
+- All-in-one: `plan-build` workflow that can be use to execute simple tasks. This will create a branch, explore the code, build and in-memory plan, implement it, commit and push the changes and open a pr. The input for this command is
+  either a prompt or a GitHub issue. It can be used in interactive mode, to ask clarigyin questions to the user, before building the in-memory plan.
+- Planning commands: `plan`, `plan-feature`, `plan-bug`, `plan-chore`, The plan command is a prompt that select which sub-plan command to use based on the complexity of the task. The plan command supports the --interactive flag. If plan is
+  used in interactive mode, claryfing questions are asked to the user when the analysis is completed, before writing the .md plan.
 - Implementation commands: `implement`
 - Review commands: `review`
-- Workflow scripts: Full SDLC orchestration => plan, implement, review with git management included (create a worktree first, create a branch, commit changes after each task/milestones, push the changes, finally open a PR)
+- Workflow scripts: Full SDLC orchestration => plan, implement, review with git management included (create a worktree first, create a branch, commit changes after each task/milestones, push the changes, finally open a PR). The input for
+  this workflow can be a prompt or a GitHub issue number (the workflow uses the read-gh-issue command to obtain the instructions)
 
 **Python Package**: `claude-plugins-sdlc` (depends on `claude-plugins-core`)
 
