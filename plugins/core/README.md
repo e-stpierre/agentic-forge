@@ -4,17 +4,21 @@ Essential tooling for Claude Code that provides foundational commands used acros
 
 ## Overview
 
-The Core plugin provides common git workflow commands that automate branch creation, commits, and pull requests with consistent naming conventions and structured messages.
+The Core plugin provides common git workflow commands that automate branch creation, commits, and pull requests with consistent naming conventions and structured messages. It also includes Python utilities for orchestrating multi-session
+Claude Code workflows.
 
 ## Components
 
 ### Commands
 
-| Command       | Description                                                              |
-| ------------- | ------------------------------------------------------------------------ |
-| `/git-branch` | Create branches with standardized naming: `<category>/<issue-id>_<name>` |
-| `/git-commit` | Commit and push with structured messages                                 |
-| `/git-pr`     | Create pull requests with contextual descriptions                        |
+| Command                 | Description                                       |
+| ----------------------- | ------------------------------------------------- |
+| `/core:git-branch`      | Create branches with standardized naming          |
+| `/core:git-commit`      | Commit and push with structured messages          |
+| `/core:git-pr`          | Create pull requests with contextual descriptions |
+| `/core:git-worktree`    | Manage git worktrees for parallel development     |
+| `/core:create-gh-issue` | Create GitHub issues                              |
+| `/core:read-gh-issue`   | Read GitHub issue content                         |
 
 ## Installation
 
@@ -78,6 +82,47 @@ Standard categories for branch naming:
 - `docs` - Documentation changes
 - `test` - Test additions/modifications
 - `chore` - Maintenance tasks
+
+## Python Package
+
+The core plugin includes `claude-plugins-core`, a Python package for orchestrating Claude Code workflows programmatically.
+
+### Installation
+
+```bash
+# Windows (PowerShell)
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\core"
+
+# macOS/Linux
+uv tool install ~/.claude/plugins/marketplaces/claude-plugins/plugins/core
+```
+
+### Library Usage
+
+```python
+from claude_core import (
+    run_claude,
+    run_claude_with_command,
+    Orchestrator,
+    Task,
+    configure_logging,
+)
+
+# Run a prompt
+result = run_claude("Explain this code", print_output=True)
+
+# Run a slash command
+result = run_claude_with_command("core:git-commit", args="Fix typo")
+
+# Parallel execution
+orchestrator = Orchestrator()
+orchestrator.add_task(Task(prompt="Task 1", cwd=path_a))
+orchestrator.add_task(Task(prompt="Task 2", cwd=path_b))
+results = orchestrator.run_parallel()
+
+# Structured logging
+configure_logging(log_file="workflow.log.json")
+```
 
 ## License
 
