@@ -104,6 +104,7 @@ Real-world example implementations showing plugins in action. Examples should:
 - **Avoid duplication**: Do not repeat information from the root README (installation, marketplace setup, contributing guidelines, license, support)
 - **CHANGELOGs should be brief**: Focus on what changed, not detailed explanations
 - **Link to root docs**: Reference the root README or `/docs/` for general information
+- **ASCII only**: Use only valid ASCII characters in all files to avoid encoding issues across platforms
 
 ### File Formats
 
@@ -301,7 +302,7 @@ How to activate and use this skill
 
 This repository is designed to evolve with the Claude Code ecosystem:
 
-- **Plugin Marketplace**: ✅ Implemented via `.claude-plugin/marketplace.json` - users can now browse and install plugins directly
+- **Plugin Marketplace**: [DONE] Implemented via `.claude-plugin/marketplace.json` - users can now browse and install plugins directly
 - **Version Management**: Better handling of plugin versions and dependencies
 - **Testing Framework**: Automated testing for plugin quality
 - **Community Curation**: Ratings and reviews for popular plugins
