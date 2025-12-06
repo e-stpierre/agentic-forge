@@ -10,7 +10,7 @@ Create scoped, concise, and highly reusable Claude Code tooling that works both 
 2. **Composable commands**: Commands can invoke other commands within a session
 3. **Python orchestration**: Cross-session workflows coordinated by Python scripts
 4. **Mandatory core**: Core plugin provides foundational prompts and Python utilities
-5. **Clear boundaries**: Interactive prompts are clearly identified and can be used either in interactive mode and in programatic mode. Using interactive mode will prompt the user during the execution for additional input if necessary.
+5. **Interactive flag**: Commands support `--interactive` argument to enable user Q&A during execution; without the flag, commands run autonomously for programmatic use
 
 ---
 
@@ -89,30 +89,48 @@ Slash commands invoked with `/command-name`. Stored in `commands/` directory.
 ---
 name: command-name
 description: Brief description for help text
-argument-hint: [optional-args]
-interactive: false # true if requires user interaction
+argument-hint: [args] [--interactive]
 ---
 ```
 
-**Interactive Commands**:
+**The `--interactive` Flag**:
 
-- Marked with `interactive: true`
-- Require back-and-forth with user
-- Cannot be used programmatically via `claude -p`
-- Example: `plan-interactive` (asks clarifying questions)
+Commands that support user interaction define two execution modes within the same prompt:
 
-**Non-Interactive Commands**:
+- **Without `--interactive`**: Command runs autonomously, makes reasonable defaults, no user prompts. Safe for `claude -p` and Python orchestration.
+- **With `--interactive`**: Command uses `AskUserQuestion` tool to gather clarifying input from the user before proceeding.
 
-- Default (`interactive: false` or omitted)
-- Execute autonomously without user input
-- Can be used both interactively and programmatically
-- Example: `plan-feature`, `git-commit`
+**Command Prompt Structure**:
+
+```markdown
+# Command Name
+
+## Parameters
+
+- `args`: Required arguments
+- `--interactive`: (Optional) Enable interactive mode with user Q&A
+
+## Instructions
+
+1. Parse arguments and check for `--interactive` flag
+
+2. [If `--interactive`] Ask clarifying questions using AskUserQuestion tool:
+   - Question 1...
+   - Question 2... Wait for user responses before proceeding.
+
+3. [If not `--interactive`] Use reasonable defaults:
+   - Default for question 1: X
+   - Default for question 2: Y
+
+4. Execute the main task...
+```
 
 **Command Composition**:
 
 - Commands can reference other commands inline: `/other-command args`
 - Claude interprets and executes the referenced command
 - Use for within-session composition only
+- When composing, typically omit `--interactive` to avoid nested prompts
 
 ### Agents (`.md`)
 
@@ -251,55 +269,54 @@ interactive: false
 
 #### `plan-feature`
 
-Non-interactive feature planning. Uses codebase exploration and generates plan without user questions.
+Feature planning with optional interactive mode.
 
 ```yaml
 ---
 name: plan-feature
 description: Generate a feature implementation plan
-argument-hint: <feature-description>
-interactive: false
+argument-hint: <feature-description> [--interactive]
 ---
 ```
 
+**Modes**:
+
+- `/plan-feature add dark mode` - Autonomous execution with defaults
+- `/plan-feature add dark mode --interactive` - Asks clarifying questions via AskUserQuestion
+
 #### `plan-bug`
 
-Non-interactive bug fix planning. Focuses on root cause analysis and fix strategy.
+Bug fix planning. Focuses on root cause analysis and fix strategy.
 
 ```yaml
 ---
 name: plan-bug
 description: Generate a bug fix plan
-argument-hint: <bug-description>
-interactive: false
+argument-hint: <bug-description> [--interactive]
 ---
 ```
 
+**Modes**:
+
+- `/plan-bug login fails on Safari` - Autonomous diagnosis and plan
+- `/plan-bug login fails on Safari --interactive` - Asks about reproduction steps, priority, etc.
+
 #### `plan-chore`
 
-Non-interactive chore/maintenance planning. For refactoring, dependency updates, cleanup.
+Chore/maintenance planning. For refactoring, dependency updates, cleanup.
 
 ```yaml
 ---
 name: plan-chore
 description: Generate a maintenance task plan
-argument-hint: <chore-description>
-interactive: false
+argument-hint: <chore-description> [--interactive]
 ---
 ```
 
-#### `plan-interactive`
+**Modes**:
 
-Interactive planning with user Q&A. Cannot be used programmatically.
-
-```yaml
----
-name: plan-interactive
-description: Interactive planning with clarifying questions
-argument-hint: [feature-description]
-interactive: true
----
-```
+- `/plan-chore update dependencies` - Autonomous plan with defaults
+- `/plan-chore update dependencies --interactive` - Asks about scope, breaking changes tolerance, etc.
 
 ---
 
@@ -323,8 +340,7 @@ All `.md` components must have YAML frontmatter:
 ---
 name: component-name # Required
 description: Brief description # Required
-argument-hint: [args] # Commands only
-interactive: false # Commands only, default false
+argument-hint: [args] [--interactive] # Commands only, include --interactive if supported
 tools: [Tool1, Tool2] # Agents only
 ---
 ```
@@ -359,8 +375,8 @@ tools: [Tool1, Tool2] # Agents only
    - Remove `worktree.py` from Python (functionality now in command)
 
 3. **Update frontmatter**
-   - Add `interactive: false` to all existing non-interactive commands
    - Verify all commands have required frontmatter fields
+   - Add `--interactive` to argument-hint for commands that support it
 
 ### Phase 2: Rename development → sdlc
 
@@ -377,22 +393,22 @@ tools: [Tool1, Tool2] # Agents only
 
 4. **Move/reorganize commands**
    - Keep: `implement-from-plan.md`
-   - Remove: `demo-hello.md`, `demo-bye.md` (POC only)
-   - Rename: `plan-dev.md` → `plan-interactive.md`
+   - Remove: `demo-hello.md`, `demo-bye.md`, `plan-dev.md` (POC only, replaced by plan-feature)
+   - Remove: `create-readme-plan.md` (POC only)
 
 ### Phase 3: Add Planning Commands
 
 1. **Create plan-feature.md**
-   - Non-interactive feature planning
-   - Uses Explore agents
+   - Supports `--interactive` flag for user Q&A
+   - Uses Explore agents for codebase analysis
    - Outputs structured plan
 
 2. **Create plan-bug.md**
-   - Non-interactive bug fix planning
-   - Focuses on diagnosis and fix
+   - Supports `--interactive` flag
+   - Focuses on diagnosis and fix strategy
 
 3. **Create plan-chore.md**
-   - Non-interactive maintenance planning
+   - Supports `--interactive` flag
    - For refactoring, updates, cleanup
 
 ### Phase 4: Python Orchestration
@@ -433,8 +449,8 @@ tools: [Tool1, Tool2] # Agents only
 1. **Plugin rename**: `development` → `sdlc`
    - Users must reinstall: `/plugin uninstall development && /plugin install sdlc`
 
-2. **Command rename**: `plan-dev` → `plan-interactive`
-   - Update any scripts or muscle memory
+2. **Command removal**: `plan-dev` removed, replaced by `plan-feature`
+   - Use `/plan-feature --interactive` for similar behavior to old `plan-dev`
 
 3. **Python package restructure**
    - `claude_workflows` → `claude_core` + `claude_sdlc`
@@ -477,7 +493,6 @@ plugins/core/commands/git-worktree.md
 plugins/sdlc/commands/plan-feature.md
 plugins/sdlc/commands/plan-bug.md
 plugins/sdlc/commands/plan-chore.md
-plugins/sdlc/commands/plan-interactive.md  # renamed from plan-dev.md
 plugins/sdlc/src/claude_sdlc/__init__.py
 plugins/sdlc/src/claude_sdlc/cli.py
 plugins/sdlc/src/claude_sdlc/workflows/feature.py
@@ -489,7 +504,6 @@ plugins/sdlc/src/pyproject.toml
 ```
 plugins/development/ → plugins/sdlc/
 plugins/development/src/claude_workflows/runner.py → plugins/core/src/claude_core/runner.py
-plugins/development/commands/plan-dev.md → plugins/sdlc/commands/plan-interactive.md
 ```
 
 ### Deleted Files
@@ -498,6 +512,8 @@ plugins/development/commands/plan-dev.md → plugins/sdlc/commands/plan-interact
 plugins/development/src/claude_workflows/worktree.py  # replaced by git-worktree command
 plugins/development/commands/demo-hello.md            # POC only
 plugins/development/commands/demo-bye.md              # POC only
+plugins/development/commands/plan-dev.md              # replaced by plan-feature
+plugins/development/commands/create-readme-plan.md    # POC only
 plugins/development/src/claude_workflows/commands/hello.py
 plugins/development/src/claude_workflows/commands/bye.py
 ```
@@ -517,10 +533,10 @@ plugins/development/src/claude_workflows/commands/bye.py
 ### SDLC Plugin
 
 - [ ] Depends on core (pip level)
-- [ ] `plan-feature` generates valid plans
+- [ ] `plan-feature` generates valid plans (autonomous mode)
+- [ ] `plan-feature --interactive` asks clarifying questions
 - [ ] `plan-bug` generates valid plans
 - [ ] `plan-chore` generates valid plans
-- [ ] `plan-interactive` works with user Q&A
 - [ ] `implement-from-plan` executes plans
 - [ ] Python workflows execute end-to-end
 
