@@ -41,12 +41,23 @@ Created all SDLC commands following `docs/commands-prompt-reference.md`:
 
 Updated `marketplace.json` with all new commands.
 
+### Phase 4: Python Orchestration [DONE]
+
+Created workflow orchestration scripts:
+
+- `workflows/__init__.py` - Workflow module exports
+- `workflows/feature.py` - Full feature workflow (plan -> implement -> review -> PR)
+- `workflows/bugfix.py` - Full bugfix workflow (diagnose -> fix -> test -> PR)
+
+Updated CLI with new commands:
+
+- `claude-feature` - Direct entry point for feature workflow
+- `claude-bugfix` - Direct entry point for bugfix workflow
+- `claude-sdlc feature` / `claude-sdlc bugfix` - Via main CLI
+
+Updated `pyproject.toml` with new entry points. Updated `__init__.py` to export workflow functions.
+
 ## Remaining
-
-### Phase 4: Python Orchestration
-
-- SDLC workflow scripts (`feature.py`, `bugfix.py`)
-- CLI entry point for workflows
 
 ### Phase 5: Documentation & Cleanup
 

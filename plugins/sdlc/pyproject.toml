@@ -49,6 +49,8 @@ Documentation = "https://github.com/e-stpierre/claude-plugins/tree/main/plugins/
 
 [project.scripts]
 claude-sdlc = "claude_sdlc.cli:main"
+claude-feature = "claude_sdlc.workflows.feature:main"
+claude-bugfix = "claude_sdlc.workflows.bugfix:main"
 claude-parallel = "claude_sdlc.commands.parallel:parallel"
 claude-plan = "claude_sdlc.commands.plan:plan"
 
