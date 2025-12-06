@@ -364,25 +364,115 @@ def temporary_worktree(
             )
 
 
-if __name__ == "__main__":
-    # Quick test
+def main() -> None:
+    """CLI entry point for git worktree management."""
+    import argparse
     import sys
 
+    parser = argparse.ArgumentParser(
+        description="Git worktree management for parallel Claude workflows",
+        prog="claude-worktree",
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # List command
+    list_parser = subparsers.add_parser("list", help="List all worktrees")
+
+    # Create command
+    create_parser = subparsers.add_parser("create", help="Create a new worktree")
+    create_parser.add_argument("branch", help="Branch name for the new worktree")
+    create_parser.add_argument(
+        "--path",
+        type=Path,
+        help="Path for the worktree (default: auto-generated)",
+    )
+    create_parser.add_argument(
+        "--base",
+        help="Base branch (default: main/master)",
+    )
+
+    # Remove command
+    remove_parser = subparsers.add_parser("remove", help="Remove a worktree")
+    remove_parser.add_argument("path", type=Path, help="Path to the worktree")
+    remove_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force removal even with uncommitted changes",
+    )
+    remove_parser.add_argument(
+        "--delete-branch",
+        action="store_true",
+        help="Also delete the branch",
+    )
+
+    # Info command
+    info_parser = subparsers.add_parser("info", help="Show repository info")
+
+    args = parser.parse_args()
+
     try:
-        root = get_repo_root()
-        print(f"Repository root: {root}")
+        if args.command == "list":
+            worktrees = list_worktrees()
+            if worktrees:
+                for wt in worktrees:
+                    print(f"{wt.branch}\t{wt.path}")
+            else:
+                print("No worktrees found")
 
-        branch = get_current_branch()
-        print(f"Current branch: {branch}")
+        elif args.command == "create":
+            if args.path:
+                worktree_path = args.path
+            else:
+                base_path = get_worktree_base_path()
+                safe_name = args.branch.replace("/", "-").replace("\\", "-")
+                worktree_path = base_path / safe_name
 
-        default = get_default_branch()
-        print(f"Default branch: {default}")
+            wt = create_worktree(
+                branch_name=args.branch,
+                worktree_path=worktree_path,
+                base_branch=args.base,
+            )
+            print(f"Created worktree: {wt.path}")
 
-        worktrees = list_worktrees()
-        print(f"Worktrees: {len(worktrees)}")
-        for wt in worktrees:
-            print(f"  - {wt}")
+        elif args.command == "remove":
+            # Find the worktree
+            worktrees = list_worktrees()
+            target = None
+            for wt in worktrees:
+                if wt.path == args.path or str(wt.path) == str(args.path):
+                    target = wt
+                    break
+
+            if not target:
+                print(f"Worktree not found: {args.path}", file=sys.stderr)
+                sys.exit(1)
+
+            remove_worktree(
+                target,
+                force=args.force,
+                delete_branch=args.delete_branch,
+            )
+            print(f"Removed worktree: {args.path}")
+
+        elif args.command == "info":
+            root = get_repo_root()
+            branch = get_current_branch()
+            default = get_default_branch()
+            worktrees = list_worktrees()
+
+            print(f"Repository root: {root}")
+            print(f"Current branch: {branch}")
+            print(f"Default branch: {default}")
+            print(f"Worktrees: {len(worktrees)}")
+
+        else:
+            parser.print_help()
+            sys.exit(1)
 
     except RuntimeError as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

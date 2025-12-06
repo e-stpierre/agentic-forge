@@ -310,19 +310,95 @@ class Orchestrator:
         }
 
 
-if __name__ == "__main__":
-    # Quick test
-    from pathlib import Path
+def main() -> None:
+    """CLI entry point for orchestrating parallel Claude tasks."""
+    import argparse
+    import sys
 
-    orchestrator = Orchestrator(max_workers=2)
+    parser = argparse.ArgumentParser(
+        description="Orchestrate parallel Claude workflow execution",
+        prog="claude-orchestrate",
+    )
+    parser.add_argument(
+        "prompts",
+        nargs="*",
+        help="Prompts to execute (one per task)",
+    )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=4,
+        help="Maximum parallel workers (default: 4)",
+    )
+    parser.add_argument(
+        "--sequential",
+        action="store_true",
+        help="Run tasks sequentially instead of in parallel",
+    )
+    parser.add_argument(
+        "--stop-on-failure",
+        action="store_true",
+        help="Stop on first failure (sequential mode only)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="Timeout per task in seconds (default: 300)",
+    )
+    parser.add_argument(
+        "--log-file",
+        type=Path,
+        help="Path to log file for structured logging",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output results as JSON",
+    )
 
-    # Add some test tasks
-    orchestrator.add_task(Task(prompt="Say hello", name="greeting-1"))
-    orchestrator.add_task(Task(prompt="Say goodbye", name="greeting-2"))
+    args = parser.parse_args()
 
-    print("Running tasks in parallel...")
-    results = orchestrator.run_parallel()
+    if not args.prompts:
+        # Try reading from stdin
+        import sys
+        if not sys.stdin.isatty():
+            prompts = [line.strip() for line in sys.stdin if line.strip()]
+        else:
+            parser.error("No prompts provided")
+            return
+    else:
+        prompts = args.prompts
 
-    print("\nSummary:")
+    orchestrator = Orchestrator(
+        max_workers=args.max_workers,
+        log_file=args.log_file,
+    )
+
+    for i, prompt in enumerate(prompts):
+        orchestrator.add_task(Task(
+            prompt=prompt,
+            name=f"task-{i+1}",
+            timeout=args.timeout,
+        ))
+
+    if args.sequential:
+        results = orchestrator.run_sequential(
+            print_progress=not args.json,
+            stop_on_failure=args.stop_on_failure,
+        )
+    else:
+        results = orchestrator.run_parallel(print_progress=not args.json)
+
     summary = orchestrator.get_summary()
-    print(json.dumps(summary, indent=2))
+
+    if args.json:
+        print(json.dumps(summary, indent=2))
+    else:
+        print(f"\nCompleted: {summary['successful']}/{summary['total']} successful")
+
+    sys.exit(0 if summary['failed'] == 0 else 1)
+
+
+if __name__ == "__main__":
+    main()

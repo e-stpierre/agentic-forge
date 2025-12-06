@@ -39,6 +39,11 @@ classifiers = [
 # No external dependencies - uses only stdlib
 dependencies = []
 
+[project.scripts]
+claude-run = "claude_core.runner:main"
+claude-orchestrate = "claude_core.orchestrator:main"
+claude-worktree = "claude_core.worktree:main"
+
 [project.urls]
 Homepage = "https://github.com/e-stpierre/claude-plugins"
 Repository = "https://github.com/e-stpierre/claude-plugins"
