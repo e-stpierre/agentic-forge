@@ -298,67 +298,9 @@ How to activate and use this skill
 - Keep files focused and modular
 - Update documentation with code changes
 
-## Breaking Changes (v2.0.0)
+## Breaking Changes
 
-This section documents breaking changes introduced in v2.0.0 that may require user action.
-
-### Plugin Rename: development -> sdlc
-
-The `development` plugin has been renamed to `sdlc` (Software Development Lifecycle).
-
-**Migration:**
-
-```bash
-/plugin uninstall development
-/plugin install sdlc
-```
-
-### Command Removal
-
-The following POC commands have been removed:
-
-- `demo-hello`, `demo-bye` - Demo commands removed
-- `plan-dev` - Replaced by `/sdlc:plan-feature`
-- `create-readme-plan` - POC only, removed
-
-**Migration:**
-
-- Use `/sdlc:plan-feature --interactive` for similar behavior to old `plan-dev`
-
-### Python Package Restructure
-
-Python packages have been reorganized:
-
-- `claude_workflows` -> `claude_core` + `claude_sdlc`
-- Import paths have changed
-
-**Migration:**
-
-```bash
-pip uninstall claude-workflows  # if previously installed
-uv tool install <path-to>/plugins/core
-uv tool install <path-to>/plugins/sdlc
-```
-
-**New imports:**
-
-```python
-# Before
-from claude_workflows import run_claude
-
-# After
-from claude_core import run_claude
-# or
-from claude_sdlc import run_claude  # re-exported for convenience
-```
-
-### New Core Dependency
-
-The `sdlc` plugin now requires the `core` plugin to be installed first. The `core` plugin provides:
-
-- Git workflow commands (`git-branch`, `git-commit`, `git-pr`, `git-worktree`)
-- GitHub integration (`create-gh-issue`, `read-gh-issue`)
-- Python orchestration utilities (`claude-plugins-core` package)
+This repository is in active development. Breaking changes are acceptable in any plugin at any time without backward compatibility considerations or migration documentation. When a breaking change is needed, simply make the change.
 
 ## Future Directions
 

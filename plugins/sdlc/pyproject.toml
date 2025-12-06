@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "claude-plugins-sdlc"
-version = "2.0.0"
+version = "1.0.0"
 description = "Software Development Lifecycle workflows for Claude Code - planning, implementation, review, and testing"
 readme = "README.md"
 license = "MIT"
