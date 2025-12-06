@@ -6,11 +6,11 @@ Create scoped, concise, and highly reusable Claude Code tooling that works both 
 
 ## Goals
 
-1. **Dual-mode execution**: All non-interactive prompts work standalone AND programmatically
+1. **Dual-mode execution**: All prompts work standalone AND programmatically
 2. **Composable commands**: Commands can invoke other commands within a session
 3. **Python orchestration**: Cross-session workflows coordinated by Python scripts
 4. **Mandatory core**: Core plugin provides foundational prompts and Python utilities
-5. **Clear boundaries**: Interactive vs non-interactive commands explicitly marked
+5. **Clear boundaries**: Interactive prompts are clearly identified and can be used either in interactive mode and in programatic mode. Using interactive mode will prompt the user during the execution for additional input if necessary.
 
 ---
 
@@ -43,7 +43,7 @@ claude-plugins/
 
 ### Core Plugin (Mandatory)
 
-**Purpose**: Foundation for all other plugins. Must be installed first.
+**Purpose**: Foundation for some other plugins. Must be installed first before using any plugin that depends on it.
 
 **Contents**:
 
@@ -62,10 +62,11 @@ claude-plugins/
 
 **Contents**:
 
-- Planning commands: `plan-feature`, `plan-bug`, `plan-chore`, `plan-interactive`
-- Implementation commands: `implement-from-plan`
-- Review commands: `review-code`, `review-plan`
-- Workflow scripts: Full SDLC orchestration
+- All-in-one: `plan-build`,
+- Planning commands: `plan`, `plan-feature`, `plan-bug`, `plan-chore`, The plan command is a prompt that select which sub-plan command to use based on the complexity of the task.
+- Implementation commands: `implement`
+- Review commands: `review`
+- Workflow scripts: Full SDLC orchestration => plan, implement, review with git management included (create a worktree first, create a branch, commit changes after each task/milestones, push the changes, finally open a PR)
 
 **Python Package**: `claude-plugins-sdlc` (depends on `claude-plugins-core`)
 
