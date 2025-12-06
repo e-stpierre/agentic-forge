@@ -1,6 +1,6 @@
 # Implementation Checkpoints
 
-## Current State: Phase 2 Complete
+## Current State: Phase 3 Complete
 
 Implementing PLAN.md for claude-plugins repository restructure.
 
@@ -25,15 +25,23 @@ Implementing PLAN.md for claude-plugins repository restructure.
 - Updated `marketplace.json` and README
 - **Commit**: `4bc2769`
 
+### Phase 3: Add SDLC Commands [DONE]
+
+Created all SDLC commands following `docs/commands-prompt-reference.md`:
+
+- `design.md` - Technical design with optional GitHub Epic creation
+- `plan.md` - Meta-command that delegates to plan-feature/bug/chore
+- `plan-feature.md` - Feature implementation planning
+- `plan-bug.md` - Bug diagnosis and fix planning
+- `plan-chore.md` - Maintenance/refactoring planning
+- `plan-build.md` - All-in-one workflow (branch -> implement -> PR)
+- `implement.md` - Execute plan from file with milestone commits
+- `review.md` - Code review with structured feedback
+- `test.md` - Run tests with analysis and optional auto-fix
+
+Updated `marketplace.json` with all new commands.
+
 ## Remaining
-
-### Phase 3: Add SDLC Commands
-
-Commands to create:
-
-- `design.md`, `plan-build.md`, `plan.md`
-- `plan-feature.md`, `plan-bug.md`, `plan-chore.md`
-- `implement.md`, `review.md`, `test.md`
 
 ### Phase 4: Python Orchestration
 
@@ -48,4 +56,4 @@ Commands to create:
 
 ## Branch
 
-`feature/development-cleanup` - ahead of origin by 2 commits
+`feature/development-cleanup`

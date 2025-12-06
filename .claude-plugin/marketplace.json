@@ -37,7 +37,18 @@
       "license": "MIT",
       "keywords": ["sdlc", "planning", "implementation", "review", "testing", "workflows", "features", "bugs", "chores"],
       "strict": false,
-      "commands": ["./plugins/sdlc/commands/implement-from-plan.md"]
+      "commands": [
+        "./plugins/sdlc/commands/design.md",
+        "./plugins/sdlc/commands/plan.md",
+        "./plugins/sdlc/commands/plan-feature.md",
+        "./plugins/sdlc/commands/plan-bug.md",
+        "./plugins/sdlc/commands/plan-chore.md",
+        "./plugins/sdlc/commands/plan-build.md",
+        "./plugins/sdlc/commands/implement.md",
+        "./plugins/sdlc/commands/implement-from-plan.md",
+        "./plugins/sdlc/commands/review.md",
+        "./plugins/sdlc/commands/test.md"
+      ]
     },
     {
       "name": "core",
