@@ -106,6 +106,13 @@ Commands that support user interaction define two execution modes within the sam
 - **Without `--interactive`**: Command runs autonomously, makes reasonable defaults, no user prompts. Safe for `claude -p` and Python orchestration.
 - **With `--interactive`**: Command uses `AskUserQuestion` tool to gather clarifying input from the user before proceeding.
 
+**The `--dry-run` Flag**:
+
+Commands that make changes (file edits, git operations, GitHub API calls) support `--dry-run`:
+
+- **With `--dry-run`**: Command analyzes and reports what it would do, without making actual changes. Outputs a summary of planned actions.
+- **Without `--dry-run`**: Command executes normally.
+
 **Command Prompt Structure**:
 
 ```markdown
@@ -230,6 +237,33 @@ orchestrator = Orchestrator()
 orchestrator.add_task(Task(prompt="/plan-feature auth system", cwd=worktree_a))
 orchestrator.add_task(Task(prompt="/plan-feature api docs", cwd=worktree_b))
 results = orchestrator.run_parallel()
+```
+
+**Structured Logging**:
+
+The orchestrator logs all command executions to JSON for debugging and audit:
+
+```python
+from claude_core import configure_logging
+
+configure_logging(
+    log_file="workflow.log.json",  # Output file
+    level="INFO"                    # DEBUG, INFO, WARN, ERROR
+)
+```
+
+**Log Entry Format**:
+
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "command": "/plan-feature",
+  "args": "add dark mode",
+  "cwd": "/path/to/worktree",
+  "duration_ms": 45000,
+  "exit_code": 0,
+  "output_summary": "Plan created at docs/plans/dark-mode-plan.md"
+}
 ```
 
 ### SDLC Python Package (`claude-plugins-sdlc`)
@@ -400,6 +434,27 @@ argument-hint: [branch | commit-range]
 - `/review` - Reviews uncommitted changes
 - `/review feature/auth` - Reviews changes on branch vs main
 - `/review HEAD~3..HEAD` - Reviews specific commit range
+
+#### `test` (NEW)
+
+Runs tests, analyzes failures, and optionally fixes them.
+
+```yaml
+---
+name: test
+description: Run tests and analyze results
+argument-hint: [test-path] [--fix] [--dry-run]
+---
+```
+
+**Modes**:
+
+- `/test` - Run all tests, report results
+- `/test src/auth` - Run tests for specific path
+- `/test --fix` - Run tests, analyze failures, attempt to fix failing tests
+- `/test --dry-run` - Show which tests would run without executing
+
+**Output**: Test results summary, failure analysis, fix suggestions (or applied fixes with `--fix`).
 
 #### `plan-feature`
 
@@ -590,6 +645,11 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
    - Reviews uncommitted changes, branch, or commit range
    - Outputs structured feedback
 
+9. **Create test.md**
+   - Runs tests and analyzes results
+   - Supports `--fix` flag to auto-fix failing tests
+   - Supports `--dry-run` flag
+
 ### Phase 4: Python Orchestration
 
 1. **Implement orchestrator.py**
@@ -597,7 +657,12 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
    - Result aggregation
    - Error handling
 
-2. **Create SDLC workflows**
+2. **Add structured logging**
+   - JSON log format for all command executions
+   - Configurable log level and output file
+   - Include: timestamp, command, args, duration, exit code, output summary
+
+3. **Create SDLC workflows**
    - `feature.py` - Plan → Implement → Review → PR
    - `bugfix.py` - Diagnose → Fix → Test → PR
    - CLI entry point
@@ -667,6 +732,7 @@ pip install claude-plugins-sdlc
 plugins/core/src/claude_core/__init__.py
 plugins/core/src/claude_core/runner.py
 plugins/core/src/claude_core/orchestrator.py
+plugins/core/src/claude_core/logging.py
 plugins/core/src/pyproject.toml
 
 # Core Plugin - Commands
@@ -683,6 +749,7 @@ plugins/sdlc/commands/plan-bug.md
 plugins/sdlc/commands/plan-chore.md
 plugins/sdlc/commands/implement.md
 plugins/sdlc/commands/review.md
+plugins/sdlc/commands/test.md
 
 # SDLC Plugin - Python
 plugins/sdlc/src/claude_sdlc/__init__.py
@@ -718,6 +785,7 @@ plugins/development/src/claude_workflows/commands/bye.py
 
 - [ ] `runner.py` works standalone
 - [ ] `orchestrator.py` can run parallel tasks
+- [ ] `logging.py` writes structured JSON logs
 - [ ] `git-worktree` command creates/removes worktrees
 - [ ] `create-gh-issue` creates GitHub issues via `gh` CLI
 - [ ] `read-gh-issue` reads GitHub issues via `gh` CLI
@@ -738,6 +806,8 @@ plugins/development/src/claude_workflows/commands/bye.py
 - [ ] `plan-chore` generates valid plans
 - [ ] `implement` executes plan from file
 - [ ] `review` reviews code changes
+- [ ] `test` runs tests and reports results
+- [ ] `test --fix` attempts to fix failing tests
 - [ ] Python workflows execute end-to-end
 - [ ] All commands follow `docs/commands-prompt-reference.md` structure
 
@@ -746,8 +816,10 @@ plugins/development/src/claude_workflows/commands/bye.py
 - [ ] Commands work in Claude Code sessions
 - [ ] Commands work via `claude -p`
 - [ ] `--interactive` flag enables user Q&A
+- [ ] `--dry-run` flag shows planned actions without executing
 - [ ] Python scripts orchestrate multiple sessions
 - [ ] Worktrees enable parallel execution
+- [ ] Structured logs capture all command executions
 
 ---
 
