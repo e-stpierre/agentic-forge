@@ -195,6 +195,12 @@ Refer to individual plugin documentation for specific usage instructions and exa
 
 Contributions are welcome! Whether you're adding new plugins, improving existing ones, or enhancing documentation, your input helps the community.
 
+### Local Setup
+
+```
+uv run .claude/update-plugins.py
+```
+
 ### How to Contribute
 
 1. Fork the repository
