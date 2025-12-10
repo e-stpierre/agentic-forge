@@ -9,8 +9,6 @@ Available commands:
     claude-sdlc       - Main CLI with subcommands
     claude-feature    - Full feature workflow (worktree -> plan -> implement -> review -> PR)
     claude-bugfix     - Full bugfix workflow (worktree -> diagnose -> fix -> test -> PR)
-    claude-parallel   - Parallel editing in git worktrees (demo)
-    claude-plan       - Plan then implement workflow (legacy demo)
 
 All workflows support git worktrees for parallel development by default.
 """
@@ -20,8 +18,6 @@ from __future__ import annotations
 import argparse
 import sys
 
-# Re-export commands for backwards compatibility with entry points
-from claude_sdlc.commands import parallel, plan
 from claude_sdlc.workflows.feature import main as feature_main
 from claude_sdlc.workflows.bugfix import main as bugfix_main
 
@@ -33,7 +29,6 @@ def main() -> int:
     Usage:
         claude-sdlc feature "Add user authentication"
         claude-sdlc bugfix "Fix login timeout"
-        claude-sdlc parallel
     """
     parser = argparse.ArgumentParser(
         prog="claude-sdlc",
@@ -43,8 +38,6 @@ def main() -> int:
 Commands:
     feature     Full feature workflow: worktree -> plan -> implement -> review -> PR
     bugfix      Full bugfix workflow: worktree -> diagnose -> fix -> test -> PR
-    parallel    Parallel editing in git worktrees (demo)
-    plan        Plan then implement workflow (legacy demo)
 
 Parallelism:
     By default, workflows run in isolated git worktrees, enabling multiple
@@ -105,20 +98,6 @@ Or use the direct commands:
     bugfix_parser.add_argument("--cleanup", action="store_true", help="Remove worktree after completion")
     bugfix_parser.add_argument("--base-branch", help="Base branch for fix (default: main/master)")
 
-    # Parallel subcommand (demo)
-    subparsers.add_parser("parallel", help="Parallel editing in git worktrees (demo)")
-
-    # Plan subcommand (legacy demo)
-    plan_parser = subparsers.add_parser("plan", help="Plan then implement workflow (legacy demo)")
-    plan_parser.add_argument(
-        "feature_name",
-        nargs="?",
-        default="Demo Feature",
-        help="Name of the feature",
-    )
-    plan_parser.add_argument("--no-commit", action="store_true")
-    plan_parser.add_argument("--skip-implement", action="store_true")
-
     args = parser.parse_args()
 
     if args.command == "feature":
@@ -129,12 +108,6 @@ Or use the direct commands:
         # Re-parse with bugfix's parser
         sys.argv = ["claude-bugfix"] + sys.argv[2:]
         return bugfix_main()
-    elif args.command == "parallel":
-        return parallel()
-    elif args.command == "plan":
-        # Re-parse with plan's parser
-        sys.argv = ["claude-plan"] + sys.argv[2:]
-        return plan()
     else:
         parser.print_help()
         return 0
