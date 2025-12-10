@@ -6,7 +6,7 @@ argument-hint: <feature-description> [--interactive]
 
 # Plan Feature Command
 
-Analyzes the codebase and generates a comprehensive implementation plan for a new feature.
+Analyzes the codebase and generates a comprehensive implementation plan for a new feature, organized into milestones for incremental commits.
 
 ## Parameters
 
@@ -15,15 +15,15 @@ Analyzes the codebase and generates a comprehensive implementation plan for a ne
 
 ## Objective
 
-Generate a detailed, actionable implementation plan that can be executed autonomously or by another developer.
+Generate a detailed, actionable implementation plan organized into milestones. Each milestone represents a logical checkpoint where changes should be committed, enabling parallel development and clean git history.
 
 ## Core Principles
 
 - Explore the codebase thoroughly before planning
 - Identify existing patterns and conventions to follow
-- Break down the feature into discrete, testable tasks
-- Consider edge cases and error handling
-- Include validation criteria for each task
+- Organize work into milestones (logical commit points)
+- Each milestone contains 1-many related tasks
+- Include validation criteria for each task and milestone
 - Keep plans focused and avoid scope creep
 
 ## Instructions
@@ -51,17 +51,16 @@ Generate a detailed, actionable implementation plan that can be executed autonom
 
 5. Based on exploration, design the implementation approach:
    - List all files to create or modify
-   - Define the order of changes (dependencies first)
+   - Group related changes into milestones (logical commit points)
+   - Define the order of milestones (dependencies first)
    - Identify potential risks or blockers
    - Note testing requirements
 
-6. Generate the plan document with the following structure:
+6. Generate the plan document with milestone-based structure:
    - Overview: Feature summary and goals
    - Prerequisites: Dependencies, setup required
-   - Tasks: Numbered list with file paths, descriptions, validation criteria
-   - Testing: Test cases to add or modify
-   - Documentation: Docs to update
-   - Validation: How to verify the feature works
+   - Milestones: Ordered list of milestones, each containing tasks
+   - Final Validation: How to verify the feature works
 
 7. Write the plan to `docs/plans/<feature-slug>-plan.md`
 
@@ -69,7 +68,7 @@ Generate a detailed, actionable implementation plan that can be executed autonom
 
 ## Output Guidance
 
-Create a markdown plan file with this structure:
+Create a markdown plan file with this milestone-based structure:
 
 ```markdown
 # Feature: [Feature Name]
@@ -82,9 +81,15 @@ Create a markdown plan file with this structure:
 
 - [ ] [Any setup or dependencies required]
 
-## Tasks
+## Milestones
 
-### Task 1: [Task Title]
+### Milestone 1: [Milestone Title]
+
+**Commit message**: `feat: [descriptive commit message]`
+
+**Description**: [What this milestone accomplishes as a logical unit]
+
+#### Task 1.1: [Task Title]
 
 **Files**: `path/to/file.ts`
 
@@ -94,27 +99,105 @@ Create a markdown plan file with this structure:
 
 - [ ] [How to verify this task is complete]
 
-### Task 2: [Task Title]
+#### Task 1.2: [Task Title]
+
+**Files**: `path/to/another-file.ts`
+
+**Description**: [What to do]
+
+**Validation**:
+
+- [ ] [How to verify this task is complete]
+
+**Milestone Validation**:
+
+- [ ] [How to verify the milestone is complete and ready to commit]
+
+---
+
+### Milestone 2: [Milestone Title]
+
+**Commit message**: `feat: [descriptive commit message]`
+
+**Description**: [What this milestone accomplishes]
+
+#### Task 2.1: [Task Title]
 
 ...
 
-## Testing
+**Milestone Validation**:
 
-- [ ] [Test cases to add]
-- [ ] [Existing tests to update]
+- [ ] [Verification steps for this milestone]
 
-## Documentation
+---
 
-- [ ] [Docs to update]
+### Milestone 3: [Milestone Title] (Tests)
+
+**Commit message**: `test: add tests for [feature]`
+
+**Description**: Add test coverage for the new feature
+
+#### Task 3.1: [Test Task Title]
+
+**Files**: `path/to/test-file.test.ts`
+
+**Description**: [Test cases to add]
+
+**Validation**:
+
+- [ ] Tests pass
+- [ ] Coverage meets requirements
+
+**Milestone Validation**:
+
+- [ ] All new tests pass
+- [ ] No regressions in existing tests
+
+---
+
+### Milestone 4: [Milestone Title] (Documentation)
+
+**Commit message**: `docs: document [feature]`
+
+**Description**: Update documentation for the new feature
+
+#### Task 4.1: [Docs Task Title]
+
+**Files**: `docs/feature.md`, `README.md`
+
+**Description**: [Documentation to add/update]
+
+**Validation**:
+
+- [ ] Documentation is accurate and complete
+
+**Milestone Validation**:
+
+- [ ] All documentation updated
 
 ## Final Validation
 
-- [ ] [End-to-end verification steps]
+- [ ] All milestones completed
+- [ ] All tests pass
+- [ ] Feature works end-to-end
+- [ ] [Feature-specific validation steps]
 ```
+
+## Milestone Guidelines
+
+1. **Logical grouping**: Each milestone should represent a coherent, atomic change
+2. **Commit-ready**: After completing a milestone, the code should be in a working state
+3. **Descriptive commits**: Each milestone includes a conventional commit message
+4. **Typical milestone types**:
+   - Core implementation (may span multiple milestones for complex features)
+   - Tests
+   - Documentation
+   - Integration/wiring
 
 Report to the user:
 
 - Plan file location
-- Number of tasks identified
+- Number of milestones identified
+- Total number of tasks
 - Estimated complexity (small/medium/large)
 - Any blockers or concerns identified

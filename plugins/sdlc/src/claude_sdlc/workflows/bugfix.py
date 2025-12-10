@@ -1,7 +1,9 @@
 """
 Bugfix workflow - Complete bug fix lifecycle.
 
-Orchestrates: Diagnose -> Fix -> Test -> PR
+Orchestrates: Worktree -> Diagnose -> Fix -> Test -> PR
+
+Supports parallelism by running each bugfix in an isolated git worktree.
 """
 
 from __future__ import annotations
@@ -17,6 +19,15 @@ from claude_core import (
     configure_logging,
     get_logger,
 )
+from claude_core.worktree import (
+    Worktree,
+    create_worktree,
+    remove_worktree,
+    get_worktree_base_path,
+    get_default_branch,
+    branch_exists,
+    _run_git,
+)
 
 
 @dataclass
@@ -31,6 +42,9 @@ class BugfixWorkflowConfig:
     dry_run: bool = False
     log_file: str | None = None
     timeout: int = 300  # 5 minutes per step
+    use_worktree: bool = True  # Create isolated worktree for parallel work
+    cleanup_worktree: bool = False  # Remove worktree after completion
+    base_branch: str | None = None  # Base branch for worktree (default: main/master)
 
 
 @dataclass
@@ -40,6 +54,8 @@ class WorkflowState:
     plan_path: Path | None = None
     branch_name: str | None = None
     pr_url: str | None = None
+    worktree: Worktree | None = None  # Worktree used for this workflow
+    worktree_path: Path | None = None  # Path to worktree (working directory)
     steps_completed: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
@@ -90,18 +106,110 @@ def _run_step(
         return False, result.stderr
 
 
+def _setup_worktree(
+    config: BugfixWorkflowConfig,
+    state: WorkflowState,
+    repo_root: Path,
+    branch_name: str,
+) -> Path | None:
+    """
+    Create a worktree for isolated bugfix development.
+
+    Returns the working directory (worktree path or repo root).
+    """
+    logger = get_logger()
+
+    if not config.use_worktree:
+        return repo_root
+
+    print()
+    print("-" * 60)
+    print("Setting up worktree for parallel development...")
+    print("-" * 60)
+
+    # Determine base branch
+    base_branch = config.base_branch or get_default_branch(repo_root)
+    print(f"  Base branch: {base_branch}")
+
+    # Create worktree path
+    worktree_base = get_worktree_base_path(repo_root)
+    safe_name = branch_name.replace("/", "-").replace("\\", "-")
+    worktree_path = worktree_base / safe_name
+
+    # Clean up if exists from previous run
+    if worktree_path.exists():
+        import shutil
+        print(f"  Cleaning up existing worktree: {worktree_path}")
+        shutil.rmtree(worktree_path, ignore_errors=True)
+        _run_git(["worktree", "prune"], cwd=repo_root, check=False)
+
+    # Clean up branch if it exists and we're recreating
+    if branch_exists(branch_name, cwd=repo_root):
+        print(f"  Deleting existing branch: {branch_name}")
+        _run_git(["branch", "-D", branch_name], cwd=repo_root, check=False)
+
+    try:
+        worktree = create_worktree(
+            branch_name=branch_name,
+            worktree_path=worktree_path,
+            base_branch=base_branch,
+            cwd=repo_root,
+        )
+        state.worktree = worktree
+        state.worktree_path = worktree_path
+        print(f"  Created worktree: {worktree}")
+        logger.info("Worktree created", branch=branch_name, path=str(worktree_path))
+        return worktree_path
+    except Exception as e:
+        error_msg = f"Failed to create worktree: {e}"
+        state.errors.append(error_msg)
+        print(f"  ERROR: {error_msg}")
+        logger.error("Worktree creation failed", error=str(e))
+        return None
+
+
+def _cleanup_worktree(
+    config: BugfixWorkflowConfig,
+    state: WorkflowState,
+    repo_root: Path,
+) -> None:
+    """Clean up the worktree if configured to do so."""
+    if not config.cleanup_worktree or not state.worktree:
+        return
+
+    logger = get_logger()
+    print()
+    print("-" * 60)
+    print("Cleaning up worktree...")
+    print("-" * 60)
+
+    try:
+        remove_worktree(
+            state.worktree,
+            cwd=repo_root,
+            force=True,
+            delete_branch=False,  # Keep the branch for the PR
+        )
+        print(f"  Removed worktree: {state.worktree.path}")
+        logger.info("Worktree cleaned up", branch=state.worktree.branch)
+    except Exception as e:
+        print(f"  Warning: Failed to clean up worktree: {e}")
+        logger.warning("Worktree cleanup failed", error=str(e))
+
+
 def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
     """
     Execute the complete bugfix workflow.
 
     Steps:
-    1. Read issue (if issue_number provided)
-    2. Create branch (git-branch)
+    1. Create worktree for isolated development (enables parallelism)
+    2. Read issue (if issue_number provided)
     3. Diagnose and plan fix (plan-bug)
-    4. Implement fix (implement)
+    4. Implement fix with milestone commits (implement)
     5. Run tests (test) [optional]
-    6. Commit and push (git-commit)
+    6. Final commit and push (git-commit)
     7. Create PR (git-pr) [optional]
+    8. Cleanup worktree [optional]
 
     Args:
         config: Workflow configuration
@@ -126,6 +234,7 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
     if config.issue_number:
         print(f"Issue: #{config.issue_number}")
     print(f"Options: interactive={config.interactive}, test={not config.skip_test}, pr={not config.skip_pr}")
+    print(f"Worktree: enabled={config.use_worktree}, cleanup={config.cleanup_worktree}")
     print()
 
     # Check prerequisites
@@ -137,29 +246,62 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
     print("  Claude CLI: OK")
 
     try:
-        cwd = get_repo_root()
-        print(f"  Repository: {cwd}")
+        repo_root = get_repo_root()
+        print(f"  Repository: {repo_root}")
     except RuntimeError as e:
         state.errors.append(str(e))
         print(f"ERROR: {e}")
         return state
 
+    # Generate branch name early (needed for worktree)
+    slug = config.bug_description.lower().replace(" ", "-")[:30]
+    if config.issue_number:
+        branch_name = f"fix/{slug}-{config.issue_number}"
+    else:
+        branch_name = f"fix/{slug}"
+    state.branch_name = branch_name
+
     if config.dry_run:
         print()
         print("DRY RUN - Would execute the following steps:")
+        if config.use_worktree:
+            print("  1. Create worktree for isolated development")
         if config.issue_number:
-            print("  1. Read GitHub issue")
-        print("  2. Create fix branch")
+            print("  2. Read GitHub issue")
         print("  3. Diagnose bug and create fix plan")
-        print("  4. Implement the fix")
+        print("  4. Implement the fix (commit after each milestone)")
         if not config.skip_test:
             print("  5. Run tests")
-        print("  6. Commit and push changes")
+        print("  6. Final commit and push changes")
         if not config.skip_pr:
             print("  7. Create pull request")
+        if config.cleanup_worktree:
+            print("  8. Clean up worktree")
         return state
 
-    # Step 0: Read issue if provided
+    # Step 1: Create worktree for isolated development
+    cwd = _setup_worktree(config, state, repo_root, branch_name)
+    if cwd is None:
+        return state
+
+    # If not using worktree, we still need to create the branch
+    if not config.use_worktree:
+        if config.issue_number:
+            branch_args = f"fix {slug} {config.issue_number}"
+        else:
+            branch_args = f"fix {slug}"
+        success, output = _run_step(
+            "Create Branch",
+            "core:git-branch",
+            branch_args,
+            cwd,
+            state,
+            timeout=60,
+        )
+        if not success:
+            return state
+
+    # Step 2: Read issue if provided
     bug_description = config.bug_description
     if config.issue_number:
         success, output = _run_step(
@@ -174,25 +316,7 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
             # Combine issue content with description
             bug_description = f"{config.bug_description}\n\nFrom issue #{config.issue_number}:\n{output}"
 
-    # Step 1: Create branch
-    slug = config.bug_description.lower().replace(" ", "-")[:30]
-    if config.issue_number:
-        branch_args = f"fix {slug} {config.issue_number}"
-    else:
-        branch_args = f"fix {slug}"
-    success, output = _run_step(
-        "Create Branch",
-        "core:git-branch",
-        branch_args,
-        cwd,
-        state,
-        timeout=60,
-    )
-    if not success:
-        return state
-    state.branch_name = f"fix/{slug}"
-
-    # Step 2: Diagnose and plan
+    # Step 3: Diagnose and plan
     plan_args = bug_description
     if config.interactive:
         plan_args += " --interactive"
@@ -205,6 +329,7 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
         timeout=config.timeout,
     )
     if not success:
+        _cleanup_worktree(config, state, repo_root)
         return state
 
     # Find the plan file
@@ -215,7 +340,7 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
             state.plan_path = plan_files[0]
             print(f"Fix plan created: {state.plan_path}")
 
-    # Step 3: Implement fix
+    # Step 4: Implement fix with milestone commits
     if state.plan_path:
         success, output = _run_step(
             "Implement Fix",
@@ -226,12 +351,14 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
             timeout=config.timeout,
         )
         if not success:
+            _cleanup_worktree(config, state, repo_root)
             return state
     else:
         state.errors.append("No fix plan found to implement")
+        _cleanup_worktree(config, state, repo_root)
         return state
 
-    # Step 4: Run tests (optional)
+    # Step 5: Run tests (optional)
     if not config.skip_test:
         success, output = _run_step(
             "Run Tests",
@@ -245,7 +372,7 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
             print("Warning: Tests failed - review before merging")
             # Don't fail the workflow, but keep the error recorded
 
-    # Step 5: Commit and push
+    # Step 6: Final commit and push (for any remaining changes)
     commit_msg = f"Fix: {config.bug_description}"
     if config.issue_number:
         commit_msg += f" (#{config.issue_number})"
@@ -257,10 +384,15 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
         state,
         timeout=120,
     )
-    if not success:
+    # Don't fail if no changes to commit (milestones may have committed everything)
+    if not success and "nothing to commit" not in output.lower():
+        _cleanup_worktree(config, state, repo_root)
         return state
+    elif not success:
+        # Remove error if it was just "nothing to commit"
+        state.errors.pop()
 
-    # Step 6: Create PR (optional)
+    # Step 7: Create PR (optional)
     if not config.skip_pr:
         success, output = _run_step(
             "Create Pull Request",
@@ -277,6 +409,9 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
                     state.pr_url = line.strip()
                     break
 
+    # Step 8: Cleanup worktree (optional)
+    _cleanup_worktree(config, state, repo_root)
+
     # Final summary
     print()
     print("=" * 60)
@@ -287,6 +422,8 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
     if config.issue_number:
         print(f"Issue: #{config.issue_number}")
     print(f"Branch: {state.branch_name}")
+    if state.worktree_path:
+        print(f"Worktree: {state.worktree_path}")
     print(f"Fix plan: {state.plan_path}")
     print(f"Steps completed: {len(state.steps_completed)}")
     if state.pr_url:
@@ -302,7 +439,7 @@ def main() -> int:
     """CLI entry point for bugfix workflow."""
     parser = argparse.ArgumentParser(
         prog="claude-bugfix",
-        description="Complete bugfix workflow: diagnose -> fix -> test -> PR",
+        description="Complete bugfix workflow with worktree isolation for parallelism",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -310,6 +447,13 @@ Examples:
     claude-bugfix --issue 123 "Fix auth timeout"
     claude-bugfix --interactive "Users can't upload files > 10MB"
     claude-bugfix --skip-test "Quick typo fix"
+    claude-bugfix --no-worktree "Simple fix in main repo"
+    claude-bugfix --cleanup "Fix with automatic cleanup"
+
+Parallelism:
+    By default, each bugfix runs in an isolated git worktree, enabling
+    multiple fixes to be developed in parallel without conflicts.
+    Use --no-worktree to work directly in the main repository.
         """,
     )
     parser.add_argument(
@@ -352,6 +496,20 @@ Examples:
         default=300,
         help="Timeout per step in seconds (default: 300)",
     )
+    parser.add_argument(
+        "--no-worktree",
+        action="store_true",
+        help="Work directly in main repository instead of creating a worktree",
+    )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Remove worktree after workflow completes (keeps branch for PR)",
+    )
+    parser.add_argument(
+        "--base-branch",
+        help="Base branch for the fix (default: main/master)",
+    )
 
     args = parser.parse_args()
 
@@ -364,6 +522,9 @@ Examples:
         dry_run=args.dry_run,
         log_file=args.log_file,
         timeout=args.timeout,
+        use_worktree=not args.no_worktree,
+        cleanup_worktree=args.cleanup,
+        base_branch=args.base_branch,
     )
 
     state = bugfix_workflow(config)
