@@ -200,9 +200,66 @@ class StructuredLogger:
         """Clear all entries from the log file."""
         self.log_file.write_text("")
 
+    def info(self, message: str, **kwargs: Any) -> None:
+        """Log an info message with optional context."""
+        context = json.dumps(kwargs) if kwargs else ""
+        entry = LogEntry(
+            command="",
+            args="",
+            cwd="",
+            duration_ms=0,
+            exit_code=0,
+            output_summary=f"{message} {context}".strip(),
+            level="INFO",
+        )
+        self.log(entry)
+
+    def error(self, message: str, **kwargs: Any) -> None:
+        """Log an error message with optional context."""
+        context = json.dumps(kwargs) if kwargs else ""
+        entry = LogEntry(
+            command="",
+            args="",
+            cwd="",
+            duration_ms=0,
+            exit_code=1,
+            output_summary=f"{message} {context}".strip(),
+            level="ERROR",
+        )
+        self.log(entry)
+
+    def debug(self, message: str, **kwargs: Any) -> None:
+        """Log a debug message with optional context."""
+        context = json.dumps(kwargs) if kwargs else ""
+        entry = LogEntry(
+            command="",
+            args="",
+            cwd="",
+            duration_ms=0,
+            exit_code=0,
+            output_summary=f"{message} {context}".strip(),
+            level="DEBUG",
+        )
+        self.log(entry)
+
+    def warn(self, message: str, **kwargs: Any) -> None:
+        """Log a warning message with optional context."""
+        context = json.dumps(kwargs) if kwargs else ""
+        entry = LogEntry(
+            command="",
+            args="",
+            cwd="",
+            duration_ms=0,
+            exit_code=0,
+            output_summary=f"{message} {context}".strip(),
+            level="WARN",
+        )
+        self.log(entry)
+
 
 # Global logger instance cache
 _loggers: dict[str, StructuredLogger] = {}
+_default_logger: StructuredLogger | None = None
 
 
 def configure_logging(
@@ -219,6 +276,8 @@ def configure_logging(
     Returns:
         Configured StructuredLogger instance
     """
+    global _default_logger
+
     log_path = Path(log_file)
     key = str(log_path.absolute())
 
@@ -228,19 +287,59 @@ def configure_logging(
         # Update level if logger already exists
         _loggers[key].level = level
 
+    # Set as default logger
+    _default_logger = _loggers[key]
+
     return _loggers[key]
 
 
-def get_logger(log_file: str | Path) -> StructuredLogger:
+class NullLogger:
+    """A no-op logger that silently discards all log entries."""
+
+    def log(self, entry: LogEntry) -> None:
+        """Discard the log entry."""
+        pass
+
+    def log_command(self, **kwargs: Any) -> None:
+        """Discard the log command."""
+        pass
+
+    def info(self, message: str, **kwargs: Any) -> None:
+        """Discard the info message."""
+        pass
+
+    def error(self, message: str, **kwargs: Any) -> None:
+        """Discard the error message."""
+        pass
+
+    def debug(self, message: str, **kwargs: Any) -> None:
+        """Discard the debug message."""
+        pass
+
+    def warn(self, message: str, **kwargs: Any) -> None:
+        """Discard the warn message."""
+        pass
+
+
+# Singleton null logger instance
+_null_logger = NullLogger()
+
+
+def get_logger(log_file: str | Path | None = None) -> StructuredLogger | NullLogger:
     """
-    Get an existing logger or create a new one with defaults.
+    Get an existing logger or return a null logger if none configured.
 
     Args:
-        log_file: Path to the log file
+        log_file: Optional path to the log file. If None, returns the default
+                  logger (if configured) or a null logger.
 
     Returns:
-        StructuredLogger instance
+        StructuredLogger instance or NullLogger if no logging configured
     """
+    if log_file is None:
+        # Return default logger if configured, otherwise null logger
+        return _default_logger if _default_logger is not None else _null_logger
+
     log_path = Path(log_file)
     key = str(log_path.absolute())
 
