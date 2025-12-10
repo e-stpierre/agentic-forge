@@ -191,6 +191,36 @@ After installation, plugins are immediately available in your Claude Code sessio
 
 Refer to individual plugin documentation for specific usage instructions and examples.
 
+## Quick Demo
+
+Here is a simple example demonstrating how to use the Python orchestration tools:
+
+```python
+from claude_core import run_claude, check_claude_available, Orchestrator, Task
+
+# Check if Claude CLI is available
+if check_claude_available():
+    # Simple single-task execution
+    result = run_claude("List all Python files in the current directory", print_output=True)
+    print(f"Success: {result.success}")
+
+# Parallel task orchestration
+orchestrator = Orchestrator()
+orchestrator.add_task(Task(prompt="Analyze the README for improvements"))
+orchestrator.add_task(Task(prompt="Check for security issues in config files"))
+results = orchestrator.run_parallel()
+
+for task_result in results:
+    print(f"Task completed: {task_result.success}")
+```
+
+This demonstrates:
+
+- **Single execution**: Run a Claude prompt and capture the result
+- **Parallel orchestration**: Execute multiple tasks concurrently for efficiency
+
+See the [Core Plugin documentation](plugins/core/README.md) for complete API reference.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Whether you're adding new plugins, improving existing ones, or enhancing documentation, your input helps the community.
