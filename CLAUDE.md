@@ -365,6 +365,14 @@ How to activate and use this skill
 - Keep files focused and modular
 - Update documentation with code changes
 
+### Python Development
+
+- **Always use `uv` for Python commands**: This repository requires `uv` for all Python-related operations (building packages, installing tools, running scripts)
+- **Building packages**: Use `uv build` instead of `python -m build`
+- **Installing tools**: Use `uv tool install` instead of `pip install`
+- **Running scripts**: Use `uv run` for executing Python scripts
+- This ensures consistent Python environments across different systems and avoids Python PATH issues
+
 ## Breaking Changes
 
 This repository is in active development. Breaking changes are acceptable in any plugin at any time without backward compatibility considerations or migration documentation. When a breaking change is needed, simply make the change.
