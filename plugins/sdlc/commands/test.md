@@ -77,7 +77,7 @@ Run tests, provide clear analysis of failures, and optionally fix issues.
 
 ## Output Guidance
 
-### Basic test run:
+### Basic test run
 
 ```markdown
 ## Test Results
@@ -125,7 +125,7 @@ at Object.<anonymous> (src/services/**tests**/UserService.test.ts:45:12)
 2. Verify AuthController is using the updated UserService
 ```
 
-### With `--fix`:
+### With `--fix`
 
 ````markdown
 ## Test Results (with auto-fix)

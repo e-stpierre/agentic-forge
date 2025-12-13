@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator
 
 
 @dataclass
@@ -376,7 +376,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # List command
-    list_parser = subparsers.add_parser("list", help="List all worktrees")
+    subparsers.add_parser("list", help="List all worktrees")
 
     # Create command
     create_parser = subparsers.add_parser("create", help="Create a new worktree")
@@ -406,7 +406,7 @@ def main() -> None:
     )
 
     # Info command
-    info_parser = subparsers.add_parser("info", help="Show repository info")
+    subparsers.add_parser("info", help="Show repository info")
 
     args = parser.parse_args()
 

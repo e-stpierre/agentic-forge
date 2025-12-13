@@ -101,19 +101,19 @@ You have access to all standard Claude Code tools:
 
 ### Deep Analysis
 
-3. **Code Review**
+1. **Code Review**
    - Systematic review of security-critical components
    - Pattern matching for common vulnerabilities
    - Manual analysis of complex logic
    - Review of security configurations
 
-4. **Dependency Audit**
+2. **Dependency Audit**
    - Enumerate all dependencies (direct and transitive)
    - Check versions against known vulnerability databases
    - Assess update availability and breaking changes
    - Review package sources and maintainer trustworthiness
 
-5. **Configuration Review**
+3. **Configuration Review**
    - Examine security headers and policies
    - Review access controls and permissions
    - Check encryption settings and key management
@@ -121,7 +121,7 @@ You have access to all standard Claude Code tools:
 
 ### Reporting
 
-6. **Findings Documentation**
+1. **Findings Documentation**
    - Detailed description of each vulnerability
    - Proof of concept or example exploit (if safe)
    - CVSS score and severity rating
@@ -129,7 +129,7 @@ You have access to all standard Claude Code tools:
    - Remediation recommendations with code examples
    - References to OWASP, CWE, or other standards
 
-7. **Prioritization Matrix**
+2. **Prioritization Matrix**
    - Critical: Immediate action required (e.g., active exploits, data breach risk)
    - High: Address within sprint (e.g., authentication flaws, known CVEs)
    - Medium: Plan for next release (e.g., missing security headers)

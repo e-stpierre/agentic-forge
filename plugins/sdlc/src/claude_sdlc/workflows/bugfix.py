@@ -13,20 +13,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from claude_core import (
-    run_claude_with_command,
     check_claude_available,
-    get_repo_root,
     configure_logging,
     get_logger,
+    get_repo_root,
+    run_claude_with_command,
 )
 from claude_core.worktree import (
     Worktree,
-    create_worktree,
-    remove_worktree,
-    get_worktree_base_path,
-    get_default_branch,
-    branch_exists,
     _run_git,
+    branch_exists,
+    create_worktree,
+    get_default_branch,
+    get_worktree_base_path,
+    remove_worktree,
 )
 
 
@@ -139,6 +139,7 @@ def _setup_worktree(
     # Clean up if exists from previous run
     if worktree_path.exists():
         import shutil
+
         print(f"  Cleaning up existing worktree: {worktree_path}")
         shutil.rmtree(worktree_path, ignore_errors=True)
         _run_git(["worktree", "prune"], cwd=repo_root, check=False)
@@ -255,10 +256,7 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
 
     # Generate branch name early (needed for worktree)
     slug = config.bug_description.lower().replace(" ", "-")[:30]
-    if config.issue_number:
-        branch_name = f"fix/{slug}-{config.issue_number}"
-    else:
-        branch_name = f"fix/{slug}"
+    branch_name = f"fix/{slug}-{config.issue_number}" if config.issue_number else f"fix/{slug}"
     state.branch_name = branch_name
 
     if config.dry_run:
@@ -286,10 +284,7 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
 
     # If not using worktree, we still need to create the branch
     if not config.use_worktree:
-        if config.issue_number:
-            branch_args = f"fix {slug} {config.issue_number}"
-        else:
-            branch_args = f"fix {slug}"
+        branch_args = f"fix {slug} {config.issue_number}" if config.issue_number else f"fix {slug}"
         success, output = _run_step(
             "Create Branch",
             "core:git-branch",
@@ -533,4 +528,5 @@ Parallelism:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

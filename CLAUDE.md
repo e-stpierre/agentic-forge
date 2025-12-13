@@ -114,6 +114,62 @@ Real-world example implementations showing plugins in action. Examples should:
 - **Hooks**: Shell scripts (`.sh`) or executable programs
 - **Templates**: Directory structures with configuration files
 
+### Code Style and Formatting
+
+All code in this repository is automatically formatted when you create a pull request. A GitHub Actions workflow will format any changed files and commit the changes back to your PR branch.
+
+#### Markdown Formatting
+
+Markdown files use [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) for formatting.
+
+**Configuration**: `.markdownlint-cli2.jsonc`
+
+**Manual formatting** (optional):
+
+```bash
+# Format all markdown files
+npx markdownlint-cli2 "**/*.md"
+
+# Format specific files
+npx markdownlint-cli2 README.md CLAUDE.md
+```
+
+#### Python Formatting
+
+Python files use [Ruff](https://docs.astral.sh/ruff/) for formatting and linting. Ruff is extremely fast and provides Black-compatible formatting plus comprehensive linting.
+
+**Configuration**: `ruff.toml`
+
+**Manual formatting** (optional):
+
+```bash
+# Format all Python files
+ruff format .
+
+# Format and automatically fix linting issues
+ruff check --fix .
+
+# Format specific files
+ruff format path/to/file.py
+```
+
+**Local development setup**: For automatic formatting on save, install the [Ruff VS Code extension](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and add to your workspace settings:
+
+```json
+{
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  }
+}
+```
+
+You don't need to manually format files before committing - the CI pipeline handles this automatically for all pull requests.
+
 ## Working with This Repository
 
 ### When Adding New Plugins

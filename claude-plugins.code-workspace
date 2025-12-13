@@ -5,24 +5,34 @@
     }
   ],
   "settings": {
-    "markdownlint.config": {
-      "MD040": false // Fenced code blocks should have a language specified
-    },
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.formatOnSave": true,
     "files.associations": {
       "*.md": "markdown"
     },
     "editor.wordWrap": "on",
-    "markdown.preview.breaks": true,
     "files.exclude": {
       "**/.git": true
     },
     "search.exclude": {
       "**/.git": true
+    },
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": true,
+      "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+      }
+    },
+    "[markdown]": {
+      "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+      "editor.formatOnSave": true
     }
   },
   "extensions": {
-    "recommendations": ["davidanson.vscode-markdownlint"]
+    "recommendations": [
+      "davidanson.vscode-markdownlint",
+      "charliermarsh.ruff",
+      "ms-python.python"
+    ]
   }
 }

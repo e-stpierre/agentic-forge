@@ -58,7 +58,7 @@ def print_header(text: str) -> None:
     """Print a section header."""
     print(f"\n{color('=' * 60, Colors.CYAN)}")
     print(color(f"  {text}", Colors.BOLD, Colors.BRIGHT_CYAN))
-    print(color('=' * 60, Colors.CYAN))
+    print(color("=" * 60, Colors.CYAN))
 
 
 def print_step(step_num: int, total: int, text: str) -> None:
@@ -121,7 +121,7 @@ def main():
         print_error(f"marketplace.json not found at {marketplace_path}")
         sys.exit(1)
 
-    with open(marketplace_path, "r") as f:
+    with open(marketplace_path) as f:
         marketplace = json.load(f)
 
     plugins = [p["name"] for p in marketplace.get("plugins", [])]
@@ -178,6 +178,7 @@ def main():
         dist_dir = core_path / "dist"
         if dist_dir.exists():
             import shutil
+
             shutil.rmtree(dist_dir)
             print_info("Cleaned previous build artifacts")
 
@@ -232,7 +233,7 @@ def main():
         print(color("  Plugin Update Complete!", Colors.BOLD, Colors.BRIGHT_GREEN))
     else:
         print(color("  Plugin Update Complete (with warnings)", Colors.BOLD, Colors.YELLOW))
-    print(color('=' * 60, Colors.BRIGHT_GREEN))
+    print(color("=" * 60, Colors.BRIGHT_GREEN))
 
     print(f"\n  {color('Summary:', Colors.BOLD)}")
     print(f"    {color('Successful:', Colors.GREEN)} {success_count}")

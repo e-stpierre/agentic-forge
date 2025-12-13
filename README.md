@@ -1,5 +1,7 @@
 # 🧠 claude-plugins
 
+[![Auto-Format Code](https://github.com/e-stpierre/claude-plugins/actions/workflows/auto-format.yml/badge.svg)](https://github.com/e-stpierre/claude-plugins/actions/workflows/auto-format.yml)
+
 A modular collection of commands, sub-agents, skills, and hooks designed to extend and customize Claude Code for both generic and specialized development scenarios.
 
 This repository provides a plug-and-play framework to define reusable automation units — from lightweight code utilities to fully autonomous agent behaviors — that enhance Claude's coding workflow, environment integration, and project
@@ -217,12 +219,56 @@ uv run .claude/update-plugins.py
 - Test plugins in multiple contexts before submitting
 - Use descriptive names and comments
 
-### Style
+### Code Style
 
-Prettier format:
+All code in this repository is automatically formatted when pull requests are created or updated. The CI pipeline will format any changed files and commit the changes back to your PR branch.
 
+#### Markdown
+
+Markdown files are formatted using [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2). Configuration: `.markdownlint-cli2.jsonc`
+
+**Manual formatting** (optional):
+
+```bash
+# Format all markdown files
+npx markdownlint-cli2 "**/*.md"
+
+# Format specific files
+npx markdownlint-cli2 README.md CLAUDE.md
 ```
-npx prettier --write .
+
+#### Python
+
+Python files are formatted and linted using [Ruff](https://docs.astral.sh/ruff/). Configuration: `ruff.toml`
+
+Install ruff: `uv tool install ruff`
+
+**Manual formatting** (optional):
+
+```bash
+# Format all Python files
+ruff format .
+
+# Format and fix linting issues
+ruff check --fix .
+
+# Format specific files
+ruff format path/to/file.py
+```
+
+**VS Code auto-format on save**: Install the [Ruff extension](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and add to your `.vscode/settings.json`:
+
+```json
+{
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  }
+}
 ```
 
 ## 📚 Documentation
