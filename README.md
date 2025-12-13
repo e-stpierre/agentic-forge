@@ -64,14 +64,18 @@ By providing a standardized way to package and distribute Claude Code extensions
 
 ```
 agentic-forge/
-├── commands/          # Slash command definitions
-├── agents/           # Sub-agent configurations
-├── skills/           # Reusable skill modules
-├── hooks/            # Runtime hooks and event handlers
-├── templates/        # Project configuration templates
+├── plugins/          # Root folder for all plugins
+│   └── <plugin-name>/
+│       ├── agents/   # Sub-agent configurations
+│       ├── commands/ # Slash command definitions
+│       ├── skills/   # Reusable skill modules
+│       ├── hooks/    # Runtime hooks and event handlers
+│       └── README.md # Plugin-specific documentation
 ├── docs/             # Documentation and guides
 └── examples/         # Example implementations and use cases
 ```
+
+Each plugin is self-contained within its own directory under `plugins/`, allowing for modular installation and management.
 
 ## 🚦 Getting Started
 

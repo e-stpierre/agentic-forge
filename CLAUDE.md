@@ -16,7 +16,15 @@ The agentic-forge repository aims to:
 
 ## Repository Structure
 
-### `/commands/`
+### `/plugins/`
+
+Root directory containing all plugins. Each plugin is self-contained within its own subdirectory.
+
+### `/plugins/<plugin-name>/`
+
+Individual plugin directory structure:
+
+#### `commands/`
 
 Slash command definitions (`.md` files) that users can invoke directly in Claude Code sessions. Commands should:
 
@@ -25,7 +33,7 @@ Slash command definitions (`.md` files) that users can invoke directly in Claude
 - Be well-documented
 - Handle edge cases gracefully
 
-### `/agents/`
+#### `agents/`
 
 Sub-agent configurations for specialized, autonomous task execution. Agents should:
 
@@ -34,7 +42,7 @@ Sub-agent configurations for specialized, autonomous task execution. Agents shou
 - Include clear invocation instructions
 - Provide example use cases
 
-### `/skills/`
+#### `skills/`
 
 Reusable skill modules that provide composable functionality. Skills should:
 
@@ -43,7 +51,7 @@ Reusable skill modules that provide composable functionality. Skills should:
 - Have clear input/output contracts
 - Be composable with other skills
 
-### `/hooks/`
+#### `hooks/`
 
 Runtime hooks that execute on specific events (session start, tool calls, etc.). Hooks should:
 
@@ -52,14 +60,13 @@ Runtime hooks that execute on specific events (session start, tool calls, etc.).
 - Include clear documentation on events and triggers
 - Provide configuration options
 
-### `/templates/`
+#### `src/`
 
-Project configuration templates for common scenarios. Templates should:
+Python source code for CLI tools and orchestration utilities (optional). Used by plugins like `core` and `sdlc` that provide command-line workflows.
 
-- Include a complete `.claude/` directory structure
-- Provide sensible defaults
-- Include documentation on customization
-- Cover common use cases
+#### `README.md`
+
+Plugin-specific documentation. Should only contain information specific to this plugin, not general marketplace or installation instructions.
 
 ### `/docs/`
 
@@ -108,11 +115,11 @@ Real-world example implementations showing plugins in action. Examples should:
 
 ### File Formats
 
-- **Commands**: Markdown (`.md`) files in `.claude/commands/`
-- **Agents**: Configuration in markdown or YAML
-- **Skills**: Markdown (`.md`) files with structured prompts
-- **Hooks**: Shell scripts (`.sh`) or executable programs
-- **Templates**: Directory structures with configuration files
+- **Commands**: Markdown (`.md`) files in `plugins/<plugin-name>/commands/`
+- **Agents**: Markdown or YAML files in `plugins/<plugin-name>/agents/`
+- **Skills**: Markdown (`.md`) files with structured prompts in `plugins/<plugin-name>/skills/`
+- **Hooks**: Shell scripts (`.sh`) or executable programs in `plugins/<plugin-name>/hooks/`
+- **Python Tools**: Python packages in `plugins/<plugin-name>/src/` with `pyproject.toml`
 
 ### Code Style and Formatting
 
@@ -220,19 +227,23 @@ This repository is designed to be used as a Claude Code plugin marketplace. User
 
 #### Commands
 
-Commands are stored in `.claude/commands/` and invoked with `/command-name`. When a user types a slash command, the markdown file content becomes the prompt.
+Commands are stored in `plugins/<plugin-name>/commands/` and invoked with `/command-name`. When a user types a slash command, the markdown file content becomes the prompt. After installing a plugin, commands are automatically available in the Claude Code session.
 
 #### Agents
 
-Sub-agents are invoked via the Task tool with `subagent_type` parameter. They run autonomously to complete specific tasks.
+Sub-agents are stored in `plugins/<plugin-name>/agents/` and invoked via the Task tool with `subagent_type` parameter. They run autonomously to complete specific tasks.
 
 #### Skills
 
-Skills are activated using the Skill tool with the skill name. They provide specialized capabilities that can be called during a session.
+Skills are stored in `plugins/<plugin-name>/skills/` and activated using the Skill tool with the skill name. They provide specialized capabilities that can be called during a session.
 
 #### Hooks
 
-Hooks execute automatically on configured events. They can inject context, monitor state, or adapt behavior dynamically.
+Hooks are stored in `plugins/<plugin-name>/hooks/` and execute automatically on configured events. They can inject context, monitor state, or adapt behavior dynamically.
+
+#### Python Tools
+
+Some plugins include Python CLI tools in `plugins/<plugin-name>/src/` for workflow orchestration. These can be installed using `uv tool install` to provide command-line utilities that work alongside Claude Code.
 
 ## Best Practices for Plugin Usage
 

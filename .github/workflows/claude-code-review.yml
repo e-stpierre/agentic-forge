@@ -45,27 +45,30 @@ jobs:
             ## Repository-Specific Validation Rules
 
             ### 1. Plugin Structure & Placement
-            - Commands must be in `/commands/` as `.md` files
-            - Agents must be in `/agents/`
-            - Skills must be in `/skills/`
-            - Hooks must be in `/hooks/`
-            - Templates must be in `/templates/`
-            - Documentation must be in `/docs/`
+            - All plugins must be in `/plugins/<plugin-name>/` directories
+            - Commands must be in `/plugins/<plugin-name>/commands/` as `.md` files
+            - Agents must be in `/plugins/<plugin-name>/agents/`
+            - Skills must be in `/plugins/<plugin-name>/skills/`
+            - Hooks must be in `/plugins/<plugin-name>/hooks/`
+            - Python tools must be in `/plugins/<plugin-name>/src/` with `pyproject.toml`
+            - Plugin documentation must be in `/plugins/<plugin-name>/README.md`
+            - General documentation must be in `/docs/`
             - Examples must be in `/examples/`
 
             ### 2. Naming Conventions (CRITICAL)
+            - **Plugin directories**: kebab-case (e.g., `appsec`, `core`, `sdlc`)
             - **Commands**: kebab-case (e.g., `review-pr.md`, `setup-tests.md`)
             - **Agents**: descriptive names with domain prefix (e.g., `devops-agent.md`, `test-agent.md`)
             - **Skills**: verb-noun format (e.g., `parse-logs`, `validate-config`)
             - **Hooks**: include event name (e.g., `session-start-hook.sh`, `tool-call-hook.sh`)
-            - **Templates**: use project type (e.g., `nodejs-template`, `python-template`)
 
             ### 3. File Format Requirements
-            - Commands: Markdown (`.md`) files only
-            - Agents: Markdown or YAML
-            - Skills: Markdown (`.md`) with structured prompts
-            - Hooks: Shell scripts (`.sh`) or executable programs
-            - Templates: Complete directory structures with config files
+            - Commands: Markdown (`.md`) files in `plugins/<plugin-name>/commands/`
+            - Agents: Markdown or YAML in `plugins/<plugin-name>/agents/`
+            - Skills: Markdown (`.md`) with structured prompts in `plugins/<plugin-name>/skills/`
+            - Hooks: Shell scripts (`.sh`) or executable programs in `plugins/<plugin-name>/hooks/`
+            - Python Tools: Python packages in `plugins/<plugin-name>/src/` with `pyproject.toml`
+            - Plugin READMEs: `plugins/<plugin-name>/README.md`
 
             ### 4. Documentation Standards
             - **Plugin READMEs**: Only plugin-specific information, no duplication from root README
@@ -100,11 +103,11 @@ jobs:
             - Clear event/trigger documentation
             - Configuration options
 
-            **Templates must have:**
-            - Complete `.claude/` directory structure
-            - Sensible defaults
-            - Customization documentation
-            - Coverage of common use cases
+            **Python Tools must have:**
+            - Proper `pyproject.toml` configuration
+            - Clear CLI interface and help documentation
+            - Installable via `uv tool install`
+            - Integration with Claude Code workflows
 
             ### 6. General Code Quality Principles
             - **Modularity**: Each plugin does one thing well
