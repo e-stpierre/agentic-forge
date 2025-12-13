@@ -521,7 +521,7 @@ argument-hint: <chore-description> [--interactive]
 | Agents          | kebab-case with domain | `code-reviewer.md`          |
 | Hooks           | event-description      | `session-start-context.ps1` |
 | Python modules  | snake_case             | `runner.py`                 |
-| Python packages | kebab-case             | `agentic-forge-core`       |
+| Python packages | kebab-case             | `agentic-forge-core`        |
 
 ### Frontmatter
 
