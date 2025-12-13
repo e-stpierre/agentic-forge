@@ -3,7 +3,13 @@
     "allow": [
       "Bash(npx prettier:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(mkdir:*)",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)",
+      "Bash(git push:*)",
+      "Bash(git branch:*)",
+      "Bash(git worktree add:*)"
     ],
     "deny": [],
     "ask": []

@@ -11,5 +11,10 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "core@claude-plugins": true,
+    "sdlc@claude-plugins": true,
+    "appsec@claude-plugins": true
   }
 }

@@ -25,24 +25,35 @@
       "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
     },
     {
-      "name": "development",
+      "name": "sdlc",
       "source": "./",
-      "description": "Comprehensive development toolkit with Python orchestration for planning, parallel execution, and SDLC workflows using Claude Code CLI",
-      "version": "1.1.0",
-      "category": "development",
+      "description": "Software Development Lifecycle toolkit with planning, implementation, review, and testing workflows",
+      "version": "1.0.0",
+      "category": "sdlc",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": ["development", "planning", "features", "requirements", "codebase-analysis", "implementation", "orchestration", "workflows", "parallel"],
+      "keywords": ["sdlc", "planning", "implementation", "review", "testing", "workflows", "features", "bugs", "chores"],
       "strict": false,
-      "commands": ["./plugins/development/commands/plan-dev.md", "./plugins/development/commands/demo-hello.md", "./plugins/development/commands/demo-bye.md", "./plugins/development/commands/create-readme-plan.md", "./plugins/development/commands/implement-from-plan.md"]
+      "commands": [
+        "./plugins/sdlc/commands/design.md",
+        "./plugins/sdlc/commands/plan.md",
+        "./plugins/sdlc/commands/plan-feature.md",
+        "./plugins/sdlc/commands/plan-bug.md",
+        "./plugins/sdlc/commands/plan-chore.md",
+        "./plugins/sdlc/commands/plan-build.md",
+        "./plugins/sdlc/commands/implement.md",
+        "./plugins/sdlc/commands/implement-from-plan.md",
+        "./plugins/sdlc/commands/review.md",
+        "./plugins/sdlc/commands/test.md"
+      ]
     },
     {
       "name": "core",
       "source": "./",
-      "description": "Foundational prompts and utilities that serve as building blocks for other plugins and common development workflows",
+      "description": "Foundation plugin with git commands, GitHub integration, and Python orchestration utilities for building other plugins",
       "version": "1.0.0",
       "category": "core",
       "author": {
@@ -50,9 +61,9 @@
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": ["core", "foundation", "utilities", "building-blocks", "git"],
+      "keywords": ["core", "foundation", "utilities", "building-blocks", "git", "worktree", "github", "orchestration"],
       "strict": false,
-      "commands": ["./plugins/core/commands/git-branch.md", "./plugins/core/commands/git-commit.md", "./plugins/core/commands/git-pr.md"]
+      "commands": ["./plugins/core/commands/git-branch.md", "./plugins/core/commands/git-commit.md", "./plugins/core/commands/git-pr.md", "./plugins/core/commands/git-worktree.md", "./plugins/core/commands/create-gh-issue.md", "./plugins/core/commands/read-gh-issue.md"]
     }
   ]
 }

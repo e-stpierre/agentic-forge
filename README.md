@@ -132,19 +132,35 @@ Update the marketplace to the latest version:
 
 #### Update Python Tools
 
-Some plugins include Python CLI tools (e.g., `claude-workflows`). Update them with uv:
+Some plugins include Python CLI tools for workflow orchestration. Install them with uv:
 
 **Windows (PowerShell):**
 
 ```powershell
-uv tool install --force "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\development"
+# Core package (required for orchestration)
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\core"
+
+# SDLC workflows (depends on core)
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\sdlc"
 ```
 
 **macOS/Linux:**
 
 ```bash
-uv tool install --force ~/.claude/plugins/marketplaces/claude-plugins/plugins/development
+# Core package (required for orchestration)
+uv tool install ~/.claude/plugins/marketplaces/claude-plugins/plugins/core
+
+# SDLC workflows (depends on core)
+uv tool install ~/.claude/plugins/marketplaces/claude-plugins/plugins/sdlc
 ```
+
+**Available CLI commands after installation:**
+
+| Command          | Description                                              |
+| ---------------- | -------------------------------------------------------- |
+| `claude-feature` | Full feature workflow: plan -> implement -> review -> PR |
+| `claude-bugfix`  | Full bugfix workflow: diagnose -> fix -> test -> PR      |
+| `claude-sdlc`    | Main CLI with all SDLC subcommands                       |
 
 #### Remove Marketplace
 
@@ -178,6 +194,12 @@ Refer to individual plugin documentation for specific usage instructions and exa
 ## 🤝 Contributing
 
 Contributions are welcome! Whether you're adding new plugins, improving existing ones, or enhancing documentation, your input helps the community.
+
+### Local Setup
+
+```
+uv run .claude/update-plugins.py
+```
 
 ### How to Contribute
 

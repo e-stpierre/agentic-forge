@@ -181,12 +181,72 @@ def check_claude_available() -> bool:
         return False
 
 
+def main() -> None:
+    """CLI entry point for running Claude commands."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Run Claude CLI commands from Python",
+        prog="claude-run",
+    )
+    parser.add_argument(
+        "prompt",
+        nargs="?",
+        help="Prompt to send to Claude (reads from stdin if not provided)",
+    )
+    parser.add_argument(
+        "--cwd",
+        type=Path,
+        help="Working directory for the Claude session",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="Timeout in seconds (default: 300)",
+    )
+    parser.add_argument(
+        "--no-skip-permissions",
+        action="store_true",
+        help="Don't skip permission prompts",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check if Claude CLI is available and exit",
+    )
+
+    args = parser.parse_args()
+
+    if args.check:
+        if check_claude_available():
+            print("Claude CLI is available")
+            sys.exit(0)
+        else:
+            print("Claude CLI is not available")
+            sys.exit(1)
+
+    # Get prompt from argument or stdin
+    prompt = args.prompt
+    if not prompt:
+        prompt = sys.stdin.read().strip()
+
+    if not prompt:
+        parser.error("No prompt provided")
+
+    result = run_claude(
+        prompt=prompt,
+        cwd=args.cwd,
+        timeout=args.timeout,
+        print_output=True,
+        skip_permissions=not args.no_skip_permissions,
+    )
+
+    if result.stderr:
+        print(result.stderr, file=sys.stderr)
+
+    sys.exit(result.returncode)
+
+
 if __name__ == "__main__":
-    # Quick test
-    if check_claude_available():
-        print("Claude CLI is available")
-        result = run_claude("Say hello", print_output=True)
-        print(f"\nResult: {result}")
-    else:
-        print("Claude CLI is not available")
-        sys.exit(1)
+    main()

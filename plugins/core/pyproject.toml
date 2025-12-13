@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claude-workflows"
+name = "claude-plugins-core"
 version = "1.0.0"
-description = "Python orchestration toolkit for Claude Code CLI workflows"
+description = "Foundation Python package for Claude Code plugins - CLI runner, orchestrator, and structured logging"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Étienne St-Pierre", email = "me@estpierre.dev" }
+    { name = "Etienne St-Pierre", email = "me@estpierre.dev" }
 ]
 keywords = [
     "claude",
@@ -18,7 +18,8 @@ keywords = [
     "cli",
     "orchestration",
     "workflows",
-    "automation"
+    "automation",
+    "plugins"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -35,27 +36,24 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
-# No external dependencies required - uses only stdlib
+# No external dependencies - uses only stdlib
 dependencies = []
+
+[project.scripts]
+claude-run = "claude_core.runner:main"
+claude-orchestrate = "claude_core.orchestrator:main"
+claude-worktree = "claude_core.worktree:main"
 
 [project.urls]
 Homepage = "https://github.com/e-stpierre/claude-plugins"
 Repository = "https://github.com/e-stpierre/claude-plugins"
-Documentation = "https://github.com/e-stpierre/claude-plugins/tree/main/plugins/development"
-
-[project.scripts]
-claude-hello = "claude_workflows.cli:hello"
-claude-bye = "claude_workflows.cli:bye"
-claude-parallel = "claude_workflows.cli:parallel"
-claude-plan = "claude_workflows.cli:plan"
-claude-workflows = "claude_workflows.cli:main"
+Documentation = "https://github.com/e-stpierre/claude-plugins/tree/main/plugins/core"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/claude_workflows"]
+packages = ["src/claude_core"]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "/src",
     "/README.md",
-    "/LICENSE",
 ]

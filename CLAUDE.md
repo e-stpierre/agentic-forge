@@ -98,6 +98,14 @@ Real-world example implementations showing plugins in action. Examples should:
 - **Hooks**: Include event name (e.g., `session-start-hook.sh`, `tool-call-hook.sh`)
 - **Templates**: Use project type (e.g., `nodejs-template`, `python-template`)
 
+### Documentation Guidelines
+
+- **Keep READMEs concise**: Plugin READMEs should only contain plugin-specific information
+- **Avoid duplication**: Do not repeat information from the root README (installation, marketplace setup, contributing guidelines, license, support)
+- **CHANGELOGs should be brief**: Focus on what changed, not detailed explanations
+- **Link to root docs**: Reference the root README or `/docs/` for general information
+- **ASCII only**: Use only valid ASCII characters in all files to avoid encoding issues across platforms
+
 ### File Formats
 
 - **Commands**: Markdown (`.md`) files in `.claude/commands/`
@@ -290,11 +298,15 @@ How to activate and use this skill
 - Keep files focused and modular
 - Update documentation with code changes
 
+## Breaking Changes
+
+This repository is in active development. Breaking changes are acceptable in any plugin at any time without backward compatibility considerations or migration documentation. When a breaking change is needed, simply make the change.
+
 ## Future Directions
 
 This repository is designed to evolve with the Claude Code ecosystem:
 
-- **Plugin Marketplace**: ✅ Implemented via `.claude-plugin/marketplace.json` - users can now browse and install plugins directly
+- **Plugin Marketplace**: [DONE] Implemented via `.claude-plugin/marketplace.json` - users can now browse and install plugins directly
 - **Version Management**: Better handling of plugin versions and dependencies
 - **Testing Framework**: Automated testing for plugin quality
 - **Community Curation**: Ratings and reviews for popular plugins
