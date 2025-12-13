@@ -7,6 +7,11 @@ on:
       - "**/*.md"
       - "**/*.py"
 
+# Prevent race conditions when multiple commits are pushed rapidly
+concurrency:
+  group: format-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   auto-format:
     runs-on: ubuntu-latest
@@ -26,6 +31,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "**/package*.json"
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -41,23 +56,25 @@ jobs:
         id: changed-files
         run: |
           # Get the list of changed files in this PR
-          git fetch origin ${{ github.event.pull_request.base.ref }}
+          # Note: fetch-depth: 0 in checkout already fetched all history, no need for additional fetch
 
-          # Get changed markdown files
+          # Get changed markdown files (one per line for proper handling of spaces)
           CHANGED_MD_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.md$' || true)
 
-          # Get changed Python files
+          # Get changed Python files (one per line for proper handling of spaces)
           CHANGED_PY_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.py$' || true)
 
-          # Output results
+          # Output results using multiline format to handle file paths with spaces
           if [ -z "$CHANGED_MD_FILES" ]; then
             echo "No markdown files changed"
             echo "md_files=" >> $GITHUB_OUTPUT
           else
             echo "Changed markdown files:"
             echo "$CHANGED_MD_FILES"
-            MD_FILES_SPACE_SEPARATED=$(echo "$CHANGED_MD_FILES" | tr '\n' ' ')
-            echo "md_files=$MD_FILES_SPACE_SEPARATED" >> $GITHUB_OUTPUT
+            # Use EOF delimiter for multiline output
+            echo "md_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGED_MD_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
           fi
 
           if [ -z "$CHANGED_PY_FILES" ]; then
@@ -66,22 +83,36 @@ jobs:
           else
             echo "Changed Python files:"
             echo "$CHANGED_PY_FILES"
-            PY_FILES_SPACE_SEPARATED=$(echo "$CHANGED_PY_FILES" | tr '\n' ' ')
-            echo "py_files=$PY_FILES_SPACE_SEPARATED" >> $GITHUB_OUTPUT
+            # Use EOF delimiter for multiline output
+            echo "py_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGED_PY_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
           fi
 
       - name: Format markdown files
         if: steps.changed-files.outputs.md_files != ''
         run: |
           echo "Formatting markdown files..."
-          markdownlint-cli2 ${{ steps.changed-files.outputs.md_files }}
+          # Process each file individually to handle spaces in filenames
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              echo "  Formatting: $file"
+              markdownlint-cli2 --fix "$file"
+            fi
+          done <<< "${{ steps.changed-files.outputs.md_files }}"
 
       - name: Format Python files
         if: steps.changed-files.outputs.py_files != ''
         run: |
           echo "Formatting Python files..."
-          ruff format ${{ steps.changed-files.outputs.py_files }}
-          ruff check --fix ${{ steps.changed-files.outputs.py_files }}
+          # Process each file individually to handle spaces in filenames
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              echo "  Formatting: $file"
+              ruff format "$file"
+              ruff check --fix "$file"
+            fi
+          done <<< "${{ steps.changed-files.outputs.py_files }}"
 
       - name: Commit and push changes
         run: |

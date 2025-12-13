@@ -7,6 +7,24 @@ target-version = "py310"
 # Line length to match common standards
 line-length = 140
 
+# Exclude common directories from formatting and linting
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    ".eggs",
+    "*.egg",
+    "*.egg-info",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "build",
+    "dist",
+    ".tox",
+    "node_modules",
+]
+
 # Formatting configuration
 [format]
 # Use double quotes for strings

@@ -1,5 +1,7 @@
 # 🧠 claude-plugins
 
+[![Auto-Format Code](https://github.com/e-stpierre/claude-plugins/actions/workflows/auto-format.yml/badge.svg)](https://github.com/e-stpierre/claude-plugins/actions/workflows/auto-format.yml)
+
 A modular collection of commands, sub-agents, skills, and hooks designed to extend and customize Claude Code for both generic and specialized development scenarios.
 
 This repository provides a plug-and-play framework to define reusable automation units — from lightweight code utilities to fully autonomous agent behaviors — that enhance Claude's coding workflow, environment integration, and project
