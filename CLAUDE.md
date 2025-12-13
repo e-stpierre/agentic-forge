@@ -116,9 +116,13 @@ Real-world example implementations showing plugins in action. Examples should:
 
 ### Code Style and Formatting
 
-All markdown files in this repository are automatically formatted using [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2). When you create a pull request, a GitHub Actions workflow will automatically format any changed `.md` files and commit the changes back to your PR branch.
+All code in this repository is automatically formatted when you create a pull request. A GitHub Actions workflow will format any changed files and commit the changes back to your PR branch.
 
-**Configuration**: The markdownlint rules are defined in `.markdownlint-cli2.jsonc` at the repository root.
+#### Markdown Formatting
+
+Markdown files use [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) for formatting.
+
+**Configuration**: `.markdownlint-cli2.jsonc`
 
 **Manual formatting** (optional):
 
@@ -130,7 +134,41 @@ npx markdownlint-cli2 "**/*.md"
 npx markdownlint-cli2 README.md CLAUDE.md
 ```
 
-You don't need to manually format markdown files before committing - the CI pipeline handles this automatically for all pull requests.
+#### Python Formatting
+
+Python files use [Ruff](https://docs.astral.sh/ruff/) for formatting and linting. Ruff is extremely fast and provides Black-compatible formatting plus comprehensive linting.
+
+**Configuration**: `ruff.toml`
+
+**Manual formatting** (optional):
+
+```bash
+# Format all Python files
+ruff format .
+
+# Format and automatically fix linting issues
+ruff check --fix .
+
+# Format specific files
+ruff format path/to/file.py
+```
+
+**Local development setup**: For automatic formatting on save, install the [Ruff VS Code extension](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and add to your workspace settings:
+
+```json
+{
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  }
+}
+```
+
+You don't need to manually format files before committing - the CI pipeline handles this automatically for all pull requests.
 
 ## Working with This Repository
 

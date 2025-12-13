@@ -1,0 +1,98 @@
+name: Auto-Format Code
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "**/*.md"
+      - "**/*.py"
+
+jobs:
+  auto-format:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install formatters
+        run: |
+          npm install -g markdownlint-cli2
+          pip install ruff
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          # Get the list of changed files in this PR
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+
+          # Get changed markdown files
+          CHANGED_MD_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.md$' || true)
+
+          # Get changed Python files
+          CHANGED_PY_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.py$' || true)
+
+          # Output results
+          if [ -z "$CHANGED_MD_FILES" ]; then
+            echo "No markdown files changed"
+            echo "md_files=" >> $GITHUB_OUTPUT
+          else
+            echo "Changed markdown files:"
+            echo "$CHANGED_MD_FILES"
+            MD_FILES_SPACE_SEPARATED=$(echo "$CHANGED_MD_FILES" | tr '\n' ' ')
+            echo "md_files=$MD_FILES_SPACE_SEPARATED" >> $GITHUB_OUTPUT
+          fi
+
+          if [ -z "$CHANGED_PY_FILES" ]; then
+            echo "No Python files changed"
+            echo "py_files=" >> $GITHUB_OUTPUT
+          else
+            echo "Changed Python files:"
+            echo "$CHANGED_PY_FILES"
+            PY_FILES_SPACE_SEPARATED=$(echo "$CHANGED_PY_FILES" | tr '\n' ' ')
+            echo "py_files=$PY_FILES_SPACE_SEPARATED" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Format markdown files
+        if: steps.changed-files.outputs.md_files != ''
+        run: |
+          echo "Formatting markdown files..."
+          markdownlint-cli2 ${{ steps.changed-files.outputs.md_files }}
+
+      - name: Format Python files
+        if: steps.changed-files.outputs.py_files != ''
+        run: |
+          echo "Formatting Python files..."
+          ruff format ${{ steps.changed-files.outputs.py_files }}
+          ruff check --fix ${{ steps.changed-files.outputs.py_files }}
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # Check if there are any changes
+          if git diff --quiet; then
+            echo "No formatting changes needed"
+          else
+            git add -A
+            git commit -m "Auto-format code with markdownlint-cli2 and ruff"
+            git push
+          fi
