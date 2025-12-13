@@ -384,12 +384,12 @@ def main() -> None:
         )
 
     if args.sequential:
-        results = orchestrator.run_sequential(
+        orchestrator.run_sequential(
             print_progress=not args.json,
             stop_on_failure=args.stop_on_failure,
         )
     else:
-        results = orchestrator.run_parallel(print_progress=not args.json)
+        orchestrator.run_parallel(print_progress=not args.json)
 
     summary = orchestrator.get_summary()
 

@@ -256,10 +256,7 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
 
     # Generate branch name early (needed for worktree)
     slug = config.bug_description.lower().replace(" ", "-")[:30]
-    if config.issue_number:
-        branch_name = f"fix/{slug}-{config.issue_number}"
-    else:
-        branch_name = f"fix/{slug}"
+    branch_name = f"fix/{slug}-{config.issue_number}" if config.issue_number else f"fix/{slug}"
     state.branch_name = branch_name
 
     if config.dry_run:
@@ -287,10 +284,7 @@ def bugfix_workflow(config: BugfixWorkflowConfig) -> WorkflowState:
 
     # If not using worktree, we still need to create the branch
     if not config.use_worktree:
-        if config.issue_number:
-            branch_args = f"fix {slug} {config.issue_number}"
-        else:
-            branch_args = f"fix {slug}"
+        branch_args = f"fix {slug} {config.issue_number}" if config.issue_number else f"fix {slug}"
         success, output = _run_step(
             "Create Branch",
             "core:git-branch",
