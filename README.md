@@ -239,6 +239,8 @@ npx markdownlint-cli2 README.md CLAUDE.md
 
 Python files are formatted and linted using [Ruff](https://docs.astral.sh/ruff/). Configuration: `ruff.toml`
 
+Install ruff: `uv tool install ruff`
+
 **Manual formatting** (optional):
 
 ```bash
