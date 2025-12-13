@@ -9,8 +9,8 @@ Available workflows:
     bugfix  - Diagnose, fix, test, and PR for bug fixes
 """
 
-from claude_sdlc.workflows.feature import feature_workflow, FeatureWorkflowConfig
-from claude_sdlc.workflows.bugfix import bugfix_workflow, BugfixWorkflowConfig
+from claude_sdlc.workflows.bugfix import BugfixWorkflowConfig, bugfix_workflow
+from claude_sdlc.workflows.feature import FeatureWorkflowConfig, feature_workflow
 
 __all__ = [
     "feature_workflow",

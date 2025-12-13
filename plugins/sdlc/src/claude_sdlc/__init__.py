@@ -30,37 +30,37 @@ For core functionality (runner, orchestrator, logging), import from claude_core:
 from claude_core import (
     # Runner
     ClaudeResult,
-    run_claude,
-    run_claude_with_command,
-    check_claude_available,
-    # Orchestrator
-    Orchestrator,
-    Task,
-    TaskResult,
     # Logging
     LogEntry,
+    # Orchestrator
+    Orchestrator,
     StructuredLogger,
-    configure_logging,
-    get_logger,
+    Task,
+    TaskResult,
     # Worktree
     Worktree,
-    get_repo_root,
+    branch_exists,
+    check_claude_available,
+    configure_logging,
+    create_worktree,
     get_current_branch,
     get_default_branch,
-    branch_exists,
-    list_worktrees,
-    create_worktree,
-    remove_worktree,
+    get_logger,
+    get_repo_root,
     get_worktree_base_path,
+    list_worktrees,
+    remove_worktree,
+    run_claude,
+    run_claude_with_command,
     temporary_worktree,
 )
 
 # SDLC Workflows
 from claude_sdlc.workflows import (
-    feature_workflow,
+    BugfixWorkflowConfig,
     FeatureWorkflowConfig,
     bugfix_workflow,
-    BugfixWorkflowConfig,
+    feature_workflow,
 )
 
 __version__ = "1.0.0"

@@ -9,14 +9,15 @@ running in parallel, typically in separate git worktrees.
 from __future__ import annotations
 
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed, Future
+from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Any
+from typing import Any
 
-from claude_core.runner import ClaudeResult, run_claude, run_claude_with_command
-from claude_core.logging import get_logger, LogEntry
+from claude_core.logging import LogEntry, get_logger
+from claude_core.runner import ClaudeResult, run_claude
 
 
 @dataclass
@@ -177,10 +178,7 @@ class Orchestrator:
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Submit all tasks
-            future_to_task: dict[Future[TaskResult], Task] = {
-                executor.submit(self._execute_task, task): task
-                for task in self._tasks
-            }
+            future_to_task: dict[Future[TaskResult], Task] = {executor.submit(self._execute_task, task): task for task in self._tasks}
 
             # Collect results as they complete
             for future in as_completed(future_to_task):
@@ -362,6 +360,7 @@ def main() -> None:
     if not args.prompts:
         # Try reading from stdin
         import sys
+
         if not sys.stdin.isatty():
             prompts = [line.strip() for line in sys.stdin if line.strip()]
         else:
@@ -376,11 +375,13 @@ def main() -> None:
     )
 
     for i, prompt in enumerate(prompts):
-        orchestrator.add_task(Task(
-            prompt=prompt,
-            name=f"task-{i+1}",
-            timeout=args.timeout,
-        ))
+        orchestrator.add_task(
+            Task(
+                prompt=prompt,
+                name=f"task-{i + 1}",
+                timeout=args.timeout,
+            )
+        )
 
     if args.sequential:
         results = orchestrator.run_sequential(
@@ -397,7 +398,7 @@ def main() -> None:
     else:
         print(f"\nCompleted: {summary['successful']}/{summary['total']} successful")
 
-    sys.exit(0 if summary['failed'] == 0 else 1)
+    sys.exit(0 if summary["failed"] == 0 else 1)
 
 
 if __name__ == "__main__":
