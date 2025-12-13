@@ -87,7 +87,7 @@ Standard categories for branch naming:
 
 The core plugin includes `claude-plugins-core`, a Python package for orchestrating Claude Code workflows programmatically.
 
-### Installation
+### Python Package Installation
 
 ```bash
 # Windows (PowerShell)

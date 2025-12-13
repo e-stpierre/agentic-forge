@@ -128,10 +128,12 @@ Commands that make changes (file edits, git operations, GitHub API calls) suppor
 1. Parse arguments and check for `--interactive` flag
 
 2. [If `--interactive`] Ask clarifying questions using AskUserQuestion tool:
+
    - Question 1...
    - Question 2... Wait for user responses before proceeding.
 
 3. [If not `--interactive`] Use reasonable defaults:
+
    - Default for question 1: X
    - Default for question 2: Y
 
@@ -572,15 +574,18 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
 ### Phase 1: Core Restructure
 
 1. **Move Python to core**
+
    - Move `runner.py` from development to core
    - Create `orchestrator.py` in core
    - Set up `pyproject.toml` for `claude-plugins-core`
 
 2. **Add git-worktree command**
+
    - Create `git-worktree.md` in core/commands
    - Remove `worktree.py` from Python (functionality now in command)
 
 3. **Add GitHub commands**
+
    - Create `create-gh-issue.md` in core/commands
    - Create `read-gh-issue.md` in core/commands
    - Both integrate with `gh` CLI
@@ -593,13 +598,16 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
 ### Phase 2: Rename development → sdlc
 
 1. **Rename plugin directory**
+
    - `plugins/development/` → `plugins/sdlc/`
 
 2. **Update marketplace.json**
+
    - Change plugin name from `development` to `sdlc`
    - Update paths
 
 3. **Set up Python package**
+
    - Create `pyproject.toml` for `claude-plugins-sdlc`
    - Add dependency on `claude-plugins-core`
 
@@ -611,37 +619,45 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
 ### Phase 3: Add SDLC Commands
 
 1. **Create design.md**
+
    - Supports `--interactive` and `--epic` flags
    - Creates technical design + GitHub issues
    - Uses `/create-gh-issue` for issue creation
 
 2. **Create plan-build.md**
+
    - Supports `--interactive` flag
    - Accepts prompt or GitHub issue number
    - Full workflow: branch → plan → implement → commit → PR
 
 3. **Create plan.md**
+
    - Meta-command that delegates to plan-feature/bug/chore
    - Supports `--interactive` flag passthrough
 
 4. **Create plan-feature.md**
+
    - Supports `--interactive` flag for user Q&A
    - Uses Explore agents for codebase analysis
    - Outputs structured plan
 
 5. **Create plan-bug.md**
+
    - Supports `--interactive` flag
    - Focuses on diagnosis and fix strategy
 
 6. **Create plan-chore.md**
+
    - Supports `--interactive` flag
    - For refactoring, updates, cleanup
 
 7. **Create implement.md**
+
    - Reads plan file and executes steps
    - Commits after milestones
 
 8. **Create review.md**
+
    - Reviews uncommitted changes, branch, or commit range
    - Outputs structured feedback
 
@@ -653,11 +669,13 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
 ### Phase 4: Python Orchestration
 
 1. **Implement orchestrator.py**
+
    - Parallel task execution
    - Result aggregation
    - Error handling
 
 2. **Add structured logging**
+
    - JSON log format for all command executions
    - Configurable log level and output file
    - Include: timestamp, command, args, duration, exit code, output summary
@@ -670,11 +688,13 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
 ### Phase 5: Documentation & Cleanup
 
 1. **Update root README.md**
+
    - Installation instructions
    - Core dependency requirement
    - Python setup instructions
 
 2. **Update CLAUDE.md**
+
    - Breaking changes notice
    - New conventions
 
@@ -691,12 +711,15 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
 ### Planned Breaking Changes
 
 1. **Plugin rename**: `development` → `sdlc`
+
    - Users must reinstall: `/plugin uninstall development && /plugin install sdlc`
 
 2. **Command removal**: `plan-dev` removed, replaced by `plan-feature`
+
    - Use `/plan-feature --interactive` for similar behavior to old `plan-dev`
 
 3. **Python package restructure**
+
    - `claude_workflows` → `claude_core` + `claude_sdlc`
    - Import paths change
 
@@ -792,7 +815,7 @@ plugins/development/src/claude_workflows/commands/bye.py
 - [ ] Python package installs correctly
 - [ ] All commands follow `docs/commands-prompt-reference.md` structure
 
-### SDLC Plugin
+### SDLC Plugin Plan
 
 - [ ] Depends on core (pip level)
 - [ ] `design` creates technical design + GitHub issues

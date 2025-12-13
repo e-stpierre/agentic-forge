@@ -80,15 +80,15 @@ Install via the Claude Code plugin marketplace:
 
 1. Add the claude-plugins marketplace (if not already added):
 
-```bash
-/plugin marketplace add e-stpierre/claude-plugins
-```
+   ```bash
+   /plugin marketplace add e-stpierre/claude-plugins
+   ```
 
 2. Install the AppSec plugin:
 
-```bash
-/plugin install appsec@e-stpierre/claude-plugins
-```
+   ```bash
+   /plugin install appsec@e-stpierre/claude-plugins
+   ```
 
 Or use the interactive menu:
 
@@ -104,17 +104,17 @@ If you prefer manual installation or want to customize the plugin:
 
 1. Copy the agent definition to your project:
 
-```bash
-mkdir -p .claude/agents
-cp plugins/appsec/agents/appsec-specialist.md .claude/agents/
-```
+   ```bash
+   mkdir -p .claude/agents
+   cp plugins/appsec/agents/appsec-specialist.md .claude/agents/
+   ```
 
 2. Copy the command to your project:
 
-```bash
-mkdir -p .claude/commands
-cp plugins/appsec/commands/security-review.md .claude/commands/
-```
+   ```bash
+   mkdir -p .claude/commands
+   cp plugins/appsec/commands/security-review.md .claude/commands/
+   ```
 
 ## Usage
 
