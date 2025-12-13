@@ -40,7 +40,7 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Review this pull request for the claude-plugins repository - a collection of modular extensions for Claude Code.
+            Review this pull request for the agentic-forge repository - a collection of modular extensions for Claude Code.
 
             ## Repository-Specific Validation Rules
 

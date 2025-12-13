@@ -1,4 +1,4 @@
-# Claude Context: claude-plugins Repository
+# Claude Context: agentic-forge Repository
 
 ## Project Overview
 
@@ -7,7 +7,7 @@ across various development scenarios.
 
 ## Purpose
 
-The claude-plugins repository aims to:
+The agentic-forge repository aims to:
 
 1. **Democratize Customization**: Make it easy for developers to extend Claude Code without deep technical knowledge
 2. **Share Best Practices**: Provide battle-tested automation patterns and workflows
@@ -203,13 +203,13 @@ This repository is designed to be used as a Claude Code plugin marketplace. User
 
 ```bash
 # Add this repository as a marketplace
-/plugin marketplace add e-stpierre/claude-plugins
+/plugin marketplace add e-stpierre/agentic-forge
 
 # Browse available plugins via the menu
 /plugin menu
 
 # Or install specific plugins directly
-/plugin install appsec@e-stpierre/claude-plugins
+/plugin install appsec@e-stpierre/agentic-forge
 ```
 
 **For Private Repositories**: Claude Code supports private Git repositories as marketplaces. Users need proper Git authentication configured (SSH keys or GitHub personal access token) to access private marketplace repositories.
@@ -238,7 +238,7 @@ Hooks execute automatically on configured events. They can inject context, monit
 
 ### For End Users
 
-1. **Add the Marketplace**: Use `/plugin marketplace add e-stpierre/claude-plugins` to access plugins
+1. **Add the Marketplace**: Use `/plugin marketplace add e-stpierre/agentic-forge` to access plugins
 2. **Browse Before Installing**: Use `/plugin menu` to explore available plugins and their descriptions
 3. **Review Before Use**: Always examine plugin code and documentation before installing
 4. **Test in Safe Environment**: Try plugins in non-production contexts first

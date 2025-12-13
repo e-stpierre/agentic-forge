@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "claude-plugins",
+  "name": "agentic-forge",
   "version": "1.0.0",
   "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
   "owner": {

@@ -50,12 +50,12 @@ First install the core package, then the sdlc package:
 
 ```powershell
 # Windows (PowerShell)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\core"
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\sdlc"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\core"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\sdlc"
 
 # macOS/Linux
-uv tool install ~/.claude/plugins/marketplaces/claude-plugins/plugins/core
-uv tool install ~/.claude/plugins/marketplaces/claude-plugins/plugins/sdlc
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/core
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/sdlc
 ```
 
 ### CLI Commands

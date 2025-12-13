@@ -1,7 +1,7 @@
 {
   "enabledPlugins": {
-    "core@claude-plugins": true,
-    "sdlc@claude-plugins": true,
-    "appsec@claude-plugins": true
+    "core@agentic-forge": true,
+    "sdlc@agentic-forge": true,
+    "appsec@agentic-forge": true
   }
 }

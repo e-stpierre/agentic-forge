@@ -60,7 +60,7 @@ Or use the direct commands:
     parser.add_argument(
         "--version",
         action="version",
-        version="claude-plugins-sdlc 1.0.0",
+        version="agentic-forge-sdlc 1.0.0",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
