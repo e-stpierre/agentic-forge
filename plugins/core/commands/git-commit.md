@@ -35,9 +35,11 @@ Create a well-structured commit with a concise title and optional bullet-point d
    - **Title**: Imperative mood, capitalize first letter, no period (e.g., "Add user authentication")
    - **Description**: Only if changes are substantial; 1-3 bullets on key aspects
 5. Execute commit:
+
    ```
    git commit -m "<title>" [-m "- bullet 1" -m "- bullet 2"]
    ```
+
 6. Push to remote: `git push` (use `git push -u origin HEAD` if no upstream)
 7. Report success with commit hash
 
