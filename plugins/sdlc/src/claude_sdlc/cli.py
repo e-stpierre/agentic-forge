@@ -23,6 +23,7 @@ from claude_sdlc.workflows.feature import main as feature_main
 
 # fake
 
+
 def main() -> int:
     """
     Main CLI entry point with subcommands.
@@ -72,15 +73,27 @@ Or use the direct commands:
         help="Full feature workflow with worktree isolation",
     )
     feature_parser.add_argument("feature_description", help="Feature to implement")
-    feature_parser.add_argument("--interactive", action="store_true", help="Interactive planning mode")
+    feature_parser.add_argument(
+        "--interactive", action="store_true", help="Interactive planning mode"
+    )
     feature_parser.add_argument("--skip-review", action="store_true", help="Skip code review step")
     feature_parser.add_argument("--skip-pr", action="store_true", help="Skip PR creation")
-    feature_parser.add_argument("--dry-run", action="store_true", help="Show steps without executing")
+    feature_parser.add_argument(
+        "--dry-run", action="store_true", help="Show steps without executing"
+    )
     feature_parser.add_argument("--log-file", help="JSON log file path")
-    feature_parser.add_argument("--timeout", type=int, default=300, help="Timeout per step (seconds)")
-    feature_parser.add_argument("--no-worktree", action="store_true", help="Work in main repo (no worktree)")
-    feature_parser.add_argument("--cleanup", action="store_true", help="Remove worktree after completion")
-    feature_parser.add_argument("--base-branch", help="Base branch for feature (default: main/master)")
+    feature_parser.add_argument(
+        "--timeout", type=int, default=300, help="Timeout per step (seconds)"
+    )
+    feature_parser.add_argument(
+        "--no-worktree", action="store_true", help="Work in main repo (no worktree)"
+    )
+    feature_parser.add_argument(
+        "--cleanup", action="store_true", help="Remove worktree after completion"
+    )
+    feature_parser.add_argument(
+        "--base-branch", help="Base branch for feature (default: main/master)"
+    )
 
     # Bugfix subcommand
     bugfix_parser = subparsers.add_parser(
@@ -89,14 +102,24 @@ Or use the direct commands:
     )
     bugfix_parser.add_argument("bug_description", help="Bug to fix")
     bugfix_parser.add_argument("--issue", type=int, dest="issue_number", help="GitHub issue number")
-    bugfix_parser.add_argument("--interactive", action="store_true", help="Interactive planning mode")
+    bugfix_parser.add_argument(
+        "--interactive", action="store_true", help="Interactive planning mode"
+    )
     bugfix_parser.add_argument("--skip-test", action="store_true", help="Skip running tests")
     bugfix_parser.add_argument("--skip-pr", action="store_true", help="Skip PR creation")
-    bugfix_parser.add_argument("--dry-run", action="store_true", help="Show steps without executing")
+    bugfix_parser.add_argument(
+        "--dry-run", action="store_true", help="Show steps without executing"
+    )
     bugfix_parser.add_argument("--log-file", help="JSON log file path")
-    bugfix_parser.add_argument("--timeout", type=int, default=300, help="Timeout per step (seconds)")
-    bugfix_parser.add_argument("--no-worktree", action="store_true", help="Work in main repo (no worktree)")
-    bugfix_parser.add_argument("--cleanup", action="store_true", help="Remove worktree after completion")
+    bugfix_parser.add_argument(
+        "--timeout", type=int, default=300, help="Timeout per step (seconds)"
+    )
+    bugfix_parser.add_argument(
+        "--no-worktree", action="store_true", help="Work in main repo (no worktree)"
+    )
+    bugfix_parser.add_argument(
+        "--cleanup", action="store_true", help="Remove worktree after completion"
+    )
     bugfix_parser.add_argument("--base-branch", help="Base branch for fix (default: main/master)")
 
     args = parser.parse_args()
