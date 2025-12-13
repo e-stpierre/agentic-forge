@@ -78,16 +78,16 @@ code reviews, and iterative development.
 
 Install via the Claude Code plugin marketplace:
 
-1. Add the claude-plugins marketplace (if not already added):
+1. Add the agentic-forge marketplace (if not already added):
 
    ```bash
-   /plugin marketplace add e-stpierre/claude-plugins
+   /plugin marketplace add e-stpierre/agentic-forge
    ```
 
 2. Install the AppSec plugin:
 
    ```bash
-   /plugin install appsec@e-stpierre/claude-plugins
+   /plugin install appsec@e-stpierre/agentic-forge
    ```
 
 Or use the interactive menu:
@@ -448,13 +448,13 @@ Found a new security pattern to detect? Want to improve the agent?
 
 ## License
 
-This plugin is part of the claude-plugins repository and is licensed under the MIT License.
+This plugin is part of the agentic-forge repository and is licensed under the MIT License.
 
 ## Support
 
 For issues, questions, or contributions:
 
-- Open an issue in the [claude-plugins repository](https://github.com/e-stpierre/claude-plugins)
+- Open an issue in the [agentic-forge repository](https://github.com/e-stpierre/agentic-forge)
 - Join the community discussions
 - Check the documentation in `/docs/`
 

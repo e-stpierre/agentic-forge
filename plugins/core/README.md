@@ -25,8 +25,8 @@ Claude Code workflows.
 ### Marketplace Installation
 
 ```bash
-/plugin marketplace add e-stpierre/claude-plugins
-/plugin install core@e-stpierre/claude-plugins
+/plugin marketplace add e-stpierre/agentic-forge
+/plugin install core@e-stpierre/agentic-forge
 ```
 
 ### Manual Installation
@@ -85,16 +85,16 @@ Standard categories for branch naming:
 
 ## Python Package
 
-The core plugin includes `claude-plugins-core`, a Python package for orchestrating Claude Code workflows programmatically.
+The core plugin includes `agentic-forge-core`, a Python package for orchestrating Claude Code workflows programmatically.
 
 ### Python Package Installation
 
 ```bash
 # Windows (PowerShell)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\core"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\core"
 
 # macOS/Linux
-uv tool install ~/.claude/plugins/marketplaces/claude-plugins/plugins/core
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/core
 ```
 
 ### Library Usage
@@ -126,4 +126,4 @@ configure_logging(log_file="workflow.log.json")
 
 ## License
 
-MIT License - Part of the claude-plugins repository.
+MIT License - Part of the agentic-forge repository.

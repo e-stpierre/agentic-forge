@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claude-plugins-core"
+name = "agentic-forge-core"
 version = "1.0.0"
 description = "Foundation Python package for Claude Code plugins - CLI runner, orchestrator, and structured logging"
 readme = "README.md"
@@ -45,9 +45,9 @@ claude-orchestrate = "claude_core.orchestrator:main"
 claude-worktree = "claude_core.worktree:main"
 
 [project.urls]
-Homepage = "https://github.com/e-stpierre/claude-plugins"
-Repository = "https://github.com/e-stpierre/claude-plugins"
-Documentation = "https://github.com/e-stpierre/claude-plugins/tree/main/plugins/core"
+Homepage = "https://github.com/e-stpierre/agentic-forge"
+Repository = "https://github.com/e-stpierre/agentic-forge"
+Documentation = "https://github.com/e-stpierre/agentic-forge/tree/main/plugins/core"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/claude_core"]

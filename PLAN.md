@@ -17,7 +17,7 @@ Create scoped, concise, and highly reusable Claude Code tooling that works both 
 ## Architecture Overview
 
 ```
-claude-plugins/
+agentic-forge/
 ├── PLAN.md                          # This file
 ├── CLAUDE.md                        # Repository instructions
 ├── README.md                        # User documentation
@@ -49,17 +49,17 @@ claude-plugins/
 
 - Git commands: `git-branch`, `git-commit`, `git-pr`, `git-worktree`,
 - GitHub commands: `create-gh-issue`, `read-gh-issue`
-- Base Python package: `claude-plugins-core`
+- Base Python package: `agentic-forge-core`
   - `runner.py` - Claude CLI wrapper
   - `orchestrator.py` - Parallel execution engine
 
-**Python Package**: `claude-plugins-core`
+**Python Package**: `agentic-forge-core`
 
 ### SDLC Plugin
 
 **Purpose**: Software Development Lifecycle workflows.
 
-**Dependencies**: Requires `claude-plugins-core`
+**Dependencies**: Requires `agentic-forge-core`
 
 **Contents**:
 
@@ -74,7 +74,7 @@ claude-plugins/
 - Workflow scripts: Full SDLC orchestration => plan, implement, review with git management included (create a worktree first, create a branch, commit changes after each task/milestones, push the changes, finally open a PR). The input for
   this workflow can be a prompt or a GitHub issue number (the workflow uses the read-gh-issue command to obtain the instructions)
 
-**Python Package**: `claude-plugins-sdlc` (depends on `claude-plugins-core`)
+**Python Package**: `agentic-forge-sdlc` (depends on `agentic-forge-core`)
 
 ### Other Plugins
 
@@ -209,7 +209,7 @@ Python scripts orchestrate **cross-session workflows** where multiple Claude ins
 | Cross-branch work (worktrees)      | **Yes**     | Each worktree needs its own Claude session        |
 | Result aggregation across sessions | **Yes**     | No shared state between sessions                  |
 
-### Core Python Package (`claude-plugins-core`)
+### Core Python Package (`agentic-forge-core`)
 
 ```
 plugins/core/src/claude_core/
@@ -268,7 +268,7 @@ configure_logging(
 }
 ```
 
-### SDLC Python Package (`claude-plugins-sdlc`)
+### SDLC Python Package (`agentic-forge-sdlc`)
 
 ```
 plugins/sdlc/src/claude_sdlc/
@@ -280,7 +280,7 @@ plugins/sdlc/src/claude_sdlc/
 └── cli.py             # Entry point
 ```
 
-**Depends on**: `claude-plugins-core`
+**Depends on**: `agentic-forge-core`
 
 ---
 
@@ -521,7 +521,7 @@ argument-hint: <chore-description> [--interactive]
 | Agents          | kebab-case with domain | `code-reviewer.md`          |
 | Hooks           | event-description      | `session-start-context.ps1` |
 | Python modules  | snake_case             | `runner.py`                 |
-| Python packages | kebab-case             | `claude-plugins-core`       |
+| Python packages | kebab-case             | `agentic-forge-core`        |
 
 ### Frontmatter
 
@@ -577,7 +577,7 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
 
    - Move `runner.py` from development to core
    - Create `orchestrator.py` in core
-   - Set up `pyproject.toml` for `claude-plugins-core`
+   - Set up `pyproject.toml` for `agentic-forge-core`
 
 2. **Add git-worktree command**
 
@@ -608,8 +608,8 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
 
 3. **Set up Python package**
 
-   - Create `pyproject.toml` for `claude-plugins-sdlc`
-   - Add dependency on `claude-plugins-core`
+   - Create `pyproject.toml` for `agentic-forge-sdlc`
+   - Add dependency on `agentic-forge-core`
 
 4. **Move/reorganize commands**
    - Keep: `implement-from-plan.md`
@@ -740,8 +740,8 @@ All prompts (commands, agents, skills) must follow the structure defined in the 
 
 # Update Python packages
 pip uninstall claude-workflows  # if previously installed
-pip install claude-plugins-core
-pip install claude-plugins-sdlc
+pip install agentic-forge-core
+pip install agentic-forge-sdlc
 ```
 
 ---

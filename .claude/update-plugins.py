@@ -134,7 +134,7 @@ def main():
     # Step 1: Update the marketplace from local repository
     print_step(1, total_steps, "Update Marketplace")
     if run_command(
-        ["claude", "plugin", "marketplace", "update", "claude-plugins"],
+        ["claude", "plugin", "marketplace", "update", "agentic-forge"],
         "Update marketplace from local repository",
         cwd=repo_root,
     ):

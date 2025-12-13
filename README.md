@@ -1,6 +1,6 @@
-# 🧠 claude-plugins
+# 🧠 agentic-forge
 
-[![Auto-Format Code](https://github.com/e-stpierre/claude-plugins/actions/workflows/auto-format.yml/badge.svg)](https://github.com/e-stpierre/claude-plugins/actions/workflows/auto-format.yml)
+[![Auto-Format Code](https://github.com/e-stpierre/agentic-forge/actions/workflows/auto-format.yml/badge.svg)](https://github.com/e-stpierre/agentic-forge/actions/workflows/auto-format.yml)
 
 A modular collection of commands, sub-agents, skills, and hooks designed to extend and customize Claude Code for both generic and specialized development scenarios.
 
@@ -63,15 +63,19 @@ By providing a standardized way to package and distribute Claude Code extensions
 ## 📁 Repository Structure
 
 ```
-claude-plugins/
-├── commands/          # Slash command definitions
-├── agents/           # Sub-agent configurations
-├── skills/           # Reusable skill modules
-├── hooks/            # Runtime hooks and event handlers
-├── templates/        # Project configuration templates
+agentic-forge/
+├── plugins/          # Root folder for all plugins
+│   └── <plugin-name>/
+│       ├── agents/   # Sub-agent configurations
+│       ├── commands/ # Slash command definitions
+│       ├── skills/   # Reusable skill modules
+│       ├── hooks/    # Runtime hooks and event handlers
+│       └── README.md # Plugin-specific documentation
 ├── docs/             # Documentation and guides
 └── examples/         # Example implementations and use cases
 ```
+
+Each plugin is self-contained within its own directory under `plugins/`, allowing for modular installation and management.
 
 ## 🚦 Getting Started
 
@@ -86,7 +90,7 @@ claude-plugins/
 Add this repository as a plugin marketplace in Claude Code:
 
 ```bash
-/plugin marketplace add e-stpierre/claude-plugins
+/plugin marketplace add e-stpierre/agentic-forge
 ```
 
 **For private repositories**: Ensure you have proper Git authentication configured (SSH keys or GitHub personal access token).
@@ -113,7 +117,7 @@ This opens an interactive menu where you can:
 Install the latest version of the marketplace:
 
 ```bash
-/plugin marketplace add e-stpierre/claude-plugins
+/plugin marketplace add e-stpierre/agentic-forge
 ```
 
 #### Specific Version
@@ -121,7 +125,7 @@ Install the latest version of the marketplace:
 Install a specific version using git tags:
 
 ```bash
-/plugin marketplace add e-stpierre/claude-plugins#v1.1.0
+/plugin marketplace add e-stpierre/agentic-forge#v1.1.0
 ```
 
 #### Update Marketplace
@@ -129,7 +133,7 @@ Install a specific version using git tags:
 Update the marketplace to the latest version:
 
 ```bash
-/plugin marketplace update claude-plugins
+/plugin marketplace update agentic-forge
 ```
 
 #### Update Python Tools
@@ -140,20 +144,20 @@ Some plugins include Python CLI tools for workflow orchestration. Install them w
 
 ```powershell
 # Core package (required for orchestration)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\core"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\core"
 
 # SDLC workflows (depends on core)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\claude-plugins\plugins\sdlc"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\sdlc"
 ```
 
 **macOS/Linux:**
 
 ```bash
 # Core package (required for orchestration)
-uv tool install ~/.claude/plugins/marketplaces/claude-plugins/plugins/core
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/core
 
 # SDLC workflows (depends on core)
-uv tool install ~/.claude/plugins/marketplaces/claude-plugins/plugins/sdlc
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/sdlc
 ```
 
 **Available CLI commands after installation:**
@@ -169,7 +173,7 @@ uv tool install ~/.claude/plugins/marketplaces/claude-plugins/plugins/sdlc
 Remove the marketplace from your configuration:
 
 ```bash
-/plugin marketplace remove claude-plugins
+/plugin marketplace remove agentic-forge
 ```
 
 **⚠️ Warning**: Removing a marketplace will uninstall all plugins from that marketplace. This is useful when you need to install a previous version of the marketplace or its plugins.
@@ -285,7 +289,7 @@ Detailed documentation for each plugin type can be found in the `docs/` director
 
 - [Claude Code Documentation](https://docs.claude.com/en/docs/claude-code)
 - [Claude Code GitHub](https://github.com/anthropics/claude-code)
-- [Community Discussions](https://github.com/e-stpierre/claude-plugins/discussions)
+- [Community Discussions](https://github.com/e-stpierre/agentic-forge/discussions)
 
 ## 📄 License
 
