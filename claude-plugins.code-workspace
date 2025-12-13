@@ -5,16 +5,12 @@
     }
   ],
   "settings": {
-    "markdownlint.config": {
-      "MD040": false // Fenced code blocks should have a language specified
-    },
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true,
     "files.associations": {
       "*.md": "markdown"
     },
     "editor.wordWrap": "on",
-    "markdown.preview.breaks": true,
     "files.exclude": {
       "**/.git": true
     },

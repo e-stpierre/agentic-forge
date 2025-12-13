@@ -114,6 +114,24 @@ Real-world example implementations showing plugins in action. Examples should:
 - **Hooks**: Shell scripts (`.sh`) or executable programs
 - **Templates**: Directory structures with configuration files
 
+### Code Style and Formatting
+
+All markdown files in this repository are automatically formatted using [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2). When you create a pull request, a GitHub Actions workflow will automatically format any changed `.md` files and commit the changes back to your PR branch.
+
+**Configuration**: The markdownlint rules are defined in `.markdownlint-cli2.jsonc` at the repository root.
+
+**Manual formatting** (optional):
+
+```bash
+# Format all markdown files
+npx markdownlint-cli2 "**/*.md"
+
+# Format specific files
+npx markdownlint-cli2 README.md CLAUDE.md
+```
+
+You don't need to manually format markdown files before committing - the CI pipeline handles this automatically for all pull requests.
+
 ## Working with This Repository
 
 ### When Adding New Plugins

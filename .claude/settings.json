@@ -1,17 +1,4 @@
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -File .claude/hooks/format-markdown.ps1"
-          }
-        ]
-      }
-    ]
-  },
   "enabledPlugins": {
     "core@claude-plugins": true,
     "sdlc@claude-plugins": true,

@@ -217,12 +217,21 @@ uv run .claude/update-plugins.py
 - Test plugins in multiple contexts before submitting
 - Use descriptive names and comments
 
-### Style
+### Code Style
 
-Prettier format:
+All markdown files in this repository are automatically formatted using [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) when pull requests are created or updated. The CI pipeline will automatically format any changed
+`.md` files and commit the changes back to your PR branch.
 
-```
-npx prettier --write .
+Configuration can be found in `.markdownlint-cli2.jsonc` at the repository root.
+
+Manual formatting (optional):
+
+```bash
+# Format all markdown files
+npx markdownlint-cli2 "**/*.md"
+
+# Format specific files
+npx markdownlint-cli2 README.md CLAUDE.md
 ```
 
 ## 📚 Documentation
