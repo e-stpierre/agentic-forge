@@ -1,59 +1,142 @@
+<!--
+COMMAND PROMPT TEMPLATE
+
+This template defines the exact structure for Claude Code command prompts.
+
+REQUIRED FRONTMATTER FIELDS:
+- name: Kebab-case identifier for the command
+- description: One-line description shown in help menus (recommended: under 100 characters)
+- argument-hint: Usage pattern showing arguments (can be empty string)
+
+REQUIRED SECTIONS:
+- Parameters (if command takes arguments)
+- Objective
+- Core Principles
+- Instructions
+- Output Guidance
+
+OPTIONAL SECTIONS:
+- Templates (for commands that generate structured outputs)
+- Configuration (for commands with configurable settings)
+- Don't (for commands that need explicit anti-patterns)
+-->
+
 ---
-name: <command-name>
-description: <Brief description of what the command does>
-argument-hint: <required-arg> [optional-arg]
+name: {{command-name}}
+description: {{command-description}}
+argument-hint: {{argument-pattern}}
 ---
 
-# <Command Title>
+# {{command_title}}
 
-<Brief 1-3 sentence description of what the command accomplishes and when to use it.>
+{{command_definition}}
+
+<!--
+Instructions:
+- Replace {{command_definition}} with a brief 1-3 sentence description
+- Explain what the command accomplishes and when to use it
+-->
 
 ## Parameters
 
-- **`<parameter-name>`** (required/optional): <Description of the parameter and its expected format>
-- **`<another-param>`** (optional): <Description with default value if applicable>
+{{parameters}}
+
+<!--
+Instructions:
+- Replace {{parameters}} with a bullet-point list defining each parameter
+- Format: **`parameter-name`** (required/optional): Description and expected format
+- Include default values where applicable
+- Omit this section entirely if the command takes no arguments
+-->
 
 ## Objective
 
-<Clear, single statement defining the primary goal the command must achieve.>
+{{objective}}
+
+<!--
+Instructions:
+- Replace {{objective}} with a clear, single statement
+- Define the primary goal the command must achieve
+-->
 
 ## Core Principles
 
-- <Principle statement as bullet point>
-- <Focus on constraints, quality standards, and behavioral expectations>
-- <Include security considerations where relevant>
+{{principles}}
+
+<!--
+Instructions:
+- Replace {{principles}} with bullet points of key guidelines
+- Focus on constraints, quality standards, and behavioral expectations
+- Include security considerations where relevant
+- Example principles:
+  - Validate input before processing
+  - Preserve existing functionality
+  - Report errors clearly
+-->
 
 ## Instructions
 
-1. <First action to take>
-2. <Second action to take>
-3. <Continue with logical sequence>
-4. <Final verification or output step>
+{{instructions}}
+
+<!--
+Instructions:
+- Replace {{instructions}} with numbered step-by-step execution instructions
+- Use format: 1. First action, 2. Second action, etc.
+- Provide logical sequence from start to completion
+- Include verification or validation steps
+-->
 
 ## Output Guidance
 
-<Define the expected output format and content:>
+{{output}}
 
-- <Specify output structure (markdown, JSON, plain text)>
-- <Define what information must be included>
-- <Note any formatting requirements>
+<!--
+Instructions:
+- Replace {{output}} with expected output format and content definition
+- Specify output structure (markdown, JSON, plain text, etc.)
+- Define what information must be included
+- Note any formatting requirements
+- Suggested elements (include others as needed):
+  - Output formats and structure
+  - Required content and detail level
+  - Examples of expected output
+-->
 
 ## Templates (optional)
 
-<Embedded templates for structured outputs the command generates>
+{{templates}}
 
-```<language>
-<Template structure with placeholders>
-```
+<!--
+Instructions:
+- Replace {{templates}} with embedded templates for structured outputs
+- Use code blocks to show template structure
+- Include placeholders with clear naming (e.g., [Feature Name], {{variable}})
+- Document each section of the template
+- This section is recommended for commands that generate files or structured output
+-->
 
 ## Configuration (optional)
 
-<Settings, defaults, and tunables for the command>
+{{configuration}}
 
-- <List configurable parameters with defaults>
-- <Explain when to adjust settings>
+<!--
+Instructions:
+- Replace {{configuration}} with settings, defaults, and tunables
+- List configurable parameters with their default values
+- Explain when to adjust settings
+- Group related settings together
+-->
 
 ## Don't (optional)
 
-- <Element that the command should not do>
-- <Another thing to avoid>
+{{anti_patterns}}
+
+<!--
+Instructions:
+- Replace {{anti_patterns}} with bullet points of things to avoid
+- List elements that the command should not do
+- Clarify common mistakes or misuses
+- Example items:
+  - Don't modify files without user confirmation
+  - Don't skip validation steps
+-->

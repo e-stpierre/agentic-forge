@@ -1,41 +1,101 @@
+<!--
+SKILL PROMPT TEMPLATE
+
+This template defines the exact structure for Claude Code skill prompts.
+
+REQUIRED FRONTMATTER FIELDS:
+- name: Kebab-case identifier for the skill
+- description: One-line description shown when skill is available (recommended: under 100 characters)
+- argument-hint: Usage pattern showing expected inputs (can be empty string)
+
+REQUIRED SECTIONS:
+- Definition
+- Parameters (if skill takes arguments)
+- Objective
+- Core Principles
+- Instructions
+- Output Guidance
+-->
+
 ---
-name: <skill-name>
-description: <Brief description of what the skill provides>
-argument-hint: <required-arg> [optional-arg]
+name: {{skill-name}}
+description: {{skill-description}}
+argument-hint: {{argument-pattern}}
 ---
 
-# <Skill Title>
+# {{skill_title}}
 
 ## Definition
 
-<Brief 1-3 sentence description of the skill's purpose and the capability it provides.>
+{{definition}}
+
+<!--
+Instructions:
+- Replace {{definition}} with a brief 1-3 sentence description
+- Explain the skill's purpose and the capability it provides
+- Clarify when and why to use this skill
+-->
 
 ## Parameters
 
-- **`<parameter-name>`** (required/optional): <Description of the parameter and its expected format>
-- **`<another-param>`** (optional): <Description with default value if applicable>
+{{parameters}}
+
+<!--
+Instructions:
+- Replace {{parameters}} with a bullet-point list defining each parameter
+- Format: **`parameter-name`** (required/optional): Description and expected format
+- Include default values where applicable
+- Omit this section entirely if the skill takes no arguments
+-->
 
 ## Objective
 
-<Clear, single statement defining the primary capability the skill delivers.>
+{{objective}}
+
+<!--
+Instructions:
+- Replace {{objective}} with a clear, single statement
+- Define the primary capability the skill delivers
+-->
 
 ## Core Principles
 
-- <Principle statement as bullet point>
-- <Focus on modularity, composability, and reusability>
-- <Define boundaries of what the skill does and does not do>
+{{principles}}
+
+<!--
+Instructions:
+- Replace {{principles}} with bullet points of key guidelines
+- Focus on modularity, composability, and reusability
+- Define boundaries of what the skill does and does not do
+- Suggested elements (include others as needed):
+  - Single responsibility principle
+  - Composability with other skills
+  - State management approach
+  - Error handling philosophy
+-->
 
 ## Instructions
 
-1. <First action to take>
-2. <Second action to take>
-3. <Continue with logical sequence>
-4. <Final verification or output step>
+{{instructions}}
+
+<!--
+Instructions:
+- Replace {{instructions}} with numbered step-by-step execution instructions
+- Use format: 1. First action, 2. Second action, etc.
+- Provide logical sequence from start to completion
+- Include verification or validation steps
+-->
 
 ## Output Guidance
 
-<Define the expected output format and content>
+{{output}}
 
-- <Specify output structure (markdown, JSON, structured data)>
-- <Define what information must be returned>
-- <Note any formatting or integration requirements>
+<!--
+Instructions:
+- Replace {{output}} with expected output format and content definition
+- Suggested elements (include others as needed):
+  - Output structure (markdown, JSON, structured data)
+  - What information must be returned
+  - Formatting or integration requirements
+  - How output should be consumed by other skills/commands
+-->

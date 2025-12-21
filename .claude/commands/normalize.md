@@ -12,15 +12,13 @@ Validate that prompt files (commands, agents, skills) conform to the exact struc
 - `docs/templates/agent-template.md` for agents
 - `docs/templates/skill-template.md` for skills
 
-Reference documentation:
+**Template Convention:**
 
-- `docs/templates/commands-prompt-reference.md`
-- `docs/templates/agents-prompt-reference.md`
-- `docs/templates/skills-prompt-reference.md`
+All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`) with HTML comment instructions. See `CLAUDE.md` section "Prompt Template Convention" for complete details.
 
 ## Parameters
 
-- **`--autofix`** (optional): Automatically modify files to make them compliant with the documentation. Without this flag, only reports issues.
+- **`--autofix`** (optional): Automatically modify files to make them compliant with the templates. Without this flag, only reports issues.
 - **`file-or-directory`** (optional): One or more paths to files or directories to validate. If omitted, validates all prompt files in the repository.
 
 ## Objective
@@ -30,9 +28,11 @@ Ensure all prompt files exactly match the structure, section names, and content 
 ## Core Principles
 
 - Validate against exact template structure (read the template file for the prompt type)
+- Templates use `{{placeholder}}` format with HTML comment instructions
 - Section names must match exactly (case-sensitive)
 - Required sections must be present in the correct order
-- Optional sections follow reference documentation guidelines
+- Optional sections are marked as "(optional)" in the template
+- Suggested elements in HTML comments are flexible - other elements can be included
 - Report all issues with clear, actionable feedback
 - Only modify files when `--autofix` flag is provided
 - Skip non-prompt files (non-.md files, READMEs, etc.)
@@ -55,15 +55,18 @@ Ensure all prompt files exactly match the structure, section names, and content 
    Determine the prompt type based on file location:
    - Files in `*/commands/` directories -> Command
      - Read `docs/templates/command-template.md`
-     - Read `docs/templates/commands-prompt-reference.md`
    - Files in `*/agents/` directories -> Agent
      - Read `docs/templates/agent-template.md`
-     - Read `docs/templates/agents-prompt-reference.md`
    - Files in `*/skills/` directories -> Skill
      - Read `docs/templates/skill-template.md`
-     - Read `docs/templates/skills-prompt-reference.md`
 
    Skip files that cannot be classified (not in a recognized directory).
+
+   **Understanding Template Structure:**
+   - Templates use `{{placeholder}}` format for variable content
+   - HTML comments (`<!-- Instructions: ... -->`) provide guidance
+   - Required sections are listed in the template header comment
+   - Optional sections are marked with "(optional)" in section headings
 
 3. **Validate Frontmatter**
 
@@ -146,7 +149,9 @@ Ensure all prompt files exactly match the structure, section names, and content 
 
    - Verify kebab-case naming convention in `name` field
    - Ensure description is concise (under 100 characters recommended)
-   - Validate that placeholders in frontmatter are replaced with actual values
+   - Validate that `{{placeholders}}` are replaced with actual values (not literal `{{text}}`)
+   - Check that HTML comments from template are removed (they're for template guidance only)
+   - Ensure "Suggested elements" lists from comments are replaced with actual content
 
 9. **Apply Autofix (if `--autofix` flag is present)**
 
@@ -224,7 +229,6 @@ Present results in a structured format:
 ### path/to/file.md (Command)
 
 Template: docs/templates/command-template.md
-Reference: docs/templates/commands-prompt-reference.md
 
 **Frontmatter:**
 - [PASS] All required fields present
@@ -245,7 +249,6 @@ Reference: docs/templates/commands-prompt-reference.md
 ### path/to/another.md (Agent)
 
 Template: docs/templates/agent-template.md
-Reference: docs/templates/agents-prompt-reference.md
 
 **Frontmatter:**
 - [FAIL] Missing required field: tools
@@ -277,7 +280,6 @@ Report modifications as they are made:
 ### path/to/file.md (Command)
 
 Template: docs/templates/command-template.md
-Reference: docs/templates/commands-prompt-reference.md
 
 - [FIXED] Added missing frontmatter field: argument-hint (empty string)
 - [FIXED] Added missing section: "Output Guidance" at line 85
@@ -287,7 +289,6 @@ Reference: docs/templates/commands-prompt-reference.md
 ### path/to/another.md (Agent)
 
 Template: docs/templates/agent-template.md
-Reference: docs/templates/agents-prompt-reference.md
 
 - [FIXED] Added missing frontmatter field: tools -> [Read, Glob, Grep]
 - [FIXED] Added missing frontmatter field: color -> blue

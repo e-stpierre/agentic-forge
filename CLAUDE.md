@@ -121,6 +121,56 @@ Real-world example implementations showing plugins in action. Examples should:
 - **Hooks**: Shell scripts (`.sh`) or executable programs in `plugins/<plugin-name>/hooks/`
 - **Python Tools**: Python packages in `plugins/<plugin-name>/src/` with `pyproject.toml`
 
+### Prompt Template Convention
+
+All prompt files (commands, agents, skills) must follow the exact structure defined in the template files located in `docs/templates/`:
+
+- `docs/templates/command-template.md` - Structure for command prompts
+- `docs/templates/agent-template.md` - Structure for agent prompts
+- `docs/templates/skill-template.md` - Structure for skill prompts
+
+**Placeholder Convention:**
+
+Prompt templates use **Mustache/Handlebars-style placeholders** with the following format:
+
+```markdown
+## {{section_title}}
+
+{{content}}
+
+<!--
+Instructions:
+- Replace {{content}} with the actual content
+- Additional guidance for this section
+- Suggested elements (include others as needed):
+  - Element 1
+  - Element 2
+-->
+```
+
+**Key principles:**
+
+- Use `{{variable_name}}` for all placeholders (not `<placeholder>` or other formats)
+- Include HTML comments with instructions below each section
+- Mark suggested elements as "include others as needed" to allow flexibility
+- Required sections must be present; optional sections can be omitted
+- Section names must match the template exactly (case-sensitive)
+
+**Validation:**
+
+Use the `/normalize` command to validate prompt files against templates:
+
+```bash
+# Validate all prompts in the repository
+/normalize
+
+# Validate specific files or directories
+/normalize plugins/my-plugin/commands/
+
+# Auto-fix non-compliant files
+/normalize --autofix plugins/my-plugin/
+```
+
 ### Code Style and Formatting
 
 All code in this repository is automatically formatted when you create a pull request. A GitHub Actions workflow will format any changed files and commit the changes back to your PR branch.
