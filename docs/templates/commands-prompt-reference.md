@@ -74,14 +74,6 @@ Embedded templates for structured outputs the command generates:
 - Include placeholders with clear naming (e.g., `[Feature Name]`)
 - Document each section of the template
 
-### Examples (optional)
-
-Usage scenarios demonstrating the command in action:
-
-- Show simple and complex usage patterns
-- Include expected inputs and outputs
-- Illustrate edge cases when relevant
-
 ### Configuration (optional)
 
 Settings, defaults, and tunables for the command:
@@ -90,10 +82,6 @@ Settings, defaults, and tunables for the command:
 - Explain when to adjust settings
 - Group related settings together
 
-### Best Practices (optional)
+### Don't (optional)
 
-Guidelines beyond core principles for optimal usage:
-
-- Organize by topic or phase of execution
-- Provide actionable recommendations
-- Explain rationale when helpful
+Bulletpoint list of elements that the command should not do
