@@ -25,29 +25,29 @@
       "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
     },
     {
-      "name": "sdlc",
+      "name": "agentic-sdlc",
       "source": "./",
-      "description": "Software Development Lifecycle toolkit with planning, implementation, review, and testing workflows",
-      "version": "1.0.0",
+      "description": "Fully autonomous SDLC workflow orchestrated via Python, with no user interaction",
+      "version": "2.0.0",
       "category": "sdlc",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": ["sdlc", "planning", "implementation", "review", "testing", "workflows", "features", "bugs", "chores"],
+      "keywords": ["sdlc", "autonomous", "agentic", "python", "orchestration", "ci-cd", "workflows"],
       "strict": false,
       "commands": [
-        "./plugins/sdlc/commands/design.md",
-        "./plugins/sdlc/commands/plan.md",
-        "./plugins/sdlc/commands/plan-feature.md",
-        "./plugins/sdlc/commands/plan-bug.md",
-        "./plugins/sdlc/commands/plan-chore.md",
-        "./plugins/sdlc/commands/plan-build.md",
-        "./plugins/sdlc/commands/implement.md",
-        "./plugins/sdlc/commands/implement-from-plan.md",
-        "./plugins/sdlc/commands/review.md",
-        "./plugins/sdlc/commands/test.md"
+        "./plugins/agentic-sdlc/commands/design.md",
+        "./plugins/agentic-sdlc/commands/plan.md",
+        "./plugins/agentic-sdlc/commands/plan-feature.md",
+        "./plugins/agentic-sdlc/commands/plan-bug.md",
+        "./plugins/agentic-sdlc/commands/plan-chore.md",
+        "./plugins/agentic-sdlc/commands/plan-build.md",
+        "./plugins/agentic-sdlc/commands/implement.md",
+        "./plugins/agentic-sdlc/commands/implement-from-plan.md",
+        "./plugins/agentic-sdlc/commands/review.md",
+        "./plugins/agentic-sdlc/commands/test.md"
       ]
     },
     {
