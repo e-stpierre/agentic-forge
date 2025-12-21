@@ -6,7 +6,17 @@ argument-hint: [--autofix] [file-or-directory...]
 
 # Normalize Command
 
-Validate that prompt files (commands, agents, skills) conform to the reference guidelines defined in `docs/`.
+Validate that prompt files (commands, agents, skills) conform to the exact structure defined in the template files:
+
+- `docs/templates/command-template.md` for commands
+- `docs/templates/agent-template.md` for agents
+- `docs/templates/skill-template.md` for skills
+
+Reference documentation:
+
+- `docs/templates/commands-prompt-reference.md`
+- `docs/templates/agents-prompt-reference.md`
+- `docs/templates/skills-prompt-reference.md`
 
 ## Parameters
 
@@ -15,11 +25,14 @@ Validate that prompt files (commands, agents, skills) conform to the reference g
 
 ## Objective
 
-Ensure all prompt files follow the structural and content requirements defined in the prompt reference documentation.
+Ensure all prompt files exactly match the structure, section names, and content requirements defined in the template files.
 
 ## Core Principles
 
-- Validate against the appropriate reference based on file location
+- Validate against exact template structure (read the template file for the prompt type)
+- Section names must match exactly (case-sensitive)
+- Required sections must be present in the correct order
+- Optional sections follow reference documentation guidelines
 - Report all issues with clear, actionable feedback
 - Only modify files when `--autofix` flag is provided
 - Skip non-prompt files (non-.md files, READMEs, etc.)
@@ -37,40 +50,69 @@ Ensure all prompt files follow the structural and content requirements defined i
    - Scan `plugins/*/commands/*.md`, `plugins/*/agents/*.md`, `plugins/*/skills/*.md`
    - Also scan `.claude/commands/*.md` and `.claude/skills/*.md`
 
-2. **Classify Each File**
+2. **Classify Each File and Load Template**
 
    Determine the prompt type based on file location:
-   - Files in `*/commands/` directories -> Command (use `docs/commands-prompt-reference.md`)
-   - Files in `*/agents/` directories -> Agent (use `docs/agents-prompt-reference.md`)
-   - Files in `*/skills/` directories -> Skill (use `docs/skills-prompt-reference.md`)
+   - Files in `*/commands/` directories -> Command
+     - Read `docs/templates/command-template.md`
+     - Read `docs/templates/commands-prompt-reference.md`
+   - Files in `*/agents/` directories -> Agent
+     - Read `docs/templates/agent-template.md`
+     - Read `docs/templates/agents-prompt-reference.md`
+   - Files in `*/skills/` directories -> Skill
+     - Read `docs/templates/skill-template.md`
+     - Read `docs/templates/skills-prompt-reference.md`
 
    Skip files that cannot be classified (not in a recognized directory).
 
 3. **Validate Frontmatter**
 
-   For **Commands** and **Skills**, check required frontmatter fields:
-   - `name` (required): Must be kebab-case
-   - `description` (required): Must be a one-line description
-   - `argument-hint` (required): Can be empty but must be present
+   Parse the YAML frontmatter and validate:
 
-   For **Agents**, check required frontmatter fields:
-   - `name` (required): Must be kebab-case
-   - `description` (required): One-line description of domain expertise
-   - `tools` (required): Array of tool names
-   - `model` (required): Must be one of `sonnet`, `opus`, `haiku`
-   - `color` (required): Display color for UI
+   For **Commands** and **Skills**:
+   - `name` (required): Must be present, must be kebab-case
+   - `description` (required): Must be present, must be a one-line description
+   - `argument-hint` (required): Must be present (can be empty string)
 
-4. **Validate Structure**
+   For **Agents**:
+   - `name` (required): Must be present, must be kebab-case
+   - `description` (required): Must be present, one-line description
+   - `tools` (required): Must be present, must be array format
+   - `model` (required): Must be present, must be one of `sonnet`, `opus`, `haiku`
+   - `color` (required): Must be present
 
-   For **Commands**, check for these sections:
-   - Definition or clear description (required)
-   - Parameters section if command takes arguments
+4. **Extract Section Structure from Template**
+
+   Parse the template file to identify:
+   - Required section names and their exact capitalization
+   - Optional section names
+   - Expected section order
+   - Whether sections should have subsections
+
+5. **Validate Section Presence and Names**
+
+   For each file being validated:
+   - Extract all heading sections (## level)
+   - Compare section names against template (case-sensitive exact match)
+   - Report missing required sections
+   - Report misspelled or incorrectly capitalized section names
+   - Report sections in wrong order
+
+   **Required sections per template:**
+
+   For **Commands** (from command-template.md):
+   - Parameters (required if command has arguments)
    - Objective (required)
    - Core Principles (required)
-   - Instructions (required, numbered steps)
+   - Instructions (required)
    - Output Guidance (required)
 
-   For **Agents**, check for these sections:
+   **Optional sections for Commands:**
+   - Templates (optional - check reference for when this should be present)
+   - Configuration (optional)
+   - Don't (optional)
+
+   For **Agents** (from agent-template.md):
    - Purpose (required)
    - Methodology (required)
    - Tools Available (required)
@@ -78,22 +120,35 @@ Ensure all prompt files follow the structural and content requirements defined i
    - Knowledge Base (required)
    - Output Guidance (required)
 
-   For **Skills**, check for these sections:
+   For **Skills** (from skill-template.md):
    - Definition (required)
-   - Parameters section if skill takes arguments
+   - Parameters (required if skill has arguments)
    - Objective (required)
    - Core Principles (required)
-   - Instructions (required, numbered steps)
+   - Instructions (required)
    - Output Guidance (required)
 
-5. **Check Content Quality**
+6. **Validate Section Content**
+
+   - **Instructions section**: Must contain numbered list (1. 2. 3. etc.)
+   - **Core Principles section**: Should contain bullet points
+   - **Parameters section**: Should contain bullet points with parameter formatting
+   - **Objective section**: Should be a clear, concise statement
+
+7. **Validate Special Requirements**
+
+   Based on file-specific context:
+   - Plan commands (plan-feature, plan-bug, plan-chore) should have Templates section with plan structure
+   - Analyse commands should have report template in Templates or Output Guidance section
+   - Check for ASCII-only content (no special Unicode characters)
+
+8. **Check Content Quality**
 
    - Verify kebab-case naming convention in `name` field
    - Ensure description is concise (under 100 characters recommended)
-   - Check that Instructions section contains numbered steps
-   - Validate ASCII-only content (no special Unicode characters)
+   - Validate that placeholders in frontmatter are replaced with actual values
 
-6. **Apply Autofix (if `--autofix` flag is present)**
+9. **Apply Autofix (if `--autofix` flag is present)**
 
    When `--autofix` is specified in `$ARGUMENTS`, directly modify files to fix issues:
 
@@ -103,45 +158,59 @@ Ensure all prompt files follow the structural and content requirements defined i
    - Add missing required fields with sensible defaults:
      - `name`: Derive from filename (convert to kebab-case)
      - `description`: Use first paragraph or heading as basis
-     - `argument-hint`: Empty string if no parameters detected
+     - `argument-hint`: Empty string if no parameters detected (commands/skills)
      - `tools`: `[Read, Glob, Grep]` for agents
      - `model`: `sonnet` for agents
      - `color`: `blue` for agents
 
    **Structure fixes:**
 
-   - Add missing required sections with placeholder content
-   - Use the reference documentation templates as guidance
+   - Add missing required sections by copying from the template
+   - Insert sections in the correct order as defined in the template
+   - Preserve existing content and add placeholders for new sections
    - Mark added sections with `<!-- TODO: Fill in this section -->` comments
+
+   **Section name fixes:**
+
+   - Rename incorrectly capitalized sections to match template exactly
+   - For example: `## parameters` -> `## Parameters`
+   - Preserve section content when renaming
 
    **Content fixes:**
 
-   - Convert non-kebab-case names to kebab-case
+   - Convert non-kebab-case names to kebab-case in frontmatter
    - Replace non-ASCII characters with ASCII equivalents
    - Ensure Instructions section uses numbered list format
+   - Ensure Core Principles section uses bullet points
 
    **Autofix principles:**
 
-   - Read the file before modifying
+   - Read both the file and the template before modifying
    - Preserve all existing content
-   - Insert new sections in the correct order per the reference
+   - Insert new sections in the correct order per the template
    - Report each modification made
 
-7. **Generate Report**
+10. **Generate Report**
 
-   For each file, report:
+    For each file, report:
 
-   - File path and detected type
-   - List of issues found (if any)
-   - Suggested fixes for each issue (in validate-only mode)
-   - Modifications applied (in autofix mode)
+    - File path and detected type
+    - Template being validated against
+    - List of issues found (if any):
+      - Missing frontmatter fields
+      - Missing required sections
+      - Section name mismatches (wrong capitalization or spelling)
+      - Sections in wrong order
+      - Content format issues
+    - Suggested fixes for each issue (in validate-only mode)
+    - Modifications applied (in autofix mode)
 
-   Summary at end:
+    Summary at end:
 
-   - Total files checked
-   - Files passing validation
-   - Files with issues
-   - Files modified (if autofix enabled)
+    - Total files checked
+    - Files passing validation (100% compliant with template)
+    - Files with issues (by category: frontmatter, structure, content)
+    - Files modified (if autofix enabled)
 
 ## Output Guidance
 
@@ -153,18 +222,49 @@ Present results in a structured format:
 ## Validation Results
 
 ### path/to/file.md (Command)
-- [PASS] Frontmatter complete
-- [FAIL] Missing "Output Guidance" section
-  Suggestion: Add an "## Output Guidance" section defining expected output format
+
+Template: docs/templates/command-template.md
+Reference: docs/templates/commands-prompt-reference.md
+
+**Frontmatter:**
+- [PASS] All required fields present
+- [PASS] name is kebab-case: "example-command"
+
+**Structure:**
+- [FAIL] Missing required section: "Output Guidance"
+  Expected: ## Output Guidance
+  Suggestion: Add section after "Instructions" section
+- [FAIL] Section name mismatch: "## parameters" should be "## Parameters"
+  Location: Line 15
+  Suggestion: Capitalize section name to match template exactly
+
+**Content:**
+- [PASS] Instructions section uses numbered list
+- [WARN] Description is 105 characters (recommended: under 100)
 
 ### path/to/another.md (Agent)
-- [FAIL] Missing required frontmatter field: tools
+
+Template: docs/templates/agent-template.md
+Reference: docs/templates/agents-prompt-reference.md
+
+**Frontmatter:**
+- [FAIL] Missing required field: tools
   Suggestion: Add `tools: [Read, Write, Bash]` to frontmatter
+- [FAIL] Missing required field: color
+  Suggestion: Add `color: blue` to frontmatter
+
+**Structure:**
+- [PASS] All required sections present
+- [PASS] Sections in correct order
 
 ## Summary
+
 - Files checked: 10
-- Passing: 8
-- With issues: 2
+- Passing (100% compliant): 7
+- With issues: 3
+  - Frontmatter issues: 1
+  - Structure issues: 2
+  - Content issues: 1
 ```
 
 ### Autofix mode (`--autofix`)
@@ -175,19 +275,44 @@ Report modifications as they are made:
 ## Autofix Results
 
 ### path/to/file.md (Command)
-- [FIXED] Added missing frontmatter field: argument-hint
-- [FIXED] Added missing "Output Guidance" section
-- [SKIP] Could not auto-generate: Objective section requires manual input
+
+Template: docs/templates/command-template.md
+Reference: docs/templates/commands-prompt-reference.md
+
+- [FIXED] Added missing frontmatter field: argument-hint (empty string)
+- [FIXED] Added missing section: "Output Guidance" at line 85
+- [FIXED] Renamed section: "## parameters" -> "## Parameters" at line 15
+- [INFO] Preserved all existing content
 
 ### path/to/another.md (Agent)
-- [FIXED] Added missing frontmatter field: tools (defaulted to [Read, Glob, Grep])
-- [FIXED] Converted name "MyAgent" to kebab-case "my-agent"
+
+Template: docs/templates/agent-template.md
+Reference: docs/templates/agents-prompt-reference.md
+
+- [FIXED] Added missing frontmatter field: tools -> [Read, Glob, Grep]
+- [FIXED] Added missing frontmatter field: color -> blue
+- [FIXED] Converted name: "MyAgent" -> "my-agent" (kebab-case)
+- [INFO] Preserved all existing content
 
 ## Summary
+
 - Files checked: 10
 - Files modified: 2
-- Issues auto-fixed: 4
-- Issues requiring manual fix: 1
+- Issues auto-fixed: 6
+  - Frontmatter fixes: 3
+  - Structure fixes: 2
+  - Content fixes: 1
+- Files now passing: 9
+- Files still with issues: 1 (requires manual review)
 ```
 
-If all files pass validation, output a brief success message.
+If all files pass validation, output:
+
+```markdown
+## Validation Results
+
+All files pass validation! ✓
+
+- Files checked: 10
+- All files are 100% compliant with their templates
+```
