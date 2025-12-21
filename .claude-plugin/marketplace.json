@@ -82,7 +82,8 @@
         "./plugins/interactive-sdlc/commands/plan-chore.md",
         "./plugins/interactive-sdlc/commands/plan-bug.md",
         "./plugins/interactive-sdlc/commands/plan-feature.md",
-        "./plugins/interactive-sdlc/commands/build.md"
+        "./plugins/interactive-sdlc/commands/build.md",
+        "./plugins/interactive-sdlc/commands/validate.md"
       ]
     }
   ]
