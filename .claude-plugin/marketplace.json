@@ -38,6 +38,7 @@
       "keywords": ["sdlc", "autonomous", "agentic", "python", "orchestration", "ci-cd", "workflows"],
       "strict": false,
       "commands": [
+        "./plugins/agentic-sdlc/commands/configure.md",
         "./plugins/agentic-sdlc/commands/design.md",
         "./plugins/agentic-sdlc/commands/plan.md",
         "./plugins/agentic-sdlc/commands/plan-feature.md",

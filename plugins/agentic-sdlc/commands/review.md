@@ -1,165 +1,100 @@
 ---
 name: review
-description: Review code changes for quality and correctness
-argument-hint: [branch | commit-range]
+description: Review code changes (autonomous, JSON I/O)
+argument-hint: --json-input <review.json> | --json-stdin
 ---
 
-# Review Command
+# Review Command (Autonomous)
 
-Reviews code changes and provides structured feedback on quality, correctness, and potential issues.
+Reviews code changes for quality, security, and correctness. Operates autonomously without user interaction.
 
-## Parameters
+## Input Schema
 
-- **`target`** (optional): What to review. Can be:
-  - Empty: Review uncommitted changes (staged + unstaged)
-  - Branch name: Review changes on branch vs main
-  - Commit range: Review specific commits (e.g., `HEAD~3..HEAD`)
-
-## Objective
-
-Provide actionable, high-quality code review feedback that helps improve code quality.
-
-## Core Principles
-
-- Focus on issues that matter - bugs, security, maintainability
-- Be specific and actionable - explain why and how to fix
-- Acknowledge good patterns and decisions
-- Avoid nitpicking style issues that linters should catch
-- Consider the context and intent of the changes
-- Prioritize feedback by severity
-
-## Instructions
-
-1. Determine the review target:
-   - If no argument: `git diff` (uncommitted changes)
-   - If branch name: `git diff main...<branch>` (branch changes)
-   - If commit range: `git diff <range>` (specific commits)
-
-2. Gather the changes:
-
-   ```bash
-   git diff [target] --stat  # Summary of changes
-   git diff [target]         # Full diff
-   ```
-
-3. For each changed file, analyze:
-   - **Correctness**: Logic errors, edge cases, error handling
-   - **Security**: Input validation, injection risks, auth issues
-   - **Performance**: Inefficient patterns, N+1 queries, memory leaks
-   - **Maintainability**: Complexity, readability, documentation
-   - **Testing**: Test coverage, test quality
-
-4. Read the full file context when needed:
-   - Use Read tool to understand surrounding code
-   - Check how changes integrate with existing code
-
-5. Categorize findings by severity:
-   - **Critical**: Must fix - bugs, security issues, data loss risks
-   - **Major**: Should fix - significant quality issues
-   - **Minor**: Consider fixing - small improvements
-   - **Positive**: Good practices worth noting
-
-6. Generate the review report
-
-## Output Guidance
-
-Structure the review as follows:
-
-````markdown
-## Code Review: [Target Description]
-
-### Summary
-
-**Files Changed**: N **Lines Added**: +X **Lines Removed**: -Y
-
-**Overall Assessment**: [Brief 1-2 sentence summary]
-
----
-
-### Critical Issues
-
-#### [Issue Title]
-
-**File**: `path/to/file.ts:123`
-
-**Issue**: [Description of the problem]
-
-**Impact**: [What could go wrong]
-
-**Suggestion**:
-
-```diff
-- current code
-+ suggested fix
-```
-````
-
----
-
-### Major Issues
-
-#### [Issue Title]
-
-**File**: `path/to/file.ts:45`
-
-**Issue**: [Description]
-
-**Suggestion**: [How to fix]
-
----
-
-### Minor Issues
-
-- `file.ts:10` - [Brief issue description]
-- `file.ts:25` - [Brief issue description]
-
----
-
-### Positive Notes
-
-- Good use of [pattern] in `file.ts`
-- Clear error handling in `handler.ts`
-- Well-structured tests
-
----
-
-### Checklist
-
-- [ ] No critical issues
-- [ ] Error handling is adequate
-- [ ] Edge cases are covered
-- [ ] Tests are included/updated
-- [ ] No security concerns
-
-### Verdict
-
-[Approve | Request Changes | Needs Discussion]
-
-[Final recommendation and any blocking items]
-
+```json
+{
+  "files": ["src/auth.ts", "src/config.ts"],
+  "commit_range": "abc123..def456",
+  "plan_file": "/specs/feature-auth.md",
+  "focus_areas": ["security", "error_handling"]
+}
 ```
 
-## Examples
+## Output Schema
 
-**Review uncommitted changes:**
+```json
+{
+  "success": true,
+  "findings": [
+    {
+      "id": "R001",
+      "severity": "critical",
+      "category": "security",
+      "file": "src/auth.ts",
+      "line": 45,
+      "message": "SQL injection vulnerability",
+      "suggestion": "Use parameterized queries",
+      "code_snippet": "const query = `SELECT * FROM users WHERE id = ${userId}`"
+    }
+  ],
+  "summary": {
+    "critical": 1,
+    "major": 2,
+    "medium": 5,
+    "low": 3,
+    "total": 11
+  },
+  "plan_compliance": {
+    "compliant": true,
+    "deviations": []
+  },
+  "verdict": "request_changes"
+}
 ```
 
-/sdlc:review
+## Categories
 
+- `security`: Vulnerabilities, unsafe patterns
+- `bugs`: Logic errors, edge cases
+- `error_handling`: Missing error handling
+- `performance`: Inefficient code
+- `maintainability`: Code quality
+- `style`: Consistency issues
+
+## Severity Levels
+
+- `critical`: Must fix - security, data loss
+- `major`: Should fix - bugs, significant issues
+- `medium`: Consider fixing - quality concerns
+- `low`: Minor improvements
+
+## Verdicts
+
+- `approve`: No blocking issues
+- `request_changes`: Critical or major issues
+- `needs_discussion`: Ambiguous or complex issues
+
+## Behavior
+
+1. **Parse Input**: Get files/commits to review
+2. **Read Changes**: Load file contents or diff
+3. **Analyze Code**: Check each category
+4. **Check Plan Compliance**: Verify against plan if provided
+5. **Output JSON**: Return structured findings
+
+## Usage
+
+```bash
+/agentic-sdlc:review --json-input /specs/review-input.json
 ```
 
-**Review a feature branch:**
-```
+## Python Integration
 
-/sdlc:review feature/add-auth
+```python
+result = run_claude("/agentic-sdlc:review", json_input={
+    "files": ["src/auth.ts"],
+    "plan_file": "/specs/feature-auth.md"
+})
 
-```
-
-**Review recent commits:**
-```
-
-/sdlc:review HEAD~5..HEAD
-
-```
-
+if result["summary"]["critical"] > 0:
+    print("Critical issues - blocking!")
 ```

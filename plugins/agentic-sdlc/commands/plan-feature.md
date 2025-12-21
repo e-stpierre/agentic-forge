@@ -1,203 +1,159 @@
 ---
 name: plan-feature
-description: Generate a feature implementation plan
-argument-hint: <feature-description> [--interactive]
+description: Generate a feature implementation plan (autonomous, JSON I/O)
+argument-hint: --json-input <spec.json> | --json-stdin
 ---
 
-# Plan Feature Command
+# Plan Feature Command (Autonomous)
 
-Analyzes the codebase and generates a comprehensive implementation plan for a new feature, organized into milestones for incremental commits.
+Analyzes the codebase and generates a comprehensive implementation plan for a new feature. Operates autonomously without user interaction.
 
-## Parameters
+## Input Modes
 
-- **`feature-description`** (required): Description of the feature to implement
-- **`--interactive`** (optional): Enable interactive mode to ask clarifying questions before planning
+- **`--json-input <path>`**: Read specification from JSON file
+- **`--json-stdin`**: Read specification from stdin
 
-## Objective
+## Input Schema
 
-Generate a detailed, actionable implementation plan organized into milestones. Each milestone represents a logical checkpoint where changes should be committed, enabling parallel development and clean git history.
+```json
+{
+  "type": "feature",
+  "title": "Feature title",
+  "description": "Detailed description of the feature",
+  "requirements": ["Requirement 1", "Requirement 2"],
+  "constraints": ["Technical constraint 1"],
+  "explore_agents": 3
+}
+```
 
-## Core Principles
+## Output Schema
 
-- Explore the codebase thoroughly before planning
-- Identify existing patterns and conventions to follow
-- Organize work into milestones (logical commit points)
-- Each milestone contains 1-many related tasks
-- Include validation criteria for each task and milestone
-- Keep plans focused and avoid scope creep
+```json
+{
+  "success": true,
+  "plan_file": "/specs/feature-auth.md",
+  "plan_data": {
+    "type": "feature",
+    "title": "User Authentication",
+    "milestones": [
+      {
+        "id": "m1",
+        "title": "Setup OAuth",
+        "commit_message": "feat: add OAuth configuration",
+        "tasks": [
+          {"id": "t1.1", "title": "Add dependencies", "files": ["package.json"]},
+          {"id": "t1.2", "title": "Create config", "files": ["src/config.ts"]}
+        ]
+      }
+    ],
+    "validation_criteria": ["All tests pass", "Feature works end-to-end"]
+  },
+  "summary": {
+    "milestones": 4,
+    "tasks": 12,
+    "complexity": "medium"
+  }
+}
+```
 
-## Instructions
+## Behavior
 
-1. Parse the input to extract the feature description and check for `--interactive` flag
+1. **Parse Input**
+   - Read JSON specification from file or stdin
+   - Validate required fields (type, title, description)
+   - Apply defaults for optional fields
 
-2. **If `--interactive` flag is present**, use the AskUserQuestion tool to gather clarifying information:
-   - What is the primary use case for this feature?
-   - Are there any specific technical constraints or preferences?
-   - What is the priority level and acceptable scope?
-   - Are there related existing features to consider?
+2. **Explore Codebase**
+   - Use Task tool with `subagent_type=Explore`
+   - Number of agents from input or default (3)
+   - Find related code, patterns, conventions
+   - Identify files to modify
 
-   Wait for user responses before proceeding.
-
-3. **If not `--interactive`**, use reasonable defaults:
-   - Assume standard use case based on description
-   - Follow existing codebase patterns
-   - Moderate scope with essential functionality only
-
-4. Use the Task tool with `subagent_type=Explore` to analyze the codebase:
-   - Find related existing code and patterns
-   - Identify files that will need modification
-   - Understand the project structure and conventions
-   - Locate relevant tests and documentation
-
-5. Based on exploration, design the implementation approach:
+3. **Design Implementation**
    - List all files to create or modify
-   - Group related changes into milestones (logical commit points)
-   - Define the order of milestones (dependencies first)
-   - Identify potential risks or blockers
-   - Note testing requirements
+   - Group changes into logical milestones
+   - Order by dependencies
+   - Identify risks and blockers
 
-6. Generate the plan document with milestone-based structure:
-   - Overview: Feature summary and goals
-   - Prerequisites: Dependencies, setup required
-   - Milestones: Ordered list of milestones, each containing tasks
-   - Final Validation: How to verify the feature works
+4. **Generate Plan**
+   - Write markdown plan file to `/specs/feature-{slug}.md`
+   - Structure with milestones and tasks
+   - Include validation criteria
 
-7. Write the plan to `docs/plans/<feature-slug>-plan.md`
+5. **Output JSON**
+   - Return structured JSON with plan data
+   - Include file path and summary
+   - No user interaction
 
-8. Report the plan location and provide a summary
-
-## Output Guidance
-
-Create a markdown plan file with this milestone-based structure:
+## Plan File Structure
 
 ```markdown
-# Feature: [Feature Name]
+# Feature: [Title]
 
 ## Overview
+[Description from input]
 
-[1-2 paragraph description of the feature and its goals]
+## Requirements
+- [Requirement 1]
+- [Requirement 2]
 
-## Prerequisites
-
-- [ ] [Any setup or dependencies required]
+## Architecture
+[High-level design decisions]
 
 ## Milestones
 
-### Milestone 1: [Milestone Title]
+### Milestone 1: [Title]
+**Commit**: `feat: [message]`
 
-**Commit message**: `feat: [descriptive commit message]`
-
-**Description**: [What this milestone accomplishes as a logical unit]
-
-#### Task 1.1: [Task Title]
-
+#### Task 1.1: [Title]
 **Files**: `path/to/file.ts`
-
 **Description**: [What to do]
 
-**Validation**:
-
-- [ ] [How to verify this task is complete]
-
-#### Task 1.2: [Task Title]
-
-**Files**: `path/to/another-file.ts`
-
-**Description**: [What to do]
-
-**Validation**:
-
-- [ ] [How to verify this task is complete]
-
-**Milestone Validation**:
-
-- [ ] [How to verify the milestone is complete and ready to commit]
-
----
-
-### Milestone 2: [Milestone Title]
-
-**Commit message**: `feat: [descriptive commit message]`
-
-**Description**: [What this milestone accomplishes]
-
-#### Task 2.1: [Task Title]
-
+### Milestone 2: [Title]
 ...
 
-**Milestone Validation**:
+## Testing Strategy
+[How to test]
 
-- [ ] [Verification steps for this milestone]
-
----
-
-### Milestone 3: [Milestone Title] (Tests)
-
-**Commit message**: `test: add tests for [feature]`
-
-**Description**: Add test coverage for the new feature
-
-#### Task 3.1: [Test Task Title]
-
-**Files**: `path/to/test-file.test.ts`
-
-**Description**: [Test cases to add]
-
-**Validation**:
-
-- [ ] Tests pass
-- [ ] Coverage meets requirements
-
-**Milestone Validation**:
-
-- [ ] All new tests pass
-- [ ] No regressions in existing tests
-
----
-
-### Milestone 4: [Milestone Title] (Documentation)
-
-**Commit message**: `docs: document [feature]`
-
-**Description**: Update documentation for the new feature
-
-#### Task 4.1: [Docs Task Title]
-
-**Files**: `docs/feature.md`, `README.md`
-
-**Description**: [Documentation to add/update]
-
-**Validation**:
-
-- [ ] Documentation is accurate and complete
-
-**Milestone Validation**:
-
-- [ ] All documentation updated
-
-## Final Validation
-
-- [ ] All milestones completed
-- [ ] All tests pass
-- [ ] Feature works end-to-end
-- [ ] [Feature-specific validation steps]
+## Validation Criteria
+- [Criterion 1]
+- [Criterion 2]
 ```
 
-## Milestone Guidelines
+## Error Handling
 
-1. **Logical grouping**: Each milestone should represent a coherent, atomic change
-2. **Commit-ready**: After completing a milestone, the code should be in a working state
-3. **Descriptive commits**: Each milestone includes a conventional commit message
-4. **Typical milestone types**:
-   - Core implementation (may span multiple milestones for complex features)
-   - Tests
-   - Documentation
-   - Integration/wiring
+On error, output:
+```json
+{
+  "success": false,
+  "error": "Error message",
+  "error_code": "INVALID_INPUT|EXPLORATION_FAILED|WRITE_FAILED"
+}
+```
 
-Report to the user:
+## Usage
 
-- Plan file location
-- Number of milestones identified
-- Total number of tasks
-- Estimated complexity (small/medium/large)
-- Any blockers or concerns identified
+```bash
+# File input
+/agentic-sdlc:plan-feature --json-input /specs/input/auth-spec.json
+
+# Stdin (from Python orchestrator)
+echo '{"type":"feature","title":"Auth",...}' | /agentic-sdlc:plan-feature --json-stdin
+```
+
+## Python Integration
+
+```python
+from claude_sdlc import run_claude
+
+spec = {
+    "type": "feature",
+    "title": "User Authentication",
+    "description": "Add OAuth support",
+    "requirements": ["Google OAuth", "GitHub OAuth"],
+    "explore_agents": 3
+}
+
+result = run_claude("/agentic-sdlc:plan-feature", json_input=spec)
+print(f"Plan: {result['plan_file']}")
+```

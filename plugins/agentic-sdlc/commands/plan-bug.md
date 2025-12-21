@@ -1,132 +1,113 @@
 ---
 name: plan-bug
-description: Generate a bug fix plan
-argument-hint: <bug-description> [--interactive]
+description: Generate a bug fix plan (autonomous, JSON I/O)
+argument-hint: --json-input <spec.json> | --json-stdin
 ---
 
-# Plan Bug Command
+# Plan Bug Command (Autonomous)
 
-Diagnoses a bug and generates a plan for fixing it, including root cause analysis and testing strategy.
+Diagnoses a bug and generates a fix plan. Operates autonomously without user interaction.
 
-## Parameters
+## Input Schema
 
-- **`bug-description`** (required): Description of the bug, including symptoms and reproduction steps if known
-- **`--interactive`** (optional): Enable interactive mode to ask clarifying questions before planning
+```json
+{
+  "type": "bug",
+  "title": "Bug title/summary",
+  "description": "Observed behavior and impact",
+  "expected_behavior": "What should happen",
+  "reproduction_steps": ["Step 1", "Step 2"],
+  "affected_files": ["src/auth.ts"],
+  "explore_agents": 2
+}
+```
 
-## Objective
+## Output Schema
 
-Identify the root cause of the bug and create a targeted fix plan with validation steps.
+```json
+{
+  "success": true,
+  "plan_file": "/specs/bug-login-safari.md",
+  "plan_data": {
+    "type": "bug",
+    "title": "Login fails on Safari",
+    "root_cause": {
+      "location": "src/auth/oauth-callback.ts:45",
+      "explanation": "Safari ITP blocks window.opener.postMessage"
+    },
+    "fix_strategy": "Replace postMessage with cookie-based token transfer",
+    "tasks": [
+      {"id": "t1", "title": "Modify OAuth callback", "files": ["src/auth/oauth-callback.ts"]},
+      {"id": "t2", "title": "Update dashboard auth", "files": ["src/pages/dashboard.ts"]}
+    ],
+    "test_cases": ["Safari OAuth flow", "Chrome OAuth flow"]
+  }
+}
+```
 
-## Core Principles
+## Behavior
 
-- Diagnose before prescribing - understand the root cause first
-- Minimize the scope of changes to reduce regression risk
-- Include reproduction steps in the plan
-- Add regression tests to prevent recurrence
-- Consider related code that may have similar issues
-- Document the root cause for future reference
+1. **Parse Input**: Read JSON specification
+2. **Explore Codebase**: Trace code paths, find symptoms
+3. **Root Cause Analysis**: Identify why bug occurs
+4. **Generate Fix Strategy**: Minimal fix with low regression risk
+5. **Generate Plan**: Write markdown plan file to `/specs/bug-{slug}.md`
+6. **Output JSON**: Return structured result
 
-## Instructions
-
-1. Parse the input to extract the bug description and check for `--interactive` flag
-
-2. **If `--interactive` flag is present**, use the AskUserQuestion tool to gather information:
-   - Can you provide steps to reproduce the bug?
-   - When did this bug start occurring (if known)?
-   - What is the expected vs actual behavior?
-   - What is the severity/priority of this bug?
-
-   Wait for user responses before proceeding.
-
-3. **If not `--interactive`**, work with available information:
-   - Extract reproduction hints from the description
-   - Assume moderate priority
-   - Infer expected behavior from context
-
-4. Use the Task tool with `subagent_type=Explore` to investigate:
-   - Search for error messages or symptoms in the codebase
-   - Trace the code path related to the bug
-   - Find related tests that may be failing or missing
-   - Look for recent changes that might have introduced the bug
-
-5. Perform root cause analysis:
-   - Identify the exact location of the bug
-   - Understand why the bug occurs
-   - Determine the minimal fix required
-   - Assess potential side effects of the fix
-
-6. Design the fix approach:
-   - List files to modify
-   - Define the specific changes needed
-   - Identify tests to add or update
-   - Plan validation steps
-
-7. Generate the plan document
-
-8. Write the plan to `docs/plans/bugfix-<slug>-plan.md`
-
-9. Report the plan location and provide a summary
-
-## Output Guidance
-
-Create a markdown plan file with this structure:
+## Plan File Structure
 
 ```markdown
-# Bugfix: [Bug Title]
+# Bug Fix: [Title]
 
 ## Bug Summary
-
-**Symptom**: [What the user experiences]
-
-**Expected Behavior**: [What should happen]
-
-**Actual Behavior**: [What actually happens]
+**Symptom**: [What user experiences]
+**Expected**: [Correct behavior]
+**Actual**: [Current behavior]
 
 ## Root Cause Analysis
-
-[Explanation of why this bug occurs, with code references]
-
-**Location**: `path/to/file.ts:123`
-
+**Location**: `file:line`
 **Cause**: [Technical explanation]
 
 ## Reproduction Steps
-
 1. [Step 1]
 2. [Step 2]
-3. [Observe: bug symptom]
 
 ## Fix Plan
 
-### Task 1: [Fix Description]
-
+### Task 1: [Title]
 **Files**: `path/to/file.ts`
-
-**Changes**:
-
-- [Specific change 1]
-- [Specific change 2]
-
-**Validation**:
-
-- [ ] Bug no longer reproduces
-- [ ] Related functionality still works
+**Changes**: [What to change]
 
 ## Testing
-
-- [ ] Add regression test for this specific case
-- [ ] Verify existing tests pass
-- [ ] Test edge cases: [list]
+- [Test case 1]
+- [Test case 2]
 
 ## Verification
-
-1. [Step to verify fix works]
-2. [Step to verify no regressions]
+- [How to verify fix works]
 ```
 
-Report to the user:
+## Error Handling
 
-- Plan file location
-- Root cause summary (1 sentence)
-- Files affected
-- Risk level (low/medium/high)
+```json
+{
+  "success": false,
+  "error": "Could not identify root cause",
+  "error_code": "ROOT_CAUSE_NOT_FOUND"
+}
+```
+
+## Usage
+
+```bash
+/agentic-sdlc:plan-bug --json-input /specs/input/safari-bug.json
+```
+
+## Python Integration
+
+```python
+result = run_claude("/agentic-sdlc:plan-bug", json_input={
+    "type": "bug",
+    "title": "Login fails on Safari",
+    "description": "Blank page after OAuth redirect"
+})
+```

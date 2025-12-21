@@ -1,139 +1,102 @@
 ---
 name: plan-chore
-description: Generate a maintenance task plan
-argument-hint: <chore-description> [--interactive]
+description: Generate a chore/maintenance plan (autonomous, JSON I/O)
+argument-hint: --json-input <spec.json> | --json-stdin
 ---
 
-# Plan Chore Command
+# Plan Chore Command (Autonomous)
 
-Generates a plan for maintenance tasks such as refactoring, dependency updates, cleanup, and technical debt reduction.
+Generates a plan for maintenance tasks. Operates autonomously without user interaction.
 
-## Parameters
+## Input Schema
 
-- **`chore-description`** (required): Description of the maintenance task
-- **`--interactive`** (optional): Enable interactive mode to ask clarifying questions before planning
-
-## Objective
-
-Create a safe, incremental plan for maintenance work that minimizes risk and maintains functionality.
-
-## Core Principles
-
-- Preserve existing functionality - no behavioral changes unless intended
-- Plan for incremental changes that can be tested independently
-- Identify potential breaking changes and migration needs
-- Include rollback considerations for risky changes
-- Document the rationale for the maintenance work
-- Keep each task small and verifiable
-
-## Instructions
-
-1. Parse the input to extract the chore description and check for `--interactive` flag
-
-2. **If `--interactive` flag is present**, use the AskUserQuestion tool to gather information:
-   - What is the scope of this maintenance work?
-   - Are breaking changes acceptable?
-   - Should this be done incrementally or all at once?
-   - Are there any areas to avoid or prioritize?
-
-   Wait for user responses before proceeding.
-
-3. **If not `--interactive`**, use conservative defaults:
-   - Minimal scope - only what's described
-   - No breaking changes
-   - Incremental approach preferred
-   - Touch only necessary files
-
-4. Use the Task tool with `subagent_type=Explore` to analyze:
-   - Current state of the code/dependencies to be updated
-   - Usage patterns and dependencies
-   - Test coverage of affected areas
-   - Related configurations or documentation
-
-5. Assess the maintenance task type and plan accordingly:
-   - **Refactoring**: Identify all usages, plan transformation, ensure tests exist
-   - **Dependency Update**: Check changelogs, breaking changes, peer dependencies
-   - **Cleanup**: Identify dead code, unused imports, stale files
-   - **Tech Debt**: Prioritize by impact, plan incremental improvements
-
-6. Design the maintenance approach:
-   - Break into small, independently testable changes
-   - Order tasks to minimize risk
-   - Identify verification steps for each task
-   - Note any manual testing required
-
-7. Generate the plan document
-
-8. Write the plan to `docs/plans/chore-<slug>-plan.md`
-
-9. Report the plan location and provide a summary
-
-## Output Guidance
-
-Create a markdown plan file with this structure:
-
-```markdown
-# Chore: [Chore Title]
-
-## Overview
-
-**Type**: [Refactoring | Dependency Update | Cleanup | Tech Debt]
-
-**Rationale**: [Why this maintenance is needed]
-
-**Scope**: [What will be affected]
-
-## Impact Assessment
-
-**Breaking Changes**: [None | List of breaking changes]
-
-**Risk Level**: [Low | Medium | High]
-
-**Affected Areas**:
-
-- [Area 1]
-- [Area 2]
-
-## Prerequisites
-
-- [ ] [Any required setup or preparation]
-
-## Tasks
-
-### Task 1: [Task Title]
-
-**Files**: `path/to/file.ts`
-
-**Description**: [What to do]
-
-**Verification**:
-
-- [ ] [How to verify this task is complete]
-- [ ] [Tests still pass]
-
-### Task 2: [Task Title]
-
-...
-
-## Testing
-
-- [ ] Run existing test suite
-- [ ] [Additional testing if needed]
-
-## Rollback Plan
-
-[How to revert if something goes wrong]
-
-## Final Verification
-
-- [ ] All tests pass
-- [ ] [Manual verification steps]
-- [ ] No regressions in affected areas
+```json
+{
+  "type": "chore",
+  "title": "Chore title",
+  "description": "What needs to be done and why",
+  "scope": {
+    "include": ["src/", "package.json"],
+    "exclude": ["tests/"]
+  },
+  "explore_agents": 2
+}
 ```
 
-Report to the user:
+## Output Schema
 
-- Plan file location
-- Chore type identified
-- Number of tasks
-- Risk assessment
+```json
+{
+  "success": true,
+  "plan_file": "/specs/chore-update-deps.md",
+  "plan_data": {
+    "type": "chore",
+    "title": "Update npm dependencies",
+    "chore_type": "dependency_update",
+    "risk_level": "medium",
+    "tasks": [
+      {"id": "t1", "title": "Audit current dependencies", "files": ["package.json"]},
+      {"id": "t2", "title": "Update minor versions", "files": ["package.json", "package-lock.json"]},
+      {"id": "t3", "title": "Update major versions", "files": ["package.json", "package-lock.json"]}
+    ],
+    "validation_criteria": ["npm audit clean", "All tests pass"]
+  }
+}
+```
+
+## Chore Types
+
+- `refactoring`: Code restructuring
+- `dependency_update`: Package updates
+- `cleanup`: Dead code removal
+- `tech_debt`: Debt reduction
+
+## Behavior
+
+1. **Parse Input**: Read JSON specification
+2. **Explore Codebase**: Understand scope and patterns
+3. **Assess Risk**: Determine risk level
+4. **Generate Tasks**: Create ordered task list
+5. **Generate Plan**: Write markdown plan file to `/specs/chore-{slug}.md`
+6. **Output JSON**: Return structured result
+
+## Plan File Structure
+
+```markdown
+# Chore: [Title]
+
+## Overview
+**Type**: [Chore type]
+**Rationale**: [Why needed]
+**Scope**: [What's affected]
+
+## Impact Assessment
+**Breaking Changes**: [None / List]
+**Risk Level**: [Low/Medium/High]
+
+## Tasks
+1. [Task 1]
+2. [Task 2]
+
+## Rollback Plan
+[How to revert]
+
+## Validation Criteria
+- [Criterion 1]
+```
+
+## Usage
+
+```bash
+/agentic-sdlc:plan-chore --json-input /specs/input/deps-update.json
+```
+
+## Python Integration
+
+```python
+result = run_claude("/agentic-sdlc:plan-chore", json_input={
+    "type": "chore",
+    "title": "Update npm dependencies",
+    "description": "Update all dependencies to latest versions"
+})
+```

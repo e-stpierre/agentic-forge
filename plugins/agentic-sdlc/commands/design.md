@@ -1,171 +1,137 @@
 ---
 name: design
-description: Design technical implementation and create GitHub issues
-argument-hint: <requirement-description> [--interactive] [--epic]
+description: Design technical implementation (autonomous, JSON I/O)
+argument-hint: --json-input <spec.json> | --json-stdin
 ---
 
-# Design Command
+# Design Command (Autonomous)
 
-Takes a product requirement, designs the technical implementation, and optionally creates GitHub issues for each implementation task.
+Transforms a product requirement into a technical design document. Operates autonomously without user interaction.
 
-## Parameters
+## Input Schema
 
-- **`requirement-description`** (required): The product requirement or feature to design
-- **`--interactive`** (optional): Ask clarifying questions before designing
-- **`--epic`** (optional): Create a GitHub Epic with linked issues
+```json
+{
+  "requirement": "Feature description",
+  "goals": ["Goal 1", "Goal 2"],
+  "non_goals": ["Out of scope item"],
+  "constraints": ["Technical constraint"],
+  "create_issues": true,
+  "explore_agents": 3
+}
+```
 
-## Objective
+## Output Schema
 
-Transform a product requirement into a technical design document with actionable GitHub issues.
+```json
+{
+  "success": true,
+  "design_file": "/docs/designs/feature-auth-design.md",
+  "design_data": {
+    "requirement": "User authentication",
+    "selected_approach": {
+      "name": "OAuth with JWT",
+      "rationale": "Industry standard, existing infrastructure support"
+    },
+    "tasks": [
+      {
+        "id": "t1",
+        "title": "Add OAuth providers",
+        "complexity": "M",
+        "dependencies": []
+      }
+    ],
+    "risks": [
+      {
+        "description": "Token security",
+        "impact": "high",
+        "mitigation": "Use secure storage"
+      }
+    ]
+  },
+  "issues": [
+    {"number": 123, "title": "Epic: User Authentication", "type": "epic"},
+    {"number": 124, "title": "Add OAuth providers", "type": "task"}
+  ]
+}
+```
 
-## Core Principles
+## Behavior
 
-- Start with understanding the "why" before the "how"
-- Consider multiple technical approaches before committing
-- Break down into small, independently deliverable issues
-- Include acceptance criteria for each issue
-- Design for testability and maintainability
-- Consider backward compatibility and migration paths
-
-## Instructions
-
-1. Parse the input to extract the requirement and check for `--interactive` and `--epic` flags
-
-2. **If `--interactive` flag is present**, use the AskUserQuestion tool:
-   - What problem does this solve for users?
-   - Are there any technical constraints or preferences?
-   - What is the timeline and priority?
-   - Are there dependencies on other work?
-   - Should this be behind a feature flag?
-
-   Wait for user responses before proceeding.
-
-3. **If not `--interactive`**, make reasonable assumptions:
-   - Infer user problem from the requirement
-   - Follow existing codebase patterns
-   - Assume moderate priority
-   - No feature flag unless complexity warrants it
-
-4. Use the Task tool with `subagent_type=Explore` to research:
-   - Existing related functionality in the codebase
-   - Patterns and conventions used
-   - Integration points and APIs
-   - Test patterns and coverage
-
-5. Design the technical solution:
+1. **Parse Input**: Read JSON specification
+2. **Explore Codebase**: Research existing patterns and integration points
+3. **Design Solution**:
    - Evaluate 2-3 technical approaches
-   - Select the best approach with rationale
-   - Define the data model changes (if any)
-   - Define the API changes (if any)
-   - Define the UI changes (if any)
-   - Identify risks and mitigations
+   - Select best approach with rationale
+   - Define data model, API, UI changes
+4. **Break Down Tasks**: Create implementation tasks with acceptance criteria
+5. **Generate Design Document**: Write to `/docs/designs/{slug}-design.md`
+6. **Create Issues (if create_issues: true)**: Create GitHub issues
+7. **Output JSON**: Return structured result
 
-6. Break down into implementation tasks:
-   - Each task should be completable in 1-2 focused sessions
-   - Order tasks by dependencies
-   - Include acceptance criteria for each
-   - Estimate complexity (S/M/L)
-
-7. Generate the design document:
-   - Write to `docs/designs/<feature-slug>-design.md`
-
-8. **If `--epic` flag is present**:
-   - Create a GitHub Epic issue using `/core:create-gh-issue`
-   - Create individual task issues linked to the epic
-   - Report all issue numbers
-
-9. Report the design location and summary
-
-## Output Guidance
-
-Create a markdown design document with this structure:
+## Design Document Structure
 
 ```markdown
 # Design: [Feature Name]
 
 ## Problem Statement
-
-[What problem are we solving and for whom?]
+[What problem, for whom]
 
 ## Goals
-
 - [Goal 1]
-- [Goal 2]
 
 ## Non-Goals
-
-- [Explicitly out of scope item 1]
+- [Out of scope]
 
 ## Technical Approach
 
-### Option 1: [Approach Name]
-
-[Description, pros, cons]
-
-### Option 2: [Approach Name]
-
+### Option 1: [Name]
 [Description, pros, cons]
 
 ### Selected Approach
-
-[Which option and why]
+[Decision and rationale]
 
 ## Detailed Design
 
 ### Data Model
-
-[Schema changes, new models, etc.]
+[Schema changes]
 
 ### API Changes
-
-[New endpoints, modified endpoints]
+[Endpoints]
 
 ### UI Changes
-
-[Component changes, new screens]
-
-### Dependencies
-
-[External libraries, internal modules]
+[Components]
 
 ## Implementation Tasks
 
 ### Task 1: [Title]
-
 **Complexity**: S/M/L
-
-**Description**: [What to do]
-
 **Acceptance Criteria**:
-
-- [ ] [Criterion 1]
-- [ ] [Criterion 2]
-
-**Dependencies**: None | [Task X]
-
-### Task 2: [Title]
-
-...
+- [ ] [Criterion]
 
 ## Risks and Mitigations
-
-| Risk     | Impact         | Mitigation   |
-| -------- | -------------- | ------------ |
-| [Risk 1] | [High/Med/Low] | [Mitigation] |
+| Risk | Impact | Mitigation |
 
 ## Testing Strategy
-
-- [Unit tests for...]
-- [Integration tests for...]
-- [E2E tests for...]
-
-## Rollout Plan
-
-1. [Phase 1]
-2. [Phase 2]
+[Test plan]
 ```
 
-If `--epic` was used, also report:
+## Usage
 
-- Epic issue number and URL
-- Task issue numbers and URLs
+```bash
+/agentic-sdlc:design --json-input /specs/input/auth-requirement.json
+```
+
+## Python Integration
+
+```python
+result = run_claude("/agentic-sdlc:design", json_input={
+    "requirement": "User authentication with OAuth",
+    "goals": ["Google OAuth", "GitHub OAuth"],
+    "create_issues": True
+})
+
+print(f"Design: {result['design_file']}")
+if result.get("issues"):
+    print(f"Epic: #{result['issues'][0]['number']}")
+```
