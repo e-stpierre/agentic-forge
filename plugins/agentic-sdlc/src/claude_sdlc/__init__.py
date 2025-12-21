@@ -1,10 +1,24 @@
 """
-Claude SDLC - Software Development Lifecycle workflows for Claude Code.
+Agentic SDLC - Fully autonomous SDLC workflows for Claude Code.
 
-This package provides SDLC workflow utilities that build on claude_core
-for planning, implementation, review, and testing workflows.
+This package provides autonomous SDLC workflow utilities with JSON-based
+agent communication for CI/CD integration.
 
-Example usage:
+Example usage (agentic workflows):
+    from claude_sdlc import agentic_workflow, agentic_plan, agentic_build
+
+    # Full workflow
+    state = agentic_workflow(
+        task_type="feature",
+        spec={"title": "User auth", "description": "Add OAuth"},
+        auto_pr=True,
+    )
+
+    # Or individual phases:
+    plan = agentic_plan("feature", {"title": "Add caching"})
+    build = agentic_build(plan_file=plan["plan_file"])
+
+Legacy interactive workflows (for backward compatibility):
     from claude_sdlc import feature_workflow, FeatureWorkflowConfig
 
     config = FeatureWorkflowConfig(
@@ -12,15 +26,6 @@ Example usage:
         interactive=True,
     )
     state = feature_workflow(config)
-
-    # Or for bugfixes:
-    from claude_sdlc import bugfix_workflow, BugfixWorkflowConfig
-
-    config = BugfixWorkflowConfig(
-        bug_description="Fix login timeout",
-        issue_number=123,
-    )
-    state = bugfix_workflow(config)
 
 For core functionality (runner, orchestrator, logging), import from claude_core:
     from claude_core import run_claude, Orchestrator, Task
@@ -55,7 +60,7 @@ from claude_core import (
     temporary_worktree,
 )
 
-# SDLC Workflows
+# SDLC Workflows (legacy interactive)
 from claude_sdlc.workflows import (
     BugfixWorkflowConfig,
     FeatureWorkflowConfig,
@@ -63,13 +68,32 @@ from claude_sdlc.workflows import (
     feature_workflow,
 )
 
-__version__ = "1.0.0"
+# Agentic Orchestrator (autonomous)
+from claude_sdlc.orchestrator import (
+    AgentMessage,
+    WorkflowState,
+    agentic_build,
+    agentic_plan,
+    agentic_validate,
+    agentic_workflow,
+    run_agentic_command,
+)
+
+__version__ = "2.0.0"
 __author__ = "Etienne St-Pierre"
 
 __all__ = [
     # Version
     "__version__",
-    # SDLC Workflows
+    # Agentic Orchestrator
+    "agentic_workflow",
+    "agentic_plan",
+    "agentic_build",
+    "agentic_validate",
+    "run_agentic_command",
+    "AgentMessage",
+    "WorkflowState",
+    # SDLC Workflows (legacy)
     "feature_workflow",
     "FeatureWorkflowConfig",
     "bugfix_workflow",
