@@ -8,11 +8,23 @@ argument-hint: "[context]"
 
 Check code style, consistency, and best practices adherence.
 
-## Arguments
+## Parameters
 
-- `[context]`: Specific areas or files to focus on
+- **`[context]`** (optional): Specific areas or files to focus on
 
-## Behavior
+## Objective
+
+Check code style, consistency, and best practices adherence by identifying inconsistent patterns and normalizing the codebase to use ONE way of doing things.
+
+## Core Principles
+
+- Normalization is key - one way to do each thing reduces cognitive load
+- Respect existing patterns - work with the codebase, not against it
+- Majority pattern wins - align outliers to dominant pattern
+- Automated tools first - focus on what automation misses
+- Some inconsistency is acceptable for legacy code or external dependencies
+
+## Instructions
 
 1. **Read Configuration**
    - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
@@ -51,7 +63,26 @@ Check code style, consistency, and best practices adherence.
    - Save to `{analysisDirectory}/style.md`
    - Group by category
 
-## Report Template
+## Output Guidance
+
+Present a summary and save the report:
+
+```
+Style & consistency analysis complete. Report saved to /analysis/style.md
+
+## Summary
+- Major Inconsistencies: X issues
+- Minor Issues: Y issues
+
+Project standards identified:
+- [list of established patterns]
+
+Review the report to normalize outliers to the dominant patterns.
+```
+
+## Templates
+
+### Report Structure
 
 ```markdown
 # Style & Consistency Issues
@@ -129,23 +160,10 @@ Based on analysis, the established patterns are:
 | Props | destructuring vs props.x |
 | Exports | named vs default vs barrel files |
 
-## Important Principles
+## Don't
 
-1. **Normalization is key**: One way to do each thing
-   - Reduces cognitive load
-   - Makes code predictable
-   - Easier onboarding
-
-2. **Respect existing patterns**: Don't impose new standards
-   - Work with the codebase, not against it
-   - Majority pattern wins
-   - Document deviations if intentional
-
-3. **Automated tools first**: Don't flag what tools catch
-   - ESLint/Prettier issues should be fixed by tools
-   - Focus on what automation misses
-
-4. **Be pragmatic**: Some inconsistency is acceptable
-   - Legacy code may have different patterns
-   - External dependencies may force patterns
-   - Some variations are stylistic preference
+- Don't impose new standards - work with existing codebase patterns
+- Don't flag issues that ESLint/Prettier already catch
+- Don't force normalization on legacy code without good reason
+- Don't report stylistic preferences as inconsistencies
+- Don't ignore that external dependencies may force certain patterns

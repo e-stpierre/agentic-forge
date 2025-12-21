@@ -8,11 +8,23 @@ argument-hint: "[context]"
 
 Identify technical debt, optimization opportunities, and refactoring needs.
 
-## Arguments
+## Parameters
 
-- `[context]`: Specific areas or concerns to focus on
+- **`[context]`** (optional): Specific areas or concerns to focus on
 
-## Behavior
+## Objective
+
+Identify technical debt, optimization opportunities, and refactoring needs by analyzing architecture, code quality, patterns, and performance issues.
+
+## Core Principles
+
+- Focus on REAL debt - not everything needs refactoring
+- Working code has value - perfect is the enemy of good
+- Consider why patterns exist before flagging them
+- Prioritize by impact - frequently touched code > rarely touched
+- Avoid over-engineering and premature abstractions
+
+## Instructions
 
 1. **Read Configuration**
    - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
@@ -54,7 +66,26 @@ Identify technical debt, optimization opportunities, and refactoring needs.
    - Save to `{analysisDirectory}/debt.md`
    - Group by category
 
-## Report Template
+## Output Guidance
+
+Present a summary and save the report:
+
+```
+Technical debt analysis complete. Report saved to /analysis/debt.md
+
+## Summary
+| Category | Issues | Total Effort |
+|----------|--------|--------------|
+| Architecture | X | Low/Med/High |
+| Code Quality | Y | Low/Med/High |
+| Performance | Z | Low/Med/High |
+
+Review the report and prioritize by impact and effort.
+```
+
+## Templates
+
+### Report Structure
 
 ```markdown
 # Tech Debt
@@ -131,24 +162,10 @@ Identify technical debt, optimization opportunities, and refactoring needs.
 - Database schema changes
 - API redesign
 
-## Important Principles
+## Don't
 
-1. **Focus on REAL debt**: Not everything needs refactoring
-   - Working code has value
-   - Perfect is the enemy of good
-   - Some "debt" is intentional trade-offs
-
-2. **Consider context**: Understand why patterns exist
-   - Legacy constraints
-   - Performance requirements
-   - Time-to-market decisions
-
-3. **Be pragmatic**: Prioritize by impact
-   - Code touched frequently > rarely touched
-   - User-facing issues > internal issues
-   - Security implications > style preferences
-
-4. **Avoid over-engineering**: Don't suggest
-   - Premature abstractions
-   - Unnecessary complexity
-   - Future-proofing without requirements
+- Don't flag everything as debt - working code has value
+- Don't ignore why patterns exist - some "debt" is intentional
+- Don't suggest premature abstractions or over-engineering
+- Don't prioritize rarely-touched code over frequently-used code
+- Don't recommend future-proofing without concrete requirements

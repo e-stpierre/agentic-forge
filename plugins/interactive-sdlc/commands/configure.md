@@ -8,7 +8,19 @@ argument-hint: ""
 
 Set up interactive-sdlc plugin configuration interactively.
 
-## Behavior
+## Objective
+
+Set up interactive-sdlc plugin configuration interactively by reading existing settings, validating them, and prompting for missing or invalid values.
+
+## Core Principles
+
+- Configuration is stored in project scope (.claude/settings.json)
+- Personal overrides go in .claude/settings.local.json (gitignored)
+- Settings hierarchy: local > project > defaults
+- All paths are relative to project root
+- Only update interactive-sdlc section - preserve other settings
+
+## Instructions
 
 1. **Read Existing Configuration**
    - Check if `.claude/settings.json` exists
@@ -130,6 +142,52 @@ To change settings later, edit .claude/settings.json directly
 or run /interactive-sdlc:configure again.
 ```
 
+## Output Guidance
+
+Show current configuration status and changes made:
+
+**If configuration is valid:**
+```
+✓ Configuration is valid
+
+Current interactive-sdlc configuration:
+  planDirectory: /specs
+  analysisDirectory: /analysis
+  defaultExploreAgents:
+    chore: 2
+    bug: 2
+    feature: 3
+
+To change settings, edit .claude/settings.json directly
+or run /interactive-sdlc:configure again.
+```
+
+**If configuration needed updates:**
+```
+Configuration updated successfully!
+
+Current configuration:
+  planDirectory: /specs
+  analysisDirectory: /analysis
+  defaultExploreAgents:
+    chore: 2
+    bug: 2
+    feature: 3
+
+Configuration saved to .claude/settings.json
+
+To change settings later, edit .claude/settings.json directly
+or run /interactive-sdlc:configure again.
+```
+
+## Don't
+
+- Don't overwrite other settings in .claude/settings.json - only update interactive-sdlc
+- Don't fail silently on permission issues - provide manual configuration instructions
+- Don't use invalid defaults - validate user input before accepting
+- Don't lose existing settings when adding new ones
+- Don't skip validation - ensure all settings are in valid ranges
+
 ## Error Handling
 
 ### `.claude/settings.json` doesn't exist
@@ -165,10 +223,3 @@ or run /interactive-sdlc:configure again.
   { "interactive-sdlc": { ... } }
   ```
 
-## Important Notes
-
-- Configuration is stored in project scope (`.claude/settings.json`)
-- Personal overrides go in `.claude/settings.local.json` (gitignored)
-- Settings hierarchy: local > project > defaults
-- All paths are relative to project root
-- Run `/interactive-sdlc:configure` after first installing the plugin

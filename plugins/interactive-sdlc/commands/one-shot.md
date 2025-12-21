@@ -8,14 +8,26 @@ argument-hint: "[--git] [--validate] [--explore N] <context>"
 
 Quick task execution without a saved plan file. Ideal for small, well-defined tasks.
 
-## Arguments
+## Parameters
 
-- `--git`: Auto-commit changes when done
-- `--validate`: Run validation after implementation
-- `--explore N`: Override explore agent count (default: 0 for speed)
-- `[context]`: Required task description
+- **`--git`** (optional): Auto-commit changes when done
+- **`--validate`** (optional): Run validation after implementation
+- **`--explore N`** (optional): Override explore agent count (default: 0 for speed)
+- **`[context]`** (required): Task description
 
-## Behavior
+## Objective
+
+Execute small, well-defined tasks quickly without creating a saved plan file, optimizing for speed over thoroughness.
+
+## Core Principles
+
+- Optimized for speed - minimal exploration by default
+- No plan file is saved - use full planning workflow for documented work
+- Task must be well-defined and small in scope
+- Ask clarifying questions if task is unclear
+- Use --validate for critical changes to catch issues
+
+## Instructions
 
 1. **Parse Task**
    - Analyze the `[context]` to understand the task
@@ -51,6 +63,26 @@ Quick task execution without a saved plan file. Ideal for small, well-defined ta
 6. **Validate (if --validate flag)**
    - Run `/interactive-sdlc:validate`
    - Report any issues found
+
+## Output Guidance
+
+Provide a concise summary of what was done:
+
+```
+## Task Complete
+
+Changes made:
+- [list of changes]
+
+Files modified: X
+Committed: Yes/No
+
+[If --validate used:]
+Validation results: PASS/FAIL
+- Tests: PASS
+- Build: PASS
+- Review: No critical issues
+```
 
 ## Example Usage
 
@@ -88,10 +120,10 @@ For complex tasks, use the full planning workflow:
 /interactive-sdlc:plan-build-validate --git --pr <task description>
 ```
 
-## Important Notes
+## Don't
 
-- One-shot is optimized for speed over thoroughness
-- No plan file is saved (use planning commands for documented work)
-- Default explore agents is 0 (increase with --explore for complex tasks)
-- Always specify the task in the context argument
-- Use --validate for critical changes to catch issues
+- Don't use one-shot for complex features requiring architecture decisions
+- Don't use one-shot for bugs requiring deep investigation
+- Don't skip --validate for critical or security-related changes
+- Don't use one-shot when tasks have unclear requirements
+- Don't use one-shot for large refactoring efforts - use full planning workflow instead

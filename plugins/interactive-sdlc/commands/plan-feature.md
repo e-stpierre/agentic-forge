@@ -8,14 +8,26 @@ argument-hint: "[--explore N] [--git] [--output <path>] [context]"
 
 Plan a feature with milestones, architecture design, and comprehensive task breakdown.
 
-## Arguments
+## Parameters
 
-- `--explore N`: Override default explore agent count (default: 3)
-- `--git`: Commit plan file after creation
-- `--output <path>`: Override plan file location
-- `[context]`: Optional freeform context for parameter inference
+- **`--explore N`** (optional): Override default explore agent count (default: 3)
+- **`--git`** (optional): Commit plan file after creation
+- **`--output <path>`** (optional): Override plan file location
+- **`[context]`** (optional): Optional freeform context for parameter inference
 
-## Behavior
+## Objective
+
+Plan a feature with comprehensive codebase exploration, architecture design, milestone breakdown, and task decomposition that enables incremental delivery.
+
+## Core Principles
+
+- Break features into logical milestones for incremental delivery
+- Each milestone should be independently valuable and testable
+- Architecture decisions should align with existing codebase patterns
+- Explore thoroughly to understand integration points and existing components
+- Plans are static documentation - never modified during implementation
+
+## Instructions
 
 1. **Read Configuration**
    - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `/specs`)
@@ -101,6 +113,69 @@ Plan a feature with milestones, architecture design, and comprehensive task brea
    - Stage the plan file
    - Commit with message: `docs(plan): Add feature plan - {title}`
 
+## Output Guidance
+
+Present the plan file path and a brief summary of the feature design:
+
+```
+Plan saved to /specs/feature-{slugified-title}.md
+
+## Summary
+- Feature: [one-line description]
+- Milestones: X
+- Total tasks: Y
+- Key components: [list of main components]
+
+Architecture highlights:
+- [key architectural decisions]
+
+Next steps:
+- Implement with: /interactive-sdlc:build /specs/feature-{slugified-title}.md
+- Or run full workflow: /interactive-sdlc:plan-build-validate
+```
+
+## Templates
+
+### Feature Plan Structure
+
+```markdown
+# Feature: <feature-title>
+
+## Overview
+What this feature does and why it's valuable
+
+## Requirements
+Functional and non-functional requirements
+
+## Architecture
+High-level design decisions and patterns to use
+
+## Milestones
+
+### Milestone 1: <milestone-title>
+What this milestone achieves
+
+#### Task 1.1: <task-title>
+Specific task description
+
+#### Task 1.2: <task-title>
+Specific task description
+
+### Milestone 2: <milestone-title>
+What this milestone achieves
+
+#### Task 2.1: <task-title>
+Specific task description
+
+(Additional milestones as needed)
+
+## Testing Strategy
+How this feature will be tested
+
+## Validation Criteria
+How to verify the feature is complete and working
+```
+
 ## Example Usage
 
 ```bash
@@ -117,11 +192,10 @@ Plan a feature with milestones, architecture design, and comprehensive task brea
 /interactive-sdlc:plan-feature --output /docs/features/auth.md User authentication
 ```
 
-## Important Notes
+## Don't
 
-- Plans are static documentation - never modified during implementation
-- No time estimates, deadlines, or scheduling information in plans
-- Progress tracking happens via TodoWrite tool, not plan file updates
-- Features should be broken into logical milestones for incremental delivery
-- Each milestone should be independently testable and valuable
-- Architecture decisions should align with existing codebase patterns
+- Don't modify plan files during implementation - they are static documentation
+- Don't include time estimates, deadlines, or scheduling information
+- Don't create monolithic plans - break into milestones for incremental delivery
+- Don't make architectural decisions without exploring existing patterns first
+- Don't skip requirements gathering - unclear requirements lead to rework

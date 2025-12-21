@@ -8,11 +8,23 @@ argument-hint: "[context]"
 
 Scan for security vulnerabilities, unsafe patterns, and dependency issues.
 
-## Arguments
+## Parameters
 
-- `[context]`: Specific areas or concerns to focus on
+- **`[context]`** (optional): Specific areas or concerns to focus on
 
-## Behavior
+## Objective
+
+Scan for security vulnerabilities, unsafe patterns, and dependency issues by checking for injection flaws, authentication issues, data exposure, and configuration problems.
+
+## Core Principles
+
+- Only report REAL issues - security false positives waste time
+- Verify exploitability before reporting critical/high severity
+- Be specific with exact vulnerability type and exploitation scenario
+- Prioritize correctly - not everything is critical
+- This complements but doesn't replace SAST tools and security audits
+
+## Instructions
 
 1. **Read Configuration**
    - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
@@ -62,7 +74,30 @@ Scan for security vulnerabilities, unsafe patterns, and dependency issues.
    - Save to `{analysisDirectory}/security.md`
    - Include remediation steps
 
-## Report Template
+## Output Guidance
+
+Present a summary and save the report:
+
+```
+Security analysis complete. Report saved to /analysis/security.md
+
+## Summary
+| Risk Level | Issues |
+|------------|--------|
+| Critical | X |
+| High | Y |
+| Medium | Z |
+| Low | W |
+
+[If critical/high found:]
+⚠️ Critical and high-risk issues require immediate attention.
+
+Review the report and address issues by priority.
+```
+
+## Templates
+
+### Report Structure
 
 ```markdown
 # Security Analysis
@@ -139,26 +174,10 @@ Scan for security vulnerabilities, unsafe patterns, and dependency issues.
 | A09:2021 Logging Failures | Missing logs, sensitive data in logs |
 | A10:2021 SSRF | Server-side request forgery |
 
-## Important Principles
+## Don't
 
-1. **Only report REAL issues**: Security false positives waste time
-   - Verify exploitability before reporting critical/high
-   - Consider context and controls
-   - Check if framework mitigates the issue
-
-2. **Be specific**: Vague security reports are not actionable
-   - Exact file and line numbers
-   - Specific vulnerability type
-   - Clear exploitation scenario
-   - Concrete remediation steps
-
-3. **Prioritize correctly**: Not everything is critical
-   - Critical = actively exploitable + high impact
-   - Consider defense in depth
-   - Account for network controls
-
-4. **Complement other tools**: This is not a replacement for
-   - Dependency scanners (npm audit, safety)
-   - SAST tools (semgrep, bandit)
-   - Penetration testing
-   - Security audits
+- Don't report false positives - verify exploitability before flagging critical/high
+- Don't make vague reports - include exact file, line, and exploitation scenario
+- Don't mark everything as critical - consider defense in depth
+- Don't skip checking if framework mitigates the issue
+- Don't use this as replacement for SAST tools, dependency scanners, or security audits

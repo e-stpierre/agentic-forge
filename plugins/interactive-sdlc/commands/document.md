@@ -8,12 +8,25 @@ argument-hint: "[--output <path>] [context]"
 
 Generate or update project documentation with mermaid diagrams.
 
-## Arguments
+## Parameters
 
-- `--output <path>`: Specify output file path
-- `[context]`: Description of what to document
+- **`--output <path>`** (optional): Specify output file path
+- **`[context]`** (required): Description of what to document
 
-## Behavior
+## Objective
+
+Generate or update project documentation with appropriate mermaid diagrams, following existing documentation conventions and ensuring proper formatting.
+
+## Core Principles
+
+- Use appropriate mermaid diagram types for visual clarity
+- Follow existing project documentation style and conventions
+- Include practical examples with code snippets
+- Link to related documentation when available
+- Run markdownlint-cli2 to ensure proper formatting
+- Validate mermaid syntax before saving
+
+## Instructions
 
 1. **Parse Request**
    - Analyze the `[context]` to understand documentation needs
@@ -154,9 +167,23 @@ stateDiagram-v2
 /interactive-sdlc:document --output docs/components/button.md Document the Button component API and usage examples
 ```
 
-## Output Format
+## Output Guidance
 
-Generated documentation follows this structure:
+Present the saved documentation path and a brief summary:
+
+```
+Documentation saved to docs/architecture.md
+
+## Summary
+- Type: Architecture documentation
+- Diagrams: 3 (component, sequence, flowchart)
+- Sections: 5
+- Examples: 2 code snippets
+
+The documentation has been formatted with markdownlint-cli2.
+```
+
+Generated documentation should follow this structure:
 
 ```markdown
 # [Title]
@@ -179,11 +206,10 @@ Practical usage examples.
 Links to related documentation.
 ```
 
-## Important Notes
+## Don't
 
-- Always validate mermaid syntax before saving
-- Use appropriate diagram types for the content
-- Include practical examples with code snippets
-- Link to related documentation when available
-- Run markdownlint-cli2 to ensure proper formatting
-- Follow existing project documentation conventions
+- Don't save documentation with invalid mermaid syntax - validate first
+- Don't skip markdownlint-cli2 formatting - it ensures consistency
+- Don't create documentation without practical examples
+- Don't ignore existing documentation conventions in the project
+- Don't use overly complex diagrams when simple ones suffice

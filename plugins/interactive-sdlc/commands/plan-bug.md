@@ -8,14 +8,26 @@ argument-hint: "[--explore N] [--git] [--output <path>] [context]"
 
 Plan a bug fix with root cause analysis, reproduction steps, and structured fix strategy.
 
-## Arguments
+## Parameters
 
-- `--explore N`: Override default explore agent count (default: 2)
-- `--git`: Commit plan file after creation
-- `--output <path>`: Override plan file location
-- `[context]`: Optional freeform context for parameter inference
+- **`--explore N`** (optional): Override default explore agent count (default: 2)
+- **`--git`** (optional): Commit plan file after creation
+- **`--output <path>`** (optional): Override plan file location
+- **`[context]`** (optional): Optional freeform context for parameter inference
 
-## Behavior
+## Objective
+
+Plan a bug fix with thorough root cause analysis, reproduction steps, and a structured fix strategy that prevents regression.
+
+## Core Principles
+
+- Root cause analysis should be thorough - understanding the cause is critical to the fix
+- Include clear reproduction steps to verify the bug exists
+- Design fix strategy to address root cause, not just symptoms
+- Include test cases to prevent regression
+- Plans are static documentation - never modified during implementation
+
+## Instructions
 
 1. **Read Configuration**
    - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `/specs`)
@@ -80,6 +92,53 @@ Plan a bug fix with root cause analysis, reproduction steps, and structured fix 
    - Stage the plan file
    - Commit with message: `docs(plan): Add bug fix plan - {title}`
 
+## Output Guidance
+
+Present the plan file path and a brief summary of the bug analysis:
+
+```
+Plan saved to /specs/bug-{slugified-title}.md
+
+## Summary
+- Bug: [one-line description]
+- Root cause: [brief technical explanation]
+- Fix strategy: [high-level approach]
+- Test cases to add: X
+
+Next steps:
+- Implement with: /interactive-sdlc:build /specs/bug-{slugified-title}.md
+- Or run full workflow: /interactive-sdlc:plan-build-validate
+```
+
+## Templates
+
+### Bug Fix Plan Structure
+
+```markdown
+# Bug Fix: <bug-title>
+
+## Description
+Clear explanation of the bug and its impact
+
+## Reproduction Steps
+Step-by-step instructions to reproduce the bug
+
+## Root Cause Analysis
+Technical explanation of why the bug occurs
+
+## Fix Strategy
+High-level approach to fixing the bug
+
+## Tasks
+Specific tasks to implement the fix
+
+## Validation
+How to verify the bug is fixed and won't regress
+
+## Testing
+Test cases to add or update to prevent regression
+```
+
 ## Example Usage
 
 ```bash
@@ -99,10 +158,10 @@ instead of the dashboard.
 /interactive-sdlc:plan-bug --output /docs/bugs/safari-oauth.md Safari OAuth issue
 ```
 
-## Important Notes
+## Don't
 
-- Plans are static documentation - never modified during implementation
-- No time estimates, deadlines, or scheduling information in plans
-- Progress tracking happens via TodoWrite tool, not plan file updates
-- Root cause analysis should be thorough - understanding the cause is critical
-- Include test cases to prevent regression
+- Don't skip root cause analysis - fixing symptoms without understanding the cause leads to recurring bugs
+- Don't modify plan files during implementation - they are static documentation
+- Don't include time estimates or deadlines in plans
+- Don't proceed with a fix until root cause is clearly identified
+- Don't forget to add regression test cases

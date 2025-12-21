@@ -8,11 +8,23 @@ argument-hint: "[context]"
 
 Analyze codebase for bugs, logic errors, and runtime issues.
 
-## Arguments
+## Parameters
 
-- `[context]`: Specific areas or concerns to focus on, or directories/files to analyze
+- **`[context]`** (optional): Specific areas or concerns to focus on, or directories/files to analyze
 
-## Behavior
+## Objective
+
+Analyze codebase for real bugs, logic errors, and runtime issues, categorizing findings by criticality with specific file locations and actionable fix suggestions.
+
+## Core Principles
+
+- Only report REAL issues - quality over quantity
+- Be specific with exact file and line numbers
+- Understand project patterns before flagging issues
+- Avoid false positives by considering framework conventions
+- Focus on bugs that will actually cause problems, not theoretical concerns
+
+## Instructions
 
 1. **Read Configuration**
    - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
@@ -42,7 +54,29 @@ Analyze codebase for bugs, logic errors, and runtime issues.
    - Save to `{analysisDirectory}/bug.md`
    - Include date in report header
 
-## Report Template
+## Output Guidance
+
+Present a summary and save the report:
+
+```
+Bug analysis complete. Report saved to /analysis/bug.md
+
+## Summary
+- Critical: X issues
+- Major: Y issues
+- Medium: Z issues
+- Low: W issues
+
+[If no issues found:]
+No bugs identified - codebase appears healthy.
+
+[If issues found:]
+Review the report and prioritize fixes by criticality.
+```
+
+## Templates
+
+### Report Structure
 
 ```markdown
 # Bug Report
@@ -100,25 +134,10 @@ Analyze codebase for bugs, logic errors, and runtime issues.
 /interactive-sdlc:analyse-bug Check for null pointer issues in the API handlers
 ```
 
-## Important Principles
+## Don't
 
-1. **No forced findings**: Only report REAL issues
-   - If no issues found, report "No issues identified"
-   - Quality over quantity
-
-2. **Be specific**: Each finding must include:
-   - Exact file and line number
-   - Clear description of the issue
-   - Specific impact
-   - Actionable fix suggestion
-
-3. **Context-aware**: Understand project patterns before flagging
-   - Check if apparent issues are handled elsewhere
-   - Consider framework conventions
-   - Review related code for context
-
-4. **Avoid false positives**: Common false positive patterns:
-   - Intentional fallthrough in switch statements
-   - Deliberate empty catch blocks (with comments)
-   - Framework-handled null checks
-   - Test-specific patterns
+- Don't report issues just to meet a quota - report only real bugs
+- Don't flag issues without checking if they're handled elsewhere
+- Don't ignore framework conventions that handle common issues
+- Don't report vague findings - include exact file, line, and fix approach
+- Don't flag test-specific patterns or intentional design choices

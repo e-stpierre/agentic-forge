@@ -8,11 +8,23 @@ argument-hint: "[context]"
 
 Analyze documentation quality, accuracy, and completeness.
 
-## Arguments
+## Parameters
 
-- `[context]`: Specific documentation files or areas to focus on
+- **`[context]`** (optional): Specific documentation files or areas to focus on
 
-## Behavior
+## Objective
+
+Analyze documentation quality, accuracy, and completeness by comparing against actual code implementation and identifying outdated, incorrect, or missing information.
+
+## Core Principles
+
+- Only report REAL issues - good documentation is a success
+- Verify claims against code before marking as incorrect
+- Provide actionable fixes with correct information
+- Consider documentation might be ahead of code
+- Different documentation types have different standards
+
+## Instructions
 
 1. **Read Configuration**
    - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
@@ -41,7 +53,28 @@ Analyze documentation quality, accuracy, and completeness.
    - Save to `{analysisDirectory}/doc.md`
    - Include date in report header
 
-## Report Template
+## Output Guidance
+
+Present a summary and save the report:
+
+```
+Documentation analysis complete. Report saved to /analysis/doc.md
+
+## Summary
+- Critical (Wrong/Misleading): X issues
+- Major (Outdated/Incomplete): Y issues
+- Minor (Improvements): Z issues
+
+[If no issues found:]
+Documentation is accurate and up-to-date.
+
+[If issues found:]
+Review the report and prioritize fixes - critical issues first.
+```
+
+## Templates
+
+### Report Structure
 
 ```markdown
 # Documentation Issues
@@ -117,20 +150,10 @@ Analyze documentation quality, accuracy, and completeness.
 - Missing examples
 - Better organization suggestions
 
-## Important Principles
+## Don't
 
-1. **No forced findings**: Only report REAL issues
-   - Good documentation is a success, not a failure
-   - Don't nitpick working documentation
-
-2. **Verify claims**: Don't assume documentation is wrong
-   - Check code before marking as incorrect
-   - Consider documentation might be ahead of code
-
-3. **Be constructive**: Provide actionable fixes
-   - Include correct information when flagging errors
-   - Suggest specific improvements
-
-4. **Consider audience**: Documentation has different purposes
-   - User guides vs API references vs internal docs
-   - Different standards for each type
+- Don't nitpick working documentation - good docs are a success
+- Don't assume documentation is wrong without verifying against code
+- Don't report issues without providing correct information
+- Don't apply same standards to all documentation types
+- Don't flag documentation that is ahead of code as incorrect

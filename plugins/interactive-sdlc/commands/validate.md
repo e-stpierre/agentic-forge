@@ -8,16 +8,28 @@ argument-hint: "[--plan <plan-file>] [--skip-tests] [--skip-build] [--skip-revie
 
 Comprehensive validation including tests, code review, build verification, and plan compliance.
 
-## Arguments
+## Parameters
 
-- `--plan <plan-file>`: Plan file to verify compliance against
-- `--skip-tests`: Skip test execution
-- `--skip-build`: Skip build verification
-- `--skip-review`: Skip code review
-- `--autofix critical,major`: Comma-separated list of severity levels to auto-fix
-- `[context]`: Optional freeform context for validation focus
+- **`--plan <plan-file>`** (optional): Plan file to verify compliance against
+- **`--skip-tests`** (optional): Skip test execution
+- **`--skip-build`** (optional): Skip build verification
+- **`--skip-review`** (optional): Skip code review
+- **`--autofix <levels>`** (optional): Comma-separated list of severity levels to auto-fix (e.g., "critical,major")
+- **`[context]`** (optional): Optional freeform context for validation focus
 
-## Behavior
+## Objective
+
+Perform comprehensive validation of code changes including tests, build verification, code review, and plan compliance to ensure implementation quality before deployment.
+
+## Core Principles
+
+- All validation types run by default unless explicitly skipped
+- Findings are rated by criticality for proper prioritization
+- Auto-fix only applies to programmatically fixable issues
+- Plan compliance checks verify requirements are met
+- Re-run validation after auto-fix to confirm all issues resolved
+
+## Instructions
 
 Perform ALL validation types (unless skipped):
 
@@ -73,9 +85,9 @@ Perform ALL validation types (unless skipped):
   - Missing or incomplete items
   - Deviations from plan
 
-## Output Format
+## Output Guidance
 
-Generate a validation report:
+Generate a comprehensive validation report:
 
 ```markdown
 # Validation Report
@@ -173,10 +185,10 @@ Example:
 | `Makefile` (build target) | Make | `make build` |
 | `pyproject.toml` | Python | `uv build` |
 
-## Important Notes
+## Don't
 
-- All validation types run by default unless skipped
-- Findings are rated by criticality for prioritization
-- Auto-fix only applies to programmatically fixable issues
-- Plan compliance checks are thorough but may need manual verification
-- Re-run validation after auto-fix to confirm all issues resolved
+- Don't skip validation checks without good reason - they catch critical issues
+- Don't ignore failed tests - fix them before proceeding
+- Don't auto-fix without understanding what will be changed
+- Don't assume plan compliance without checking - verify each requirement
+- Don't proceed to deployment with unresolved critical or major issues

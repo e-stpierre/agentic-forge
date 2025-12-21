@@ -8,14 +8,26 @@ argument-hint: "[--explore N] [--git] [--output <path>] [context]"
 
 Plan a maintenance task with codebase exploration and structured plan generation.
 
-## Arguments
+## Parameters
 
-- `--explore N`: Override default explore agent count (default: 2)
-- `--git`: Commit plan file after creation
-- `--output <path>`: Override plan file location
-- `[context]`: Optional freeform context for parameter inference
+- **`--explore N`** (optional): Override default explore agent count (default: 2)
+- **`--git`** (optional): Commit plan file after creation
+- **`--output <path>`** (optional): Override plan file location
+- **`[context]`** (optional): Optional freeform context for parameter inference
 
-## Behavior
+## Objective
+
+Plan a maintenance task with comprehensive codebase exploration, gathering user requirements, and generating a structured plan document that guides implementation.
+
+## Core Principles
+
+- Explore the codebase thoroughly before planning to understand existing patterns and conventions
+- Generate plans as static documentation - never modify them during implementation
+- Focus on specific, actionable tasks rather than time estimates or deadlines
+- Use TodoWrite tool for progress tracking, not plan file updates
+- Ask clarifying questions when requirements are unclear or context is insufficient
+
+## Instructions
 
 1. **Read Configuration**
    - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `/specs`)
@@ -63,6 +75,43 @@ Plan a maintenance task with codebase exploration and structured plan generation
    - Stage the plan file
    - Commit with message: `docs(plan): Add chore plan - {title}`
 
+## Output Guidance
+
+Present the plan file path and a brief summary of what was planned:
+
+```
+Plan saved to /specs/chore-{slugified-title}.md
+
+## Summary
+- Tasks identified: X
+- Key areas: [list of affected areas]
+- Validation criteria defined
+
+Next steps:
+- Implement with: /interactive-sdlc:build /specs/chore-{slugified-title}.md
+- Or run full workflow: /interactive-sdlc:plan-build-validate
+```
+
+## Templates
+
+### Chore Plan Structure
+
+```markdown
+# Chore: <chore-title>
+
+## Description
+Brief description of what needs to be done and why
+
+## Scope
+What is included and what is explicitly out of scope
+
+## Tasks
+List of specific tasks required to complete this chore, in order
+
+## Validation Criteria
+How to verify this chore is complete
+```
+
 ## Example Usage
 
 ```bash
@@ -79,9 +128,10 @@ Plan a maintenance task with codebase exploration and structured plan generation
 /interactive-sdlc:plan-chore --output /docs/plans/logging.md Refactor logging
 ```
 
-## Important Notes
+## Don't
 
-- Plans are static documentation - never modified during implementation
-- No time estimates, deadlines, or scheduling information in plans
-- Progress tracking happens via TodoWrite tool, not plan file updates
-- Use the explore agents to understand existing code before planning tasks
+- Don't modify plan files during implementation - they are static documentation
+- Don't include time estimates, deadlines, or scheduling information in plans
+- Don't update plan files to track progress - use TodoWrite tool instead
+- Don't skip codebase exploration - understanding existing patterns is critical
+- Don't make assumptions about requirements - ask clarifying questions when needed

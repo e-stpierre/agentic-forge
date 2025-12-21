@@ -8,14 +8,27 @@ argument-hint: "<plan-file> [--git] [--checkpoint \"<text>\"] [context]"
 
 Implement a plan file with checkpoint support for resuming work.
 
-## Arguments
+## Parameters
 
-- `<plan-file>`: Required path to plan file
-- `--git`: Auto-commit changes at logical checkpoints
-- `--checkpoint "<text>"`: Resume from specific task/milestone
-- `[context]`: Optional freeform context for implementation guidance
+- **`<plan-file>`** (required): Path to plan file
+- **`--git`** (optional): Auto-commit changes at logical checkpoints
+- **`--checkpoint "<text>"`** (optional): Resume from specific task/milestone
+- **`[context]`** (optional): Optional freeform context for implementation guidance
 
-## Behavior
+## Objective
+
+Implement all tasks from a plan file with checkpoint support for resuming work, progress tracking via TodoWrite, and optional git commits at logical milestones.
+
+## Core Principles
+
+- Plans are read-only - never modify the plan file during implementation
+- Track progress via TodoWrite tool, not plan file updates
+- Ask clarifying questions rather than making assumptions
+- Maintain code quality and follow existing patterns in the codebase
+- Run tests frequently to catch issues early
+- Git commits should be atomic and meaningful, aligned with milestones or task groups
+
+## Instructions
 
 1. **Read Plan File**
    - Read the plan file from the provided path
@@ -56,6 +69,34 @@ Implement a plan file with checkpoint support for resuming work.
 6. **Validation**
    - After completing all tasks, remind user to run `/interactive-sdlc:validate`
    - Provide summary of changes made
+
+## Output Guidance
+
+Provide clear progress updates and a final summary:
+
+**During implementation:**
+```
+[in_progress] Milestone 1: OAuth Integration
+  [completed] Task 1.1: Add OAuth provider configuration
+  [in_progress] Task 1.2: Implement OAuth handlers
+  [pending] Task 1.3: Add session management
+```
+
+**On completion:**
+```
+## Implementation Complete
+
+Tasks completed: X
+Files modified: Y
+Commits created: Z (if --git used)
+
+Changes summary:
+- [list key changes made]
+
+Next steps:
+- Run validation: /interactive-sdlc:validate --plan /specs/feature-auth.md
+- Review changes and test functionality
+```
 
 ## Example Usage
 
@@ -113,11 +154,10 @@ When `--git` flag is used:
 
 Scope is derived from the plan file name or affected directories.
 
-## Important Notes
+## Don't
 
-- The plan file is READ-ONLY during implementation
-- Progress is tracked via TodoWrite tool, not plan file updates
-- Ask clarifying questions rather than making assumptions
-- Maintain code quality and follow existing patterns
-- Run tests frequently to catch issues early
-- If a task cannot be completed, explain why and ask for guidance
+- Don't modify the plan file during implementation - it is read-only documentation
+- Don't make assumptions when implementation details are unclear - ask questions
+- Don't skip tests - run them frequently to catch issues early
+- Don't commit broken code - ensure changes work before committing
+- Don't proceed with incomplete tasks - if blocked, explain and ask for guidance
