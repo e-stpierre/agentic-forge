@@ -1,0 +1,102 @@
+# Plan Bug
+
+Plan a bug fix with root cause analysis, reproduction steps, and structured fix strategy.
+
+## Arguments
+
+- `--explore N`: Override default explore agent count (default: 2)
+- `--git`: Commit plan file after creation
+- `--output <path>`: Override plan file location
+- `[context]`: Optional freeform context for parameter inference
+
+## Behavior
+
+1. **Read Configuration**
+   - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `/specs`)
+   - Read `interactive-sdlc.defaultExploreAgents.bug` (default: 2)
+
+2. **Explore Codebase**
+   - Launch N explore agents (from config or --explore flag)
+   - Focus exploration on understanding the bug context
+   - Trace code paths related to the bug
+   - Identify potential root causes
+
+3. **Gather Requirements**
+   - Parse the `[context]` argument if provided
+   - If bug description can be inferred from context, use it
+   - Otherwise, ask the user:
+     - What is the bug title/summary?
+     - What is the observed behavior?
+     - What is the expected behavior?
+     - What are the reproduction steps?
+     - What is the impact of this bug?
+
+4. **Investigate Root Cause**
+   - Analyze the codebase based on the bug description
+   - Trace the execution path
+   - Identify the root cause
+   - Document findings
+
+5. **Generate Plan**
+   - Create a plan following this structure:
+
+   ```markdown
+   # Bug Fix: <bug-title>
+
+   ## Description
+   Clear explanation of the bug and its impact
+
+   ## Reproduction Steps
+   Step-by-step instructions to reproduce the bug
+
+   ## Root Cause Analysis
+   Technical explanation of why the bug occurs
+
+   ## Fix Strategy
+   High-level approach to fixing the bug
+
+   ## Tasks
+   Specific tasks to implement the fix
+
+   ## Validation
+   How to verify the bug is fixed and won't regress
+
+   ## Testing
+   Test cases to add or update to prevent regression
+   ```
+
+6. **Save Plan**
+   - Save to `--output` path if specified
+   - Otherwise save to `{planDirectory}/bug-{slugified-title}.md`
+   - Inform user of the saved file path
+
+7. **Git Commit (if --git flag)**
+   - Stage the plan file
+   - Commit with message: `docs(plan): Add bug fix plan - {title}`
+
+## Example Usage
+
+```bash
+# Basic usage - interactive prompts
+/interactive-sdlc:plan-bug
+
+# With context
+/interactive-sdlc:plan-bug Login fails on Safari when using OAuth.
+Users click login button, get redirected to OAuth provider,
+but after successful auth they are redirected to a blank page
+instead of the dashboard.
+
+# With flags
+/interactive-sdlc:plan-bug --explore 3 --git Memory leak in WebSocket handler
+
+# With custom output
+/interactive-sdlc:plan-bug --output /docs/bugs/safari-oauth.md Safari OAuth issue
+```
+
+## Important Notes
+
+- Plans are static documentation - never modified during implementation
+- No time estimates, deadlines, or scheduling information in plans
+- Progress tracking happens via TodoWrite tool, not plan file updates
+- Root cause analysis should be thorough - understanding the cause is critical
+- Include test cases to prevent regression

@@ -78,7 +78,11 @@
       "license": "MIT",
       "keywords": ["sdlc", "interactive", "planning", "building", "validation", "workflows"],
       "strict": false,
-      "commands": []
+      "commands": [
+        "./plugins/interactive-sdlc/commands/plan-chore.md",
+        "./plugins/interactive-sdlc/commands/plan-bug.md",
+        "./plugins/interactive-sdlc/commands/plan-feature.md"
+      ]
     }
   ]
 }
