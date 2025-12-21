@@ -26,8 +26,7 @@ Both plugins use the standard Claude Code configuration via `.claude/settings.js
     }
   },
   "agentic-sdlc": {
-    "outputDirectory": "/artifacts",
-    "agentCommunication": "json"
+    "planDirectory": "/specs"
   }
 }
 ```
@@ -421,7 +420,84 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 
 ---
 
-## Milestone 8: Rename SDLC to Agentic-SDLC
+## Milestone 8: Add Configuration Command
+
+**Goal**: Create interactive /configure commands for both plugins to guide users through setup.
+
+### Tasks
+
+1. **Create /configure command for interactive-sdlc**
+   - File: `plugins/interactive-sdlc/commands/configure.md`
+   - Command behavior:
+     - Display instructions about required settings in `.claude/settings.json`
+     - Read existing `.claude/settings.json` (create if missing)
+     - Parse current `interactive-sdlc` settings
+     - Validate configuration against expected schema:
+       - `planDirectory`: string, valid directory path
+       - `defaultExploreAgents.chore`: number, 0-5
+       - `defaultExploreAgents.bug`: number, 0-5
+       - `defaultExploreAgents.feature`: number, 0-10
+     - If config is valid and complete:
+       - Display success message
+       - Show current configuration
+       - Inform user they can edit `.claude/settings.json` directly for changes
+       - Exit command
+     - If config is missing or invalid:
+       - Use AskUserQuestion to gather missing/invalid values
+       - Show current values as defaults in questions
+       - Validate user inputs
+       - Update `.claude/settings.json` with new configuration
+       - Preserve other settings in file (only update `interactive-sdlc` section)
+       - Confirm successful configuration with summary
+   - Example questions:
+     - "Where should plan files be saved?" (current: `/specs`)
+     - "How many explore agents for chore planning?" (current: `2`)
+     - "How many explore agents for bug planning?" (current: `2`)
+     - "How many explore agents for feature planning?" (current: `3`)
+
+2. **Create /configure command for agentic-sdlc**
+   - File: `plugins/agentic-sdlc/commands/configure.md`
+   - Command behavior:
+     - Display instructions about required settings in `.claude/settings.json`
+     - Read existing `.claude/settings.json` (create if missing)
+     - Parse current `agentic-sdlc` settings
+     - Validate configuration against expected schema:
+       - `planDirectory`: string, valid directory path
+     - If config is valid and complete:
+       - Display success message
+       - Show current configuration
+       - Inform user they can edit `.claude/settings.json` directly for changes
+       - Exit command
+     - If config is missing or invalid:
+       - Use AskUserQuestion to gather missing/invalid values
+       - Show current values as defaults in questions
+       - Validate user inputs
+       - Update `.claude/settings.json` with new configuration
+       - Preserve other settings in file (only update `agentic-sdlc` section)
+       - Confirm successful configuration with summary
+
+3. **Implement configuration validation utilities**
+   - Create shared validation logic for both commands
+   - Path validation (directory exists or can be created)
+   - Numeric range validation
+   - JSON schema validation
+   - Helper to merge new config with existing settings.json
+
+4. **Handle edge cases**
+   - `.claude/settings.json` doesn't exist (create with proper structure)
+   - File exists but is invalid JSON (backup and recreate)
+   - File exists but missing `interactive-sdlc` or `agentic-sdlc` section (add section)
+   - User provides invalid input (re-prompt with error message)
+   - File permissions issues (inform user of manual steps)
+
+5. **Update documentation**
+   - Add `/configure` to command list in both plugin READMEs
+   - Document that `/configure` is the recommended way to set up plugins
+   - Include examples of running `/configure` in getting started guides
+
+---
+
+## Milestone 9: Rename SDLC to Agentic-SDLC
 
 **Goal**: Rename the existing SDLC plugin to agentic-sdlc and update metadata.
 
@@ -449,7 +525,7 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 
 ---
 
-## Milestone 9: Refactor Commands for Agentic Workflow
+## Milestone 10: Refactor Commands for Agentic Workflow
 
 **Goal**: Update all commands in agentic-sdlc to be fully autonomous with no user interaction.
 
@@ -510,7 +586,7 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 
 ---
 
-## Milestone 10: Create Python Workflow Orchestration
+## Milestone 11: Create Python Workflow Orchestration
 
 **Goal**: Create Python CLI tools for orchestrating agentic-sdlc workflows.
 
@@ -547,7 +623,7 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 
 ---
 
-## Milestone 11: Final Testing & Documentation
+## Milestone 12: Final Testing & Documentation
 
 **Goal**: Complete the project with comprehensive testing and documentation.
 
@@ -618,6 +694,8 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 - [ ] Validate command covers all quality checks
 - [ ] Workflow commands orchestrate steps properly
 - [ ] Configuration system works from `.claude/settings.json`
+- [ ] `/configure` commands guide users through setup interactively
+- [ ] Configuration validation prevents invalid settings
 - [ ] Agentic-sdlc plugin renamed successfully
 - [ ] All commands refactored for autonomous operation
 - [ ] JSON schemas defined and validated
