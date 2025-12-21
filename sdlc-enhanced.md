@@ -17,14 +17,37 @@ Both plugins use Claude Code's standard namespace pattern with colon separators,
 
 All commands are prefixed with `interactive-sdlc:`:
 
+**Configuration:**
+
 - `/interactive-sdlc:configure` - Set up plugin configuration interactively
+
+**Planning:**
+
 - `/interactive-sdlc:plan-chore` - Plan a maintenance task
 - `/interactive-sdlc:plan-bug` - Plan a bug fix with root cause analysis
 - `/interactive-sdlc:plan-feature` - Plan a feature with milestones
+
+**Implementation:**
+
 - `/interactive-sdlc:build` - Implement a plan file
 - `/interactive-sdlc:validate` - Validate implementation quality
+
+**Workflows:**
+
 - `/interactive-sdlc:one-shot` - Quick task without saved plan
 - `/interactive-sdlc:plan-build-validate` - Full workflow from planning to validation
+
+**Documentation:**
+
+- `/interactive-sdlc:document` - Generate or update project documentation with mermaid diagrams
+
+**Analysis:**
+
+- `/interactive-sdlc:analyse-bug` - Analyze codebase for bugs and logic errors
+- `/interactive-sdlc:analyse-doc` - Analyze documentation quality and accuracy
+- `/interactive-sdlc:analyse-debt` - Identify technical debt and refactoring opportunities
+- `/interactive-sdlc:analyse-style` - Check code style, consistency, and best practices
+- `/interactive-sdlc:analyse-security` - Scan for security vulnerabilities and unsafe patterns
 
 ### Agentic-SDLC Commands
 
@@ -55,6 +78,7 @@ All commands are prefixed with `agentic-sdlc:`:
 **All command references MUST use the full namespaced form, even when shorthand would work.**
 
 This applies to:
+
 - **Documentation and examples**: Always show `/interactive-sdlc:plan-chore`, never `/plan-chore`
 - **Command prompts**: Commands that invoke other commands must use full namespace
 - **Python scripts**: Always use `/agentic-sdlc:plan-feature`, never `/plan-feature`
@@ -62,6 +86,7 @@ This applies to:
 - **User-facing help text**: Show full namespace form
 
 **Why this matters:**
+
 - Commands work consistently regardless of which plugins are installed
 - Users can copy examples from docs and they always work
 - No confusion about which plugin a command belongs to
@@ -90,7 +115,11 @@ run_claude("/plan-feature", json_input=spec)
 
 ## Configuration System
 
-Both plugins use the standard Claude Code configuration via `.claude/settings.json` (project scope, committed to git):
+Both plugins use the standard Claude Code configuration via `.claude/settings.json` (project scope, committed to git).
+
+### Configuration Schema
+
+**Complete settings.json schema for both plugins:**
 
 ```json
 {
@@ -99,7 +128,13 @@ Both plugins use the standard Claude Code configuration via `.claude/settings.js
     "agentic-sdlc@agentic-forge": true
   },
   "interactive-sdlc": {
+    // Plan file storage
     "planDirectory": "/specs",
+
+    // Analysis report storage
+    "analysisDirectory": "/analysis",
+
+    // Default explore agent counts per plan type
     "defaultExploreAgents": {
       "chore": 2,
       "bug": 2,
@@ -107,17 +142,30 @@ Both plugins use the standard Claude Code configuration via `.claude/settings.js
     }
   },
   "agentic-sdlc": {
+    // Plan file storage (for autonomous workflows)
     "planDirectory": "/specs"
   }
 }
 ```
+
+**Supported Configuration Values:**
+
+| Plugin | Setting | Type | Default | Description |
+|--------|---------|------|---------|-------------|
+| `interactive-sdlc` | `planDirectory` | string | `"/specs"` | Directory for plan files (.md) |
+| `interactive-sdlc` | `analysisDirectory` | string | `"/analysis"` | Directory for analysis reports (.md) |
+| `interactive-sdlc` | `defaultExploreAgents.chore` | number (0-5) | `2` | Explore agents for chore planning |
+| `interactive-sdlc` | `defaultExploreAgents.bug` | number (0-5) | `2` | Explore agents for bug planning |
+| `interactive-sdlc` | `defaultExploreAgents.feature` | number (0-10) | `3` | Explore agents for feature planning |
+| `agentic-sdlc` | `planDirectory` | string | `"/specs"` | Directory for plan files (autonomous) |
 
 Personal overrides can be configured in `.claude/settings.local.json` (gitignored):
 
 ```json
 {
   "interactive-sdlc": {
-    "planDirectory": "/my-custom-specs"
+    "planDirectory": "/my-custom-specs",
+    "analysisDirectory": "/my-analysis"
   }
 }
 ```
@@ -125,7 +173,8 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 **Default behavior if not configured:**
 
 - Plan files saved to `/specs` directory at project root
-- Explore agent defaults as specified above
+- Analysis reports saved to `/analysis` directory at project root
+- Explore agent defaults as specified in schema table
 - Settings hierarchy: local overrides project overrides user overrides defaults
 
 ---
@@ -232,6 +281,37 @@ Each command must:
 ## Milestone 2: Implement Plan Template System
 
 **Goal**: Create reusable plan templates with placeholder replacement system.
+
+### **CRITICAL: Plan File Principles**
+
+**Plans are static documentation of work to be done:**
+
+1. **Plans are immutable during implementation**
+   - Once created, plan files should NOT be modified to track progress
+   - Progress tracking happens via TodoWrite tool, not plan file updates
+   - Plans can only be updated if user explicitly requests changes to the plan itself
+
+2. **Plans are descriptive, not prescriptive timelines**
+   - NO time estimates or deadlines
+   - NO completion percentages or status tracking
+   - NO "planned start/end dates" or scheduling information
+   - Focus on WHAT needs to be done and WHY, not WHEN
+
+3. **Plans contain:**
+   - ✅ Technical descriptions and requirements
+   - ✅ Architecture and design decisions
+   - ✅ Task breakdowns and dependencies
+   - ✅ Validation criteria and testing strategies
+   - ✅ Implementation guidance and context
+   - ❌ Time estimates, schedules, or deadlines
+   - ❌ Progress tracking or completion status
+   - ❌ Assignment or ownership information
+
+4. **Implementation commands (build) should:**
+   - Read plan as reference documentation
+   - Create TodoWrite list for progress tracking
+   - Mark todos as complete (not plan tasks)
+   - Never modify the plan file to show progress
 
 ### Tasks
 
@@ -581,6 +661,12 @@ Each command must:
      - `/interactive-sdlc:validate`
      - `/interactive-sdlc:one-shot`
      - `/interactive-sdlc:plan-build-validate`
+     - `/interactive-sdlc:document`
+     - `/interactive-sdlc:analyse-bug`
+     - `/interactive-sdlc:analyse-doc`
+     - `/interactive-sdlc:analyse-debt`
+     - `/interactive-sdlc:analyse-style`
+     - `/interactive-sdlc:analyse-security`
    - Examples for common workflows using full namespace
    - Troubleshooting section
 
@@ -600,6 +686,12 @@ Each command must:
      - `./plugins/interactive-sdlc/commands/validate.md`
      - `./plugins/interactive-sdlc/commands/one-shot.md`
      - `./plugins/interactive-sdlc/commands/plan-build-validate.md`
+     - `./plugins/interactive-sdlc/commands/document.md`
+     - `./plugins/interactive-sdlc/commands/analyse-bug.md`
+     - `./plugins/interactive-sdlc/commands/analyse-doc.md`
+     - `./plugins/interactive-sdlc/commands/analyse-debt.md`
+     - `./plugins/interactive-sdlc/commands/analyse-style.md`
+     - `./plugins/interactive-sdlc/commands/analyse-security.md`
    - Note: File paths in marketplace.json do NOT include namespace prefix; Claude Code adds the namespace automatically
 
 5. **Test interactive-sdlc plugin**
@@ -609,6 +701,294 @@ Each command must:
    - Test workflow commands
    - Test all flags (--git, --pr, --checkpoint, --explore)
    - Test configuration system
+
+---
+
+## Milestone 7.5: Add Documentation Command
+
+**Goal**: Create command to generate and update project documentation.
+
+### Tasks
+
+1. **Create /interactive-sdlc:document command**
+   - File: `plugins/interactive-sdlc/commands/document.md`
+   - Full command name: `/interactive-sdlc:document`
+   - Command behavior:
+     - Accept user request for documentation to create or update
+     - Analyze existing documentation structure
+     - Generate or update documentation in markdown format
+     - Use mermaid diagrams for visual representations (architecture, flows, sequences)
+     - Run `markdownlint-cli2` to format the output after creation/update
+     - Save to appropriate location (suggest based on content type)
+   - Support arguments:
+     - `--output <path>`: Specify output file path
+     - `[context]`: Description of what to document
+   - Common use cases:
+     - API documentation
+     - Architecture documentation
+     - Feature documentation
+     - Setup/installation guides
+     - Troubleshooting guides
+   - Example usage:
+
+     ```bash
+     /interactive-sdlc:document --output docs/api.md Document the REST API endpoints with request/response examples
+     /interactive-sdlc:document Create architecture diagram showing the plugin system
+     ```
+
+2. **Implement mermaid diagram generation**
+   - Generate appropriate diagram types based on context:
+     - Architecture diagrams (C4, component diagrams)
+     - Sequence diagrams (for flows and interactions)
+     - Flowcharts (for decision logic)
+     - Class diagrams (for object models)
+     - State diagrams (for state machines)
+   - Ensure mermaid syntax is valid
+   - Include descriptive titles and labels
+
+3. **Implement markdownlint-cli2 formatting**
+   - Run `npx markdownlint-cli2 --fix <file>` after document creation/update
+   - Handle formatting errors gracefully
+   - Report formatting issues to user if auto-fix fails
+
+---
+
+## Milestone 7.6: Add Analysis Commands
+
+**Goal**: Create comprehensive codebase analysis commands for identifying issues across different dimensions.
+
+### Tasks
+
+1. **Create /interactive-sdlc:analyse-bug command**
+   - File: `plugins/interactive-sdlc/commands/analyse-bug.md`
+   - Full command name: `/interactive-sdlc:analyse-bug`
+   - **Focus**: Bugs, logic errors, runtime issues, error handling problems
+   - Command behavior:
+     - Analyze codebase for potential bugs and issues
+     - Categorize findings by criticality (Critical, Major, Medium, Low)
+     - Generate report in configured analysis directory (default: `/analysis`)
+     - Save as `bug.md` or timestamped filename if specified
+     - **CRITICAL**: Only report REAL issues - do not force-find problems
+     - If no issues found, report "No issues identified" - this is perfectly acceptable
+   - Report template:
+
+     ```md
+     # Bug Report
+
+     ## Critical
+
+     ### BUG-001: <Title>
+
+     **Date**: YYYY-MM-DD
+
+     **Location:** file:line or module description
+
+     **Issue:** Clear description of the bug
+
+     **Impact:** What happens because of this bug
+
+     **Fix:** Suggested fix approach
+
+     ---
+
+     ## Major
+
+     [Same format for major issues]
+
+     ## Medium
+
+     [Same format for medium issues]
+
+     ## Low
+
+     [Same format for low issues]
+     ```
+
+   - Support arguments:
+     - `[context]`: Specific areas or concerns to focus on or directories or files to focus on
+
+2. **Create /interactive-sdlc:analyse-doc command**
+   - File: `plugins/interactive-sdlc/commands/analyse-doc.md`
+   - Full command name: `/interactive-sdlc:analyse-doc`
+   - **Focus**: Documentation quality, accuracy, completeness
+   - Command behavior:
+     - Analyze documentation for issues:
+       - Outdated information
+       - Incorrect/misleading content
+       - Missing documentation
+       - Broken references
+       - Inconsistencies between docs and code
+     - **CRITICAL**: Only report REAL issues
+     - If documentation is good, say so
+   - Report template:
+
+     ```md
+     # Documentation Issues
+
+     ## Critical Issues (Completely Wrong/Misleading)
+
+     ### DOC-001: <Title>
+
+     **Date**: YYYY-MM-DD
+
+     **Files:** List of affected documentation files
+
+     **Issue:** What is wrong or missing
+
+     **Fix:** How to correct it
+
+     ---
+
+     ## Major Issues (Outdated/Incomplete)
+
+     [Same format]
+
+     ## Minor Issues (Improvements)
+
+     [Same format]
+     ```
+
+3. **Create /interactive-sdlc:analyse-debt command**
+   - File: `plugins/interactive-sdlc/commands/analyse-debt.md`
+   - Full command name: `/interactive-sdlc:analyse-debt`
+   - **Focus**: Technical debt, optimization opportunities, refactoring needs
+   - Command behavior:
+     - Identify technical debt:
+       - Code duplication
+       - Complex/hard-to-maintain code
+       - Outdated patterns
+       - Architecture smells
+       - Performance bottlenecks
+       - Missing abstractions
+     - **CRITICAL**: Focus on REAL debt that matters, not nitpicking
+   - Report template:
+
+     ```md
+     # Tech Debt
+
+     ## Architecture
+
+     ### DEBT-001: <Title>
+
+     **Date**: YYYY-MM-DD
+
+     **Location:** Files or modules affected
+
+     **Issue:** Current problematic pattern
+
+     **Improvement:** Suggested improvement
+
+     **Benefit:** Why this matters
+
+     **Effort:** Low/Medium/High
+
+     ---
+
+     ## Code Quality
+
+     [Same format]
+
+     ## Performance
+
+     [Same format]
+     ```
+
+4. **Create /interactive-sdlc:analyse-style command**
+   - File: `plugins/interactive-sdlc/commands/analyse-style.md`
+   - Full command name: `/interactive-sdlc:analyse-style`
+   - **Focus**: Code style, consistency, best practices, pattern adherence
+   - Command behavior:
+     - Analyze code style and consistency:
+       - Naming convention violations
+       - Pattern mismatches
+       - Inconsistent formatting (if not auto-fixable)
+       - Best practice deviations
+       - Project convention violations
+     - **CRITICAL**: Put emphasis on normalization, there should ideally be a single way of doing anything in the codebase
+   - Report template:
+
+     ```md
+     # Style & Consistency Issues
+
+     ## Major Inconsistencies
+
+     ### STYLE-001: <Title>
+
+     **Date**: YYYY-MM-DD
+
+     **Location:** Files affected
+
+     **Issue:** Inconsistency or pattern mismatch
+
+     **Standard:** Expected pattern/convention
+
+     **Fix:** How to align with standard
+
+     ---
+
+     ## Minor Issues
+
+     [Same format]
+     ```
+
+5. **Create /interactive-sdlc:analyse-security command**
+   - File: `plugins/interactive-sdlc/commands/analyse-security.md`
+   - Full command name: `/interactive-sdlc:analyse-security`
+   - **Focus**: Security vulnerabilities, unsafe practices, dependency issues
+   - Command behavior:
+     - Analyze for security issues:
+       - Common vulnerabilities (OWASP Top 10)
+       - Unsafe dependencies
+       - Insecure patterns
+       - Missing security controls
+       - Exposure of sensitive data
+     - **CRITICAL**: Only report REAL security issues
+     - Complements appsec plugin with lighter-weight analysis
+   - Report template:
+
+     ```md
+     # Security Analysis
+
+     ## Critical Vulnerabilities
+
+     ### SEC-001: <Title>
+
+     **Date**: YYYY-MM-DD
+
+     **Location:** Code location or dependency
+
+     **Vulnerability:** Type and description
+
+     **Risk:** Potential impact
+
+     **Remediation:** Fix approach
+
+     ---
+
+     ## High Risk
+
+     [Same format]
+
+     ## Medium Risk
+
+     [Same format]
+
+     ## Low Risk
+
+     [Same format]
+     ```
+
+6. **Add analysis commands to marketplace**
+   - Update marketplace.json with all 5 analysis commands
+   - Update README with analysis command documentation
+
+7. **Key principles for ALL analysis commands**
+   - **No forced findings**: Only report actual, verifiable issues
+   - **Quality over quantity**: Better to report 0 real issues than 10 false positives
+   - **Clear criticality**: Use consistent criticality levels across all reports
+   - **Actionable**: Every finding should have a clear fix/improvement
+   - **Context-aware**: Understand project patterns before flagging as issues
+   - **Positive outcomes**: "No issues found" is a SUCCESS, not a failure
 
 ---
 
@@ -627,6 +1007,7 @@ Each command must:
      - Parse current `interactive-sdlc` settings
      - Validate configuration against expected schema:
        - `planDirectory`: string, valid directory path
+       - `analysisDirectory`: string, valid directory path
        - `defaultExploreAgents.chore`: number, 0-5
        - `defaultExploreAgents.bug`: number, 0-5
        - `defaultExploreAgents.feature`: number, 0-10
@@ -644,6 +1025,7 @@ Each command must:
        - Confirm successful configuration with summary
    - Example questions:
      - "Where should plan files be saved?" (current: `/specs`)
+     - "Where should analysis reports be saved?" (current: `/analysis`)
      - "How many explore agents for chore planning?" (current: `2`)
      - "How many explore agents for bug planning?" (current: `2`)
      - "How many explore agents for feature planning?" (current: `3`)
@@ -812,6 +1194,7 @@ Each command must:
    - Agent-to-agent communication
    - Error handling and retry logic
    - Example usage:
+
      ```python
      # ✅ CORRECT - Always use full namespace
      run_claude("/agentic-sdlc:plan-feature", json_input=spec)
@@ -909,21 +1292,36 @@ Each command must:
 
 ## Success Criteria
 
-- [ ] Interactive-sdlc plugin installed and functional
+### Interactive-SDLC Plugin
+
+- [ ] Plugin installed and functional
 - [ ] All commands support optional `[context]` argument for inline instructions
 - [ ] Context argument properly infers parameters and reduces interactive prompts
+- [ ] Plans are static and never modified during implementation
+- [ ] Plans contain no time estimates or scheduling information
 - [ ] All planning commands work with templates
-- [ ] Build command implements plans correctly
+- [ ] Build command implements plans correctly using TodoWrite for progress tracking
 - [ ] Validate command covers all quality checks
 - [ ] Workflow commands orchestrate steps properly
-- [ ] Configuration system works from `.claude/settings.json`
-- [ ] Configure commands (`/interactive-sdlc:configure`, `/agentic-sdlc:configure`) guide users through setup
+- [ ] Document command generates markdown with mermaid diagrams and runs markdownlint-cli2
+- [ ] All 5 analysis commands generate proper reports with criticality levels
+- [ ] Analysis commands only report real issues (no forced findings)
+- [ ] Configuration system works from `.claude/settings.json` with complete schema
+- [ ] Configure command validates all settings including analysisDirectory
 - [ ] Configuration validation prevents invalid settings
-- [ ] All command references use full namespace form consistently
-- [ ] Agentic-sdlc plugin renamed successfully
-- [ ] All commands refactored for autonomous operation
-- [ ] JSON schemas defined and validated
-- [ ] Python orchestration tools implemented
+- [ ] All 14 commands use full namespace form consistently
+
+### Agentic-SDLC Plugin
+
+- [ ] Plugin renamed successfully from SDLC
+- [ ] All commands refactored for autonomous operation (no user interaction)
+- [ ] JSON schemas defined and validated for agent communication
+- [ ] Python orchestration tools implemented with uv
+- [ ] All Python scripts use full namespace for command invocation
+
+### General
+
 - [ ] Both plugins have comprehensive documentation
-- [ ] Migration guide helps users transition
+- [ ] Migration guide helps users transition from old SDLC plugin
+- [ ] Marketplace metadata updated for both plugins
 - [ ] All tests pass
