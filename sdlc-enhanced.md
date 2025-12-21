@@ -49,6 +49,67 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 
 ---
 
+## General Requirements for Interactive-SDLC Commands
+
+**All interactive-sdlc commands MUST support an optional `[context]` argument as their last parameter.**
+
+### Context Argument Specification
+
+- **Position**: Always the last argument, after all flags and named parameters
+- **Format**: Freeform text that can span multiple lines
+- **Purpose**: Provides explicit instructions and context to infer command parameters without interactive questions
+- **Behavior**:
+  - Command reads and analyzes the context
+  - Attempts to infer required parameters from context
+  - Only asks interactive questions for parameters that cannot be confidently inferred
+  - Context takes precedence over interactive questions
+
+### Usage Examples
+
+```bash
+# Plan a feature with inline context
+/plan-feature Add dark mode support with toggle in settings and persistent user preference
+
+# Plan a bug fix with detailed context
+/plan-bug --explore 3 Login fails on Safari when using OAuth.
+Users click login button, get redirected to OAuth provider,
+but after successful auth they are redirected to a blank page
+instead of the dashboard.
+
+# Build with checkpoint and context
+/build /specs/feature-auth.md --checkpoint "Milestone 2" Continue from where we left off, focus on the OAuth integration
+
+# One-shot with context
+/one-shot --git Fix the typo in the README file, change "authenitcation" to "authentication"
+
+# Validate with autofix and context
+/validate --autofix critical,major --plan /specs/bug-login.md Focus on security issues and the login flow validation
+```
+
+### Command Implementation Requirements
+
+Each command must:
+
+1. **Parse context**: Extract the `[context]` argument from the end of the command invocation
+2. **Analyze context**: Use the context to infer parameters like:
+   - Task titles
+   - Requirements
+   - Descriptions
+   - User preferences
+   - Specific instructions
+3. **Smart prompting**: Only ask for information that cannot be inferred from context
+4. **Context integration**: Include context in plan generation and execution decisions
+5. **Multi-line support**: Handle context that spans multiple lines properly
+
+### Benefits
+
+- **Faster workflow**: Users can provide all information upfront
+- **Better for automation**: Scripts can invoke commands with full context
+- **Reduced friction**: No need to wait for interactive prompts
+- **Flexibility**: Users choose between interactive mode or context mode
+
+---
+
 ## Milestone 1: Create Interactive-SDLC Plugin Structure
 
 **Goal**: Set up the new interactive-sdlc plugin with proper directory structure and metadata.
@@ -703,9 +764,11 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 ### Interactive-SDLC
 
 - **Slash commands**: Easier for users to discover and use
+- **Context argument support**: All commands accept optional `[context]` parameter for inline instructions, reducing interactive prompts
 - **Standard configuration**: Uses `.claude/settings.json` (project) and `.claude/settings.local.json` (personal) following Claude Code conventions
 - **Checkpoint system**: Allows resuming long-running builds
 - **Comprehensive validation**: Covers all quality aspects (tests, review, build, compliance)
+- **Smart prompting**: Only asks questions when context doesn't provide enough information
 
 ### Agentic-SDLC
 
@@ -726,6 +789,8 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 ## Success Criteria
 
 - [ ] Interactive-sdlc plugin installed and functional
+- [ ] All commands support optional `[context]` argument for inline instructions
+- [ ] Context argument properly infers parameters and reduces interactive prompts
 - [ ] All planning commands work with templates
 - [ ] Build command implements plans correctly
 - [ ] Validate command covers all quality checks
