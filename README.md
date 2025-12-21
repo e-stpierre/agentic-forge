@@ -146,8 +146,8 @@ Some plugins include Python CLI tools for workflow orchestration. Install them w
 # Core package (required for orchestration)
 uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\core"
 
-# SDLC workflows (depends on core)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\sdlc"
+# Agentic-SDLC autonomous workflows (depends on core)
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
 ```
 
 **macOS/Linux:**
@@ -156,17 +156,70 @@ uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plu
 # Core package (required for orchestration)
 uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/core
 
-# SDLC workflows (depends on core)
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/sdlc
+# Agentic-SDLC autonomous workflows (depends on core)
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
 ```
 
 **Available CLI commands after installation:**
 
-| Command          | Description                                              |
-| ---------------- | -------------------------------------------------------- |
-| `claude-feature` | Full feature workflow: plan -> implement -> review -> PR |
-| `claude-bugfix`  | Full bugfix workflow: diagnose -> fix -> test -> PR      |
-| `claude-sdlc`    | Main CLI with all SDLC subcommands                       |
+| Command            | Description                                              |
+| ------------------ | -------------------------------------------------------- |
+| `claude-sdlc`      | Legacy CLI with feature and bugfix subcommands           |
+| `claude-feature`   | Full feature workflow: plan -> implement -> review -> PR |
+| `claude-bugfix`    | Full bugfix workflow: diagnose -> fix -> test -> PR      |
+| `agentic-sdlc`     | Autonomous workflow CLI with JSON I/O                    |
+| `agentic-workflow` | Full end-to-end autonomous workflow                      |
+| `agentic-plan`     | Invoke planning agent with JSON input                    |
+| `agentic-build`    | Invoke build agent with plan JSON                        |
+| `agentic-validate` | Invoke validation agents (review + test)                 |
+
+## SDLC Plugins
+
+This repository provides two SDLC plugins for different use cases:
+
+### Interactive-SDLC
+
+Interactive SDLC commands for guided development within Claude Code sessions with user questions and feedback.
+
+**Best for**: Interactive development where you want to be involved in decisions.
+
+**Key commands**:
+
+- `/interactive-sdlc:plan-feature` - Plan a feature with milestones
+- `/interactive-sdlc:plan-bug` - Plan a bug fix with root cause analysis
+- `/interactive-sdlc:plan-chore` - Plan a maintenance task
+- `/interactive-sdlc:build` - Implement a plan file
+- `/interactive-sdlc:validate` - Validate implementation quality
+- `/interactive-sdlc:one-shot` - Quick task without saved plan
+- `/interactive-sdlc:document` - Generate documentation with mermaid diagrams
+- `/interactive-sdlc:analyse-*` - Analysis commands for bugs, docs, debt, style, security
+
+### Agentic-SDLC
+
+Fully autonomous SDLC workflow orchestrated via Python, with no user interaction.
+
+**Best for**: CI/CD integration, automated workflows, batch processing.
+
+**Key commands** (JSON I/O):
+
+- `/agentic-sdlc:plan-feature` - Generate feature plan (JSON I/O)
+- `/agentic-sdlc:plan-bug` - Generate bug fix plan (JSON I/O)
+- `/agentic-sdlc:plan-chore` - Generate chore plan (JSON I/O)
+- `/agentic-sdlc:implement` - Implement from plan (JSON I/O)
+- `/agentic-sdlc:review` - Review code changes (JSON I/O)
+- `/agentic-sdlc:test` - Run tests and analyze results (JSON I/O)
+
+**Python CLI**:
+
+```bash
+# Full autonomous workflow
+agentic-workflow --type feature --spec spec.json
+
+# Individual steps
+agentic-plan --type feature --json-file spec.json
+agentic-build --plan-file /specs/feature-auth.md
+agentic-validate --plan-file /specs/feature-auth.md
+```
 
 #### Remove Marketplace
 
