@@ -1,7 +1,7 @@
 ---
 name: normalize
 description: Validate files against prompt reference guidelines
-argument-hint: [file-or-directory...]
+argument-hint: [--autofix] [file-or-directory...]
 ---
 
 # Normalize Command
@@ -10,6 +10,7 @@ Validate that prompt files (commands, agents, skills) conform to the reference g
 
 ## Parameters
 
+- **`--autofix`** (optional): Automatically modify files to make them compliant with the documentation. Without this flag, only reports issues.
 - **`file-or-directory`** (optional): One or more paths to files or directories to validate. If omitted, validates all prompt files in the repository.
 
 ## Objective
@@ -20,8 +21,9 @@ Ensure all prompt files follow the structural and content requirements defined i
 
 - Validate against the appropriate reference based on file location
 - Report all issues with clear, actionable feedback
-- Suggest fixes but do not auto-modify files unless explicitly requested
+- Only modify files when `--autofix` flag is provided
 - Skip non-prompt files (non-.md files, READMEs, etc.)
+- Preserve existing content and style when autofixing
 
 ## Instructions
 
@@ -91,23 +93,63 @@ Ensure all prompt files follow the structural and content requirements defined i
    - Check that Instructions section contains numbered steps
    - Validate ASCII-only content (no special Unicode characters)
 
-6. **Generate Report**
+6. **Apply Autofix (if `--autofix` flag is present)**
+
+   When `--autofix` is specified in `$ARGUMENTS`, directly modify files to fix issues:
+
+   **Frontmatter fixes:**
+
+   - Add missing frontmatter block if absent
+   - Add missing required fields with sensible defaults:
+     - `name`: Derive from filename (convert to kebab-case)
+     - `description`: Use first paragraph or heading as basis
+     - `argument-hint`: Empty string if no parameters detected
+     - `tools`: `[Read, Glob, Grep]` for agents
+     - `model`: `sonnet` for agents
+     - `color`: `blue` for agents
+
+   **Structure fixes:**
+
+   - Add missing required sections with placeholder content
+   - Use the reference documentation templates as guidance
+   - Mark added sections with `<!-- TODO: Fill in this section -->` comments
+
+   **Content fixes:**
+
+   - Convert non-kebab-case names to kebab-case
+   - Replace non-ASCII characters with ASCII equivalents
+   - Ensure Instructions section uses numbered list format
+
+   **Autofix principles:**
+
+   - Read the file before modifying
+   - Preserve all existing content
+   - Insert new sections in the correct order per the reference
+   - Report each modification made
+
+7. **Generate Report**
 
    For each file, report:
+
    - File path and detected type
    - List of issues found (if any)
-   - Suggested fixes for each issue
+   - Suggested fixes for each issue (in validate-only mode)
+   - Modifications applied (in autofix mode)
 
    Summary at end:
+
    - Total files checked
    - Files passing validation
    - Files with issues
+   - Files modified (if autofix enabled)
 
 ## Output Guidance
 
+### Validate-only mode (default)
+
 Present results in a structured format:
 
-```
+```markdown
 ## Validation Results
 
 ### path/to/file.md (Command)
@@ -125,4 +167,27 @@ Present results in a structured format:
 - With issues: 2
 ```
 
-If all files pass, output a brief success message.
+### Autofix mode (`--autofix`)
+
+Report modifications as they are made:
+
+```markdown
+## Autofix Results
+
+### path/to/file.md (Command)
+- [FIXED] Added missing frontmatter field: argument-hint
+- [FIXED] Added missing "Output Guidance" section
+- [SKIP] Could not auto-generate: Objective section requires manual input
+
+### path/to/another.md (Agent)
+- [FIXED] Added missing frontmatter field: tools (defaulted to [Read, Glob, Grep])
+- [FIXED] Converted name "MyAgent" to kebab-case "my-agent"
+
+## Summary
+- Files checked: 10
+- Files modified: 2
+- Issues auto-fixed: 4
+- Issues requiring manual fix: 1
+```
+
+If all files pass validation, output a brief success message.
