@@ -38,3 +38,5 @@ Supported arguments:
 - --explore 3, the amount of explore agents to use for the explore phase of the codebase
 
 Keep the command clear and concise.
+
+In the first milestone(s), only create the new interactive-sdlc plugin. This plugin does not include any python scripts. Then, in the final milestones, rename the existing sdlc plugin to agentic-sdlc and update this plugin to matche the requirements. Every command must be update to only execute in an agentic workflow. Input and ouput of every commands must be clear and templated. Agents communicate with each other using json.
