@@ -1,3 +1,9 @@
+---
+name: plan-build-validate
+description: Full guided workflow from planning through implementation to validation
+argument-hint: "[--git] [--pr] [--explore N] [context]"
+---
+
 # Plan-Build-Validate
 
 Full guided workflow from planning through implementation to validation.

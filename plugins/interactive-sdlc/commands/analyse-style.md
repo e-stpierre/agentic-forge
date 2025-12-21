@@ -1,3 +1,9 @@
+---
+name: analyse-style
+description: Check code style, consistency, and best practices adherence
+argument-hint: "[context]"
+---
+
 # Analyse Style
 
 Check code style, consistency, and best practices adherence.

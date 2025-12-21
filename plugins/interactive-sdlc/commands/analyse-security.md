@@ -1,3 +1,9 @@
+---
+name: analyse-security
+description: Scan for security vulnerabilities, unsafe patterns, and dependency issues
+argument-hint: "[context]"
+---
+
 # Analyse Security
 
 Scan for security vulnerabilities, unsafe patterns, and dependency issues.

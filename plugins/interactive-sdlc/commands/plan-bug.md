@@ -1,3 +1,9 @@
+---
+name: plan-bug
+description: Plan a bug fix with root cause analysis, reproduction steps, and structured fix strategy
+argument-hint: "[--explore N] [--git] [--output <path>] [context]"
+---
+
 # Plan Bug
 
 Plan a bug fix with root cause analysis, reproduction steps, and structured fix strategy.

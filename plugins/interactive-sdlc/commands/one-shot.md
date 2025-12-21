@@ -1,3 +1,9 @@
+---
+name: one-shot
+description: Quick task execution without a saved plan file. Ideal for small, well-defined tasks
+argument-hint: "[--git] [--validate] [--explore N] <context>"
+---
+
 # One-Shot
 
 Quick task execution without a saved plan file. Ideal for small, well-defined tasks.

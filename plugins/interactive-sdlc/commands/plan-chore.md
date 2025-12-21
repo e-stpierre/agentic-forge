@@ -1,3 +1,9 @@
+---
+name: plan-chore
+description: Plan a maintenance task with codebase exploration and structured plan generation
+argument-hint: "[--explore N] [--git] [--output <path>] [context]"
+---
+
 # Plan Chore
 
 Plan a maintenance task with codebase exploration and structured plan generation.

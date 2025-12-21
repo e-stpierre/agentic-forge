@@ -1,3 +1,9 @@
+---
+name: plan-feature
+description: Plan a feature with milestones, architecture design, and comprehensive task breakdown
+argument-hint: "[--explore N] [--git] [--output <path>] [context]"
+---
+
 # Plan Feature
 
 Plan a feature with milestones, architecture design, and comprehensive task breakdown.

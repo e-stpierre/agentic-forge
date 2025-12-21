@@ -1,3 +1,9 @@
+---
+name: analyse-bug
+description: Analyze codebase for bugs, logic errors, and runtime issues
+argument-hint: "[context]"
+---
+
 # Analyse Bug
 
 Analyze codebase for bugs, logic errors, and runtime issues.

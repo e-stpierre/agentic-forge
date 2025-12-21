@@ -1,3 +1,9 @@
+---
+name: configure
+description: Set up interactive-sdlc plugin configuration interactively
+argument-hint: ""
+---
+
 # Configure
 
 Set up interactive-sdlc plugin configuration interactively.

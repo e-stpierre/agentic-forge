@@ -1,3 +1,9 @@
+---
+name: document
+description: Generate or update project documentation with mermaid diagrams
+argument-hint: "[--output <path>] [context]"
+---
+
 # Document
 
 Generate or update project documentation with mermaid diagrams.

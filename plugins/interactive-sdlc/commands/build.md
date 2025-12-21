@@ -1,3 +1,9 @@
+---
+name: build
+description: Implement a plan file with checkpoint support for resuming work
+argument-hint: "<plan-file> [--git] [--checkpoint \"<text>\"] [context]"
+---
+
 # Build
 
 Implement a plan file with checkpoint support for resuming work.
