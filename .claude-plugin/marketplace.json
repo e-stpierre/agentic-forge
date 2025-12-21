@@ -86,7 +86,12 @@
         "./plugins/interactive-sdlc/commands/validate.md",
         "./plugins/interactive-sdlc/commands/one-shot.md",
         "./plugins/interactive-sdlc/commands/plan-build-validate.md",
-        "./plugins/interactive-sdlc/commands/document.md"
+        "./plugins/interactive-sdlc/commands/document.md",
+        "./plugins/interactive-sdlc/commands/analyse-bug.md",
+        "./plugins/interactive-sdlc/commands/analyse-doc.md",
+        "./plugins/interactive-sdlc/commands/analyse-debt.md",
+        "./plugins/interactive-sdlc/commands/analyse-style.md",
+        "./plugins/interactive-sdlc/commands/analyse-security.md"
       ]
     }
   ]
