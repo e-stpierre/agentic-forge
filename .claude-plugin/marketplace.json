@@ -64,6 +64,21 @@
       "keywords": ["core", "foundation", "utilities", "building-blocks", "git", "worktree", "github", "orchestration"],
       "strict": false,
       "commands": ["./plugins/core/commands/git-branch.md", "./plugins/core/commands/git-commit.md", "./plugins/core/commands/git-pr.md", "./plugins/core/commands/git-worktree.md", "./plugins/core/commands/create-gh-issue.md", "./plugins/core/commands/read-gh-issue.md"]
+    },
+    {
+      "name": "interactive-sdlc",
+      "source": "./",
+      "description": "Interactive SDLC commands for guided development within Claude Code sessions",
+      "version": "1.0.0",
+      "category": "sdlc",
+      "author": {
+        "name": "Étienne St-Pierre",
+        "email": "me@estpierre.dev"
+      },
+      "license": "MIT",
+      "keywords": ["sdlc", "interactive", "planning", "building", "validation", "workflows"],
+      "strict": false,
+      "commands": []
     }
   ]
 }
