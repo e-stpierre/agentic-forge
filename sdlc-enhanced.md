@@ -58,17 +58,27 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 1. **Create plugin directory structure**
    - Create `plugins/interactive-sdlc/` directory
    - Create `plugins/interactive-sdlc/commands/` directory
-   - Create `plugins/interactive-sdlc/.claude-plugin/` directory
 
-2. **Create plugin metadata**
-   - Create `plugins/interactive-sdlc/.claude-plugin/plugin.json` with:
+2. **Add plugin metadata to marketplace.json**
+   - Update `.claude-plugin/marketplace.json` to add interactive-sdlc plugin entry
+   - Plugin configuration:
      - name: "interactive-sdlc"
      - version: "1.0.0"
+     - source: "./"
      - description: "Interactive SDLC commands for guided development within Claude Code sessions"
-     - author and license info
-     - dependencies: none
+     - category: "sdlc"
+     - author: name and email
+     - license: "MIT"
+     - keywords: ["sdlc", "interactive", "planning", "building", "validation", "workflows"]
+     - strict: false
+     - commands: (will be populated as commands are created)
 
-3. **Create plugin README**
+3. **Create plugin CHANGELOG**
+   - Create `plugins/interactive-sdlc/CHANGELOG.md`
+   - Include initial release entry (v1.0.0)
+   - Brief summary of initial features
+
+4. **Create plugin README**
    - Document plugin purpose and scope
    - List all commands with brief descriptions
    - Document configuration options (.claude/settings.json format)
@@ -151,14 +161,18 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
      ### Milestone 1: <milestone-1-title>
      <milestone-1-description>What this milestone achieves</milestone-1-description>
 
-     **Tasks:**
-     <milestone-1-tasks>Specific tasks for this milestone</milestone-1-tasks>
+     #### Task 1.1: <task-1.1-title>
+     <task-1.1-description>Specific tasks for this milestone</task-1.1-description>
+
+     <additional-tasks>Add more tasks as needed</additional-tasks>
 
      ### Milestone 2: <milestone-2-title>
      <milestone-2-description>What this milestone achieves</milestone-2-description>
 
-     **Tasks:**
-     <milestone-2-tasks>Specific tasks for this milestone</milestone-2-tasks>
+     #### Task 2.1: <task-1.1-title>
+     <task-2.1-description>Specific tasks for this milestone</task-2.1-description>
+
+     <additional-tasks>Add more tasks as needed</additional-tasks>
 
      <additional-milestones>Add more milestones as needed</additional-milestones>
 
@@ -187,7 +201,7 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
    - Command behavior:
      - Read `.claude/settings.json` for config (planDirectory, explore agent count)
      - Launch N explore agents (default 2) to understand codebase context
-     - Ask user for chore title and basic requirements
+     - If not provided in context, Ask user for chore title and basic requirements, and clarifying questions
      - Generate plan using chore template
      - Save plan to configured directory (default: `/specs/chore-<name>.md`)
      - If `--git` flag: commit the plan file
@@ -201,10 +215,11 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
    - Command behavior:
      - Read `.claude/settings.json` for config
      - Launch N explore agents (default 2) to understand bug context
-     - Ask user for bug description and observed behavior
+     - If cannot be inferred from context, Ask user for bug description and observed behavior
      - Investigate root cause
      - Generate repro steps
      - Create fix strategy
+     - Ask user clarifying questions
      - Generate plan using bug template
      - Save plan to configured directory (default: `/specs/bug-<name>.md`)
      - If `--git` flag: commit the plan file
@@ -223,6 +238,7 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
        - User experience expectations
        - Technical constraints
        - Integration points
+       - Anything else that should be clarified
      - Design architecture and milestones
      - Break down into tasks per milestone
      - Generate plan using feature template
@@ -305,11 +321,14 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
      - Check implementation matches plan requirements
      - Flag any deviations or missing features
 
+     Rate finding in criticality (Critical, major, medium, low)
+
    - Support arguments:
      - `--plan <plan-file>`: Plan file to verify compliance against
      - `--skip-tests`: Skip test execution
      - `--skip-build`: Skip build verification
      - `--skip-review`: Skip code review
+     - `--autofix critical,major`: list of severity level to autofix (optional)
 
 2. **Implement test detection and execution**
    - Detect package.json (npm test)
@@ -406,9 +425,17 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
    - Example bug plan in `plugins/interactive-sdlc/examples/bug-example.md`
    - Example feature plan in `plugins/interactive-sdlc/examples/feature-example.md`
 
-4. **Update marketplace metadata**
-   - Update `.claude-plugin/marketplace.json` to include interactive-sdlc plugin
-   - Add proper description, tags, and metadata
+4. **Update marketplace commands list**
+   - Update `.claude-plugin/marketplace.json` interactive-sdlc entry
+   - Populate the `commands` array with all created command paths:
+     - `./plugins/interactive-sdlc/commands/configure.md`
+     - `./plugins/interactive-sdlc/commands/plan-chore.md`
+     - `./plugins/interactive-sdlc/commands/plan-bug.md`
+     - `./plugins/interactive-sdlc/commands/plan-feature.md`
+     - `./plugins/interactive-sdlc/commands/build.md`
+     - `./plugins/interactive-sdlc/commands/validate.md`
+     - `./plugins/interactive-sdlc/commands/one-shot.md`
+     - `./plugins/interactive-sdlc/commands/plan-build-validate.md`
 
 5. **Test interactive-sdlc plugin**
    - Test each planning command (chore/bug/feature)
@@ -507,16 +534,26 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
    - Rename `plugins/sdlc/` to `plugins/agentic-sdlc/`
    - Update all internal references
 
-2. **Update plugin metadata**
-   - Update `plugins/agentic-sdlc/.claude-plugin/plugin.json`:
-     - name: "agentic-sdlc"
-     - description: "Fully autonomous SDLC workflow orchestrated via Python, with no user interaction"
-     - version: "2.0.0" (major version bump for breaking changes)
-
-3. **Update marketplace metadata**
+2. **Update marketplace metadata**
    - Update `.claude-plugin/marketplace.json`:
      - Remove old "sdlc" entry
-     - Add "agentic-sdlc" entry with proper metadata
+     - Add "agentic-sdlc" entry with:
+       - name: "agentic-sdlc"
+       - version: "2.0.0" (major version bump for breaking changes)
+       - source: "./"
+       - description: "Fully autonomous SDLC workflow orchestrated via Python, with no user interaction"
+       - category: "sdlc"
+       - author: name and email
+       - license: "MIT"
+       - keywords: ["sdlc", "autonomous", "agentic", "python", "orchestration", "ci-cd", "workflows"]
+       - strict: false
+       - commands: (all existing command paths updated to agentic-sdlc)
+
+3. **Update CHANGELOG**
+   - Update `plugins/agentic-sdlc/CHANGELOG.md`
+   - Add v2.0.0 entry documenting breaking changes
+   - Note plugin rename and new autonomous focus
+   - List removed user interaction features
 
 4. **Update documentation**
    - Update `plugins/agentic-sdlc/README.md` to reflect new purpose
