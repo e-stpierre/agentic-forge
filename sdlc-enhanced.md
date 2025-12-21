@@ -7,6 +7,87 @@ Split the current SDLC plugin into two specialized plugins:
 1. **interactive-sdlc**: New plugin for interactive use within Claude Code sessions with user questions/feedback
 2. **agentic-sdlc**: Renamed from current SDLC, fully autonomous workflow orchestrated via Python
 
+---
+
+## Command Namespacing
+
+Both plugins use Claude Code's standard namespace pattern with colon separators, matching the existing marketplace convention.
+
+### Interactive-SDLC Commands
+
+All commands are prefixed with `interactive-sdlc:`:
+
+- `/interactive-sdlc:configure` - Set up plugin configuration interactively
+- `/interactive-sdlc:plan-chore` - Plan a maintenance task
+- `/interactive-sdlc:plan-bug` - Plan a bug fix with root cause analysis
+- `/interactive-sdlc:plan-feature` - Plan a feature with milestones
+- `/interactive-sdlc:build` - Implement a plan file
+- `/interactive-sdlc:validate` - Validate implementation quality
+- `/interactive-sdlc:one-shot` - Quick task without saved plan
+- `/interactive-sdlc:plan-build-validate` - Full workflow from planning to validation
+
+### Agentic-SDLC Commands
+
+All commands are prefixed with `agentic-sdlc:`:
+
+- `/agentic-sdlc:configure` - Set up plugin configuration
+- `/agentic-sdlc:design` - Design technical implementation
+- `/agentic-sdlc:plan` - Meta-command for planning (auto-selects type)
+- `/agentic-sdlc:plan-feature` - Generate feature plan (JSON I/O)
+- `/agentic-sdlc:plan-bug` - Generate bug fix plan (JSON I/O)
+- `/agentic-sdlc:plan-chore` - Generate chore plan (JSON I/O)
+- `/agentic-sdlc:plan-build` - All-in-one workflow
+- `/agentic-sdlc:implement` - Implement from plan (JSON I/O)
+- `/agentic-sdlc:implement-from-plan` - Legacy implementation command
+- `/agentic-sdlc:review` - Review code changes (JSON I/O)
+- `/agentic-sdlc:test` - Run tests and analyze results (JSON I/O)
+
+### Benefits of Namespace Pattern
+
+1. **Clear separation**: No command name conflicts between plugins
+2. **Discoverability**: Users type `/interactive-sdlc:` or `/agentic-sdlc:` to see available commands
+3. **Self-documenting**: Command name clearly indicates which plugin it belongs to
+4. **Consistency**: Matches existing plugins in marketplace (`/core:git-branch`, `/sdlc:plan-feature`)
+5. **Python integration**: Scripts reference commands unambiguously (`/agentic-sdlc:plan-feature`)
+
+### **CRITICAL REQUIREMENT: Always Use Full Namespace**
+
+**All command references MUST use the full namespaced form, even when shorthand would work.**
+
+This applies to:
+- **Documentation and examples**: Always show `/interactive-sdlc:plan-chore`, never `/plan-chore`
+- **Command prompts**: Commands that invoke other commands must use full namespace
+- **Python scripts**: Always use `/agentic-sdlc:plan-feature`, never `/plan-feature`
+- **Error messages**: Reference commands with full namespace
+- **User-facing help text**: Show full namespace form
+
+**Why this matters:**
+- Commands work consistently regardless of which plugins are installed
+- Users can copy examples from docs and they always work
+- No confusion about which plugin a command belongs to
+- Scripts are portable across different plugin configurations
+
+**Examples:**
+
+```bash
+# ✅ CORRECT - Always use full namespace
+/interactive-sdlc:plan-feature User authentication
+/agentic-sdlc:plan-feature --json-input spec.json
+
+# ❌ WRONG - Never use shorthand in documentation/scripts
+/plan-feature User authentication
+```
+
+```python
+# ✅ CORRECT - Python scripts always use full namespace
+run_claude("/agentic-sdlc:plan-feature", json_input=spec)
+
+# ❌ WRONG - Don't rely on shorthand
+run_claude("/plan-feature", json_input=spec)
+```
+
+---
+
 ## Configuration System
 
 Both plugins use the standard Claude Code configuration via `.claude/settings.json` (project scope, committed to git):
@@ -68,22 +149,22 @@ Personal overrides can be configured in `.claude/settings.local.json` (gitignore
 
 ```bash
 # Plan a feature with inline context
-/plan-feature Add dark mode support with toggle in settings and persistent user preference
+/interactive-sdlc:plan-feature Add dark mode support with toggle in settings and persistent user preference
 
 # Plan a bug fix with detailed context
-/plan-bug --explore 3 Login fails on Safari when using OAuth.
+/interactive-sdlc:plan-bug --explore 3 Login fails on Safari when using OAuth.
 Users click login button, get redirected to OAuth provider,
 but after successful auth they are redirected to a blank page
 instead of the dashboard.
 
 # Build with checkpoint and context
-/build /specs/feature-auth.md --checkpoint "Milestone 2" Continue from where we left off, focus on the OAuth integration
+/interactive-sdlc:build /specs/feature-auth.md --checkpoint "Milestone 2" Continue from where we left off, focus on the OAuth integration
 
 # One-shot with context
-/one-shot --git Fix the typo in the README file, change "authenitcation" to "authentication"
+/interactive-sdlc:one-shot --git Fix the typo in the README file, change "authenitcation" to "authentication"
 
 # Validate with autofix and context
-/validate --autofix critical,major --plan /specs/bug-login.md Focus on security issues and the login flow validation
+/interactive-sdlc:validate --autofix critical,major --plan /specs/bug-login.md Focus on security issues and the login flow validation
 ```
 
 ### Command Implementation Requirements
@@ -257,8 +338,9 @@ Each command must:
 
 ### Tasks
 
-1. **Create /plan-chore command**
+1. **Create /interactive-sdlc:plan-chore command**
    - File: `plugins/interactive-sdlc/commands/plan-chore.md`
+   - Full command name: `/interactive-sdlc:plan-chore`
    - Command behavior:
      - Read `.claude/settings.json` for config (planDirectory, explore agent count)
      - Launch N explore agents (default 2) to understand codebase context
@@ -270,9 +352,11 @@ Each command must:
      - `--explore N`: Override default explore agent count
      - `--git`: Commit plan file after creation
      - `--output <path>`: Override plan file location
+     - `[context]`: Optional freeform context for parameter inference
 
-2. **Create /plan-bug command**
+2. **Create /interactive-sdlc:plan-bug command**
    - File: `plugins/interactive-sdlc/commands/plan-bug.md`
+   - Full command name: `/interactive-sdlc:plan-bug`
    - Command behavior:
      - Read `.claude/settings.json` for config
      - Launch N explore agents (default 2) to understand bug context
@@ -288,9 +372,11 @@ Each command must:
      - `--explore N`: Override default explore agent count
      - `--git`: Commit plan file after creation
      - `--output <path>`: Override plan file location
+     - `[context]`: Optional freeform context for parameter inference
 
-3. **Create /plan-feature command**
+3. **Create /interactive-sdlc:plan-feature command**
    - File: `plugins/interactive-sdlc/commands/plan-feature.md`
+   - Full command name: `/interactive-sdlc:plan-feature`
    - Command behavior:
      - Read `.claude/settings.json` for config
      - Launch N explore agents (default 3) to understand codebase architecture
@@ -309,19 +395,21 @@ Each command must:
      - `--explore N`: Override default explore agent count
      - `--git`: Commit plan file after creation
      - `--output <path>`: Override plan file location
+     - `[context]`: Optional freeform context for parameter inference
 
 ---
 
 ## Milestone 4: Implement Build Command
 
-**Goal**: Create the /build command that implements a plan file.
+**Goal**: Create the /interactive-sdlc:build command that implements a plan file.
 
 ### Tasks
 
-1. **Create /build command**
+1. **Create /interactive-sdlc:build command**
    - File: `plugins/interactive-sdlc/commands/build.md`
+   - Full command name: `/interactive-sdlc:build`
    - Command behavior:
-     - Require plan file path as argument: `/build <plan-file>`
+     - Require plan file path as argument: `/interactive-sdlc:build <plan-file>`
      - Read and parse plan file
      - Extract tasks/milestones from plan
      - Create todo list from plan structure
@@ -334,6 +422,7 @@ Each command must:
      - `<plan-file>`: Required path to plan file
      - `--git`: Auto-commit changes at checkpoints
      - `--checkpoint "<text>"`: Resume from specific task/milestone
+     - `[context]`: Optional freeform context for implementation guidance
 
 2. **Implement checkpoint system**
    - Parse `--checkpoint` argument to find resume point in plan
@@ -354,12 +443,13 @@ Each command must:
 
 ## Milestone 5: Implement Validate Command
 
-**Goal**: Create the /validate command that verifies implementation quality.
+**Goal**: Create the /interactive-sdlc:validate command that verifies implementation quality.
 
 ### Tasks
 
-1. **Create /validate command**
+1. **Create /interactive-sdlc:validate command**
    - File: `plugins/interactive-sdlc/commands/validate.md`
+   - Full command name: `/interactive-sdlc:validate`
    - Command behavior performs ALL validation types:
 
      a. **Run Tests**
@@ -390,6 +480,7 @@ Each command must:
      - `--skip-build`: Skip build verification
      - `--skip-review`: Skip code review
      - `--autofix critical,major`: list of severity level to autofix (optional)
+     - `[context]`: Optional freeform context for validation focus
 
 2. **Implement test detection and execution**
    - Detect package.json (npm test)
@@ -419,8 +510,9 @@ Each command must:
 
 ### Tasks
 
-1. **Create /one-shot command**
+1. **Create /interactive-sdlc:one-shot command**
    - File: `plugins/interactive-sdlc/commands/one-shot.md`
+   - Full command name: `/interactive-sdlc:one-shot`
    - Command behavior:
      - Ask user for task type (chore/bug/feature) and basic description
      - Create plan IN-MEMORY (do not save to file)
@@ -433,20 +525,23 @@ Each command must:
      - `--git`: Auto-commit changes when done
      - `--validate`: Run validation after implementation
      - `--explore N`: Override explore agent count
+     - `[context]`: Optional freeform context describing the task
 
-2. **Create /plan-build-validate command**
+2. **Create /interactive-sdlc:plan-build-validate command**
    - File: `plugins/interactive-sdlc/commands/plan-build-validate.md`
+   - Full command name: `/interactive-sdlc:plan-build-validate`
    - Command behavior:
      - Ask user for task type (chore/bug/feature)
-     - Execute appropriate plan command
-     - Execute build command on generated plan
-     - Execute validate command
+     - Execute appropriate plan command using full namespace (e.g., invoke `/interactive-sdlc:plan-feature`)
+     - Execute build command on generated plan using full namespace (`/interactive-sdlc:build`)
+     - Execute validate command using full namespace (`/interactive-sdlc:validate`)
      - If `--git` flag: commit plan, commit changes during build
      - If `--pr` flag: create draft PR when validation passes
    - Support arguments:
      - `--git`: Auto-commit throughout workflow
      - `--pr`: Create draft PR at end
      - `--explore N`: Override explore agent count for planning phase
+     - `[context]`: Optional freeform context for the workflow
 
 3. **Implement PR creation logic**
    - Check if `--pr` flag is set
@@ -477,8 +572,16 @@ Each command must:
    - Installation instructions (via plugin marketplace)
    - Configuration guide with `.claude/settings.json` example
    - Explain settings hierarchy (local vs project)
-   - Command reference for all commands
-   - Examples for common workflows
+   - Command reference for all commands **using full namespace form**:
+     - `/interactive-sdlc:configure`
+     - `/interactive-sdlc:plan-chore`
+     - `/interactive-sdlc:plan-bug`
+     - `/interactive-sdlc:plan-feature`
+     - `/interactive-sdlc:build`
+     - `/interactive-sdlc:validate`
+     - `/interactive-sdlc:one-shot`
+     - `/interactive-sdlc:plan-build-validate`
+   - Examples for common workflows using full namespace
    - Troubleshooting section
 
 3. **Create example plans**
@@ -488,7 +591,7 @@ Each command must:
 
 4. **Update marketplace commands list**
    - Update `.claude-plugin/marketplace.json` interactive-sdlc entry
-   - Populate the `commands` array with all created command paths:
+   - Populate the `commands` array with all created command file paths (namespace is added automatically by Claude Code based on plugin name):
      - `./plugins/interactive-sdlc/commands/configure.md`
      - `./plugins/interactive-sdlc/commands/plan-chore.md`
      - `./plugins/interactive-sdlc/commands/plan-bug.md`
@@ -497,6 +600,7 @@ Each command must:
      - `./plugins/interactive-sdlc/commands/validate.md`
      - `./plugins/interactive-sdlc/commands/one-shot.md`
      - `./plugins/interactive-sdlc/commands/plan-build-validate.md`
+   - Note: File paths in marketplace.json do NOT include namespace prefix; Claude Code adds the namespace automatically
 
 5. **Test interactive-sdlc plugin**
    - Test each planning command (chore/bug/feature)
@@ -514,8 +618,9 @@ Each command must:
 
 ### Tasks
 
-1. **Create /configure command for interactive-sdlc**
+1. **Create /interactive-sdlc:configure command**
    - File: `plugins/interactive-sdlc/commands/configure.md`
+   - Full command name: `/interactive-sdlc:configure`
    - Command behavior:
      - Display instructions about required settings in `.claude/settings.json`
      - Read existing `.claude/settings.json` (create if missing)
@@ -543,8 +648,9 @@ Each command must:
      - "How many explore agents for bug planning?" (current: `2`)
      - "How many explore agents for feature planning?" (current: `3`)
 
-2. **Create /configure command for agentic-sdlc**
+2. **Create /agentic-sdlc:configure command**
    - File: `plugins/agentic-sdlc/commands/configure.md`
+   - Full command name: `/agentic-sdlc:configure`
    - Command behavior:
      - Display instructions about required settings in `.claude/settings.json`
      - Read existing `.claude/settings.json` (create if missing)
@@ -579,9 +685,9 @@ Each command must:
    - File permissions issues (inform user of manual steps)
 
 5. **Update documentation**
-   - Add `/configure` to command list in both plugin READMEs
-   - Document that `/configure` is the recommended way to set up plugins
-   - Include examples of running `/configure` in getting started guides
+   - Add configure commands to both plugin READMEs using full namespace
+   - Document that `/interactive-sdlc:configure` and `/agentic-sdlc:configure` are the recommended setup methods
+   - Include examples using full namespace form in getting started guides
 
 ---
 
@@ -638,6 +744,7 @@ Each command must:
    - Document schema in `plugins/agentic-sdlc/schemas/`
 
 2. **Update plan commands (design, plan-feature, plan-bug, plan-chore)**
+   - Ensure all commands use full namespace: `/agentic-sdlc:design`, `/agentic-sdlc:plan-feature`, etc.
    - Remove all user interaction (AskUserQuestion calls)
    - Accept all inputs via JSON
    - Output plans in standardized JSON format
@@ -666,6 +773,7 @@ Each command must:
      ```
 
 3. **Update implement command**
+   - Use full namespace: `/agentic-sdlc:implement`
    - Accept plan via JSON input
    - Output implementation status via JSON
    - Remove all user questions
@@ -673,11 +781,13 @@ Each command must:
    - Report ambiguities in JSON output for orchestrator to handle
 
 4. **Update review command**
+   - Use full namespace: `/agentic-sdlc:review`
    - Accept code changes via JSON
    - Output review results in structured JSON
    - Include severity levels, file locations, suggestions
 
 5. **Update test command**
+   - Use full namespace: `/agentic-sdlc:test`
    - Accept test configuration via JSON
    - Output test results in structured JSON
    - Include pass/fail status, coverage data, error details
@@ -697,27 +807,38 @@ Each command must:
 
 2. **Implement orchestration utilities**
    - Create `plugins/agentic-sdlc/src/agentic_sdlc/orchestrator.py`
-   - Agent invocation wrapper
+   - Agent invocation wrapper that ALWAYS uses full namespace for commands
    - JSON schema validation
    - Agent-to-agent communication
    - Error handling and retry logic
+   - Example usage:
+     ```python
+     # ✅ CORRECT - Always use full namespace
+     run_claude("/agentic-sdlc:plan-feature", json_input=spec)
+     run_claude("/agentic-sdlc:implement", json_input=plan_output)
+
+     # ❌ WRONG - Never use shorthand
+     run_claude("/plan-feature", json_input=spec)
+     ```
 
 3. **Create workflow commands**
-   - `agentic-plan`: Invoke planning agents with JSON input
-   - `agentic-build`: Invoke build agent with plan JSON
-   - `agentic-validate`: Invoke validation agent with build output
-   - `agentic-workflow`: Full end-to-end workflow orchestration
+   - `agentic-plan`: Invoke planning agents with JSON input using `/agentic-sdlc:plan-*` commands
+   - `agentic-build`: Invoke build agent with plan JSON using `/agentic-sdlc:implement`
+   - `agentic-validate`: Invoke validation agent using `/agentic-sdlc:test` and `/agentic-sdlc:review`
+   - `agentic-workflow`: Full end-to-end workflow orchestration using full namespace for all commands
 
 4. **Implement agent communication**
    - Parse agent output JSON
    - Validate against schemas
    - Route data between agents
    - Log communication for debugging
+   - All command invocations use full namespace form
 
 5. **Add workflow examples**
-   - Example Python script showing full workflow
+   - Example Python script showing full workflow with proper namespace usage
    - Example JSON input files
    - Example integration with CI/CD
+   - All examples demonstrate full namespace form: `/agentic-sdlc:command`
 
 ---
 
@@ -796,8 +917,9 @@ Each command must:
 - [ ] Validate command covers all quality checks
 - [ ] Workflow commands orchestrate steps properly
 - [ ] Configuration system works from `.claude/settings.json`
-- [ ] `/configure` commands guide users through setup interactively
+- [ ] Configure commands (`/interactive-sdlc:configure`, `/agentic-sdlc:configure`) guide users through setup
 - [ ] Configuration validation prevents invalid settings
+- [ ] All command references use full namespace form consistently
 - [ ] Agentic-sdlc plugin renamed successfully
 - [ ] All commands refactored for autonomous operation
 - [ ] JSON schemas defined and validated
