@@ -47,12 +47,13 @@ jobs:
         run: |
           # Get the list of changed files in this PR
           # Note: fetch-depth: 0 in checkout already fetched all history, no need for additional fetch
+          # --diff-filter=d excludes deleted files (lowercase 'd' means exclude)
 
           # Get changed markdown files (one per line for proper handling of spaces)
-          CHANGED_MD_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.md$' || true)
+          CHANGED_MD_FILES=$(git diff --diff-filter=d --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.md$' || true)
 
           # Get changed Python files (one per line for proper handling of spaces)
-          CHANGED_PY_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.py$' || true)
+          CHANGED_PY_FILES=$(git diff --diff-filter=d --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.py$' || true)
 
           # Output results using multiline format to handle file paths with spaces
           if [ -z "$CHANGED_MD_FILES" ]; then
