@@ -8,7 +8,7 @@ argument-hint: [--json-output]
 
 Set up agentic-sdlc plugin configuration in `.claude/settings.json`.
 
-## Behavior
+## Instructions
 
 1. **Check Existing Configuration**
    - Read `.claude/settings.json` if exists
