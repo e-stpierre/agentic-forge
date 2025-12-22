@@ -138,43 +138,12 @@ or run /interactive-sdlc:configure again.
 ## Important Notes
 
 - Only update the interactive-sdlc section in .claude/settings.json - preserve all other settings
-- Provide manual configuration instructions if file permissions prevent automatic updates
 - Validate all user input before accepting
 - Preserve existing settings when adding new ones
 - Ensure all settings are within valid ranges
-
-## Error Handling
-
-### `.claude/settings.json` doesn't exist
-
-- Create `.claude/` directory
-- Create new `settings.json` with interactive-sdlc section
-- Populate with user-provided or default values
-
-### File exists but is invalid JSON
-
-- Warn user about invalid JSON
-- Offer to backup existing file
-- Create new valid configuration
-
-### File exists but missing `interactive-sdlc` section
-
-- Add `interactive-sdlc` section
-- Preserve all other existing settings
-
-### User provides invalid input
-
-- Show error message explaining valid values
-- Re-prompt with same question
-- Suggest valid alternatives
-
-### File permission issues
-
-- Inform user of the issue
-- Provide manual configuration instructions:
-  ```
-  Unable to write to .claude/settings.json
-  Please manually create the file with:
-  { "interactive-sdlc": { ... } }
-  ```
+- If `.claude/settings.json` doesn't exist, create the directory and file with the interactive-sdlc section
+- If file exists but is invalid JSON, warn the user, offer to backup existing file, and create new valid configuration
+- If file exists but missing `interactive-sdlc` section, add it while preserving all other existing settings
+- If user provides invalid input, show error message explaining valid values and re-prompt with suggestions
+- If file permission issues prevent automatic updates, provide manual configuration instructions
 
