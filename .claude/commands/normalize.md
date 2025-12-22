@@ -16,7 +16,7 @@ Validate that prompt files (commands, agents, skills) conform to the exact struc
 
 All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`) with HTML comment instructions. See `CLAUDE.md` section "Prompt Template Convention" for complete details.
 
-## Parameters
+## Arguments
 
 - **`--autofix`** (optional): Automatically modify files to make them compliant with the templates. Without this flag, only reports issues.
 - **`file-or-directory`** (optional): One or more paths to files or directories to validate. If omitted, validates all prompt files in the repository.
@@ -104,7 +104,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
    **Required sections per template:**
 
    For **Commands** (from command-template.md):
-   - Parameters (required if command has arguments)
+   - Arguments (required if command has arguments)
    - Objective (required)
    - Core Principles (required)
    - Instructions (required)
@@ -125,7 +125,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
 
    For **Skills** (from skill-template.md):
    - Definition (required)
-   - Parameters (required if skill has arguments)
+   - Arguments (required if skill has arguments)
    - Objective (required)
    - Core Principles (required)
    - Instructions (required)
@@ -135,7 +135,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
 
    - **Instructions section**: Must contain numbered list (1. 2. 3. etc.)
    - **Core Principles section**: Should contain bullet points
-   - **Parameters section**: Should contain bullet points with parameter formatting
+   - **Arguments section**: Should contain bullet points with argument formatting
    - **Objective section**: Should be a clear, concise statement
 
 7. **Validate Special Requirements**
@@ -163,7 +163,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
    - Add missing required fields with sensible defaults:
      - `name`: Derive from filename (convert to kebab-case)
      - `description`: Use first paragraph or heading as basis
-     - `argument-hint`: Empty string if no parameters detected (commands/skills)
+     - `argument-hint`: Empty string if no arguments detected (commands/skills)
      - `tools`: `[Read, Glob, Grep]` for agents
      - `model`: `sonnet` for agents
      - `color`: `blue` for agents
@@ -178,7 +178,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
    **Section name fixes:**
 
    - Rename incorrectly capitalized sections to match template exactly
-   - For example: `## parameters` -> `## Parameters`
+   - For example: `## arguments` -> `## Arguments`
    - Preserve section content when renaming
 
    **Content fixes:**
@@ -238,7 +238,7 @@ Template: docs/templates/command-template.md
 - [FAIL] Missing required section: "Output Guidance"
   Expected: ## Output Guidance
   Suggestion: Add section after "Instructions" section
-- [FAIL] Section name mismatch: "## parameters" should be "## Parameters"
+- [FAIL] Section name mismatch: "## arguments" should be "## Arguments"
   Location: Line 15
   Suggestion: Capitalize section name to match template exactly
 
@@ -283,7 +283,7 @@ Template: docs/templates/command-template.md
 
 - [FIXED] Added missing frontmatter field: argument-hint (empty string)
 - [FIXED] Added missing section: "Output Guidance" at line 85
-- [FIXED] Renamed section: "## parameters" -> "## Parameters" at line 15
+- [FIXED] Renamed section: "## arguments" -> "## Arguments" at line 15
 - [INFO] Preserved all existing content
 
 ### path/to/another.md (Agent)
