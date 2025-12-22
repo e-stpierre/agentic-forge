@@ -7,6 +7,7 @@ This directory contains JSON schemas for agent-to-agent communication in the age
 ### Plan Input/Output
 
 **Input**: `plan-input.schema.json`
+
 ```json
 {
   "type": "feature|bug|chore",
@@ -19,6 +20,7 @@ This directory contains JSON schemas for agent-to-agent communication in the age
 ```
 
 **Output**: `plan-output.schema.json`
+
 ```json
 {
   "success": true,
@@ -43,6 +45,7 @@ This directory contains JSON schemas for agent-to-agent communication in the age
 ### Build Input/Output
 
 **Input**: `build-input.schema.json`
+
 ```json
 {
   "plan_file": "/specs/feature-auth.md",
@@ -53,6 +56,7 @@ This directory contains JSON schemas for agent-to-agent communication in the age
 ```
 
 **Output**: `build-output.schema.json`
+
 ```json
 {
   "success": true,
@@ -69,6 +73,7 @@ This directory contains JSON schemas for agent-to-agent communication in the age
 ### Review Input/Output
 
 **Input**: `review-input.schema.json`
+
 ```json
 {
   "files": ["src/auth.ts", "src/config.ts"],
@@ -78,6 +83,7 @@ This directory contains JSON schemas for agent-to-agent communication in the age
 ```
 
 **Output**: `review-output.schema.json`
+
 ```json
 {
   "success": true,
@@ -102,6 +108,7 @@ This directory contains JSON schemas for agent-to-agent communication in the age
 ### Test Input/Output
 
 **Input**: `test-input.schema.json`
+
 ```json
 {
   "test_command": "npm test",
@@ -111,6 +118,7 @@ This directory contains JSON schemas for agent-to-agent communication in the age
 ```
 
 **Output**: `test-output.schema.json`
+
 ```json
 {
   "success": true,

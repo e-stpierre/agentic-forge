@@ -70,6 +70,7 @@ Implements changes from a plan file. Operates autonomously without user interact
 ## Ambiguity Handling
 
 When implementation is ambiguous, don't ask user. Instead:
+
 1. Log the ambiguity in output JSON
 2. Make reasonable assumption based on codebase patterns
 3. Document assumption in code comment

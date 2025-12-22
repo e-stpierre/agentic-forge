@@ -181,10 +181,13 @@ Detailed content with code examples and diagrams.
 ```
 
 ## Examples
+
 Practical usage examples.
 
 ## Related
+
 Links to related documentation.
+
 ```
 
 ## Important Notes

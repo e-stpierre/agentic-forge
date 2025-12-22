@@ -138,6 +138,7 @@ When `--autofix` is specified:
 4. Re-run affected validations to confirm fixes
 
 Example:
+
 ```bash
 --autofix critical,major  # Auto-fix critical and major issues
 --autofix critical        # Auto-fix only critical issues

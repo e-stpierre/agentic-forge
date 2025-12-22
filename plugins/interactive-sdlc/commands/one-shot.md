@@ -87,6 +87,7 @@ Validation results: PASS/FAIL
 ## When to Use One-Shot
 
 **Good for:**
+
 - Typo fixes
 - Simple bug fixes with clear root cause
 - Small refactoring tasks
@@ -94,6 +95,7 @@ Validation results: PASS/FAIL
 - Quick code cleanup
 
 **Not recommended for:**
+
 - Complex features requiring architecture decisions
 - Bugs requiring deep investigation
 - Tasks with unclear requirements

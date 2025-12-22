@@ -123,6 +123,7 @@ Analyzes the codebase and generates a comprehensive implementation plan for a ne
 ## Error Handling
 
 On error, output:
+
 ```json
 {
   "success": false,

@@ -20,6 +20,7 @@ REQUIRED SECTIONS:
 -->
 
 ---
+
 name: {{agent-name}}
 description: {{agent-description}}
 tools: [{{tool1}}, {{tool2}}, {{tool3}}]
