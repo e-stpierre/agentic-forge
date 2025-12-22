@@ -113,28 +113,91 @@ Next steps:
 ### Bug Fix Plan Structure
 
 ```markdown
-# Bug Fix: <bug-title>
+# Bug Fix: {{bug_title}}
+
+<!--
+Instructions:
+- Replace {{bug_title}} with a concise title for the bug
+- Use title case (e.g., "Login Timeout on Safari OAuth Redirect")
+-->
 
 ## Description
-Clear explanation of the bug and its impact
+
+{{description}}
+
+<!--
+Instructions:
+- Replace {{description}} with a clear explanation of the bug and its impact
+- Include what is broken, who is affected, and the severity
+-->
 
 ## Reproduction Steps
-Step-by-step instructions to reproduce the bug
+
+{{reproduction_steps}}
+
+<!--
+Instructions:
+- Replace {{reproduction_steps}} with numbered step-by-step instructions to reproduce the bug
+- Be specific enough that anyone can follow the steps
+- Example:
+  1. Navigate to /login
+  2. Click "Login with OAuth"
+  3. Complete OAuth flow on provider site
+  4. Observe redirect to blank page instead of dashboard
+-->
 
 ## Root Cause Analysis
-Technical explanation of why the bug occurs
+
+{{root_cause}}
+
+<!--
+Instructions:
+- Replace {{root_cause}} with technical explanation of why the bug occurs
+- Include code references, execution flow, and specific conditions that trigger the bug
+- Be thorough - understanding the cause is critical to the fix
+-->
 
 ## Fix Strategy
-High-level approach to fixing the bug
+
+{{fix_strategy}}
+
+<!--
+Instructions:
+- Replace {{fix_strategy}} with high-level approach to fixing the bug
+- Explain what changes need to be made and why
+- Address the root cause, not just symptoms
+-->
 
 ## Tasks
-Specific tasks to implement the fix
+
+{{tasks}}
+
+<!--
+Instructions:
+- Replace {{tasks}} with numbered list of specific tasks to implement the fix
+- Include code changes, configuration updates, etc.
+- Order tasks logically
+-->
 
 ## Validation
-How to verify the bug is fixed and won't regress
+
+{{validation}}
+
+<!--
+Instructions:
+- Replace {{validation}} with steps to verify the bug is fixed and won't regress
+- Include manual testing steps and automated checks
+-->
 
 ## Testing
-Test cases to add or update to prevent regression
+
+{{testing}}
+
+<!--
+Instructions:
+- Replace {{testing}} with test cases to add or update to prevent regression
+- Specify unit tests, integration tests, or e2e tests as appropriate
+-->
 ```
 
 ## Don't

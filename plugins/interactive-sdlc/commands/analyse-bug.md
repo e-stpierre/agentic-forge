@@ -81,41 +81,103 @@ Review the report and prioritize fixes by criticality.
 ```markdown
 # Bug Report
 
-**Date**: YYYY-MM-DD
-**Scope**: [Description of analyzed scope]
+**Date**: {{date}}
+
+<!--
+Instructions:
+- Replace {{date}} with the analysis date in YYYY-MM-DD format
+-->
+
+**Scope**: {{scope}}
+
+<!--
+Instructions:
+- Replace {{scope}} with description of what was analyzed
+- Example: "Entire codebase" or "src/auth/ and src/api/"
+-->
 
 ## Summary
 
-- Critical: X issues
-- Major: X issues
-- Medium: X issues
-- Low: X issues
+- Critical: {{critical_count}} issues
+- Major: {{major_count}} issues
+- Medium: {{medium_count}} issues
+- Low: {{low_count}} issues
+
+<!--
+Instructions:
+- Replace {{critical_count}}, {{major_count}}, {{medium_count}}, {{low_count}} with actual counts
+- If count is 0, you can say "0 issues" or omit the category
+-->
 
 ## Critical
 
-### BUG-001: [Title]
+### BUG-{{bug_number}}: {{bug_title}}
 
-**Location:** file:line
+<!--
+Instructions:
+- Replace {{bug_number}} with sequential number (001, 002, etc.)
+- Replace {{bug_title}} with concise bug title
+- Use this format for each critical bug found
+-->
 
-**Issue:** Clear description of the bug
+**Location:** {{file_location}}
 
-**Impact:** What happens because of this bug
+<!--
+Instructions:
+- Replace {{file_location}} with the file(s) where the bug is located
+- Format: file:line (e.g., "src/auth/login.ts:45")
+- If multiple locations, list them all
+-->
 
-**Fix:** Suggested fix approach
+**Issue:** {{issue_description}}
+
+<!--
+Instructions:
+- Replace {{issue_description}} with clear description of the bug
+- Explain what is wrong and why it's a problem
+-->
+
+**Impact:** {{impact}}
+
+<!--
+Instructions:
+- Replace {{impact}} with what happens because of this bug
+- Focus on user impact and consequences
+-->
+
+**Fix:** {{fix_suggestion}}
+
+<!--
+Instructions:
+- Replace {{fix_suggestion}} with suggested fix approach
+- Be specific and actionable
+-->
 
 ---
 
 ## Major
 
-[Same format for major issues]
+<!--
+Instructions:
+- Use same format as Critical section
+- Include all major severity bugs
+-->
 
 ## Medium
 
-[Same format for medium issues]
+<!--
+Instructions:
+- Use same format as Critical section
+- Include all medium severity bugs
+-->
 
 ## Low
 
-[Same format for low issues]
+<!--
+Instructions:
+- Use same format as Critical section
+- Include all low severity bugs
+-->
 ```
 
 ## Don't

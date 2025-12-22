@@ -95,19 +95,63 @@ Next steps:
 ### Chore Plan Structure
 
 ```markdown
-# Chore: <chore-title>
+# Chore: {{chore_title}}
+
+<!--
+Instructions:
+- Replace {{chore_title}} with a concise title for the chore
+- Use title case (e.g., "Update All Dependencies")
+-->
 
 ## Description
-Brief description of what needs to be done and why
+
+{{description}}
+
+<!--
+Instructions:
+- Replace {{description}} with a brief explanation of what needs to be done and why
+- Keep it to 1-3 sentences
+-->
 
 ## Scope
-What is included and what is explicitly out of scope
+
+{{scope}}
+
+<!--
+Instructions:
+- Replace {{scope}} with what is included and what is explicitly out of scope
+- Use bullet points for clarity
+- Example:
+  In scope:
+  - Update npm dependencies
+  - Fix breaking changes
+
+  Out of scope:
+  - Updating Python dependencies
+  - Refactoring unrelated code
+-->
 
 ## Tasks
-List of specific tasks required to complete this chore, in order
+
+{{tasks}}
+
+<!--
+Instructions:
+- Replace {{tasks}} with a numbered list of specific tasks required to complete this chore
+- Tasks should be in execution order
+- Each task should be actionable and clear
+-->
 
 ## Validation Criteria
-How to verify this chore is complete
+
+{{validation_criteria}}
+
+<!--
+Instructions:
+- Replace {{validation_criteria}} with specific criteria to verify the chore is complete
+- Use bullet points or checklist format
+- Make criteria objective and measurable
+-->
 ```
 
 ## Don't

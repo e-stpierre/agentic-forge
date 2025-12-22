@@ -137,41 +137,119 @@ Next steps:
 ### Feature Plan Structure
 
 ```markdown
-# Feature: <feature-title>
+# Feature: {{feature_title}}
+
+<!--
+Instructions:
+- Replace {{feature_title}} with a concise title for the feature
+- Use title case (e.g., "User Authentication with OAuth")
+-->
 
 ## Overview
-What this feature does and why it's valuable
+
+{{overview}}
+
+<!--
+Instructions:
+- Replace {{overview}} with what this feature does and why it's valuable
+- Explain the user benefit and business value
+- Keep it to 2-4 sentences
+-->
 
 ## Requirements
-Functional and non-functional requirements
+
+{{requirements}}
+
+<!--
+Instructions:
+- Replace {{requirements}} with functional and non-functional requirements
+- Use bullet points or subsections
+- Include performance, security, and UX requirements as applicable
+- Example:
+  Functional:
+  - Users can log in with Google OAuth
+  - Users can log in with GitHub OAuth
+
+  Non-functional:
+  - OAuth flow must complete within 5 seconds
+  - Must support 10,000 concurrent OAuth sessions
+-->
 
 ## Architecture
-High-level design decisions and patterns to use
+
+{{architecture}}
+
+<!--
+Instructions:
+- Replace {{architecture}} with high-level design decisions and patterns to use
+- Explain component structure, data flow, and integration points
+- Reference existing patterns in the codebase
+-->
 
 ## Milestones
 
-### Milestone 1: <milestone-title>
-What this milestone achieves
+### Milestone {{milestone_number}}: {{milestone_title}}
 
-#### Task 1.1: <task-title>
-Specific task description
+<!--
+Instructions:
+- Replace {{milestone_number}} with milestone number (1, 2, 3, etc.)
+- Replace {{milestone_title}} with what this milestone achieves
+- Each milestone should be independently valuable
+-->
 
-#### Task 1.2: <task-title>
-Specific task description
+{{milestone_description}}
 
-### Milestone 2: <milestone-title>
-What this milestone achieves
+<!--
+Instructions:
+- Replace {{milestone_description}} with a brief description of what this milestone accomplishes
+-->
 
-#### Task 2.1: <task-title>
-Specific task description
+#### Task {{milestone_number}}.{{task_number}}: {{task_title}}
 
-(Additional milestones as needed)
+<!--
+Instructions:
+- Replace {{task_number}} with task number within the milestone
+- Replace {{task_title}} with a clear, actionable task title
+- Include multiple tasks per milestone as needed
+-->
+
+{{task_description}}
+
+<!--
+Instructions:
+- Replace {{task_description}} with specific task description
+- Make it actionable and clear
+- Include acceptance criteria if needed
+-->
+
+<!--
+Instructions:
+- Add additional milestones following the same structure
+- Each milestone should build on previous ones
+- Typical features have 2-5 milestones
+-->
 
 ## Testing Strategy
-How this feature will be tested
+
+{{testing_strategy}}
+
+<!--
+Instructions:
+- Replace {{testing_strategy}} with how this feature will be tested
+- Include unit tests, integration tests, e2e tests as appropriate
+- Specify test coverage expectations
+-->
 
 ## Validation Criteria
-How to verify the feature is complete and working
+
+{{validation_criteria}}
+
+<!--
+Instructions:
+- Replace {{validation_criteria}} with specific criteria to verify the feature is complete and working
+- Use checklist format
+- Make criteria objective and measurable
+-->
 ```
 
 ## Don't

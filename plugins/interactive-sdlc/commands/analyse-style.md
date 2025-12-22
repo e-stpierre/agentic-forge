@@ -87,39 +87,103 @@ Review the report to normalize outliers to the dominant patterns.
 ```markdown
 # Style & Consistency Issues
 
-**Date**: YYYY-MM-DD
-**Scope**: [Description of analyzed scope]
+**Date**: {{date}}
+
+<!--
+Instructions:
+- Replace {{date}} with the analysis date in YYYY-MM-DD format
+-->
+
+**Scope**: {{scope}}
+
+<!--
+Instructions:
+- Replace {{scope}} with description of what was analyzed
+- Example: "Entire codebase" or "React components"
+-->
 
 ## Summary
 
-- Major Inconsistencies: X issues
-- Minor Issues: X issues
+- Major Inconsistencies: {{major_count}} issues
+- Minor Issues: {{minor_count}} issues
+
+<!--
+Instructions:
+- Replace {{major_count}}, {{minor_count}} with actual counts
+- If count is 0, you can say "0 issues" or omit the category
+-->
 
 ## Project Standards
 
 Based on analysis, the established patterns are:
-- Naming: [e.g., camelCase for functions, PascalCase for components]
-- Error Handling: [e.g., try/catch with custom Error classes]
-- Async: [e.g., async/await preferred]
-- Imports: [e.g., absolute imports with aliases]
+- Naming: {{naming_pattern}}
+- Error Handling: {{error_handling_pattern}}
+- Async: {{async_pattern}}
+- Imports: {{import_pattern}}
+
+<!--
+Instructions:
+- Replace {{naming_pattern}}, {{error_handling_pattern}}, {{async_pattern}}, {{import_pattern}} with identified patterns
+- Examples:
+  - Naming: "camelCase for functions, PascalCase for components"
+  - Error Handling: "try/catch with custom Error classes"
+  - Async: "async/await preferred over .then()"
+  - Imports: "absolute imports with @ alias"
+- Add additional standards as needed
+-->
 
 ## Major Inconsistencies
 
-### STYLE-001: [Title]
+### STYLE-{{issue_number}}: {{issue_title}}
 
-**Location:** Files affected
+<!--
+Instructions:
+- Replace {{issue_number}} with sequential number (001, 002, etc.)
+- Replace {{issue_title}} with concise issue title
+- Use this format for each major inconsistency found
+-->
 
-**Issue:** Inconsistency or pattern mismatch
+**Location:** {{location}}
 
-**Standard:** Expected pattern/convention
+<!--
+Instructions:
+- Replace {{location}} with files affected
+- Example: "src/components/Button.tsx, src/components/Card.tsx"
+-->
 
-**Fix:** How to align with standard
+**Issue:** {{issue_description}}
+
+<!--
+Instructions:
+- Replace {{issue_description}} with inconsistency or pattern mismatch
+- Explain what is inconsistent
+-->
+
+**Standard:** {{standard}}
+
+<!--
+Instructions:
+- Replace {{standard}} with expected pattern/convention
+- This should match the majority pattern in the codebase
+-->
+
+**Fix:** {{fix_suggestion}}
+
+<!--
+Instructions:
+- Replace {{fix_suggestion}} with how to align with standard
+- Be specific and actionable
+-->
 
 ---
 
 ## Minor Issues
 
-[Same format]
+<!--
+Instructions:
+- Use same format as Major Inconsistencies section
+- Include all minor style issues
+-->
 ```
 
 ## What to Check

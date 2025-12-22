@@ -90,40 +90,104 @@ Review the report and prioritize by impact and effort.
 ```markdown
 # Tech Debt
 
-**Date**: YYYY-MM-DD
-**Scope**: [Description of analyzed scope]
+**Date**: {{date}}
+
+<!--
+Instructions:
+- Replace {{date}} with the analysis date in YYYY-MM-DD format
+-->
+
+**Scope**: {{scope}}
+
+<!--
+Instructions:
+- Replace {{scope}} with description of what was analyzed
+- Example: "Entire codebase" or "Data access layer"
+-->
 
 ## Summary
 
 | Category | Issues | Total Effort |
 |----------|--------|--------------|
-| Architecture | X | Low/Med/High |
-| Code Quality | X | Low/Med/High |
-| Performance | X | Low/Med/High |
+| Architecture | {{architecture_count}} | {{architecture_effort}} |
+| Code Quality | {{code_quality_count}} | {{code_quality_effort}} |
+| Performance | {{performance_count}} | {{performance_effort}} |
+
+<!--
+Instructions:
+- Replace {{architecture_count}}, {{code_quality_count}}, {{performance_count}} with issue counts
+- Replace {{architecture_effort}}, {{code_quality_effort}}, {{performance_effort}} with Low/Med/High
+- Total effort is aggregate of individual item efforts
+-->
 
 ## Architecture
 
-### DEBT-001: [Title]
+### DEBT-{{debt_number}}: {{debt_title}}
 
-**Location:** Files or modules affected
+<!--
+Instructions:
+- Replace {{debt_number}} with sequential number (001, 002, etc.)
+- Replace {{debt_title}} with concise debt title
+- Use this format for each architecture debt item found
+-->
 
-**Issue:** Current problematic pattern
+**Location:** {{location}}
 
-**Improvement:** Suggested improvement
+<!--
+Instructions:
+- Replace {{location}} with files or modules affected
+- Example: "src/api/*, src/db/*" or "Authentication module"
+-->
 
-**Benefit:** Why this matters
+**Issue:** {{issue_description}}
 
-**Effort:** Low / Medium / High
+<!--
+Instructions:
+- Replace {{issue_description}} with current problematic pattern
+- Explain what is wrong with the current approach
+-->
+
+**Improvement:** {{improvement}}
+
+<!--
+Instructions:
+- Replace {{improvement}} with suggested improvement
+- Be specific about what should change
+-->
+
+**Benefit:** {{benefit}}
+
+<!--
+Instructions:
+- Replace {{benefit}} with why this matters
+- Explain the value of making this change
+-->
+
+**Effort:** {{effort}}
+
+<!--
+Instructions:
+- Replace {{effort}} with Low / Medium / High
+- Consider scope and complexity of the change
+-->
 
 ---
 
 ## Code Quality
 
-[Same format]
+<!--
+Instructions:
+- Use same format as Architecture section
+- Include all code quality debt items
+-->
 
 ## Performance
 
-[Same format]
+<!--
+Instructions:
+- Use same format as Architecture section
+- Include all performance debt items
+-->
 ```
 
 ## Effort Estimation

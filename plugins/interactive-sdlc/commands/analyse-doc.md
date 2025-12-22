@@ -79,36 +79,94 @@ Review the report and prioritize fixes - critical issues first.
 ```markdown
 # Documentation Issues
 
-**Date**: YYYY-MM-DD
-**Scope**: [Description of analyzed scope]
+**Date**: {{date}}
+
+<!--
+Instructions:
+- Replace {{date}} with the analysis date in YYYY-MM-DD format
+-->
+
+**Scope**: {{scope}}
+
+<!--
+Instructions:
+- Replace {{scope}} with description of what documentation was analyzed
+- Example: "All markdown files in docs/" or "API documentation"
+-->
 
 ## Summary
 
-- Critical (Wrong/Misleading): X issues
-- Major (Outdated/Incomplete): X issues
-- Minor (Improvements): X issues
+- Critical (Wrong/Misleading): {{critical_count}} issues
+- Major (Outdated/Incomplete): {{major_count}} issues
+- Minor (Improvements): {{minor_count}} issues
+
+<!--
+Instructions:
+- Replace {{critical_count}}, {{major_count}}, {{minor_count}} with actual counts
+- If count is 0, you can say "0 issues" or omit the category
+-->
 
 ## Critical Issues (Completely Wrong/Misleading)
 
-### DOC-001: [Title]
+### DOC-{{issue_number}}: {{issue_title}}
 
-**Files:** List of affected documentation files
+<!--
+Instructions:
+- Replace {{issue_number}} with sequential number (001, 002, etc.)
+- Replace {{issue_title}} with concise issue title
+- Use this format for each critical documentation issue found
+-->
 
-**Issue:** What is wrong or misleading
+**Files:** {{affected_files}}
 
-**Code Reference:** Related code location if applicable
+<!--
+Instructions:
+- Replace {{affected_files}} with list of affected documentation files
+- Example: "docs/api.md, README.md"
+-->
 
-**Fix:** How to correct it
+**Issue:** {{issue_description}}
+
+<!--
+Instructions:
+- Replace {{issue_description}} with what is wrong or misleading
+- Be specific about the incorrect information
+-->
+
+**Code Reference:** {{code_location}}
+
+<!--
+Instructions:
+- Replace {{code_location}} with related code location if applicable
+- Format: file:line (e.g., "src/api/routes.ts:120")
+- Use "N/A" if not applicable
+-->
+
+**Fix:** {{fix_suggestion}}
+
+<!--
+Instructions:
+- Replace {{fix_suggestion}} with how to correct the documentation
+- Include the correct information
+-->
 
 ---
 
 ## Major Issues (Outdated/Incomplete)
 
-[Same format]
+<!--
+Instructions:
+- Use same format as Critical Issues section
+- Include all major severity documentation issues
+-->
 
 ## Minor Issues (Improvements)
 
-[Same format]
+<!--
+Instructions:
+- Use same format as Critical Issues section
+- Include all minor documentation improvements
+-->
 ```
 
 ## Issue Categories

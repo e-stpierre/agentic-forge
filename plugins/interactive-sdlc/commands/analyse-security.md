@@ -102,45 +102,114 @@ Review the report and address issues by priority.
 ```markdown
 # Security Analysis
 
-**Date**: YYYY-MM-DD
-**Scope**: [Description of analyzed scope]
+**Date**: {{date}}
+
+<!--
+Instructions:
+- Replace {{date}} with the analysis date in YYYY-MM-DD format
+-->
+
+**Scope**: {{scope}}
+
+<!--
+Instructions:
+- Replace {{scope}} with description of what was analyzed
+- Example: "Entire codebase" or "Authentication and API modules"
+-->
 
 ## Summary
 
 | Risk Level | Issues |
 |------------|--------|
-| Critical | X |
-| High | X |
-| Medium | X |
-| Low | X |
+| Critical | {{critical_count}} |
+| High | {{high_count}} |
+| Medium | {{medium_count}} |
+| Low | {{low_count}} |
+
+<!--
+Instructions:
+- Replace {{critical_count}}, {{high_count}}, {{medium_count}}, {{low_count}} with actual counts
+- If count is 0, you can say "0" or omit the category
+-->
 
 ## Critical Vulnerabilities
 
-### SEC-001: [Title]
+### SEC-{{vuln_number}}: {{vuln_title}}
 
-**Location:** Code location or dependency
+<!--
+Instructions:
+- Replace {{vuln_number}} with sequential number (001, 002, etc.)
+- Replace {{vuln_title}} with concise vulnerability title
+- Use this format for each critical vulnerability found
+-->
 
-**Vulnerability:** Type and description
+**Location:** {{location}}
 
-**Risk:** Potential impact if exploited
+<!--
+Instructions:
+- Replace {{location}} with code location or dependency
+- Format: file:line (e.g., "src/auth/login.ts:78") or "dependency: package@version"
+-->
 
-**Remediation:** Specific fix approach
+**Vulnerability:** {{vulnerability_description}}
 
-**References:** CWE/OWASP links if applicable
+<!--
+Instructions:
+- Replace {{vulnerability_description}} with vulnerability type and description
+- Include CWE number if applicable (e.g., "SQL Injection (CWE-89)")
+- Explain what makes this exploitable
+-->
+
+**Risk:** {{risk_impact}}
+
+<!--
+Instructions:
+- Replace {{risk_impact}} with potential impact if exploited
+- Focus on concrete consequences (data breach, unauthorized access, etc.)
+-->
+
+**Remediation:** {{remediation}}
+
+<!--
+Instructions:
+- Replace {{remediation}} with specific fix approach
+- Be actionable and include code examples if helpful
+-->
+
+**References:** {{references}}
+
+<!--
+Instructions:
+- Replace {{references}} with CWE/OWASP links if applicable
+- Example: "CWE-89: https://cwe.mitre.org/data/definitions/89.html"
+- Use "N/A" if no specific references apply
+-->
 
 ---
 
 ## High Risk
 
-[Same format]
+<!--
+Instructions:
+- Use same format as Critical Vulnerabilities section
+- Include all high-risk security issues
+-->
 
 ## Medium Risk
 
-[Same format]
+<!--
+Instructions:
+- Use same format as Critical Vulnerabilities section
+- Include all medium-risk security issues
+-->
 
 ## Low Risk
 
-[Same format]
+<!--
+Instructions:
+- Use same format as Critical Vulnerabilities section
+- Include all low-risk security issues
+-->
 ```
 
 ## OWASP Top 10 Coverage
