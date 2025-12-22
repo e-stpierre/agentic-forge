@@ -81,7 +81,6 @@ Personal overrides can be added to `.claude/settings.local.json` (gitignored).
 
 - `--git` - Auto-commit changes at logical checkpoints
 - `--explore N` - Override default explore agent count for codebase analysis
-- `--output <path>` - Override default output file location
 - `[context]` - Optional freeform context as the last parameter
 
 ### Build-Specific Arguments
