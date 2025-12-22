@@ -1,19 +1,18 @@
 ---
 name: plan-chore
 description: Plan a maintenance task with codebase exploration and structured plan generation
-argument-hint: "[--explore N] [--git] [--output <path>] [context]"
+argument-hint: "[--explore N] [--git] [context]"
 ---
 
 # Plan Chore
 
 Plan a maintenance task with codebase exploration and structured plan generation.
 
-## Parameters
+## Arguments
 
 - **`--explore N`** (optional): Override default explore agent count (default: 2)
 - **`--git`** (optional): Commit plan file after creation
-- **`--output <path>`** (optional): Override plan file location
-- **`[context]`** (optional): Optional freeform context for parameter inference
+- **`[context]`** (optional): Optional freeform context for argument inference
 
 ## Objective
 
@@ -67,8 +66,7 @@ Plan a maintenance task with comprehensive codebase exploration, gathering user 
    ```
 
 5. **Save Plan**
-   - Save to `--output` path if specified
-   - Otherwise save to `{planDirectory}/chore-{slugified-title}.md`
+   - Save to `{planDirectory}/chore-{slugified-title}.md`
    - Inform user of the saved file path
 
 6. **Git Commit (if --git flag)**
@@ -110,22 +108,6 @@ List of specific tasks required to complete this chore, in order
 
 ## Validation Criteria
 How to verify this chore is complete
-```
-
-## Example Usage
-
-```bash
-# Basic usage - interactive prompts
-/interactive-sdlc:plan-chore
-
-# With context
-/interactive-sdlc:plan-chore Update all dependencies and fix any breaking changes
-
-# With flags
-/interactive-sdlc:plan-chore --explore 3 --git Refactor the logging system to use structured logs
-
-# With custom output
-/interactive-sdlc:plan-chore --output /docs/plans/logging.md Refactor logging
 ```
 
 ## Don't

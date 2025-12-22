@@ -8,7 +8,7 @@ argument-hint: "[context]"
 
 Scan for security vulnerabilities, unsafe patterns, and dependency issues.
 
-## Parameters
+## Arguments
 
 - **`[context]`** (optional): Specific areas or concerns to focus on
 
@@ -141,22 +141,6 @@ Review the report and address issues by priority.
 ## Low Risk
 
 [Same format]
-```
-
-## Example Usage
-
-```bash
-# Full security scan
-/interactive-sdlc:analyse-security
-
-# Focus on authentication
-/interactive-sdlc:analyse-security Focus on authentication and session management
-
-# Check for injection
-/interactive-sdlc:analyse-security Check for SQL and command injection vulnerabilities
-
-# Analyze specific area
-/interactive-sdlc:analyse-security src/api/ src/auth/
 ```
 
 ## OWASP Top 10 Coverage

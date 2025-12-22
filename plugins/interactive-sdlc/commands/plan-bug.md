@@ -1,19 +1,18 @@
 ---
 name: plan-bug
 description: Plan a bug fix with root cause analysis, reproduction steps, and structured fix strategy
-argument-hint: "[--explore N] [--git] [--output <path>] [context]"
+argument-hint: "[--explore N] [--git] [context]"
 ---
 
 # Plan Bug
 
 Plan a bug fix with root cause analysis, reproduction steps, and structured fix strategy.
 
-## Parameters
+## Arguments
 
 - **`--explore N`** (optional): Override default explore agent count (default: 2)
 - **`--git`** (optional): Commit plan file after creation
-- **`--output <path>`** (optional): Override plan file location
-- **`[context]`** (optional): Optional freeform context for parameter inference
+- **`[context]`** (optional): Optional freeform context for argument inference
 
 ## Objective
 
@@ -84,8 +83,7 @@ Plan a bug fix with thorough root cause analysis, reproduction steps, and a stru
    ```
 
 6. **Save Plan**
-   - Save to `--output` path if specified
-   - Otherwise save to `{planDirectory}/bug-{slugified-title}.md`
+   - Save to `{planDirectory}/bug-{slugified-title}.md`
    - Inform user of the saved file path
 
 7. **Git Commit (if --git flag)**
@@ -137,25 +135,6 @@ How to verify the bug is fixed and won't regress
 
 ## Testing
 Test cases to add or update to prevent regression
-```
-
-## Example Usage
-
-```bash
-# Basic usage - interactive prompts
-/interactive-sdlc:plan-bug
-
-# With context
-/interactive-sdlc:plan-bug Login fails on Safari when using OAuth.
-Users click login button, get redirected to OAuth provider,
-but after successful auth they are redirected to a blank page
-instead of the dashboard.
-
-# With flags
-/interactive-sdlc:plan-bug --explore 3 --git Memory leak in WebSocket handler
-
-# With custom output
-/interactive-sdlc:plan-bug --output /docs/bugs/safari-oauth.md Safari OAuth issue
 ```
 
 ## Don't

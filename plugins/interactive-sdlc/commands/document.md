@@ -8,7 +8,7 @@ argument-hint: "[--output <path>] [context]"
 
 Generate or update project documentation with mermaid diagrams.
 
-## Parameters
+## Arguments
 
 - **`--output <path>`** (optional): Specify output file path
 - **`[context]`** (required): Description of what to document
@@ -146,25 +146,6 @@ stateDiagram-v2
     Loading --> Error: request failed
     Success --> Idle: reset
     Error --> Loading: retry
-```
-
-## Example Usage
-
-```bash
-# Document REST API endpoints
-/interactive-sdlc:document --output docs/api.md Document the REST API endpoints with request/response examples
-
-# Create architecture overview
-/interactive-sdlc:document --output docs/architecture.md Create architecture diagram showing the plugin system
-
-# Document a feature
-/interactive-sdlc:document Document the authentication flow including OAuth providers
-
-# Create setup guide
-/interactive-sdlc:document --output docs/setup.md Create a developer setup guide for the project
-
-# Document component
-/interactive-sdlc:document --output docs/components/button.md Document the Button component API and usage examples
 ```
 
 ## Output Guidance

@@ -8,7 +8,7 @@ argument-hint: "[--git] [--validate] [--explore N] <context>"
 
 Quick task execution without a saved plan file. Ideal for small, well-defined tasks.
 
-## Parameters
+## Arguments
 
 - **`--git`** (optional): Auto-commit changes when done
 - **`--validate`** (optional): Run validation after implementation
@@ -84,22 +84,6 @@ Validation results: PASS/FAIL
 - Review: No critical issues
 ```
 
-## Example Usage
-
-```bash
-# Simple chore
-/interactive-sdlc:one-shot --git Fix the typo in README, change "authenitcation" to "authentication"
-
-# Bug fix with validation
-/interactive-sdlc:one-shot --git --validate Fix login timeout on Safari - users get blank page after OAuth redirect
-
-# Feature with exploration
-/interactive-sdlc:one-shot --explore 2 --git Add a logout button to the user menu
-
-# Quick refactor
-/interactive-sdlc:one-shot --git Rename getUserData to fetchUserProfile across the codebase
-```
-
 ## When to Use One-Shot
 
 **Good for:**
@@ -115,10 +99,7 @@ Validation results: PASS/FAIL
 - Tasks with unclear requirements
 - Large refactoring efforts
 
-For complex tasks, use the full planning workflow:
-```bash
-/interactive-sdlc:plan-build-validate --git --pr <task description>
-```
+For complex tasks, use the full planning workflow instead.
 
 ## Don't
 

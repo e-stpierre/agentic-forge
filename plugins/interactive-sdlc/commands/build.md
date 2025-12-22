@@ -8,7 +8,7 @@ argument-hint: "<plan-file> [--git] [--checkpoint \"<text>\"] [context]"
 
 Implement a plan file with checkpoint support for resuming work.
 
-## Parameters
+## Arguments
 
 - **`<plan-file>`** (required): Path to plan file
 - **`--git`** (optional): Auto-commit changes at logical checkpoints
@@ -96,25 +96,6 @@ Changes summary:
 Next steps:
 - Run validation: /interactive-sdlc:validate --plan /specs/feature-auth.md
 - Review changes and test functionality
-```
-
-## Example Usage
-
-```bash
-# Basic usage
-/interactive-sdlc:build /specs/feature-auth.md
-
-# With git commits
-/interactive-sdlc:build /specs/bug-login.md --git
-
-# Resume from checkpoint
-/interactive-sdlc:build /specs/feature-auth.md --checkpoint "Milestone 2"
-
-# Resume from specific task
-/interactive-sdlc:build /specs/feature-auth.md --checkpoint "Task 1.3: Add OAuth handlers"
-
-# With implementation context
-/interactive-sdlc:build /specs/chore-refactor.md --git Focus on maintaining backward compatibility
 ```
 
 ## Checkpoint System

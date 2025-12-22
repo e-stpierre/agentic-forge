@@ -8,7 +8,7 @@ argument-hint: "[context]"
 
 Check code style, consistency, and best practices adherence.
 
-## Parameters
+## Arguments
 
 - **`[context]`** (optional): Specific areas or files to focus on
 
@@ -120,22 +120,6 @@ Based on analysis, the established patterns are:
 ## Minor Issues
 
 [Same format]
-```
-
-## Example Usage
-
-```bash
-# Analyze entire codebase
-/interactive-sdlc:analyse-style
-
-# Focus on specific area
-/interactive-sdlc:analyse-style Focus on React components
-
-# Check naming conventions
-/interactive-sdlc:analyse-style Check naming consistency across the API layer
-
-# Specific files
-/interactive-sdlc:analyse-style src/components/ src/hooks/
 ```
 
 ## What to Check

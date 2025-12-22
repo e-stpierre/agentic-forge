@@ -9,7 +9,7 @@ REQUIRED FRONTMATTER FIELDS:
 - argument-hint: Usage pattern showing arguments (can be empty string)
 
 REQUIRED SECTIONS:
-- Parameters (if command takes arguments)
+- Arguments (if command takes arguments)
 - Objective
 - Core Principles
 - Instructions
@@ -19,6 +19,12 @@ OPTIONAL SECTIONS:
 - Templates (for commands that generate structured outputs)
 - Configuration (for commands with configurable settings)
 - Don't (for commands that need explicit anti-patterns)
+
+ARGUMENT DESIGN PRINCIPLES:
+- If present, the [context] argument should always come last
+- Commands should NOT support arguments that can be configured in settings.json
+- Instead, provide defaults and read settings.json to override them
+- Example: Plan commands should not have --output argument; use default /specs or read interactive-sdlc.planDirectory from settings
 -->
 
 ---
@@ -37,15 +43,17 @@ Instructions:
 - Explain what the command accomplishes and when to use it
 -->
 
-## Parameters
+## Arguments
 
-{{parameters}}
+{{arguments}}
 
 <!--
 Instructions:
-- Replace {{parameters}} with a bullet-point list defining each parameter
-- Format: **`parameter-name`** (required/optional): Description and expected format
+- Replace {{arguments}} with a bullet-point list defining each argument
+- Format: **`argument-name`** (required/optional): Description and expected format
 - Include default values where applicable
+- If present, the [context] argument should always come last
+- Do NOT add arguments for values that can be configured in settings.json
 - Omit this section entirely if the command takes no arguments
 -->
 

@@ -8,7 +8,7 @@ argument-hint: "[context]"
 
 Identify technical debt, optimization opportunities, and refactoring needs.
 
-## Parameters
+## Arguments
 
 - **`[context]`** (optional): Specific areas or concerns to focus on
 
@@ -124,22 +124,6 @@ Review the report and prioritize by impact and effort.
 ## Performance
 
 [Same format]
-```
-
-## Example Usage
-
-```bash
-# Analyze entire codebase
-/interactive-sdlc:analyse-debt
-
-# Focus on specific area
-/interactive-sdlc:analyse-debt Focus on the data access layer
-
-# Performance focused
-/interactive-sdlc:analyse-debt Identify performance bottlenecks
-
-# Specific concern
-/interactive-sdlc:analyse-debt Look for code duplication in components/
 ```
 
 ## Effort Estimation

@@ -8,7 +8,7 @@ argument-hint: "[--plan <plan-file>] [--skip-tests] [--skip-build] [--skip-revie
 
 Comprehensive validation including tests, code review, build verification, and plan compliance.
 
-## Parameters
+## Arguments
 
 - **`--plan <plan-file>`** (optional): Plan file to verify compliance against
 - **`--skip-tests`** (optional): Skip test execution
@@ -141,28 +141,6 @@ Example:
 ```bash
 --autofix critical,major  # Auto-fix critical and major issues
 --autofix critical        # Auto-fix only critical issues
-```
-
-## Example Usage
-
-```bash
-# Full validation
-/interactive-sdlc:validate
-
-# Skip tests
-/interactive-sdlc:validate --skip-tests
-
-# With plan compliance
-/interactive-sdlc:validate --plan /specs/feature-auth.md
-
-# Auto-fix critical and major issues
-/interactive-sdlc:validate --autofix critical,major
-
-# With focus context
-/interactive-sdlc:validate --plan /specs/bug-login.md Focus on authentication flow and session handling
-
-# Skip multiple checks
-/interactive-sdlc:validate --skip-tests --skip-build
 ```
 
 ## Test Framework Detection

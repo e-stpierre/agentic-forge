@@ -8,7 +8,7 @@ argument-hint: "[--git] [--pr] [--explore N] [context]"
 
 Full guided workflow from planning through implementation to validation.
 
-## Parameters
+## Arguments
 
 - **`--git`** (optional): Auto-commit throughout workflow (plan file, build checkpoints)
 - **`--pr`** (optional): Create draft PR when validation passes
@@ -101,22 +101,6 @@ If validation fails:
 - Report issues found
 - Do not create PR
 - Suggest running `/interactive-sdlc:validate --autofix critical,major`
-
-## Example Usage
-
-```bash
-# Full workflow with git and PR
-/interactive-sdlc:plan-build-validate --git --pr Add user authentication with OAuth support
-
-# Feature with more exploration
-/interactive-sdlc:plan-build-validate --git --pr --explore 5 Implement dark mode toggle in settings
-
-# Bug fix workflow
-/interactive-sdlc:plan-build-validate --git --pr Login fails when password contains special characters
-
-# Chore workflow
-/interactive-sdlc:plan-build-validate --git Update all npm dependencies to latest versions
-```
 
 ## Workflow Summary
 

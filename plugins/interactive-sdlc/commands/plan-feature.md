@@ -1,19 +1,18 @@
 ---
 name: plan-feature
 description: Plan a feature with milestones, architecture design, and comprehensive task breakdown
-argument-hint: "[--explore N] [--git] [--output <path>] [context]"
+argument-hint: "[--explore N] [--git] [context]"
 ---
 
 # Plan Feature
 
 Plan a feature with milestones, architecture design, and comprehensive task breakdown.
 
-## Parameters
+## Arguments
 
 - **`--explore N`** (optional): Override default explore agent count (default: 3)
 - **`--git`** (optional): Commit plan file after creation
-- **`--output <path>`** (optional): Override plan file location
-- **`[context]`** (optional): Optional freeform context for parameter inference
+- **`[context]`** (optional): Optional freeform context for argument inference
 
 ## Objective
 
@@ -105,8 +104,7 @@ Plan a feature with comprehensive codebase exploration, architecture design, mil
    ```
 
 7. **Save Plan**
-   - Save to `--output` path if specified
-   - Otherwise save to `{planDirectory}/feature-{slugified-title}.md`
+   - Save to `{planDirectory}/feature-{slugified-title}.md`
    - Inform user of the saved file path
 
 8. **Git Commit (if --git flag)**
@@ -174,22 +172,6 @@ How this feature will be tested
 
 ## Validation Criteria
 How to verify the feature is complete and working
-```
-
-## Example Usage
-
-```bash
-# Basic usage - interactive prompts
-/interactive-sdlc:plan-feature
-
-# With context
-/interactive-sdlc:plan-feature Add dark mode support with toggle in settings and persistent user preference
-
-# With flags
-/interactive-sdlc:plan-feature --explore 5 --git User authentication with OAuth support for Google and GitHub
-
-# With custom output
-/interactive-sdlc:plan-feature --output /docs/features/auth.md User authentication
 ```
 
 ## Don't

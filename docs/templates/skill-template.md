@@ -10,7 +10,7 @@ REQUIRED FRONTMATTER FIELDS:
 
 REQUIRED SECTIONS:
 - Definition
-- Parameters (if skill takes arguments)
+- Arguments (if skill takes arguments)
 - Objective
 - Core Principles
 - Instructions
@@ -36,14 +36,14 @@ Instructions:
 - Clarify when and why to use this skill
 -->
 
-## Parameters
+## Arguments
 
-{{parameters}}
+{{arguments}}
 
 <!--
 Instructions:
-- Replace {{parameters}} with a bullet-point list defining each parameter
-- Format: **`parameter-name`** (required/optional): Description and expected format
+- Replace {{arguments}} with a bullet-point list defining each argument
+- Format: **`argument-name`** (required/optional): Description and expected format
 - Include default values where applicable
 - Omit this section entirely if the skill takes no arguments
 -->

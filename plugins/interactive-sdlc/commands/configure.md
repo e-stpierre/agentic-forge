@@ -62,7 +62,7 @@ Set up interactive-sdlc plugin configuration interactively by reading existing s
    - Preserve other settings in the file (only update `interactive-sdlc` section)
    - Confirm successful configuration with summary
 
-## Configuration File Format
+## Configuration
 
 ### Project Configuration (`.claude/settings.json`)
 
@@ -95,51 +95,6 @@ Gitignored, personal preferences:
     }
   }
 }
-```
-
-## Example Usage
-
-```bash
-# Run interactive configuration
-/interactive-sdlc:configure
-```
-
-## Example Session
-
-```
-$ /interactive-sdlc:configure
-
-Checking configuration...
-
-Current interactive-sdlc configuration:
-  planDirectory: /specs
-  analysisDirectory: (not set)
-  defaultExploreAgents.chore: 2
-  defaultExploreAgents.bug: (not set)
-  defaultExploreAgents.feature: 3
-
-Missing settings detected. Let me help you configure them.
-
-? Where should analysis reports be saved?
-  [/analysis] (default)
-
-? How many explore agents for bug planning? (0-5)
-  [2] (default)
-
-Configuration updated successfully!
-
-Current configuration:
-  planDirectory: /specs
-  analysisDirectory: /analysis
-  defaultExploreAgents:
-    chore: 2
-    bug: 2
-    feature: 3
-
-Configuration saved to .claude/settings.json
-
-To change settings later, edit .claude/settings.json directly
-or run /interactive-sdlc:configure again.
 ```
 
 ## Output Guidance

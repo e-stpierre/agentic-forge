@@ -8,7 +8,7 @@ argument-hint: "[context]"
 
 Analyze codebase for bugs, logic errors, and runtime issues.
 
-## Parameters
+## Arguments
 
 - **`[context]`** (optional): Specific areas or concerns to focus on, or directories/files to analyze
 
@@ -116,22 +116,6 @@ Review the report and prioritize fixes by criticality.
 ## Low
 
 [Same format for low issues]
-```
-
-## Example Usage
-
-```bash
-# Analyze entire codebase
-/interactive-sdlc:analyse-bug
-
-# Focus on specific area
-/interactive-sdlc:analyse-bug Focus on authentication and session management
-
-# Analyze specific files
-/interactive-sdlc:analyse-bug src/auth/ src/middleware/
-
-# Analyze with specific concern
-/interactive-sdlc:analyse-bug Check for null pointer issues in the API handlers
 ```
 
 ## Don't

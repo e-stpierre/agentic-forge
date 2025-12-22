@@ -8,7 +8,7 @@ argument-hint: "[context]"
 
 Analyze documentation quality, accuracy, and completeness.
 
-## Parameters
+## Arguments
 
 - **`[context]`** (optional): Specific documentation files or areas to focus on
 
@@ -109,22 +109,6 @@ Review the report and prioritize fixes - critical issues first.
 ## Minor Issues (Improvements)
 
 [Same format]
-```
-
-## Example Usage
-
-```bash
-# Analyze all documentation
-/interactive-sdlc:analyse-doc
-
-# Focus on API documentation
-/interactive-sdlc:analyse-doc Check API documentation accuracy
-
-# Analyze specific files
-/interactive-sdlc:analyse-doc docs/api.md README.md
-
-# Check for broken links
-/interactive-sdlc:analyse-doc Verify all links and references are valid
 ```
 
 ## Issue Categories
