@@ -60,14 +60,6 @@ from claude_core import (
     temporary_worktree,
 )
 
-# SDLC Workflows (legacy interactive)
-from claude_sdlc.workflows import (
-    BugfixWorkflowConfig,
-    FeatureWorkflowConfig,
-    bugfix_workflow,
-    feature_workflow,
-)
-
 # Agentic Orchestrator (autonomous)
 from claude_sdlc.orchestrator import (
     AgentMessage,
@@ -77,6 +69,14 @@ from claude_sdlc.orchestrator import (
     agentic_validate,
     agentic_workflow,
     run_agentic_command,
+)
+
+# SDLC Workflows (legacy interactive)
+from claude_sdlc.workflows import (
+    BugfixWorkflowConfig,
+    FeatureWorkflowConfig,
+    bugfix_workflow,
+    feature_workflow,
 )
 
 __version__ = "2.0.0"

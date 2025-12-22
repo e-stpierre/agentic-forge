@@ -46,6 +46,7 @@ Based on task type, invoke the appropriate planning command using full namespace
 - **Feature**: `/interactive-sdlc:plan-feature`
 
 Pass through:
+
 - `--explore N` if specified
 - `--git` if specified
 - `[context]` if provided
@@ -61,6 +62,7 @@ Invoke the build command with the generated plan:
 ```
 
 Pass through:
+
 - `--git` if specified
 
 Implement all tasks from the plan.
@@ -74,6 +76,7 @@ Invoke the validate command:
 ```
 
 Run all validation checks:
+
 - Tests
 - Code review
 - Build verification
@@ -85,6 +88,7 @@ If validation passes:
 
 1. Generate PR title from plan title
 2. Generate PR body from plan summary:
+
    ```markdown
    ## Summary
    - Key changes from the plan
@@ -94,10 +98,12 @@ If validation passes:
 
    🤖 Generated with [Claude Code](https://claude.com/claude-code)
    ```
+
 3. Create draft PR using `gh pr create --draft`
 4. Report PR URL to user
 
 If validation fails:
+
 - Report issues found
 - Do not create PR
 - Suggest running `/interactive-sdlc:validate --autofix critical,major`
@@ -137,6 +143,7 @@ If validation fails:
 Provide progress updates at each stage and a final summary:
 
 **During workflow:**
+
 ```
 Step 1/5: Planning [COMPLETE]
 - Plan saved to /specs/feature-auth.md
@@ -150,6 +157,7 @@ Step 4/5: PR Creation [PENDING]
 ```
 
 **On completion:**
+
 ```
 ## Workflow Complete
 

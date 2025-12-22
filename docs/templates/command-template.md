@@ -28,6 +28,7 @@ ARGUMENT DESIGN PRINCIPLES:
 -->
 
 ---
+
 name: {{command-name}}
 description: {{command-description}}
 argument-hint: {{argument-pattern}}

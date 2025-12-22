@@ -26,14 +26,14 @@ import json
 import sys
 from pathlib import Path
 
-from claude_sdlc.workflows.bugfix import main as bugfix_main
-from claude_sdlc.workflows.feature import main as feature_main
 from claude_sdlc.orchestrator import (
-    agentic_plan,
     agentic_build,
+    agentic_plan,
     agentic_validate,
     agentic_workflow,
 )
+from claude_sdlc.workflows.bugfix import main as bugfix_main
+from claude_sdlc.workflows.feature import main as feature_main
 
 
 def main() -> int:
@@ -187,7 +187,8 @@ Or use direct commands:
         help="Full end-to-end autonomous workflow",
     )
     workflow_parser.add_argument(
-        "--type", "-t",
+        "--type",
+        "-t",
         choices=["feature", "bug", "chore"],
         required=True,
         help="Task type",
@@ -204,7 +205,8 @@ Or use direct commands:
         help="Invoke planning agent with JSON input",
     )
     plan_parser.add_argument(
-        "--type", "-t",
+        "--type",
+        "-t",
         choices=["feature", "bug", "chore"],
         required=True,
         help="Task type",

@@ -75,6 +75,7 @@ Implement all tasks from a plan file with checkpoint support for resuming work, 
 Provide clear progress updates and a final summary:
 
 **During implementation:**
+
 ```
 [in_progress] Milestone 1: OAuth Integration
   [completed] Task 1.1: Add OAuth provider configuration
@@ -83,6 +84,7 @@ Provide clear progress updates and a final summary:
 ```
 
 **On completion:**
+
 ```
 ## Implementation Complete
 
@@ -103,12 +105,14 @@ Next steps:
 The checkpoint system allows resuming long-running builds:
 
 1. **Milestone Checkpoint**: Resume from start of a milestone
+
    ```bash
    --checkpoint "Milestone 2"
    --checkpoint "Milestone 2: OAuth Integration"
    ```
 
 2. **Task Checkpoint**: Resume from a specific task
+
    ```bash
    --checkpoint "Task 2.1"
    --checkpoint "Add OAuth handlers"

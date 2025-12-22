@@ -4,6 +4,7 @@ Internal development guide defining the goals and direction for the agentic-forg
 All design and implementation decisions must align with this document.
 
 All plugins and workflows are technology agnostic, meaning that they can be used in a very wide range of use cases, and are not limited to specific programming language, framework, or system. Here's a few use-case examples:
+
 - Software development (any language and tech stack)
 - Security investigation, pentesting
 - Kubernetes server creation, maintenance, improvement

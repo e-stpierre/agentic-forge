@@ -102,6 +102,7 @@ Gitignored, personal preferences:
 Show current configuration status and changes made:
 
 **If configuration is valid:**
+
 ```
 ✓ Configuration is valid
 
@@ -118,6 +119,7 @@ or run /interactive-sdlc:configure again.
 ```
 
 **If configuration needed updates:**
+
 ```
 Configuration updated successfully!
 
@@ -146,4 +148,3 @@ or run /interactive-sdlc:configure again.
 - If file exists but missing `interactive-sdlc` section, add it while preserving all other existing settings
 - If user provides invalid input, show error message explaining valid values and re-prompt with suggestions
 - If file permission issues prevent automatic updates, provide manual configuration instructions
-
