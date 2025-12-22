@@ -252,10 +252,10 @@ Instructions:
 -->
 ```
 
-## Don't
+## Important Notes
 
-- Don't modify plan files during implementation - they are static documentation
-- Don't include time estimates, deadlines, or scheduling information
-- Don't create monolithic plans - break into milestones for incremental delivery
-- Don't make architectural decisions without exploring existing patterns first
-- Don't skip requirements gathering - unclear requirements lead to rework
+- Plans are static documentation - never modify them during implementation
+- Focus on actionable tasks, not time estimates or deadlines
+- Break features into logical milestones for incremental delivery
+- Explore existing patterns before making architectural decisions
+- Gather requirements thoroughly - clear requirements prevent rework

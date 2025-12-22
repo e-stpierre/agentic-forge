@@ -135,13 +135,13 @@ To change settings later, edit .claude/settings.json directly
 or run /interactive-sdlc:configure again.
 ```
 
-## Don't
+## Important Notes
 
-- Don't overwrite other settings in .claude/settings.json - only update interactive-sdlc
-- Don't fail silently on permission issues - provide manual configuration instructions
-- Don't use invalid defaults - validate user input before accepting
-- Don't lose existing settings when adding new ones
-- Don't skip validation - ensure all settings are in valid ranges
+- Only update the interactive-sdlc section in .claude/settings.json - preserve all other settings
+- Provide manual configuration instructions if file permissions prevent automatic updates
+- Validate all user input before accepting
+- Preserve existing settings when adding new ones
+- Ensure all settings are within valid ranges
 
 ## Error Handling
 

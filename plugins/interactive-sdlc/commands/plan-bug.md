@@ -200,10 +200,10 @@ Instructions:
 -->
 ```
 
-## Don't
+## Important Notes
 
-- Don't skip root cause analysis - fixing symptoms without understanding the cause leads to recurring bugs
-- Don't modify plan files during implementation - they are static documentation
-- Don't include time estimates or deadlines in plans
-- Don't proceed with a fix until root cause is clearly identified
-- Don't forget to add regression test cases
+- Perform thorough root cause analysis - understanding the cause is critical to preventing recurring bugs
+- Plans are static documentation - never modify them during implementation
+- Focus on actionable tasks, not time estimates or deadlines
+- Identify the root cause clearly before proceeding with a fix
+- Include regression test cases to prevent future occurrences

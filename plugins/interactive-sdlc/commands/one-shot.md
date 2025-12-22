@@ -101,10 +101,10 @@ Validation results: PASS/FAIL
 
 For complex tasks, use the full planning workflow instead.
 
-## Don't
+## Important Notes
 
-- Don't use one-shot for complex features requiring architecture decisions
-- Don't use one-shot for bugs requiring deep investigation
-- Don't skip --validate for critical or security-related changes
-- Don't use one-shot when tasks have unclear requirements
-- Don't use one-shot for large refactoring efforts - use full planning workflow instead
+- Use the full planning workflow for complex features requiring architecture decisions
+- Use the full planning workflow for bugs requiring deep investigation
+- Always use --validate for critical or security-related changes
+- Clarify requirements before proceeding - use planning workflow if unclear
+- Use the full planning workflow for large refactoring efforts

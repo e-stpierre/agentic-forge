@@ -154,10 +154,10 @@ Instructions:
 -->
 ```
 
-## Don't
+## Important Notes
 
-- Don't modify plan files during implementation - they are static documentation
-- Don't include time estimates, deadlines, or scheduling information in plans
-- Don't update plan files to track progress - use TodoWrite tool instead
-- Don't skip codebase exploration - understanding existing patterns is critical
-- Don't make assumptions about requirements - ask clarifying questions when needed
+- Plans are static documentation - never modify them during implementation
+- Focus on actionable tasks, not time estimates or deadlines
+- Track progress via TodoWrite tool, not by updating plan files
+- Explore the codebase thoroughly to understand existing patterns
+- Ask clarifying questions when requirements are unclear

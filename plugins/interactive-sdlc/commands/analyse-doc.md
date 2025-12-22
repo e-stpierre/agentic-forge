@@ -192,10 +192,10 @@ Instructions:
 - Missing examples
 - Better organization suggestions
 
-## Don't
+## Important Notes
 
-- Don't nitpick working documentation - good docs are a success
-- Don't assume documentation is wrong without verifying against code
-- Don't report issues without providing correct information
-- Don't apply same standards to all documentation types
-- Don't flag documentation that is ahead of code as incorrect
+- Focus on real issues - good documentation is a success, not a failure
+- Verify documentation against code before marking it as incorrect
+- Provide correct information when reporting issues
+- Apply appropriate standards based on documentation type (user guides vs API references vs internal docs)
+- Consider that documentation may be ahead of code (planned features)

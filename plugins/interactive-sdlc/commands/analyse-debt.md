@@ -210,10 +210,10 @@ Instructions:
 - Database schema changes
 - API redesign
 
-## Don't
+## Important Notes
 
-- Don't flag everything as debt - working code has value
-- Don't ignore why patterns exist - some "debt" is intentional
-- Don't suggest premature abstractions or over-engineering
-- Don't prioritize rarely-touched code over frequently-used code
-- Don't recommend future-proofing without concrete requirements
+- Focus on real debt - working code has value
+- Understand why patterns exist before flagging them - some "debt" is intentional
+- Avoid suggesting premature abstractions or over-engineering
+- Prioritize frequently-used code over rarely-touched code
+- Base recommendations on concrete requirements, not hypothetical future needs

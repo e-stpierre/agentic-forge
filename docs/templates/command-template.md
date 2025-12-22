@@ -18,7 +18,7 @@ REQUIRED SECTIONS:
 OPTIONAL SECTIONS:
 - Templates (for commands that generate structured outputs)
 - Configuration (for commands with configurable settings)
-- Don't (for commands that need explicit anti-patterns)
+- Important Notes (for critical reminders, constraints, and anti-patterns)
 
 ARGUMENT DESIGN PRINCIPLES:
 - If present, the [context] argument should always come last
@@ -135,16 +135,18 @@ Instructions:
 - Group related settings together
 -->
 
-## Don't (optional)
+## Important Notes (optional)
 
-{{anti_patterns}}
+{{important_notes}}
 
 <!--
 Instructions:
-- Replace {{anti_patterns}} with bullet points of things to avoid
-- List elements that the command should not do
-- Clarify common mistakes or misuses
+- Replace {{important_notes}} with bullet points of critical reminders, constraints, and warnings
+- Use positive format where possible ("Do X" instead of "Don't do X")
+- Reserve "Don't" for critical warnings where violation would cause serious issues
 - Example items:
-  - Don't modify files without user confirmation
-  - Don't skip validation steps
+  - Plans are read-only - track progress via TodoWrite tool
+  - Ask clarifying questions when requirements are unclear
+  - Don't modify files without user confirmation (critical safety warning)
+  - Run tests frequently to catch issues early
 -->

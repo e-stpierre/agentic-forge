@@ -163,10 +163,10 @@ Example:
 | `Makefile` (build target) | Make | `make build` |
 | `pyproject.toml` | Python | `uv build` |
 
-## Don't
+## Important Notes
 
-- Don't skip validation checks without good reason - they catch critical issues
-- Don't ignore failed tests - fix them before proceeding
-- Don't auto-fix without understanding what will be changed
-- Don't assume plan compliance without checking - verify each requirement
-- Don't proceed to deployment with unresolved critical or major issues
+- Run all validation checks unless there's a specific reason to skip - they catch critical issues
+- Fix failed tests before proceeding
+- Understand what will be changed before using auto-fix
+- Verify each requirement explicitly - never assume plan compliance
+- Resolve all critical and major issues before deployment

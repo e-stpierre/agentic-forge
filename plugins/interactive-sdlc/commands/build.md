@@ -135,10 +135,10 @@ When `--git` flag is used:
 
 Scope is derived from the plan file name or affected directories.
 
-## Don't
+## Important Notes
 
-- Don't modify the plan file during implementation - it is read-only documentation
-- Don't make assumptions when implementation details are unclear - ask questions
-- Don't skip tests - run them frequently to catch issues early
-- Don't commit broken code - ensure changes work before committing
-- Don't proceed with incomplete tasks - if blocked, explain and ask for guidance
+- The plan file is read-only documentation - never modify it during implementation
+- Ask questions when implementation details are unclear
+- Run tests frequently to catch issues early
+- Ensure changes work before committing
+- If blocked on a task, explain the blocker and ask for guidance

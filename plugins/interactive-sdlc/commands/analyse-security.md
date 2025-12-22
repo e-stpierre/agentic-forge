@@ -227,10 +227,10 @@ Instructions:
 | A09:2021 Logging Failures | Missing logs, sensitive data in logs |
 | A10:2021 SSRF | Server-side request forgery |
 
-## Don't
+## Important Notes
 
-- Don't report false positives - verify exploitability before flagging critical/high
-- Don't make vague reports - include exact file, line, and exploitation scenario
-- Don't mark everything as critical - consider defense in depth
-- Don't skip checking if framework mitigates the issue
-- Don't use this as replacement for SAST tools, dependency scanners, or security audits
+- Verify exploitability before flagging critical/high severity issues
+- Include exact file location, line number, and exploitation scenario for each finding
+- Prioritize correctly - consider defense in depth when assessing severity
+- Check if framework features mitigate the issue before reporting
+- This analysis complements but does not replace SAST tools, dependency scanners, or security audits

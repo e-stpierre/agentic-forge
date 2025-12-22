@@ -208,10 +208,10 @@ Instructions:
 | Props | destructuring vs props.x |
 | Exports | named vs default vs barrel files |
 
-## Don't
+## Important Notes
 
-- Don't impose new standards - work with existing codebase patterns
-- Don't flag issues that ESLint/Prettier already catch
-- Don't force normalization on legacy code without good reason
-- Don't report stylistic preferences as inconsistencies
-- Don't ignore that external dependencies may force certain patterns
+- Work with existing codebase patterns - identify the dominant style and normalize to it
+- Focus on issues that automated tools miss - ESLint/Prettier handle formatting
+- Consider context before normalizing legacy code
+- Focus on actual inconsistencies, not stylistic preferences
+- Recognize that external dependencies may require certain patterns

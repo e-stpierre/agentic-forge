@@ -165,10 +165,10 @@ Next steps:
 - Mark as ready for review when complete
 ```
 
-## Don't
+## Important Notes
 
-- Don't skip validation even if --pr flag is not set
-- Don't create PR if validation fails - fix issues first
-- Don't proceed to next step if current step fails
-- Don't use for trivial tasks - use /interactive-sdlc:one-shot instead
-- Don't forget to review the generated plan before proceeding to build
+- Always run validation, regardless of --pr flag
+- Fix all validation issues before creating a PR
+- Each step must complete successfully before proceeding to the next
+- Use /interactive-sdlc:one-shot for trivial tasks - this workflow is for non-trivial work
+- Review the generated plan before proceeding to build

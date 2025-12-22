@@ -187,10 +187,10 @@ Practical usage examples.
 Links to related documentation.
 ```
 
-## Don't
+## Important Notes
 
-- Don't save documentation with invalid mermaid syntax - validate first
-- Don't skip markdownlint-cli2 formatting - it ensures consistency
-- Don't create documentation without practical examples
-- Don't ignore existing documentation conventions in the project
-- Don't use overly complex diagrams when simple ones suffice
+- Validate mermaid syntax before saving documentation
+- Always run markdownlint-cli2 formatting to ensure consistency
+- Include practical examples in all documentation
+- Follow existing documentation conventions in the project
+- Keep diagrams as simple as possible while conveying the necessary information

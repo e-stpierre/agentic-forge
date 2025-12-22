@@ -180,10 +180,10 @@ Instructions:
 -->
 ```
 
-## Don't
+## Important Notes
 
-- Don't report issues just to meet a quota - report only real bugs
-- Don't flag issues without checking if they're handled elsewhere
-- Don't ignore framework conventions that handle common issues
-- Don't report vague findings - include exact file, line, and fix approach
-- Don't flag test-specific patterns or intentional design choices
+- Only report real bugs, not theoretical concerns
+- Check if apparent issues are handled elsewhere before flagging
+- Understand framework conventions that handle common issues
+- Include exact file location, line number, and fix approach for each finding
+- Recognize test-specific patterns and intentional design choices
