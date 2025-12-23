@@ -10,8 +10,6 @@ Scan for security vulnerabilities, unsafe patterns, and dependency issues.
 
 ## Arguments
 
-## Arguments
-
 - **`[context]`** (optional): Specific areas or concerns to focus on
 
 ## Objective
