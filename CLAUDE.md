@@ -177,19 +177,24 @@ All code in this repository is automatically formatted when you create a pull re
 
 #### Markdown Formatting
 
-Markdown files use [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) for formatting.
+Markdown files use [Prettier](https://prettier.io/) for formatting and [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) for validation.
 
-**Configuration**: `.markdownlint-cli2.jsonc`
+**Configuration**:
+
+- `.prettierrc` - Prettier formatting options
+- `.markdownlint-cli2.jsonc` - Validation rules (no auto-fix)
 
 **Manual formatting** (optional):
 
 ```bash
 # Format all markdown files
-npx markdownlint-cli2 "**/*.md"
+pnpm exec prettier --write "**/*.md"
 
-# Format specific files
-npx markdownlint-cli2 README.md CLAUDE.md
+# Validate markdown files (no auto-fix)
+pnpm exec markdownlint-cli2 "**/*.md"
 ```
+
+**Local development setup**: For automatic formatting on save, install the [Prettier VS Code extension](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode). The workspace settings already configure Prettier as the default formatter for markdown files.
 
 #### Python Formatting
 

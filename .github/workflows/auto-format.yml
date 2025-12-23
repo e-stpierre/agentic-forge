@@ -32,6 +32,11 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -39,7 +44,7 @@ jobs:
 
       - name: Install formatters
         run: |
-          npm install -g markdownlint-cli2
+          pnpm install --frozen-lockfile
           pip install ruff
 
       - name: Get changed files
@@ -84,14 +89,27 @@ jobs:
         id: format-markdown
         if: steps.changed-files.outputs.md_files != ''
         run: |
-          echo "Formatting markdown files..."
-          MARKDOWN_ERRORS=0
+          echo "Formatting markdown files with Prettier..."
           # Process each file individually to handle spaces in filenames
           while IFS= read -r file; do
             if [ -n "$file" ]; then
               echo "  Formatting: $file"
-              if ! markdownlint-cli2 --fix "$file"; then
-                echo "  ⚠️  Warning: Some issues in $file could not be auto-fixed"
+              pnpm exec prettier --write "$file"
+            fi
+          done <<< "${{ steps.changed-files.outputs.md_files }}"
+
+      - name: Validate markdown files
+        id: validate-markdown
+        if: steps.changed-files.outputs.md_files != ''
+        run: |
+          echo "Validating markdown files with markdownlint..."
+          MARKDOWN_ERRORS=0
+          # Process each file individually to handle spaces in filenames
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              echo "  Validating: $file"
+              if ! pnpm exec markdownlint-cli2 "$file"; then
+                echo "  ⚠️  Warning: Validation issues in $file"
                 MARKDOWN_ERRORS=1
               fi
             fi
@@ -132,29 +150,29 @@ jobs:
             echo "No formatting changes needed"
           else
             git add -A
-            git commit -m "Auto-format code with markdownlint-cli2 and ruff"
+            git commit -m "Auto-format code with Prettier and Ruff"
             git push
           fi
 
       - name: Display warning summary
         if: always()
         run: |
-          MARKDOWN_ERRORS="${{ steps.format-markdown.outputs.has_errors }}"
+          MARKDOWN_ERRORS="${{ steps.validate-markdown.outputs.has_errors }}"
           PYTHON_ERRORS="${{ steps.format-python.outputs.has_errors }}"
 
           if [ "$MARKDOWN_ERRORS" = "1" ] || [ "$PYTHON_ERRORS" = "1" ]; then
             echo "::warning::⚠️  Formatting completed with warnings"
             echo ""
-            echo "Some formatting issues could not be automatically fixed:"
+            echo "Some issues require manual attention:"
             if [ "$MARKDOWN_ERRORS" = "1" ]; then
-              echo "  - Markdown files have unfixable linting issues"
+              echo "  - Markdown files have linting issues (see markdownlint output above)"
             fi
             if [ "$PYTHON_ERRORS" = "1" ]; then
               echo "  - Python files have unfixable linting issues"
             fi
             echo ""
-            echo "Auto-fixable changes have been committed. Please review the warnings above"
-            echo "and manually fix any remaining issues."
+            echo "Formatting changes have been committed. Please review the warnings above"
+            echo "and manually fix any remaining validation issues."
           else
-            echo "✅ All formatting completed successfully with no warnings"
+            echo "✅ All formatting and validation completed successfully"
           fi

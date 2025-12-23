@@ -6,6 +6,7 @@ venv/
 .idea/
 *.swp
 .DS_Store
+node_modules/
 
 # Claude
 .claude/**/*.local.json

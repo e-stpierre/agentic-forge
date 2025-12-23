@@ -24,12 +24,15 @@
       }
     },
     "[markdown]": {
-      "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
       "editor.formatOnSave": true
-    }
+    },
+    "markdownlint.run": "onSave",
+    "prettier.resolveGlobalModules": false
   },
   "extensions": {
     "recommendations": [
+      "esbenp.prettier-vscode",
       "davidanson.vscode-markdownlint",
       "charliermarsh.ruff",
       "ms-python.python"

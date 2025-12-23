@@ -1,0 +1,8 @@
+{
+  "name": "agentic-forge",
+  "private": true,
+  "devDependencies": {
+    "markdownlint-cli2": "^0.17.2",
+    "prettier": "^3.7.4"
+  }
+}
