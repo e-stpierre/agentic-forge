@@ -173,64 +173,9 @@ Use the `/normalize` command to validate prompt files against templates:
 
 ### Code Style and Formatting
 
-All code in this repository is automatically formatted when you create a pull request. A GitHub Actions workflow will format any changed files and commit the changes back to your PR branch.
+Open the workspace file (`.vscode/agentic-forge.code-workspace`) and install recommended extensions for auto-format on save.
 
-#### Markdown Formatting
-
-Markdown files use [Prettier](https://prettier.io/) for formatting and [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2) for validation.
-
-**Configuration**:
-
-- `.prettierrc` - Prettier formatting options
-- `.markdownlint-cli2.jsonc` - Validation rules (no auto-fix)
-
-**Manual formatting** (optional):
-
-```bash
-# Format all markdown files
-pnpm exec prettier --write "**/*.md"
-
-# Validate markdown files (no auto-fix)
-pnpm exec markdownlint-cli2 "**/*.md"
-```
-
-**Local development setup**: For automatic formatting on save, install the [Prettier VS Code extension](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode). The workspace settings already configure Prettier as the default formatter for markdown files.
-
-#### Python Formatting
-
-Python files use [Ruff](https://docs.astral.sh/ruff/) for formatting and linting. Ruff is extremely fast and provides Black-compatible formatting plus comprehensive linting.
-
-**Configuration**: `ruff.toml`
-
-**Manual formatting** (optional):
-
-```bash
-# Format all Python files
-ruff format .
-
-# Format and automatically fix linting issues
-ruff check --fix .
-
-# Format specific files
-ruff format path/to/file.py
-```
-
-**Local development setup**: For automatic formatting on save, install the [Ruff VS Code extension](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and add to your workspace settings:
-
-```json
-{
-  "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll": "explicit",
-      "source.organizeImports": "explicit"
-    }
-  }
-}
-```
-
-You don't need to manually format files before committing - the CI pipeline handles this automatically for all pull requests.
+CI automatically formats code on pull requests. To run locally: `pnpm check`
 
 ## Working with This Repository
 
