@@ -74,13 +74,13 @@ Runs tests and analyzes results. Operates autonomously without user interaction.
 
 ## Test Framework Detection
 
-| File                           | Framework | Command         |
-| ------------------------------ | --------- | --------------- |
-| `package.json` (test script)   | npm       | `npm test`      |
-| `pytest.ini`, `pyproject.toml` | pytest    | `pytest`        |
-| `Cargo.toml`                   | Rust      | `cargo test`    |
-| `go.mod`                       | Go        | `go test ./...` |
-| `Makefile` (test target)       | Make      | `make test`     |
+| File | Framework | Command |
+|------|-----------|---------|
+| `package.json` (test script) | npm | `npm test` |
+| `pytest.ini`, `pyproject.toml` | pytest | `pytest` |
+| `Cargo.toml` | Rust | `cargo test` |
+| `go.mod` | Go | `go test ./...` |
+| `Makefile` (test target) | Make | `make test` |
 
 ## Usage
 

@@ -69,47 +69,37 @@ Plan a feature with comprehensive codebase exploration, architecture design, mil
    # Feature: <feature-title>
 
    ## Overview
-
    What this feature does and why it's valuable
 
    ## Requirements
-
    Functional and non-functional requirements
 
    ## Architecture
-
    High-level design decisions and patterns to use
 
    ## Milestones
 
    ### Milestone 1: <milestone-title>
-
    What this milestone achieves
 
    #### Task 1.1: <task-title>
-
    Specific task description
 
    #### Task 1.2: <task-title>
-
    Specific task description
 
    ### Milestone 2: <milestone-title>
-
    What this milestone achieves
 
    #### Task 2.1: <task-title>
-
    Specific task description
 
    (Additional milestones as needed)
 
    ## Testing Strategy
-
    How this feature will be tested
 
    ## Validation Criteria
-
    How to verify the feature is complete and working
    ```
 

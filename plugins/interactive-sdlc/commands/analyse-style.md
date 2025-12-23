@@ -116,7 +116,6 @@ Instructions:
 ## Project Standards
 
 Based on analysis, the established patterns are:
-
 - Naming: {{naming_pattern}}
 - Error Handling: {{error_handling_pattern}}
 - Async: {{async_pattern}}
@@ -191,23 +190,23 @@ Instructions:
 
 ### Naming Conventions
 
-| Pattern    | Variations to Detect                                |
-| ---------- | --------------------------------------------------- |
-| Functions  | `getUserData` vs `get_user_data` vs `GetUserData`   |
-| Variables  | `isLoading` vs `loading` vs `is_loading`            |
-| Constants  | `MAX_RETRIES` vs `maxRetries` vs `MaxRetries`       |
-| Components | `UserCard` vs `userCard` vs `User_Card`             |
-| Files      | `UserCard.tsx` vs `user-card.tsx` vs `userCard.tsx` |
+| Pattern | Variations to Detect |
+|---------|---------------------|
+| Functions | `getUserData` vs `get_user_data` vs `GetUserData` |
+| Variables | `isLoading` vs `loading` vs `is_loading` |
+| Constants | `MAX_RETRIES` vs `maxRetries` vs `MaxRetries` |
+| Components | `UserCard` vs `userCard` vs `User_Card` |
+| Files | `UserCard.tsx` vs `user-card.tsx` vs `userCard.tsx` |
 
 ### Patterns
 
-| Area           | Variations to Detect                      |
-| -------------- | ----------------------------------------- |
+| Area | Variations to Detect |
+|------|---------------------|
 | Error handling | try/catch vs .catch() vs error boundaries |
-| Async          | async/await vs .then() vs callbacks       |
-| State updates  | setState vs reducer vs signals            |
-| Props          | destructuring vs props.x                  |
-| Exports        | named vs default vs barrel files          |
+| Async | async/await vs .then() vs callbacks |
+| State updates | setState vs reducer vs signals |
+| Props | destructuring vs props.x |
+| Exports | named vs default vs barrel files |
 
 ## Important Notes
 

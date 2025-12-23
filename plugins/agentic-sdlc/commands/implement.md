@@ -29,12 +29,12 @@ Implements changes from a plan file. Operates autonomously without user interact
   "success": true,
   "completed_tasks": ["t1.1", "t1.2", "t2.1", "t2.2"],
   "changes": [
-    { "file": "src/auth.ts", "action": "created", "lines_added": 150 },
-    { "file": "src/config.ts", "action": "modified", "lines_changed": 25 }
+    {"file": "src/auth.ts", "action": "created", "lines_added": 150},
+    {"file": "src/config.ts", "action": "modified", "lines_changed": 25}
   ],
   "commits": [
-    { "hash": "abc123", "message": "feat: add OAuth configuration" },
-    { "hash": "def456", "message": "feat: implement OAuth handlers" }
+    {"hash": "abc123", "message": "feat: add OAuth configuration"},
+    {"hash": "def456", "message": "feat: implement OAuth handlers"}
   ],
   "ambiguities": [],
   "errors": []

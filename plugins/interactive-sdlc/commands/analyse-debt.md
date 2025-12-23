@@ -107,11 +107,11 @@ Instructions:
 
 ## Summary
 
-| Category     | Issues                 | Total Effort            |
-| ------------ | ---------------------- | ----------------------- |
+| Category | Issues | Total Effort |
+|----------|--------|--------------|
 | Architecture | {{architecture_count}} | {{architecture_effort}} |
 | Code Quality | {{code_quality_count}} | {{code_quality_effort}} |
-| Performance  | {{performance_count}}  | {{performance_effort}}  |
+| Performance | {{performance_count}} | {{performance_effort}} |
 
 <!--
 Instructions:

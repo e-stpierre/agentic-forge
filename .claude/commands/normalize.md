@@ -132,6 +132,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
    - Output Guidance (required)
 
 6. **Validate Section Content**
+
    - **Instructions section**: Must contain numbered list (1. 2. 3. etc.)
    - **Core Principles section**: Should contain bullet points
    - **Arguments section**: Should contain bullet points with argument formatting
@@ -145,6 +146,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
    - Check for ASCII-only content (no special Unicode characters)
 
 8. **Check Content Quality**
+
    - Verify kebab-case naming convention in `name` field
    - Ensure description is concise (under 100 characters recommended)
    - Validate that `{{placeholders}}` are replaced with actual values (not literal `{{text}}`)
@@ -156,6 +158,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
    When `--autofix` is specified in `$ARGUMENTS`, directly modify files to fix issues:
 
    **Frontmatter fixes:**
+
    - Add missing frontmatter block if absent
    - Add missing required fields with sensible defaults:
      - `name`: Derive from filename (convert to kebab-case)
@@ -166,23 +169,27 @@ Ensure all prompt files exactly match the structure, section names, and content 
      - `color`: `blue` for agents
 
    **Structure fixes:**
+
    - Add missing required sections by copying from the template
    - Insert sections in the correct order as defined in the template
    - Preserve existing content and add placeholders for new sections
    - Mark added sections with `<!-- TODO: Fill in this section -->` comments
 
    **Section name fixes:**
+
    - Rename incorrectly capitalized sections to match template exactly
    - For example: `## arguments` -> `## Arguments`
    - Preserve section content when renaming
 
    **Content fixes:**
+
    - Convert non-kebab-case names to kebab-case in frontmatter
    - Replace non-ASCII characters with ASCII equivalents
    - Ensure Instructions section uses numbered list format
    - Ensure Core Principles section uses bullet points
 
    **Autofix principles:**
+
    - Read both the file and the template before modifying
    - Preserve all existing content
    - Insert new sections in the correct order per the template
@@ -191,6 +198,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
 10. **Generate Report**
 
     For each file, report:
+
     - File path and detected type
     - Template being validated against
     - List of issues found (if any):
@@ -203,6 +211,7 @@ Ensure all prompt files exactly match the structure, section names, and content 
     - Modifications applied (in autofix mode)
 
     Summary at end:
+
     - Total files checked
     - Files passing validation (100% compliant with template)
     - Files with issues (by category: frontmatter, structure, content)
@@ -222,12 +231,10 @@ Present results in a structured format:
 Template: docs/templates/command-template.md
 
 **Frontmatter:**
-
 - [PASS] All required fields present
 - [PASS] name is kebab-case: "example-command"
 
 **Structure:**
-
 - [FAIL] Missing required section: "Output Guidance"
   Expected: ## Output Guidance
   Suggestion: Add section after "Instructions" section
@@ -236,7 +243,6 @@ Template: docs/templates/command-template.md
   Suggestion: Capitalize section name to match template exactly
 
 **Content:**
-
 - [PASS] Instructions section uses numbered list
 - [WARN] Description is 105 characters (recommended: under 100)
 
@@ -245,14 +251,12 @@ Template: docs/templates/command-template.md
 Template: docs/templates/agent-template.md
 
 **Frontmatter:**
-
 - [FAIL] Missing required field: tools
   Suggestion: Add `tools: [Read, Write, Bash]` to frontmatter
 - [FAIL] Missing required field: color
   Suggestion: Add `color: blue` to frontmatter
 
 **Structure:**
-
 - [PASS] All required sections present
 - [PASS] Sections in correct order
 

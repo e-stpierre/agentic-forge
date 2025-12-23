@@ -37,16 +37,8 @@ Diagnoses a bug and generates a fix plan. Operates autonomously without user int
     },
     "fix_strategy": "Replace postMessage with cookie-based token transfer",
     "tasks": [
-      {
-        "id": "t1",
-        "title": "Modify OAuth callback",
-        "files": ["src/auth/oauth-callback.ts"]
-      },
-      {
-        "id": "t2",
-        "title": "Update dashboard auth",
-        "files": ["src/pages/dashboard.ts"]
-      }
+      {"id": "t1", "title": "Modify OAuth callback", "files": ["src/auth/oauth-callback.ts"]},
+      {"id": "t2", "title": "Update dashboard auth", "files": ["src/pages/dashboard.ts"]}
     ],
     "test_cases": ["Safari OAuth flow", "Chrome OAuth flow"]
   }
@@ -68,35 +60,29 @@ Diagnoses a bug and generates a fix plan. Operates autonomously without user int
 # Bug Fix: [Title]
 
 ## Bug Summary
-
 **Symptom**: [What user experiences]
 **Expected**: [Correct behavior]
 **Actual**: [Current behavior]
 
 ## Root Cause Analysis
-
 **Location**: `file:line`
 **Cause**: [Technical explanation]
 
 ## Reproduction Steps
-
 1. [Step 1]
 2. [Step 2]
 
 ## Fix Plan
 
 ### Task 1: [Title]
-
 **Files**: `path/to/file.ts`
 **Changes**: [What to change]
 
 ## Testing
-
 - [Test case 1]
 - [Test case 2]
 
 ## Verification
-
 - [How to verify fix works]
 ```
 

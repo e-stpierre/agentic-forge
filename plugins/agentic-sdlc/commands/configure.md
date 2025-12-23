@@ -17,8 +17,8 @@ Set up agentic-sdlc plugin configuration in `.claude/settings.json`.
 2. **Validate Configuration**
    Check against expected schema:
 
-   | Setting         | Type   | Default    |
-   | --------------- | ------ | ---------- |
+   | Setting | Type | Default |
+   |---------|------|---------|
    | `planDirectory` | string | `"/specs"` |
 
 3. **If Valid and Complete**

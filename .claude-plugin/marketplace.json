@@ -19,19 +19,9 @@
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": [
-        "security",
-        "appsec",
-        "vulnerability",
-        "risk-analysis",
-        "dependencies",
-        "audit"
-      ],
+      "keywords": ["security", "appsec", "vulnerability", "risk-analysis", "dependencies", "audit"],
       "strict": false,
-      "commands": [
-        "./plugins/appsec/commands/security-review.md",
-        "./plugins/appsec/commands/scope-security.md"
-      ],
+      "commands": ["./plugins/appsec/commands/security-review.md", "./plugins/appsec/commands/scope-security.md"],
       "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
     },
     {
@@ -45,15 +35,7 @@
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": [
-        "sdlc",
-        "autonomous",
-        "agentic",
-        "python",
-        "orchestration",
-        "ci-cd",
-        "workflows"
-      ],
+      "keywords": ["sdlc", "autonomous", "agentic", "python", "orchestration", "ci-cd", "workflows"],
       "strict": false,
       "commands": [
         "./plugins/agentic-sdlc/commands/configure.md",
@@ -80,25 +62,9 @@
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": [
-        "core",
-        "foundation",
-        "utilities",
-        "building-blocks",
-        "git",
-        "worktree",
-        "github",
-        "orchestration"
-      ],
+      "keywords": ["core", "foundation", "utilities", "building-blocks", "git", "worktree", "github", "orchestration"],
       "strict": false,
-      "commands": [
-        "./plugins/core/commands/git-branch.md",
-        "./plugins/core/commands/git-commit.md",
-        "./plugins/core/commands/git-pr.md",
-        "./plugins/core/commands/git-worktree.md",
-        "./plugins/core/commands/create-gh-issue.md",
-        "./plugins/core/commands/read-gh-issue.md"
-      ]
+      "commands": ["./plugins/core/commands/git-branch.md", "./plugins/core/commands/git-commit.md", "./plugins/core/commands/git-pr.md", "./plugins/core/commands/git-worktree.md", "./plugins/core/commands/create-gh-issue.md", "./plugins/core/commands/read-gh-issue.md"]
     },
     {
       "name": "interactive-sdlc",
@@ -111,14 +77,7 @@
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": [
-        "sdlc",
-        "interactive",
-        "planning",
-        "building",
-        "validation",
-        "workflows"
-      ],
+      "keywords": ["sdlc", "interactive", "planning", "building", "validation", "workflows"],
       "strict": false,
       "commands": [
         "./plugins/interactive-sdlc/commands/configure.md",

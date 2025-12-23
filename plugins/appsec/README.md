@@ -263,8 +263,7 @@ User input is concatenated directly into SQL query without parameterization, all
 **Vulnerable Code**:
 
 ```javascript
-const query =
-  "SELECT * FROM users WHERE username = '" + req.body.username + "'";
+const query = "SELECT * FROM users WHERE username = '" + req.body.username + "'";
 ```
 ````
 

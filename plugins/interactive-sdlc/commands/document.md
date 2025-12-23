@@ -166,23 +166,19 @@ The documentation has been formatted with markdownlint-cli2.
 
 Generated documentation should follow this structure:
 
-````markdown
+```markdown
 # [Title]
 
 ## Overview
-
 Brief description of what this document covers.
 
 ## [Main Sections]
-
 Detailed content with code examples and diagrams.
 
 ### Diagrams
-
 ```mermaid
 [Appropriate diagram type]
 ```
-````
 
 ## Examples
 
@@ -201,4 +197,3 @@ Links to related documentation.
 - Include practical examples in all documentation
 - Follow existing documentation conventions in the project
 - Keep diagrams as simple as possible while conveying the necessary information
-```

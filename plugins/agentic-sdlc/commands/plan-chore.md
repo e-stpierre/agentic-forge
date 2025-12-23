@@ -35,21 +35,9 @@ Generates a plan for maintenance tasks. Operates autonomously without user inter
     "chore_type": "dependency_update",
     "risk_level": "medium",
     "tasks": [
-      {
-        "id": "t1",
-        "title": "Audit current dependencies",
-        "files": ["package.json"]
-      },
-      {
-        "id": "t2",
-        "title": "Update minor versions",
-        "files": ["package.json", "package-lock.json"]
-      },
-      {
-        "id": "t3",
-        "title": "Update major versions",
-        "files": ["package.json", "package-lock.json"]
-      }
+      {"id": "t1", "title": "Audit current dependencies", "files": ["package.json"]},
+      {"id": "t2", "title": "Update minor versions", "files": ["package.json", "package-lock.json"]},
+      {"id": "t3", "title": "Update major versions", "files": ["package.json", "package-lock.json"]}
     ],
     "validation_criteria": ["npm audit clean", "All tests pass"]
   }
@@ -78,27 +66,22 @@ Generates a plan for maintenance tasks. Operates autonomously without user inter
 # Chore: [Title]
 
 ## Overview
-
 **Type**: [Chore type]
 **Rationale**: [Why needed]
 **Scope**: [What's affected]
 
 ## Impact Assessment
-
 **Breaking Changes**: [None / List]
 **Risk Level**: [Low/Medium/High]
 
 ## Tasks
-
 1. [Task 1]
 2. [Task 2]
 
 ## Rollback Plan
-
 [How to revert]
 
 ## Validation Criteria
-
 - [Criterion 1]
 ```
 

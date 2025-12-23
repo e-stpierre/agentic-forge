@@ -33,8 +33,8 @@ This directory contains JSON schemas for agent-to-agent communication in the age
         "id": "m1",
         "title": "Setup OAuth",
         "tasks": [
-          { "id": "t1.1", "description": "Add OAuth dependencies" },
-          { "id": "t1.2", "description": "Create OAuth config" }
+          {"id": "t1.1", "description": "Add OAuth dependencies"},
+          {"id": "t1.2", "description": "Create OAuth config"}
         ]
       }
     ]
@@ -62,8 +62,8 @@ This directory contains JSON schemas for agent-to-agent communication in the age
   "success": true,
   "completed_tasks": ["t1.1", "t1.2", "t2.1"],
   "changes": [
-    { "file": "src/auth.ts", "action": "created" },
-    { "file": "src/config.ts", "action": "modified" }
+    {"file": "src/auth.ts", "action": "created"},
+    {"file": "src/config.ts", "action": "modified"}
   ],
   "commits": ["abc123", "def456"],
   "ambiguities": []
