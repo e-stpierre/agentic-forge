@@ -61,24 +61,31 @@ Plan a bug fix with thorough root cause analysis, reproduction steps, and a stru
    # Bug Fix: <bug-title>
 
    ## Description
+
    Clear explanation of the bug and its impact
 
    ## Reproduction Steps
+
    Step-by-step instructions to reproduce the bug
 
    ## Root Cause Analysis
+
    Technical explanation of why the bug occurs
 
    ## Fix Strategy
+
    High-level approach to fixing the bug
 
    ## Tasks
+
    Specific tasks to implement the fix
 
    ## Validation
+
    How to verify the bug is fixed and won't regress
 
    ## Testing
+
    Test cases to add or update to prevent regression
    ```
 

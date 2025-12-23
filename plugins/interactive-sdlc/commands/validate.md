@@ -93,35 +93,44 @@ Generate a comprehensive validation report:
 # Validation Report
 
 ## Summary
+
 - Tests: PASS/FAIL (X passed, Y failed)
 - Build: PASS/FAIL
 - Code Review: X critical, Y major, Z medium, W low
 - Plan Compliance: X% complete (if plan provided)
 
 ## Test Results
+
 [Details of any failures]
 
 ## Build Results
+
 [Details of any errors]
 
 ## Code Review Findings
 
 ### Critical
+
 [Critical issues found]
 
 ### Major
+
 [Major issues found]
 
 ### Medium
+
 [Medium issues found]
 
 ### Low
+
 [Low issues found]
 
 ## Plan Compliance (if applicable)
+
 [Compliance details]
 
 ## Recommendations
+
 [Next steps to address issues]
 ```
 
@@ -146,23 +155,23 @@ Example:
 
 ## Test Framework Detection
 
-| File | Framework | Command |
-|------|-----------|---------|
-| `package.json` (test script) | npm | `npm test` |
-| `pytest.ini` or `pyproject.toml` (pytest) | pytest | `pytest` |
-| `Cargo.toml` | Rust | `cargo test` |
-| `go.mod` | Go | `go test ./...` |
-| `Makefile` (test target) | Make | `make test` |
+| File                                      | Framework | Command         |
+| ----------------------------------------- | --------- | --------------- |
+| `package.json` (test script)              | npm       | `npm test`      |
+| `pytest.ini` or `pyproject.toml` (pytest) | pytest    | `pytest`        |
+| `Cargo.toml`                              | Rust      | `cargo test`    |
+| `go.mod`                                  | Go        | `go test ./...` |
+| `Makefile` (test target)                  | Make      | `make test`     |
 
 ## Build System Detection
 
-| File | System | Command |
-|------|--------|---------|
-| `package.json` (build script) | npm | `npm run build` |
-| `Cargo.toml` | Cargo | `cargo build` |
-| `go.mod` | Go | `go build ./...` |
-| `Makefile` (build target) | Make | `make build` |
-| `pyproject.toml` | Python | `uv build` |
+| File                          | System | Command          |
+| ----------------------------- | ------ | ---------------- |
+| `package.json` (build script) | npm    | `npm run build`  |
+| `Cargo.toml`                  | Cargo  | `cargo build`    |
+| `go.mod`                      | Go     | `go build ./...` |
+| `Makefile` (build target)     | Make   | `make build`     |
+| `pyproject.toml`              | Python | `uv build`       |
 
 ## Important Notes
 

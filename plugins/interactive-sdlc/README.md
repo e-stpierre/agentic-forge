@@ -67,13 +67,13 @@ Personal overrides can be added to `.claude/settings.local.json` (gitignored).
 
 ### Configuration Options
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `planDirectory` | string | `"/specs"` | Directory for plan files (.md) |
-| `analysisDirectory` | string | `"/analysis"` | Directory for analysis reports (.md) |
-| `defaultExploreAgents.chore` | number (0-5) | `2` | Explore agents for chore planning |
-| `defaultExploreAgents.bug` | number (0-5) | `2` | Explore agents for bug planning |
-| `defaultExploreAgents.feature` | number (0-10) | `3` | Explore agents for feature planning |
+| Setting                        | Type          | Default       | Description                          |
+| ------------------------------ | ------------- | ------------- | ------------------------------------ |
+| `planDirectory`                | string        | `"/specs"`    | Directory for plan files (.md)       |
+| `analysisDirectory`            | string        | `"/analysis"` | Directory for analysis reports (.md) |
+| `defaultExploreAgents.chore`   | number (0-5)  | `2`           | Explore agents for chore planning    |
+| `defaultExploreAgents.bug`     | number (0-5)  | `2`           | Explore agents for bug planning      |
+| `defaultExploreAgents.feature` | number (0-10) | `3`           | Explore agents for feature planning  |
 
 ## Command Arguments
 

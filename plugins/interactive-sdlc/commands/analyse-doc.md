@@ -30,7 +30,7 @@ Analyze documentation quality, accuracy, and completeness by comparing against a
    - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
 
 2. **Identify Documentation**
-   - Find all documentation files (README, docs/, *.md)
+   - Find all documentation files (README, docs/, \*.md)
    - Identify inline documentation (JSDoc, docstrings, comments)
    - Check for documentation templates or standards
 
