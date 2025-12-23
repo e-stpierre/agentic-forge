@@ -91,9 +91,11 @@ If validation passes:
 
    ```markdown
    ## Summary
+
    - Key changes from the plan
 
    ## Test plan
+
    - Validation criteria from the plan
 
    🤖 Generated with [Claude Code](https://claude.com/claude-code)

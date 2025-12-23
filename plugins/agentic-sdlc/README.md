@@ -16,28 +16,28 @@ All commands use the `/agentic-sdlc:` namespace prefix and accept JSON input for
 
 ### Planning Commands
 
-| Command | Description |
-|---------|-------------|
-| `/agentic-sdlc:design` | Design technical implementation (JSON I/O) |
-| `/agentic-sdlc:plan` | Meta-command that auto-selects plan type |
-| `/agentic-sdlc:plan-feature` | Generate feature plan (JSON I/O) |
-| `/agentic-sdlc:plan-bug` | Generate bug fix plan (JSON I/O) |
-| `/agentic-sdlc:plan-chore` | Generate chore plan (JSON I/O) |
-| `/agentic-sdlc:plan-build` | All-in-one workflow |
+| Command                      | Description                                |
+| ---------------------------- | ------------------------------------------ |
+| `/agentic-sdlc:design`       | Design technical implementation (JSON I/O) |
+| `/agentic-sdlc:plan`         | Meta-command that auto-selects plan type   |
+| `/agentic-sdlc:plan-feature` | Generate feature plan (JSON I/O)           |
+| `/agentic-sdlc:plan-bug`     | Generate bug fix plan (JSON I/O)           |
+| `/agentic-sdlc:plan-chore`   | Generate chore plan (JSON I/O)             |
+| `/agentic-sdlc:plan-build`   | All-in-one workflow                        |
 
 ### Implementation Commands
 
-| Command | Description |
-|---------|-------------|
-| `/agentic-sdlc:implement` | Implement from plan (JSON I/O) |
-| `/agentic-sdlc:implement-from-plan` | Legacy implementation command |
+| Command                             | Description                    |
+| ----------------------------------- | ------------------------------ |
+| `/agentic-sdlc:implement`           | Implement from plan (JSON I/O) |
+| `/agentic-sdlc:implement-from-plan` | Legacy implementation command  |
 
 ### Review & Testing Commands
 
-| Command | Description |
-|---------|-------------|
-| `/agentic-sdlc:review` | Review code changes (JSON I/O) |
-| `/agentic-sdlc:test` | Run tests and analyze results (JSON I/O) |
+| Command                | Description                              |
+| ---------------------- | ---------------------------------------- |
+| `/agentic-sdlc:review` | Review code changes (JSON I/O)           |
+| `/agentic-sdlc:test`   | Run tests and analyze results (JSON I/O) |
 
 ## Configuration
 
@@ -69,12 +69,12 @@ uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdl
 
 ### CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `agentic-workflow` | Main workflow orchestrator |
-| `agentic-plan` | Invoke planning agents with JSON input |
-| `agentic-build` | Invoke build agent with plan JSON |
-| `agentic-validate` | Invoke validation agents |
+| Command            | Description                            |
+| ------------------ | -------------------------------------- |
+| `agentic-workflow` | Main workflow orchestrator             |
+| `agentic-plan`     | Invoke planning agents with JSON input |
+| `agentic-build`    | Invoke build agent with plan JSON      |
+| `agentic-validate` | Invoke validation agents               |
 
 ### Examples
 
@@ -91,17 +91,17 @@ uv run agentic-workflow --type feature --spec feature-2fa.md --worktree
 
 ### CLI Options
 
-| Flag | Description |
-|------|-------------|
-| `--type` | Task type: feature, bug, chore, epic |
-| `--spec` | Path to specification file |
-| `--level` | Workflow level: 1 (product), 2 (epic), 3 (story) |
-| `--auto-pr` | Automatically create PR on completion |
-| `--worktree` | Use git worktree for isolation |
-| `--no-worktree` | Work in main repo |
-| `--cleanup` | Remove worktree after completion |
-| `--timeout` | Timeout per step in seconds |
-| `--log-file` | Path to JSON log file |
+| Flag            | Description                                      |
+| --------------- | ------------------------------------------------ |
+| `--type`        | Task type: feature, bug, chore, epic             |
+| `--spec`        | Path to specification file                       |
+| `--level`       | Workflow level: 1 (product), 2 (epic), 3 (story) |
+| `--auto-pr`     | Automatically create PR on completion            |
+| `--worktree`    | Use git worktree for isolation                   |
+| `--no-worktree` | Work in main repo                                |
+| `--cleanup`     | Remove worktree after completion                 |
+| `--timeout`     | Timeout per step in seconds                      |
+| `--log-file`    | Path to JSON log file                            |
 
 ### Library Usage
 
@@ -123,13 +123,13 @@ run_claude("/agentic-sdlc:review", json_input=changes)
 
 Default location: `/specs/<feature-name>/`
 
-| File | Purpose |
-|------|---------|
+| File               | Purpose                                   |
+| ------------------ | ----------------------------------------- |
 | `orchestration.md` | Main orchestrator plan, monitors progress |
-| `plan.md` | Main plan built during planning phase |
-| `checkpoint.md` | Task completion tracking and journal |
-| `communication.md` | Agent-to-agent messages |
-| `logs.md` | Progress and error logs |
+| `plan.md`          | Main plan built during planning phase     |
+| `checkpoint.md`    | Task completion tracking and journal      |
+| `communication.md` | Agent-to-agent messages                   |
+| `logs.md`          | Progress and error logs                   |
 
 ## JSON Communication
 

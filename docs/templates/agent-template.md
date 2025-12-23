@@ -26,6 +26,7 @@ description: {{agent-description}}
 tools: [{{tool1}}, {{tool2}}, {{tool3}}]
 model: {{model-choice}}
 color: {{color-name}}
+
 ---
 
 # {{agent_title}}

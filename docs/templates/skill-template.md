@@ -22,6 +22,7 @@ REQUIRED SECTIONS:
 name: {{skill-name}}
 description: {{skill-description}}
 argument-hint: {{argument-pattern}}
+
 ---
 
 # {{skill_title}}

@@ -53,15 +53,19 @@ Plan a maintenance task with comprehensive codebase exploration, gathering user 
    # Chore: <chore-title>
 
    ## Description
+
    Brief description of what needs to be done and why
 
    ## Scope
+
    What is included and what is explicitly out of scope
 
    ## Tasks
+
    List of specific tasks required to complete this chore, in order
 
    ## Validation Criteria
+
    How to verify this chore is complete
    ```
 
