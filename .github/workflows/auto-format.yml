@@ -31,27 +31,16 @@ jobs:
         with:
           version: 9
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
 
       - name: Install tools
         run: |
           pnpm install --frozen-lockfile
-          pip install ruff
+          uv tool install ruff
 
-      - name: Lint markdown
-        run: pnpm exec markdownlint-cli2 "**/*.md"
-
-      - name: Format with Prettier
-        run: pnpm exec prettier --write .
-
-      - name: Lint Python
-        run: ruff check --fix .
-
-      - name: Format Python
-        run: ruff format .
+      - name: Lint and format
+        run: pnpm check
 
       - name: Commit and push
         run: |
