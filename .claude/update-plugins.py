@@ -4,8 +4,8 @@ Update all plugins from the local marketplace.
 
 This script:
 1. Updates the marketplace from the local repository
-2. Reinstalls all plugins defined in marketplace.json
-3. Force reinstalls the Python tools (core, sdlc)
+2. Reinstalls all plugins defined in marketplace.json (temporarily hiding node_modules)
+3. Force reinstalls the Python tools (core, agentic-sdlc)
 
 Usage:
     python .claude/update-plugins.py
@@ -15,8 +15,10 @@ Usage:
 """
 
 import json
+import shutil
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 
@@ -102,6 +104,31 @@ def run_command(cmd: list[str], description: str, cwd: Path | None = None) -> bo
     return True
 
 
+@contextmanager
+def hide_node_modules(repo_root: Path):
+    """
+    Temporarily rename node_modules to avoid symlink issues on Windows.
+
+    The Claude plugin installer copies the entire source directory, and
+    pnpm's node_modules/.pnpm contains symlinks that fail to copy on Windows.
+    """
+    node_modules = repo_root / "node_modules"
+    node_modules_bak = repo_root / "node_modules.bak"
+
+    if not node_modules.exists():
+        yield
+        return
+
+    try:
+        print_info("Temporarily hiding node_modules to avoid symlink issues...")
+        node_modules.rename(node_modules_bak)
+        yield
+    finally:
+        if node_modules_bak.exists():
+            print_info("Restoring node_modules...")
+            node_modules_bak.rename(node_modules)
+
+
 def main():
     # Print banner
     print(color("\n" + "=" * 60, Colors.BRIGHT_MAGENTA))
@@ -141,34 +168,36 @@ def main():
         success_count += 1
 
     # Step 2: Reinstall each plugin (uninstall then install)
+    # Hide node_modules to avoid Windows symlink issues with pnpm
     print_step(2, total_steps, "Reinstall Claude Code Plugins")
     print_info(f"Reinstalling {len(plugins)} plugins...")
 
-    for i, plugin in enumerate(plugins, 1):
-        print(f"\n  {color(f'[{i}/{len(plugins)}]', Colors.CYAN)} {color(plugin, Colors.BRIGHT_BLUE)}")
+    with hide_node_modules(repo_root):
+        for i, plugin in enumerate(plugins, 1):
+            print(f"\n  {color(f'[{i}/{len(plugins)}]', Colors.CYAN)} {color(plugin, Colors.BRIGHT_BLUE)}")
 
-        # Uninstall first (ignore errors if not installed)
-        run_command(
-            ["claude", "plugin", "uninstall", plugin],
-            f"Uninstall {plugin}",
-        )
-        # Install from local marketplace
-        if run_command(
-            ["claude", "plugin", "install", plugin],
-            f"Install {plugin}",
-        ):
-            success_count += 1
-        else:
-            warning_count += 1
+            # Uninstall first (ignore errors if not installed)
+            run_command(
+                ["claude", "plugin", "uninstall", plugin],
+                f"Uninstall {plugin}",
+            )
+            # Install from local marketplace
+            if run_command(
+                ["claude", "plugin", "install", plugin],
+                f"Install {plugin}",
+            ):
+                success_count += 1
+            else:
+                warning_count += 1
 
     # Step 3: Force reinstall Python tools
     print_step(3, total_steps, "Install Python CLI Tools")
 
-    # Note: sdlc depends on core, so we need to:
+    # Note: agentic-sdlc depends on core, so we need to:
     # 1. Build core first so it's available as a local package
-    # 2. Install sdlc with --find-links pointing to core's dist directory
+    # 2. Install agentic-sdlc with --find-links pointing to core's dist directory
     core_path = repo_root / "plugins" / "core"
-    sdlc_path = repo_root / "plugins" / "sdlc"
+    agentic_sdlc_path = repo_root / "plugins" / "agentic-sdlc"
 
     # Build core package first
     if core_path.exists():
@@ -177,8 +206,6 @@ def main():
         # Clean and build core
         dist_dir = core_path / "dist"
         if dist_dir.exists():
-            import shutil
-
             shutil.rmtree(dist_dir)
             print_info("Cleaned previous build artifacts")
 
@@ -200,15 +227,15 @@ def main():
         print_warning(f"Python tool path not found: {core_path}")
         warning_count += 1
 
-    # Install sdlc with --find-links to locate core dependency
-    if sdlc_path.exists():
-        print(f"\n  {color('Installing sdlc package...', Colors.CYAN)}")
+    # Install agentic-sdlc with --find-links to locate core dependency
+    if agentic_sdlc_path.exists():
+        print(f"\n  {color('Installing agentic-sdlc package...', Colors.CYAN)}")
 
         core_dist = core_path / "dist"
         if core_dist.exists():
             if run_command(
-                ["uv", "tool", "install", "--force", "--find-links", str(core_dist), str(sdlc_path)],
-                "Install claude-sdlc CLI tools (with local core)",
+                ["uv", "tool", "install", "--force", "--find-links", str(core_dist), str(agentic_sdlc_path)],
+                "Install agentic-sdlc CLI tools (with local core)",
             ):
                 success_count += 1
             else:
@@ -217,14 +244,14 @@ def main():
             # Fallback: try installing without find-links (may fail if core not in registry)
             print_warning("Core dist not found, trying without --find-links")
             if run_command(
-                ["uv", "tool", "install", "--force", str(sdlc_path)],
-                "Install claude-sdlc CLI tools",
+                ["uv", "tool", "install", "--force", str(agentic_sdlc_path)],
+                "Install agentic-sdlc CLI tools",
             ):
                 success_count += 1
             else:
                 warning_count += 1
     else:
-        print_warning(f"Python tool path not found: {sdlc_path}")
+        print_warning(f"Python tool path not found: {agentic_sdlc_path}")
         warning_count += 1
 
     # Summary
@@ -242,7 +269,7 @@ def main():
 
     print(f"\n  {color('Next steps:', Colors.BOLD)}")
     print(color("    1. Restart Claude Code to load updated plugins", Colors.DIM))
-    print(color("    2. Run 'claude-sdlc --help' to verify CLI tools", Colors.DIM))
+    print(color("    2. Run 'agentic-sdlc --help' to verify CLI tools", Colors.DIM))
     print()
 
 
