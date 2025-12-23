@@ -173,8 +173,6 @@ Use the `/normalize` command to validate prompt files against templates:
 
 ### Code Style and Formatting
 
-Open the workspace file (`.vscode/agentic-forge.code-workspace`) and install recommended extensions for auto-format on save.
-
 CI automatically formats code on pull requests. To run locally: `pnpm check`
 
 ## Working with This Repository
