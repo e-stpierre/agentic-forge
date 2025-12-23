@@ -1,6 +1,15 @@
 {
   "name": "agentic-forge",
   "private": true,
+  "scripts": {
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "lint:py": "ruff check --fix .",
+    "format:prettier": "prettier --write .",
+    "format:py": "ruff format .",
+    "lint": "pnpm lint:md && pnpm lint:py",
+    "format": "pnpm format:prettier && pnpm format:py",
+    "check": "pnpm lint && pnpm format"
+  },
   "devDependencies": {
     "markdownlint-cli2": "^0.17.2",
     "prettier": "^3.7.4"

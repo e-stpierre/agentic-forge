@@ -1,41 +1,36 @@
 {
   "folders": [
     {
-      "path": ".."
-    }
+      "path": "..",
+    },
   ],
   "settings": {
-    "files.associations": {
-      "*.md": "markdown"
-    },
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
     "editor.wordWrap": "on",
     "files.exclude": {
-      "**/.git": true
+      "**/.git": true,
     },
     "search.exclude": {
-      "**/.git": true
+      "**/.git": true,
     },
     "[python]": {
       "editor.defaultFormatter": "charliermarsh.ruff",
       "editor.formatOnSave": true,
       "editor.codeActionsOnSave": {
         "source.fixAll": "explicit",
-        "source.organizeImports": "explicit"
-      }
-    },
-    "[markdown]": {
-      "editor.defaultFormatter": "esbenp.prettier-vscode",
-      "editor.formatOnSave": true
+        "source.organizeImports": "explicit",
+      },
     },
     "markdownlint.run": "onSave",
-    "prettier.resolveGlobalModules": false
+    "prettier.resolveGlobalModules": false,
   },
   "extensions": {
     "recommendations": [
       "esbenp.prettier-vscode",
       "davidanson.vscode-markdownlint",
       "charliermarsh.ruff",
-      "ms-python.python"
-    ]
-  }
+      "ms-python.python",
+    ],
+  },
 }
