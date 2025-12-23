@@ -125,14 +125,14 @@ Fully autonomous plugin for zero-interaction workflows.
 
 **Agents** (extensible):
 
-| Development | AppSec | Architecture | Specialist | Product | Leadership |
-|-------------|--------|--------------|------------|---------|------------|
-| Developer | Pentester | Architect | Supabase Specialist | PM | Manager |
-| UX Designer | Security Champion | | PostgreSQL Specialist | Analyst | |
-| Tech Writer | | | NextJS Specialist | | |
-| | | | React Specialist | | |
-| | | | Kubernetes Specialist | | |
-| | | | .NET Specialist | | |
+| Development | AppSec            | Architecture | Specialist            | Product | Leadership |
+| ----------- | ----------------- | ------------ | --------------------- | ------- | ---------- |
+| Developer   | Pentester         | Architect    | Supabase Specialist   | PM      | Manager    |
+| UX Designer | Security Champion |              | PostgreSQL Specialist | Analyst |            |
+| Tech Writer |                   |              | NextJS Specialist     |         |            |
+|             |                   |              | React Specialist      |         |            |
+|             |                   |              | Kubernetes Specialist |         |            |
+|             |                   |              | .NET Specialist       |         |            |
 
 **Building Blocks**:
 

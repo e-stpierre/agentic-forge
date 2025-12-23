@@ -278,55 +278,9 @@ uv run .claude/update-plugins.py
 
 ### Code Style
 
-All code in this repository is automatically formatted when pull requests are created or updated. The CI pipeline will format any changed files and commit the changes back to your PR branch.
+Open the workspace file (`.vscode/agentic-forge.code-workspace`) and install recommended extensions for auto-format on save.
 
-#### Markdown
-
-Markdown files are formatted using [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2). Configuration: `.markdownlint-cli2.jsonc`
-
-**Manual formatting** (optional):
-
-```bash
-# Format all markdown files
-npx markdownlint-cli2 "**/*.md"
-
-# Format specific files
-npx markdownlint-cli2 README.md CLAUDE.md
-```
-
-#### Python
-
-Python files are formatted and linted using [Ruff](https://docs.astral.sh/ruff/). Configuration: `ruff.toml`
-
-Install ruff: `uv tool install ruff`
-
-**Manual formatting** (optional):
-
-```bash
-# Format all Python files
-ruff format .
-
-# Format and fix linting issues
-ruff check --fix .
-
-# Format specific files
-ruff format path/to/file.py
-```
-
-**VS Code auto-format on save**: Install the [Ruff extension](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and add to your `.vscode/settings.json`:
-
-```json
-{
-  "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll": "explicit",
-      "source.organizeImports": "explicit"
-    }
-  }
-}
-```
+CI automatically formats code on pull requests. To run locally: `pnpm check`
 
 ## 📚 Documentation
 

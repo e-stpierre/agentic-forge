@@ -41,8 +41,12 @@ Analyzes the codebase and generates a comprehensive implementation plan for a ne
         "title": "Setup OAuth",
         "commit_message": "feat: add OAuth configuration",
         "tasks": [
-          {"id": "t1.1", "title": "Add dependencies", "files": ["package.json"]},
-          {"id": "t1.2", "title": "Create config", "files": ["src/config.ts"]}
+          {
+            "id": "t1.1",
+            "title": "Add dependencies",
+            "files": ["package.json"]
+          },
+          { "id": "t1.2", "title": "Create config", "files": ["src/config.ts"] }
         ]
       }
     ],
@@ -91,31 +95,39 @@ Analyzes the codebase and generates a comprehensive implementation plan for a ne
 # Feature: [Title]
 
 ## Overview
+
 [Description from input]
 
 ## Requirements
+
 - [Requirement 1]
 - [Requirement 2]
 
 ## Architecture
+
 [High-level design decisions]
 
 ## Milestones
 
 ### Milestone 1: [Title]
+
 **Commit**: `feat: [message]`
 
 #### Task 1.1: [Title]
+
 **Files**: `path/to/file.ts`
 **Description**: [What to do]
 
 ### Milestone 2: [Title]
+
 ...
 
 ## Testing Strategy
+
 [How to test]
 
 ## Validation Criteria
+
 - [Criterion 1]
 - [Criterion 2]
 ```

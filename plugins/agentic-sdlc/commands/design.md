@@ -50,8 +50,8 @@ Transforms a product requirement into a technical design document. Operates auto
     ]
   },
   "issues": [
-    {"number": 123, "title": "Epic: User Authentication", "type": "epic"},
-    {"number": 124, "title": "Add OAuth providers", "type": "task"}
+    { "number": 123, "title": "Epic: User Authentication", "type": "epic" },
+    { "number": 124, "title": "Add OAuth providers", "type": "task" }
   ]
 }
 ```
@@ -75,44 +75,56 @@ Transforms a product requirement into a technical design document. Operates auto
 # Design: [Feature Name]
 
 ## Problem Statement
+
 [What problem, for whom]
 
 ## Goals
+
 - [Goal 1]
 
 ## Non-Goals
+
 - [Out of scope]
 
 ## Technical Approach
 
 ### Option 1: [Name]
+
 [Description, pros, cons]
 
 ### Selected Approach
+
 [Decision and rationale]
 
 ## Detailed Design
 
 ### Data Model
+
 [Schema changes]
 
 ### API Changes
+
 [Endpoints]
 
 ### UI Changes
+
 [Components]
 
 ## Implementation Tasks
 
 ### Task 1: [Title]
+
 **Complexity**: S/M/L
 **Acceptance Criteria**:
+
 - [ ] [Criterion]
 
 ## Risks and Mitigations
+
 | Risk | Impact | Mitigation |
 
 ## Testing Strategy
+
 [Test plan]
 ```
 

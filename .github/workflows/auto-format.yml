@@ -3,11 +3,7 @@ name: Auto-Format Code
 on:
   pull_request:
     types: [opened, synchronize]
-    paths:
-      - "**/*.md"
-      - "**/*.py"
 
-# Prevent race conditions when multiple commits are pushed rapidly
 concurrency:
   group: format-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -17,14 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
@@ -32,129 +26,30 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          python-version: "3.11"
+          version: 9
 
-      - name: Install formatters
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install tools
         run: |
-          npm install -g markdownlint-cli2
-          pip install ruff
+          pnpm install --frozen-lockfile
+          uv tool install ruff
 
-      - name: Get changed files
-        id: changed-files
-        run: |
-          # Get the list of changed files in this PR
-          # Note: fetch-depth: 0 in checkout already fetched all history, no need for additional fetch
-          # --diff-filter=d excludes deleted files (lowercase 'd' means exclude)
+      - name: Lint and format
+        run: pnpm check
 
-          # Get changed markdown files (one per line for proper handling of spaces)
-          CHANGED_MD_FILES=$(git diff --diff-filter=d --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.md$' || true)
-
-          # Get changed Python files (one per line for proper handling of spaces)
-          CHANGED_PY_FILES=$(git diff --diff-filter=d --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.py$' || true)
-
-          # Output results using multiline format to handle file paths with spaces
-          if [ -z "$CHANGED_MD_FILES" ]; then
-            echo "No markdown files changed"
-            echo "md_files=" >> $GITHUB_OUTPUT
-          else
-            echo "Changed markdown files:"
-            echo "$CHANGED_MD_FILES"
-            # Use EOF delimiter for multiline output
-            echo "md_files<<EOF" >> $GITHUB_OUTPUT
-            echo "$CHANGED_MD_FILES" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          fi
-
-          if [ -z "$CHANGED_PY_FILES" ]; then
-            echo "No Python files changed"
-            echo "py_files=" >> $GITHUB_OUTPUT
-          else
-            echo "Changed Python files:"
-            echo "$CHANGED_PY_FILES"
-            # Use EOF delimiter for multiline output
-            echo "py_files<<EOF" >> $GITHUB_OUTPUT
-            echo "$CHANGED_PY_FILES" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Format markdown files
-        id: format-markdown
-        if: steps.changed-files.outputs.md_files != ''
-        run: |
-          echo "Formatting markdown files..."
-          MARKDOWN_ERRORS=0
-          # Process each file individually to handle spaces in filenames
-          while IFS= read -r file; do
-            if [ -n "$file" ]; then
-              echo "  Formatting: $file"
-              if ! markdownlint-cli2 --fix "$file"; then
-                echo "  ⚠️  Warning: Some issues in $file could not be auto-fixed"
-                MARKDOWN_ERRORS=1
-              fi
-            fi
-          done <<< "${{ steps.changed-files.outputs.md_files }}"
-          echo "has_errors=$MARKDOWN_ERRORS" >> $GITHUB_OUTPUT
-          exit 0  # Always succeed to continue workflow
-
-      - name: Format Python files
-        id: format-python
-        if: steps.changed-files.outputs.py_files != ''
-        run: |
-          echo "Formatting Python files..."
-          PYTHON_ERRORS=0
-          # Process each file individually to handle spaces in filenames
-          while IFS= read -r file; do
-            if [ -n "$file" ]; then
-              echo "  Formatting: $file"
-              if ! ruff format "$file"; then
-                echo "  ⚠️  Warning: Formatting failed for $file"
-                PYTHON_ERRORS=1
-              fi
-              if ! ruff check --fix "$file"; then
-                echo "  ⚠️  Warning: Some linting issues in $file could not be auto-fixed"
-                PYTHON_ERRORS=1
-              fi
-            fi
-          done <<< "${{ steps.changed-files.outputs.py_files }}"
-          echo "has_errors=$PYTHON_ERRORS" >> $GITHUB_OUTPUT
-          exit 0  # Always succeed to continue workflow
-
-      - name: Commit and push changes
+      - name: Commit and push
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-
-          # Check if there are any changes
           if git diff --quiet; then
-            echo "No formatting changes needed"
+            echo "No formatting changes"
           else
             git add -A
-            git commit -m "Auto-format code with markdownlint-cli2 and ruff"
+            git commit -m "Auto-format code with Prettier and Ruff"
             git push
-          fi
-
-      - name: Display warning summary
-        if: always()
-        run: |
-          MARKDOWN_ERRORS="${{ steps.format-markdown.outputs.has_errors }}"
-          PYTHON_ERRORS="${{ steps.format-python.outputs.has_errors }}"
-
-          if [ "$MARKDOWN_ERRORS" = "1" ] || [ "$PYTHON_ERRORS" = "1" ]; then
-            echo "::warning::⚠️  Formatting completed with warnings"
-            echo ""
-            echo "Some formatting issues could not be automatically fixed:"
-            if [ "$MARKDOWN_ERRORS" = "1" ]; then
-              echo "  - Markdown files have unfixable linting issues"
-            fi
-            if [ "$PYTHON_ERRORS" = "1" ]; then
-              echo "  - Python files have unfixable linting issues"
-            fi
-            echo ""
-            echo "Auto-fixable changes have been committed. Please review the warnings above"
-            echo "and manually fix any remaining issues."
-          else
-            echo "✅ All formatting completed successfully with no warnings"
           fi
