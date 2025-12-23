@@ -3,15 +3,16 @@
 Update all plugins from the local marketplace.
 
 This script:
-1. Updates the marketplace from the local repository
-2. Reinstalls all plugins defined in marketplace.json (temporarily hiding node_modules)
-3. Force reinstalls the Python tools (core, agentic-sdlc)
+1. Creates a staged copy of the repo (excluding node_modules, .git, etc.)
+2. Updates the marketplace from the staged copy
+3. Reinstalls all plugins defined in marketplace.json
+4. Force reinstalls the Python tools (core, agentic-sdlc)
 
 Usage:
-    python .claude/update-plugins.py
+    uv run .claude/update-plugins.py
 
     Or run from anywhere:
-    python path/to/update-plugins.py
+    uv run path/to/update-plugins.py
 """
 
 import json
@@ -20,6 +21,20 @@ import subprocess
 import sys
 from contextlib import contextmanager
 from pathlib import Path
+
+# Patterns to exclude when creating staged copy
+STAGING_IGNORE_PATTERNS = [
+    "node_modules",
+    ".pnpm",
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".ruff_cache",
+    "*.pyc",
+    ".DS_Store",
+    "dist",
+]
 
 
 # ANSI color codes
@@ -105,28 +120,68 @@ def run_command(cmd: list[str], description: str, cwd: Path | None = None) -> bo
 
 
 @contextmanager
-def hide_node_modules(repo_root: Path):
+def staged_marketplace(repo_root: Path, marketplace_name: str):
     """
-    Temporarily rename node_modules to avoid symlink issues on Windows.
+    Create a staged copy of the repository and temporarily register it as the marketplace.
 
-    The Claude plugin installer copies the entire source directory, and
-    pnpm's node_modules/.pnpm contains symlinks that fail to copy on Windows.
+    This avoids Windows symlink issues with pnpm's node_modules/.pnpm structure
+    by creating a clean copy without those directories, then registering that
+    copy as the marketplace source for plugin installation.
     """
-    node_modules = repo_root / "node_modules"
-    node_modules_bak = repo_root / "node_modules.bak"
+    staging_dir = repo_root / ".staging"
 
-    if not node_modules.exists():
-        yield
-        return
+    # Clean up any leftover staging directory
+    if staging_dir.exists():
+        print_info("Cleaning up previous staging directory...")
+        shutil.rmtree(staging_dir)
 
     try:
-        print_info("Temporarily hiding node_modules to avoid symlink issues...")
-        node_modules.rename(node_modules_bak)
-        yield
+        print_info("Creating staged copy of repository...")
+        print_info(f"Excluding: {', '.join(STAGING_IGNORE_PATTERNS)}")
+
+        shutil.copytree(
+            repo_root,
+            staging_dir,
+            ignore=shutil.ignore_patterns(*STAGING_IGNORE_PATTERNS),
+            symlinks=False,
+            dirs_exist_ok=False,
+        )
+
+        print_success(f"Staged copy created at {staging_dir}")
+
+        # Remove existing marketplace and add staging directory as source
+        # Note: Claude CLI requires relative paths starting with "./"
+        print_info(f"Re-registering marketplace from staging directory...")
+        run_command(
+            ["claude", "plugin", "marketplace", "remove", marketplace_name],
+            f"Remove existing {marketplace_name} marketplace",
+        )
+        if not run_command(
+            ["claude", "plugin", "marketplace", "add", "./.staging"],
+            f"Add staging directory as {marketplace_name} marketplace",
+            cwd=repo_root,
+        ):
+            print_error("Failed to register staging marketplace")
+            raise RuntimeError("Failed to register staging marketplace")
+
+        yield staging_dir
+
     finally:
-        if node_modules_bak.exists():
-            print_info("Restoring node_modules...")
-            node_modules_bak.rename(node_modules)
+        # Restore original marketplace
+        print_info("Restoring original marketplace registration...")
+        run_command(
+            ["claude", "plugin", "marketplace", "remove", marketplace_name],
+            f"Remove staging {marketplace_name} marketplace",
+        )
+        run_command(
+            ["claude", "plugin", "marketplace", "add", "./"],
+            f"Re-add original {marketplace_name} marketplace",
+            cwd=repo_root,
+        )
+
+        if staging_dir.exists():
+            print_info("Cleaning up staging directory...")
+            shutil.rmtree(staging_dir)
 
 
 def main():
@@ -157,22 +212,16 @@ def main():
     total_steps = 3
     success_count = 0
     warning_count = 0
+    marketplace_name = "agentic-forge"
 
-    # Step 1: Update the marketplace from local repository
-    print_step(1, total_steps, "Update Marketplace")
-    if run_command(
-        ["claude", "plugin", "marketplace", "update", "agentic-forge"],
-        "Update marketplace from local repository",
-        cwd=repo_root,
-    ):
-        success_count += 1
+    # Step 1 & 2: Create staged copy, register as marketplace, and reinstall plugins
+    print_step(1, total_steps, "Create Staged Marketplace")
 
-    # Step 2: Reinstall each plugin (uninstall then install)
-    # Hide node_modules to avoid Windows symlink issues with pnpm
-    print_step(2, total_steps, "Reinstall Claude Code Plugins")
-    print_info(f"Reinstalling {len(plugins)} plugins...")
+    with staged_marketplace(repo_root, marketplace_name) as staging_dir:
+        # Reinstall each plugin from the staged marketplace
+        print_step(2, total_steps, "Reinstall Claude Code Plugins")
+        print_info(f"Reinstalling {len(plugins)} plugins from staged marketplace...")
 
-    with hide_node_modules(repo_root):
         for i, plugin in enumerate(plugins, 1):
             print(f"\n  {color(f'[{i}/{len(plugins)}]', Colors.CYAN)} {color(plugin, Colors.BRIGHT_BLUE)}")
 
@@ -181,7 +230,7 @@ def main():
                 ["claude", "plugin", "uninstall", plugin],
                 f"Uninstall {plugin}",
             )
-            # Install from local marketplace
+            # Install from staged marketplace
             if run_command(
                 ["claude", "plugin", "install", plugin],
                 f"Install {plugin}",
@@ -190,7 +239,7 @@ def main():
             else:
                 warning_count += 1
 
-    # Step 3: Force reinstall Python tools
+    # Step 3: Force reinstall Python tools (from original repo, not staged)
     print_step(3, total_steps, "Install Python CLI Tools")
 
     # Note: agentic-sdlc depends on core, so we need to:
