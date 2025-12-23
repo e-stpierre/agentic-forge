@@ -13,5 +13,5 @@
   },
   "globs": ["**/*.md"],
   "ignores": ["node_modules", ".git"],
-  "fix": false
+  "fix": true
 }
