@@ -1,7 +1,7 @@
 {
   "enabledPlugins": {
     "core@agentic-forge": true,
-    "sdlc@agentic-forge": true,
-    "appsec@agentic-forge": true
+    "appsec@agentic-forge": true,
+    "interactive-sdlc@agentic-forge": true
   }
 }

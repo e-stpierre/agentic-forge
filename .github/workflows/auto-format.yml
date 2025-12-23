@@ -47,12 +47,13 @@ jobs:
         run: |
           # Get the list of changed files in this PR
           # Note: fetch-depth: 0 in checkout already fetched all history, no need for additional fetch
+          # --diff-filter=d excludes deleted files (lowercase 'd' means exclude)
 
           # Get changed markdown files (one per line for proper handling of spaces)
-          CHANGED_MD_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.md$' || true)
+          CHANGED_MD_FILES=$(git diff --diff-filter=d --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.md$' || true)
 
           # Get changed Python files (one per line for proper handling of spaces)
-          CHANGED_PY_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.py$' || true)
+          CHANGED_PY_FILES=$(git diff --diff-filter=d --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '\.py$' || true)
 
           # Output results using multiline format to handle file paths with spaces
           if [ -z "$CHANGED_MD_FILES" ]; then
@@ -80,29 +81,46 @@ jobs:
           fi
 
       - name: Format markdown files
+        id: format-markdown
         if: steps.changed-files.outputs.md_files != ''
         run: |
           echo "Formatting markdown files..."
+          MARKDOWN_ERRORS=0
           # Process each file individually to handle spaces in filenames
           while IFS= read -r file; do
             if [ -n "$file" ]; then
               echo "  Formatting: $file"
-              markdownlint-cli2 --fix "$file"
+              if ! markdownlint-cli2 --fix "$file"; then
+                echo "  ⚠️  Warning: Some issues in $file could not be auto-fixed"
+                MARKDOWN_ERRORS=1
+              fi
             fi
           done <<< "${{ steps.changed-files.outputs.md_files }}"
+          echo "has_errors=$MARKDOWN_ERRORS" >> $GITHUB_OUTPUT
+          exit 0  # Always succeed to continue workflow
 
       - name: Format Python files
+        id: format-python
         if: steps.changed-files.outputs.py_files != ''
         run: |
           echo "Formatting Python files..."
+          PYTHON_ERRORS=0
           # Process each file individually to handle spaces in filenames
           while IFS= read -r file; do
             if [ -n "$file" ]; then
               echo "  Formatting: $file"
-              ruff format "$file"
-              ruff check --fix "$file"
+              if ! ruff format "$file"; then
+                echo "  ⚠️  Warning: Formatting failed for $file"
+                PYTHON_ERRORS=1
+              fi
+              if ! ruff check --fix "$file"; then
+                echo "  ⚠️  Warning: Some linting issues in $file could not be auto-fixed"
+                PYTHON_ERRORS=1
+              fi
             fi
           done <<< "${{ steps.changed-files.outputs.py_files }}"
+          echo "has_errors=$PYTHON_ERRORS" >> $GITHUB_OUTPUT
+          exit 0  # Always succeed to continue workflow
 
       - name: Commit and push changes
         run: |
@@ -116,4 +134,27 @@ jobs:
             git add -A
             git commit -m "Auto-format code with markdownlint-cli2 and ruff"
             git push
+          fi
+
+      - name: Display warning summary
+        if: always()
+        run: |
+          MARKDOWN_ERRORS="${{ steps.format-markdown.outputs.has_errors }}"
+          PYTHON_ERRORS="${{ steps.format-python.outputs.has_errors }}"
+
+          if [ "$MARKDOWN_ERRORS" = "1" ] || [ "$PYTHON_ERRORS" = "1" ]; then
+            echo "::warning::⚠️  Formatting completed with warnings"
+            echo ""
+            echo "Some formatting issues could not be automatically fixed:"
+            if [ "$MARKDOWN_ERRORS" = "1" ]; then
+              echo "  - Markdown files have unfixable linting issues"
+            fi
+            if [ "$PYTHON_ERRORS" = "1" ]; then
+              echo "  - Python files have unfixable linting issues"
+            fi
+            echo ""
+            echo "Auto-fixable changes have been committed. Please review the warnings above"
+            echo "and manually fix any remaining issues."
+          else
+            echo "✅ All formatting completed successfully with no warnings"
           fi

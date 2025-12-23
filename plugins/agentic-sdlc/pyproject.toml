@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentic-forge-sdlc"
-version = "1.0.0"
-description = "Software Development Lifecycle workflows for Claude Code - planning, implementation, review, and testing"
+name = "agentic-forge-agentic-sdlc"
+version = "2.0.0"
+description = "Fully autonomous SDLC workflows for Claude Code - no user interaction, designed for CI/CD integration"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -16,10 +16,10 @@ keywords = [
     "claude",
     "claude-code",
     "sdlc",
-    "planning",
-    "implementation",
-    "review",
-    "testing",
+    "autonomous",
+    "agentic",
+    "orchestration",
+    "ci-cd",
     "workflows"
 ]
 classifiers = [
@@ -45,12 +45,15 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/e-stpierre/agentic-forge"
 Repository = "https://github.com/e-stpierre/agentic-forge"
-Documentation = "https://github.com/e-stpierre/agentic-forge/tree/main/plugins/sdlc"
+Documentation = "https://github.com/e-stpierre/agentic-forge/tree/main/plugins/agentic-sdlc"
 
 [project.scripts]
-claude-sdlc = "claude_sdlc.cli:main"
-claude-feature = "claude_sdlc.workflows.feature:main"
-claude-bugfix = "claude_sdlc.workflows.bugfix:main"
+# Agentic autonomous workflows (JSON I/O for CI/CD)
+agentic-sdlc = "claude_sdlc.cli:agentic_main"
+agentic-workflow = "claude_sdlc.cli:agentic_workflow_main"
+agentic-plan = "claude_sdlc.cli:agentic_plan_main"
+agentic-build = "claude_sdlc.cli:agentic_build_main"
+agentic-validate = "claude_sdlc.cli:agentic_validate_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/claude_sdlc"]

@@ -25,29 +25,30 @@
       "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
     },
     {
-      "name": "sdlc",
+      "name": "agentic-sdlc",
       "source": "./",
-      "description": "Software Development Lifecycle toolkit with planning, implementation, review, and testing workflows",
-      "version": "1.0.0",
+      "description": "Fully autonomous SDLC workflow orchestrated via Python, with no user interaction",
+      "version": "2.0.0",
       "category": "sdlc",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": ["sdlc", "planning", "implementation", "review", "testing", "workflows", "features", "bugs", "chores"],
+      "keywords": ["sdlc", "autonomous", "agentic", "python", "orchestration", "ci-cd", "workflows"],
       "strict": false,
       "commands": [
-        "./plugins/sdlc/commands/design.md",
-        "./plugins/sdlc/commands/plan.md",
-        "./plugins/sdlc/commands/plan-feature.md",
-        "./plugins/sdlc/commands/plan-bug.md",
-        "./plugins/sdlc/commands/plan-chore.md",
-        "./plugins/sdlc/commands/plan-build.md",
-        "./plugins/sdlc/commands/implement.md",
-        "./plugins/sdlc/commands/implement-from-plan.md",
-        "./plugins/sdlc/commands/review.md",
-        "./plugins/sdlc/commands/test.md"
+        "./plugins/agentic-sdlc/commands/configure.md",
+        "./plugins/agentic-sdlc/commands/design.md",
+        "./plugins/agentic-sdlc/commands/plan.md",
+        "./plugins/agentic-sdlc/commands/plan-feature.md",
+        "./plugins/agentic-sdlc/commands/plan-bug.md",
+        "./plugins/agentic-sdlc/commands/plan-chore.md",
+        "./plugins/agentic-sdlc/commands/plan-build.md",
+        "./plugins/agentic-sdlc/commands/implement.md",
+        "./plugins/agentic-sdlc/commands/implement-from-plan.md",
+        "./plugins/agentic-sdlc/commands/review.md",
+        "./plugins/agentic-sdlc/commands/test.md"
       ]
     },
     {
@@ -64,6 +65,36 @@
       "keywords": ["core", "foundation", "utilities", "building-blocks", "git", "worktree", "github", "orchestration"],
       "strict": false,
       "commands": ["./plugins/core/commands/git-branch.md", "./plugins/core/commands/git-commit.md", "./plugins/core/commands/git-pr.md", "./plugins/core/commands/git-worktree.md", "./plugins/core/commands/create-gh-issue.md", "./plugins/core/commands/read-gh-issue.md"]
+    },
+    {
+      "name": "interactive-sdlc",
+      "source": "./",
+      "description": "Interactive SDLC commands for guided development within Claude Code sessions",
+      "version": "1.0.0",
+      "category": "sdlc",
+      "author": {
+        "name": "Étienne St-Pierre",
+        "email": "me@estpierre.dev"
+      },
+      "license": "MIT",
+      "keywords": ["sdlc", "interactive", "planning", "building", "validation", "workflows"],
+      "strict": false,
+      "commands": [
+        "./plugins/interactive-sdlc/commands/configure.md",
+        "./plugins/interactive-sdlc/commands/plan-chore.md",
+        "./plugins/interactive-sdlc/commands/plan-bug.md",
+        "./plugins/interactive-sdlc/commands/plan-feature.md",
+        "./plugins/interactive-sdlc/commands/build.md",
+        "./plugins/interactive-sdlc/commands/validate.md",
+        "./plugins/interactive-sdlc/commands/one-shot.md",
+        "./plugins/interactive-sdlc/commands/plan-build-validate.md",
+        "./plugins/interactive-sdlc/commands/document.md",
+        "./plugins/interactive-sdlc/commands/analyse-bug.md",
+        "./plugins/interactive-sdlc/commands/analyse-doc.md",
+        "./plugins/interactive-sdlc/commands/analyse-debt.md",
+        "./plugins/interactive-sdlc/commands/analyse-style.md",
+        "./plugins/interactive-sdlc/commands/analyse-security.md"
+      ]
     }
   ]
 }

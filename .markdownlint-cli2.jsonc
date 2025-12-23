@@ -1,9 +1,15 @@
 {
   "config": {
     "default": true,
+    "MD003": false, // heading-style: Heading style Expected: setext
     "MD013": false, // Line length
+    "MD024": {
+      "siblings_only": true
+    },
     "MD033": false, // Inline HTML is allowed
-    "MD040": false // Fenced code blocks should have a language specified
+    "MD040": false, // Fenced code blocks should have a language specified
+    "MD041": false, // First line in file should be a top level heading
+    "MD060": false // Table column style
   },
   "globs": ["**/*.md"],
   "ignores": ["node_modules", ".git"],

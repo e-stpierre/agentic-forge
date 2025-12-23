@@ -7,3 +7,5 @@ venv/
 *.swp
 .DS_Store
 
+# Claude
+.claude/**/*.local.json
