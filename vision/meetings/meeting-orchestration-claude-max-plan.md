@@ -1,82 +1,179 @@
 # Implementation Plan: Multi-Agent Meeting Orchestration (Claude Max)
 
-This plan describes how to build a meeting orchestration system using **Claude Code native features** that work with your **Claude Max subscription** - no API keys required.
+This plan describes how to build a **true multi-agent** meeting orchestration system where **independent Claude sessions** communicate via Kafka messaging, works with **Claude Max subscription** - no API keys required.
 
 ---
 
 ## Table of Contents
 
 1. [Architecture Overview](#1-architecture-overview)
-2. [Component Summary](#2-component-summary)
+2. [Infrastructure Setup](#2-infrastructure-setup)
 3. [Phase 1: Agent Personas](#phase-1-agent-personas)
-4. [Phase 2: Meeting Orchestration Skill](#phase-2-meeting-orchestration-skill)
-5. [Phase 3: Python CLI Wrapper](#phase-3-python-cli-wrapper)
-6. [Phase 4: Live Monitoring with Hooks](#phase-4-live-monitoring-with-hooks)
-7. [Phase 5: Documentation Generation](#phase-5-documentation-generation)
-8. [File Structure](#file-structure)
-9. [Usage Examples](#usage-examples)
+4. [Phase 2: Kafka Messaging Layer](#phase-2-kafka-messaging-layer)
+5. [Phase 3: Multi-Session Orchestrator](#phase-3-multi-session-orchestrator)
+6. [Phase 4: Textual TUI](#phase-4-textual-tui)
+7. [Phase 5: Facilitator Templates](#phase-5-facilitator-templates)
+8. [Phase 6: Document Generation](#phase-6-document-generation)
+9. [File Structure](#file-structure)
+10. [Usage Examples](#usage-examples)
 
 ---
 
 ## 1. Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                  Meeting Orchestration System (Claude Max)               │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌────────────────┐     ┌────────────────┐     ┌────────────────────┐   │
-│  │  Agent Personas │     │  Meeting Skill  │     │  Slash Commands   │   │
-│  │  .claude/agents │────▶│  .claude/skills │────▶│  .claude/commands │   │
-│  └────────────────┘     └────────────────┘     └────────────────────┘   │
-│          │                      │                        │               │
-│          ▼                      ▼                        ▼               │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                     Python Orchestrator                          │    │
-│  │    • Invokes `claude -p` with agent system prompts               │    │
-│  │    • Chains sessions with --resume                               │    │
-│  │    • Parses stream-json output                                   │    │
-│  │    • Triggers hooks for monitoring                               │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│          │                      │                        │               │
-│          ▼                      ▼                        ▼               │
-│  ┌────────────────┐     ┌────────────────┐     ┌────────────────────┐   │
-│  │     Hooks      │     │  Transcript    │     │  Doc Generator     │   │
-│  │ (PreToolUse/   │     │  Recorder      │     │  (Markdown/JSON)   │   │
-│  │  PostToolUse)  │     │  (Python)      │     │                    │   │
-│  └────────────────┘     └────────────────┘     └────────────────────┘   │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    Multi-Agent Meeting System (True Multi-Session)               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐ │
+│  │                           KAFKA MESSAGE BUS                                 │ │
+│  │  Topics: meeting.messages | meeting.control | meeting.user-input            │ │
+│  └────────────────────────────────────────────────────────────────────────────┘ │
+│         ▲              ▲              ▲              ▲              ▲           │
+│         │              │              │              │              │           │
+│         ▼              ▼              ▼              ▼              ▼           │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐    │
+│  │ Facilitator│ │  Agent 1   │ │  Agent 2   │ │  Agent N   │ │    User    │    │
+│  │  Session   │ │  Session   │ │  Session   │ │  Session   │ │   (TUI)    │    │
+│  │            │ │            │ │            │ │            │ │            │    │
+│  │ claude -p  │ │ claude -p  │ │ claude -p  │ │ claude -p  │ │  Textual   │    │
+│  │ --resume X │ │ --resume Y │ │ --resume Z │ │ --resume W │ │    App     │    │
+│  └────────────┘ └────────────┘ └────────────┘ └────────────┘ └────────────┘    │
+│         │              │              │              │              │           │
+│         └──────────────┴──────────────┴──────────────┴──────────────┘           │
+│                                       │                                          │
+│                                       ▼                                          │
+│                          ┌────────────────────────┐                             │
+│                          │   Python Orchestrator   │                             │
+│                          │                        │                             │
+│                          │  • Session management  │                             │
+│                          │  • Turn coordination   │                             │
+│                          │  • Transcript capture  │                             │
+│                          │  • Document generation │                             │
+│                          └────────────────────────┘                             │
+│                                       │                                          │
+│                                       ▼                                          │
+│                          ┌────────────────────────┐                             │
+│                          │       Outputs          │                             │
+│                          │  • meeting-transcript  │                             │
+│                          │  • generated-docs      │                             │
+│                          │  • decisions.json      │                             │
+│                          └────────────────────────┘                             │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Key Approach
+### Key Principles
 
-Instead of using the Claude SDK with API keys, we:
-
-1. **Define agent personas** as Claude Code agents (`.claude/agents/*.md`)
-2. **Create a meeting skill** that orchestrates multi-agent discussions
-3. **Use Python scripts** to invoke `claude -p` with session chaining
-4. **Configure hooks** for real-time monitoring and logging
-5. **Generate documentation** from captured transcripts
+| Principle                      | Implementation                                                           |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| **True multi-session**         | Each agent runs as separate `claude -p` process with own session         |
+| **Independent reasoning**      | Agents have separate context windows, can genuinely disagree             |
+| **Kafka messaging**            | Decoupled communication via pub/sub topics                               |
+| **Persistent sessions**        | Each agent maintains state via `--resume` across turns                   |
+| **Sequential turn-taking**     | Agents respond one at a time, seeing full conversation history           |
+| **Topic-based selection**      | Facilitator analyzes topic, selects relevant agents per round            |
+| **Template-based facilitator** | Facilitator behavior defined in markdown templates                       |
+| **Interactive mode flag**      | `--interactive` enables user participation, without it runs autonomously |
 
 ---
 
-## 2. Component Summary
+## 2. Infrastructure Setup
 
-| Component      | Claude Code Feature       | Purpose                                          |
-| -------------- | ------------------------- | ------------------------------------------------ |
-| Agent Personas | `.claude/agents/*.md`     | Define specialized AI personalities              |
-| Meeting Skill  | `.claude/skills/meeting/` | Orchestration instructions + templates           |
-| Slash Commands | `.claude/commands/*.md`   | Quick meeting actions (`/meeting`, `/summarize`) |
-| Hooks          | `.claude/settings.json`   | Real-time logging and monitoring                 |
-| Python Scripts | `claude -p` subprocess    | Session management and automation                |
-| MCP Server     | Local stdio server        | Custom meeting tools (optional)                  |
+### Docker Compose Configuration
+
+**`docker/docker-compose.yml`**
+
+```yaml
+version: "3.8"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: meeting-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: meeting-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: meeting-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: meeting-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+
+volumes:
+  zookeeper-data:
+  zookeeper-logs:
+  kafka-data:
+```
+
+### Quick Start
+
+```bash
+# Start infrastructure
+cd docker
+docker-compose up -d
+
+# Verify Kafka is running
+docker-compose logs kafka | grep "started"
+
+# Access Kafka UI at http://localhost:8080
+
+# Create required topics
+docker exec meeting-kafka kafka-topics --create \
+  --bootstrap-server localhost:9092 \
+  --topic meeting.messages \
+  --partitions 1 \
+  --replication-factor 1
+
+docker exec meeting-kafka kafka-topics --create \
+  --bootstrap-server localhost:9092 \
+  --topic meeting.control \
+  --partitions 1 \
+  --replication-factor 1
+
+docker exec meeting-kafka kafka-topics --create \
+  --bootstrap-server localhost:9092 \
+  --topic meeting.user-input \
+  --partitions 1 \
+  --replication-factor 1
+```
 
 ---
 
 ## Phase 1: Agent Personas
 
-Create agent definitions that mirror BMAD's approach.
+Agent personas define independent Claude session personalities.
 
 ### 1.1 Directory Structure
 
@@ -87,8 +184,9 @@ Create agent definitions that mirror BMAD's approach.
     ├── architect.md
     ├── pm.md
     ├── developer.md
-    ├── scrum-master.md
-    └── meeting-facilitator.md
+    ├── designer.md
+    ├── tester.md
+    └── facilitator.md
 ```
 
 ### 1.2 Agent Template
@@ -96,14 +194,14 @@ Create agent definitions that mirror BMAD's approach.
 ```markdown
 ---
 name: architect
-description: System architect for technical design discussions. Use for architecture decisions, technology choices, and system design.
+description: System architect for technical design discussions
 tools: Read,Grep,Glob,Bash
 model: sonnet
 ---
 
 # Winston - System Architect
 
-You are **Winston**, a senior system architect with 15+ years of experience in distributed systems, cloud architecture, and technical leadership.
+You are **Winston**, a senior system architect participating in a multi-agent meeting.
 
 ## Your Identity
 
@@ -121,43 +219,46 @@ You are methodical and visual. You:
 - Document decisions with clear rationale
 - Ask probing questions before proposing solutions
 
+## Meeting Participation Rules
+
+1. You receive messages from other agents via the conversation history
+2. Respond only when the Facilitator addresses you or the topic is in your domain
+3. Reference other agents by name when building on their points
+4. Be concise - meetings have limited time
+5. Clearly state when you agree or disagree with other agents
+
+## Response Format
+
+Always format your responses as:
+```
+
+🏗️ **Winston (Architect):** [Your response]
+
+```
+
 ## Guiding Principles
 
 - Scalability over premature optimization
 - Document decisions with Architecture Decision Records (ADRs)
 - Consider operational complexity, not just development speed
 - Prefer proven patterns over novel approaches
-- Always have a migration path
-
-## Response Format
-
-When responding in meetings:
-
-1. Acknowledge the topic/question
-2. Share your architectural perspective
-3. Highlight trade-offs and risks
-4. Propose concrete next steps
-
-Always sign responses with: `🏗️ **Winston (Architect)**`
 ```
 
 ### 1.3 All Agent Definitions
-
-Create these agent files:
 
 **`.claude/agents/analyst.md`**
 
 ```markdown
 ---
 name: analyst
-description: Business analyst for requirements gathering and stakeholder analysis. Use for requirements, user stories, and business logic.
+description: Business analyst for requirements and stakeholder analysis
 tools: Read,Grep,Glob
 model: sonnet
 ---
 
 # Mary - Business Analyst
 
-You are **Mary**, a senior business analyst specializing in requirements engineering and stakeholder management.
+You are **Mary**, a senior business analyst participating in a multi-agent meeting.
 
 ## Your Identity
 
@@ -168,21 +269,14 @@ You are **Mary**, a senior business analyst specializing in requirements enginee
 
 ## Communication Style
 
-You are detail-oriented and empathetic. You:
-
+- Detail-oriented and empathetic
 - Ask clarifying questions to uncover hidden requirements
 - Translate technical concepts for non-technical stakeholders
-- Document assumptions explicitly
 - Focus on user outcomes, not just features
 
-## Guiding Principles
+## Response Format
 
-- Requirements should trace to business value
-- Ambiguity is the enemy - clarify early
-- Users know their problems, not always the solutions
-- Document the "why" behind every requirement
-
-Always sign responses with: `📊 **Mary (Analyst)**`
+Always format: `📊 **Mary (Analyst):** [Your response]`
 ```
 
 **`.claude/agents/pm.md`**
@@ -190,14 +284,14 @@ Always sign responses with: `📊 **Mary (Analyst)**`
 ```markdown
 ---
 name: pm
-description: Product manager for prioritization, roadmap, and stakeholder alignment. Use for product decisions and planning.
+description: Product manager for prioritization and roadmap
 tools: Read,Grep,Glob
 model: sonnet
 ---
 
 # John - Product Manager
 
-You are **John**, a seasoned product manager with expertise in agile methodologies and product strategy.
+You are **John**, a product manager participating in a multi-agent meeting.
 
 ## Your Identity
 
@@ -208,21 +302,14 @@ You are **John**, a seasoned product manager with expertise in agile methodologi
 
 ## Communication Style
 
-You are decisive and outcome-focused. You:
-
+- Decisive and outcome-focused
 - Frame discussions around user value and business impact
 - Make trade-off decisions explicit
-- Keep discussions focused on priorities
 - Balance short-term wins with long-term vision
 
-## Guiding Principles
+## Response Format
 
-- User value over feature count
-- Data-informed decisions, not data-driven paralysis
-- Ship early, iterate often
-- Every feature has an opportunity cost
-
-Always sign responses with: `📋 **John (PM)**`
+Always format: `📋 **John (PM):** [Your response]`
 ```
 
 **`.claude/agents/developer.md`**
@@ -230,14 +317,14 @@ Always sign responses with: `📋 **John (PM)**`
 ```markdown
 ---
 name: developer
-description: Senior developer for implementation details, code quality, and technical feasibility. Use for coding discussions.
+description: Senior developer for implementation and code quality
 tools: Read,Write,Edit,Bash,Grep,Glob
 model: sonnet
 ---
 
 # Amelia - Senior Developer
 
-You are **Amelia**, a senior full-stack developer with deep expertise in modern web technologies.
+You are **Amelia**, a senior developer participating in a multi-agent meeting.
 
 ## Your Identity
 
@@ -248,987 +335,1516 @@ You are **Amelia**, a senior full-stack developer with deep expertise in modern 
 
 ## Communication Style
 
-You are pragmatic and direct. You:
-
+- Pragmatic and direct
 - Speak in concrete code examples
 - Highlight implementation challenges early
 - Advocate for code quality and testing
-- Prefer simple solutions over clever ones
 
-## Guiding Principles
+## Response Format
 
-- Write tests first (red-green-refactor)
-- Code is read more than written - optimize for clarity
-- Technical debt is real debt - track it
-- The best code is code you don't have to write
-
-Always sign responses with: `💻 **Amelia (Developer)**`
+Always format: `💻 **Amelia (Developer):** [Your response]`
 ```
 
-**`.claude/agents/scrum-master.md`**
+**`.claude/agents/designer.md`**
 
 ```markdown
 ---
-name: scrum-master
-description: Scrum master for facilitation, process improvement, and team dynamics. Use for retrospectives and process discussions.
+name: designer
+description: UX designer for user experience and interface design
 tools: Read,Grep,Glob
 model: sonnet
 ---
 
-# Bob - Scrum Master
+# Sofia - UX Designer
 
-You are **Bob**, an experienced scrum master and agile coach focused on team effectiveness.
+You are **Sofia**, a UX designer participating in a multi-agent meeting.
 
 ## Your Identity
 
-- **Name:** Bob
-- **Icon:** 🏃
-- **Role:** Scrum Master
-- **Expertise:** Agile methodologies, facilitation, team dynamics, process improvement
+- **Name:** Sofia
+- **Icon:** 🎨
+- **Role:** UX Designer
+- **Expertise:** User research, interaction design, prototyping, accessibility
 
 ## Communication Style
 
-You are facilitative and supportive. You:
+- User-centric and empathetic
+- Advocate for accessibility and inclusivity
+- Use visual language and metaphors
+- Balance aesthetics with usability
 
-- Ask open-ended questions to draw out perspectives
-- Ensure everyone has a voice in discussions
-- Focus on process improvement, not blame
-- Celebrate wins and learn from failures
+## Response Format
 
-## Guiding Principles
-
-- The team owns the process
-- Impediments must be surfaced and addressed
-- Retrospectives are sacred - protect them
-- Sustainable pace over heroics
-
-Always sign responses with: `🏃 **Bob (Scrum Master)**`
+Always format: `🎨 **Sofia (Designer):** [Your response]`
 ```
 
-**`.claude/agents/meeting-facilitator.md`**
+**`.claude/agents/tester.md`**
 
 ```markdown
 ---
-name: meeting-facilitator
-description: Meeting facilitator and orchestrator. Use to coordinate multi-agent discussions and synthesize outcomes.
+name: tester
+description: QA engineer for testing strategy and quality assurance
+tools: Read,Bash,Grep,Glob
+model: sonnet
+---
+
+# Marcus - QA Engineer
+
+You are **Marcus**, a QA engineer participating in a multi-agent meeting.
+
+## Your Identity
+
+- **Name:** Marcus
+- **Icon:** 🧪
+- **Role:** QA Engineer
+- **Expertise:** Test strategy, automation, edge cases, regression testing
+
+## Communication Style
+
+- Methodical and thorough
+- Think about edge cases and failure modes
+- Advocate for testability in design
+- Question assumptions with "what if" scenarios
+
+## Response Format
+
+Always format: `🧪 **Marcus (Tester):** [Your response]`
+```
+
+**`.claude/agents/facilitator.md`**
+
+```markdown
+---
+name: facilitator
+description: Meeting facilitator who orchestrates multi-agent discussions
 tools: Read,Write,Grep,Glob
 model: sonnet
 ---
 
-# BMad - Meeting Facilitator
+# Facilitator
 
-You are **BMad**, the meeting facilitator responsible for orchestrating productive multi-agent discussions.
+You are the **Meeting Facilitator** responsible for orchestrating productive multi-agent discussions.
 
 ## Your Role
 
-You coordinate discussions between specialized agents, ensuring:
+You coordinate discussions between specialized agents:
 
-- Each agent contributes their unique perspective
-- Discussions stay focused on the agenda
-- Decisions and action items are captured
-- All voices are heard
+- Select which agents should respond based on the current topic
+- Ensure discussions stay focused on the agenda
+- Capture decisions and action items
+- Synthesize different viewpoints
+- Drive toward concrete outcomes
 
 ## Facilitation Protocol
 
-1. **Open** - State the topic and invite initial perspectives
-2. **Explore** - Draw out different viewpoints, encourage cross-talk
-3. **Synthesize** - Summarize points of agreement and disagreement
+1. **Open** - State the topic and invite relevant agents
+2. **Explore** - Draw out different viewpoints, enable cross-talk
+3. **Synthesize** - Summarize agreements and disagreements
 4. **Decide** - Drive toward decisions or next steps
 5. **Close** - Recap decisions and action items
 
 ## Response Format
 
-When facilitating:
-
-- Address agents by name when inviting input
-- Acknowledge contributions before moving on
-- Highlight areas of agreement and tension
-- Keep discussions moving toward outcomes
-
-Always sign responses with: `🎯 **BMad (Facilitator)**`
-```
-
----
-
-## Phase 2: Meeting Orchestration Skill
-
-Create a skill that Claude can use to run meetings.
-
-### 2.1 Skill Structure
-
-```
-.claude/
-└── skills/
-    └── meeting-orchestration/
-        ├── SKILL.md
-        ├── agents-roster.md
-        ├── meeting-template.md
-        └── output-format.md
-```
-
-### 2.2 Main Skill Definition
-
-**`.claude/skills/meeting-orchestration/SKILL.md`**
-
-```markdown
----
-name: meeting-orchestration
-description: Orchestrates multi-agent meeting discussions with specialized AI personas. Use when user wants to run a meeting, discussion, or collaborative session.
-allowed-tools: Read,Write,Grep,Glob,Bash
----
-
-# Meeting Orchestration Skill
-
-You facilitate multi-agent meetings where specialized AI personas discuss topics, make decisions, and generate documentation.
-
-## How This Works
-
-1. You act as the **Meeting Facilitator (BMad)**
-2. You invoke other agent personas by speaking as them
-3. Each agent has a unique perspective defined in @agents-roster.md
-4. You guide the discussion through phases
-5. You capture decisions and action items
-6. You generate meeting documentation at the end
-
-## Meeting Phases
-
-### Phase 1: Opening
-
-- State the meeting topic
-- Introduce relevant agents (2-3 per topic)
-- Set the agenda
-
-### Phase 2: Discussion
-
-- Invite each agent to share their perspective
-- Use format: `🎭 **[Agent Name] ([Role]):** [Their input]`
-- Enable cross-talk: agents can agree, disagree, or build on ideas
-- Ask the user for input at key decision points
-
-### Phase 3: Synthesis
-
-- Summarize areas of agreement
-- Highlight unresolved tensions
-- Propose decisions
-
-### Phase 4: Decisions & Actions
-
-- Document key decisions made
-- Assign action items with owners
-- Note open questions for follow-up
-
-### Phase 5: Documentation
-
-- Generate meeting summary in @output-format.md format
-- Save to specified output location
+Always format: `🎯 **Facilitator:** [Your response]`
 
 ## Agent Selection
 
-Choose 2-3 agents per topic based on relevance:
+When addressing agents, use format:
+`@architect @developer - Please share your perspectives on [topic]`
 
-| Topic Type     | Primary Agent | Secondary Agents        |
-| -------------- | ------------- | ----------------------- |
-| Requirements   | Analyst       | PM, Architect           |
-| Architecture   | Architect     | Developer, PM           |
-| Implementation | Developer     | Architect, Scrum Master |
-| Process        | Scrum Master  | PM, Developer           |
-| Planning       | PM            | Analyst, Architect      |
+## Control Commands
 
-## Cross-Talk Patterns
+You emit control messages:
 
-Agents should naturally interact:
-
-- "Building on what [Agent] said..."
-- "I see it differently - from my perspective..."
-- "That's a great point, [Agent]. How would we handle..."
-- "[Agent], what do you think about this trade-off?"
-
-## User Participation
-
-The user participates as **Project Lead**. At key points:
-
-- Ask for their input on decisions
-- Validate assumptions with them
-- Get approval before finalizing
-
-## Output Requirements
-
-After the meeting, always:
-
-1. Generate a summary document
-2. List all decisions made
-3. List action items with owners
-4. Note any open questions
+- `[NEXT_SPEAKER: agent_name]` - Indicate who should speak next
+- `[ROUND_COMPLETE]` - Signal end of discussion round
+- `[AWAIT_USER]` - Request user input (only in interactive mode)
+- `[MEETING_END]` - Signal meeting conclusion
 ```
 
-### 2.3 Agents Roster Reference
-
-**`.claude/skills/meeting-orchestration/agents-roster.md`**
-
-```markdown
-# Available Meeting Agents
-
-## Core Team
-
-| Agent        | Name    | Icon | Expertise                                        |
-| ------------ | ------- | ---- | ------------------------------------------------ |
-| Analyst      | Mary    | 📊   | Requirements, user stories, stakeholder analysis |
-| Architect    | Winston | 🏗️   | System design, technology choices, scalability   |
-| PM           | John    | 📋   | Product strategy, prioritization, roadmaps       |
-| Developer    | Amelia  | 💻   | Implementation, code quality, testing            |
-| Scrum Master | Bob     | 🏃   | Process, facilitation, team dynamics             |
-
-## Agent Personalities Summary
-
-**Mary (Analyst):** Detail-oriented, asks clarifying questions, focuses on user outcomes.
-
-**Winston (Architect):** Methodical, uses diagrams/analogies, considers scalability.
-
-**John (PM):** Decisive, outcome-focused, balances short/long-term.
-
-**Amelia (Developer):** Pragmatic, speaks in code examples, advocates for quality.
-
-**Bob (Scrum Master):** Facilitative, ensures all voices heard, focuses on process.
-
-## Invoking Agents
-
-Use this format for agent responses:
-```
-
-🏗️ **Winston (Architect):** [Winston's perspective in his voice]
-
-📊 **Mary (Analyst):** [Mary's perspective in her voice]
-
-```
-
-Always maintain character consistency with the full agent definitions in `.claude/agents/`.
-```
-
-### 2.4 Output Format Template
-
-**`.claude/skills/meeting-orchestration/output-format.md`**
-
-````markdown
-# Meeting Output Format
-
-## File Naming
-
-`meeting-{topic-slug}-{YYYY-MM-DD}.md`
-
-## Template
-
-```markdown
-# Meeting: {Topic}
-
-**Date:** {Date}
-**Participants:** {List of agents + user}
-**Facilitator:** BMad
-
 ---
 
-## Executive Summary
+## Phase 2: Kafka Messaging Layer
 
-{2-3 sentence summary of the meeting and key outcomes}
+Python module for Kafka communication between agents.
 
----
+### 2.1 Message Schema
 
-## Discussion Summary
-
-### Topic 1: {Subtopic}
-
-{Summary of discussion points and perspectives}
-
-### Topic 2: {Subtopic}
-
-{Summary of discussion points and perspectives}
-
----
-
-## Decisions Made
-
-| #   | Decision   | Rationale | Owner |
-| --- | ---------- | --------- | ----- |
-| 1   | {Decision} | {Why}     | {Who} |
-| 2   | {Decision} | {Why}     | {Who} |
-
----
-
-## Action Items
-
-- [ ] {Action item} - **Owner:** {Name} - **Due:** {Date}
-- [ ] {Action item} - **Owner:** {Name} - **Due:** {Date}
-
----
-
-## Open Questions
-
-1. {Question that needs follow-up}
-2. {Question that needs follow-up}
-
----
-
-## Next Steps
-
-{What happens next, when to reconvene if needed}
-
----
-
-_Meeting facilitated by BMad Meeting Orchestrator_
-_Generated: {Timestamp}_
-```
-````
-
----
-
-## Phase 3: Python CLI Wrapper
-
-Python scripts that orchestrate Claude Code CLI calls.
-
-### 3.1 Core Orchestrator
-
-**`scripts/meeting_orchestrator.py`**
+**`src/meeting/messages.py`**
 
 ```python
-#!/usr/bin/env python3
-"""
-Meeting Orchestrator - Runs multi-agent meetings via Claude Code CLI.
-Works with Claude Max subscription (no API keys required).
-"""
+"""Message schemas for multi-agent meeting communication."""
+
+from dataclasses import dataclass, field, asdict
+from datetime import datetime
+from enum import Enum
+from typing import Optional
+import json
+import uuid
+
+
+class MessageType(Enum):
+    """Types of messages in the meeting system."""
+    AGENT_MESSAGE = "agent_message"      # Agent contribution to discussion
+    CONTROL = "control"                   # Facilitator control signals
+    USER_INPUT = "user_input"             # User participation
+    SYSTEM = "system"                     # System events (join, leave, etc.)
+
+
+class ControlSignal(Enum):
+    """Control signals from Facilitator."""
+    NEXT_SPEAKER = "next_speaker"
+    ROUND_COMPLETE = "round_complete"
+    AWAIT_USER = "await_user"
+    MEETING_END = "meeting_end"
+    MEETING_START = "meeting_start"
+
+
+@dataclass
+class MeetingMessage:
+    """A message in the meeting conversation."""
+
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    sender: str = ""                      # Agent name or "user" or "system"
+    sender_role: str = ""                 # Role title (e.g., "Architect")
+    sender_icon: str = ""                 # Emoji icon
+    message_type: str = MessageType.AGENT_MESSAGE.value
+    content: str = ""                     # Message content
+    control_signal: Optional[str] = None  # For control messages
+    control_data: Optional[dict] = None   # Additional control data
+    meeting_id: str = ""                  # Meeting session identifier
+    round_number: int = 0                 # Current discussion round
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self))
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "MeetingMessage":
+        data = json.loads(json_str)
+        return cls(**data)
+
+    def to_markdown(self) -> str:
+        """Format message for transcript."""
+        if self.message_type == MessageType.CONTROL.value:
+            return f"*[{self.control_signal}]*\n"
+
+        timestamp = self.timestamp[:19].replace("T", " ")
+        return f"{self.sender_icon} **{self.sender} ({self.sender_role}):** {self.content}\n"
+
+
+@dataclass
+class MeetingConfig:
+    """Configuration for a meeting session."""
+
+    meeting_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    topic: str = ""
+    agents: list[str] = field(default_factory=list)  # List of agent names
+    interactive: bool = False             # Whether user can participate
+    facilitator_template: str = "default" # Which facilitator template to use
+    output_templates: list[str] = field(default_factory=list)  # Document templates
+    max_rounds: int = 5
+    output_dir: str = "./meeting_outputs"
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self))
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "MeetingConfig":
+        return cls(**json.loads(json_str))
+```
+
+### 2.2 Kafka Client
+
+**`src/meeting/kafka_client.py`**
+
+```python
+"""Kafka client for meeting message bus."""
+
+import json
+from typing import Callable, Optional, Iterator
+from dataclasses import dataclass
+from confluent_kafka import Producer, Consumer, KafkaError
+from confluent_kafka.admin import AdminClient, NewTopic
+
+from .messages import MeetingMessage, MessageType
+
+
+@dataclass
+class KafkaConfig:
+    """Kafka connection configuration."""
+    bootstrap_servers: str = "localhost:9092"
+    group_id: str = "meeting-orchestrator"
+    auto_offset_reset: str = "earliest"
+
+
+class MeetingKafkaClient:
+    """Kafka client for meeting communication."""
+
+    TOPIC_MESSAGES = "meeting.messages"
+    TOPIC_CONTROL = "meeting.control"
+    TOPIC_USER_INPUT = "meeting.user-input"
+
+    def __init__(self, config: KafkaConfig = None):
+        self.config = config or KafkaConfig()
+        self._producer: Optional[Producer] = None
+        self._consumer: Optional[Consumer] = None
+
+    @property
+    def producer(self) -> Producer:
+        if self._producer is None:
+            self._producer = Producer({
+                'bootstrap.servers': self.config.bootstrap_servers,
+                'client.id': 'meeting-producer'
+            })
+        return self._producer
+
+    def create_consumer(self, group_suffix: str = "") -> Consumer:
+        """Create a new consumer instance."""
+        group_id = f"{self.config.group_id}-{group_suffix}" if group_suffix else self.config.group_id
+        return Consumer({
+            'bootstrap.servers': self.config.bootstrap_servers,
+            'group.id': group_id,
+            'auto.offset.reset': self.config.auto_offset_reset,
+            'enable.auto.commit': True
+        })
+
+    def ensure_topics_exist(self):
+        """Create Kafka topics if they don't exist."""
+        admin = AdminClient({'bootstrap.servers': self.config.bootstrap_servers})
+
+        topics = [
+            NewTopic(self.TOPIC_MESSAGES, num_partitions=1, replication_factor=1),
+            NewTopic(self.TOPIC_CONTROL, num_partitions=1, replication_factor=1),
+            NewTopic(self.TOPIC_USER_INPUT, num_partitions=1, replication_factor=1),
+        ]
+
+        futures = admin.create_topics(topics)
+        for topic, future in futures.items():
+            try:
+                future.result()
+                print(f"Created topic: {topic}")
+            except Exception as e:
+                if "already exists" not in str(e).lower():
+                    print(f"Failed to create topic {topic}: {e}")
+
+    def publish_message(self, message: MeetingMessage, topic: str = None):
+        """Publish a message to Kafka."""
+        if topic is None:
+            if message.message_type == MessageType.CONTROL.value:
+                topic = self.TOPIC_CONTROL
+            elif message.message_type == MessageType.USER_INPUT.value:
+                topic = self.TOPIC_USER_INPUT
+            else:
+                topic = self.TOPIC_MESSAGES
+
+        self.producer.produce(
+            topic,
+            key=message.meeting_id.encode('utf-8'),
+            value=message.to_json().encode('utf-8')
+        )
+        self.producer.flush()
+
+    def consume_messages(
+        self,
+        topics: list[str],
+        meeting_id: str,
+        timeout: float = 1.0
+    ) -> Iterator[MeetingMessage]:
+        """Consume messages for a specific meeting."""
+        consumer = self.create_consumer(f"reader-{meeting_id}")
+        consumer.subscribe(topics)
+
+        try:
+            while True:
+                msg = consumer.poll(timeout)
+                if msg is None:
+                    continue
+                if msg.error():
+                    if msg.error().code() == KafkaError._PARTITION_EOF:
+                        continue
+                    raise Exception(f"Kafka error: {msg.error()}")
+
+                message = MeetingMessage.from_json(msg.value().decode('utf-8'))
+                if message.meeting_id == meeting_id:
+                    yield message
+        finally:
+            consumer.close()
+
+    def get_conversation_history(
+        self,
+        meeting_id: str,
+        since_round: int = 0
+    ) -> list[MeetingMessage]:
+        """Get all messages for a meeting since a given round."""
+        messages = []
+        consumer = self.create_consumer(f"history-{meeting_id}")
+        consumer.subscribe([self.TOPIC_MESSAGES, self.TOPIC_USER_INPUT])
+
+        # Read from beginning
+        consumer.poll(0)  # Trigger assignment
+        partitions = consumer.assignment()
+        for partition in partitions:
+            consumer.seek_to_beginning(partition)
+
+        # Collect messages with timeout
+        empty_polls = 0
+        while empty_polls < 3:
+            msg = consumer.poll(0.5)
+            if msg is None:
+                empty_polls += 1
+                continue
+            if msg.error():
+                continue
+
+            empty_polls = 0
+            message = MeetingMessage.from_json(msg.value().decode('utf-8'))
+            if message.meeting_id == meeting_id and message.round_number >= since_round:
+                messages.append(message)
+
+        consumer.close()
+        return sorted(messages, key=lambda m: m.timestamp)
+
+    def close(self):
+        """Clean up resources."""
+        if self._producer:
+            self._producer.flush()
+```
+
+---
+
+## Phase 3: Multi-Session Orchestrator
+
+The orchestrator manages independent Claude sessions for each agent.
+
+### 3.1 Agent Session Manager
+
+**`src/meeting/agent_session.py`**
+
+```python
+"""Manages individual Claude CLI sessions for agents."""
 
 import subprocess
 import json
-import sys
 from pathlib import Path
-from datetime import datetime
 from dataclasses import dataclass, field
-from typing import Optional, Iterator
-import argparse
+from typing import Optional
+import threading
+import queue
+
 
 @dataclass
-class AgentResponse:
-    agent: str
-    content: str
-    timestamp: datetime = field(default_factory=datetime.now)
+class AgentConfig:
+    """Configuration for an agent."""
+    name: str
+    display_name: str
+    role: str
+    icon: str
+    persona_path: Path
+    tools: list[str] = field(default_factory=lambda: ["Read", "Grep", "Glob"])
+    model: str = "sonnet"
+
 
 @dataclass
-class MeetingSession:
-    topic: str
+class AgentSession:
+    """Represents a persistent Claude session for an agent."""
+
+    config: AgentConfig
     session_id: Optional[str] = None
-    responses: list[AgentResponse] = field(default_factory=list)
-    decisions: list[str] = field(default_factory=list)
-    action_items: list[str] = field(default_factory=list)
-    start_time: datetime = field(default_factory=datetime.now)
+    working_dir: Path = field(default_factory=Path.cwd)
 
-class ClaudeRunner:
-    """Runs Claude Code CLI commands with session management."""
-
-    def __init__(self, working_dir: Path = None):
-        self.working_dir = working_dir or Path.cwd()
-        self.current_session: Optional[str] = None
-
-    def run(
+    def invoke(
         self,
         prompt: str,
-        system_prompt: str = None,
-        resume: str = None,
-        allowed_tools: list[str] = None,
-        stream: bool = False
-    ) -> dict:
-        """Run Claude CLI and return result."""
+        conversation_history: str = "",
+        timeout: int = 120
+    ) -> str:
+        """Invoke the agent with a prompt and return response."""
 
-        cmd = ["claude", "-p", prompt]
+        # Build full prompt with conversation context
+        full_prompt = self._build_prompt(prompt, conversation_history)
 
-        if stream:
-            cmd.extend(["--output-format", "stream-json"])
-        else:
-            cmd.extend(["--output-format", "json"])
+        # Build command
+        cmd = [
+            "claude",
+            "-p", full_prompt,
+            "--output-format", "json",
+            "--allowedTools", ",".join(self.config.tools),
+        ]
 
-        if system_prompt:
-            cmd.extend(["--append-system-prompt", system_prompt])
+        # Add system prompt from persona file
+        if self.config.persona_path.exists():
+            cmd.extend(["--append-system-prompt", self.config.persona_path.read_text()])
 
-        if resume:
-            cmd.extend(["--resume", resume])
-        elif self.current_session:
-            cmd.extend(["--resume", self.current_session])
+        # Resume session if we have one
+        if self.session_id:
+            cmd.extend(["--resume", self.session_id])
 
-        if allowed_tools:
-            cmd.extend(["--allowedTools", ",".join(allowed_tools)])
-
+        # Execute
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            cwd=self.working_dir
+            cwd=self.working_dir,
+            timeout=timeout
         )
 
         if result.returncode != 0:
-            return {"error": result.stderr, "is_error": True}
+            return f"[Error: {result.stderr}]"
 
         try:
             data = json.loads(result.stdout)
+            # Store session ID for future invocations
             if data.get("session_id"):
-                self.current_session = data["session_id"]
-            return data
+                self.session_id = data["session_id"]
+            return data.get("result", "")
         except json.JSONDecodeError:
-            return {"result": result.stdout, "is_error": False}
+            return result.stdout
 
-    def stream(self, prompt: str, **kwargs) -> Iterator[dict]:
-        """Stream Claude CLI output line by line."""
+    def _build_prompt(self, prompt: str, conversation_history: str) -> str:
+        """Build the full prompt with context."""
+        parts = []
 
-        cmd = ["claude", "-p", prompt, "--output-format", "stream-json"]
+        if conversation_history:
+            parts.append("## Conversation So Far\n")
+            parts.append(conversation_history)
+            parts.append("\n---\n")
 
-        if kwargs.get("system_prompt"):
-            cmd.extend(["--append-system-prompt", kwargs["system_prompt"]])
+        parts.append("## Your Turn\n")
+        parts.append(prompt)
 
-        if kwargs.get("resume") or self.current_session:
-            cmd.extend(["--resume", kwargs.get("resume") or self.current_session])
+        return "\n".join(parts)
 
-        if kwargs.get("allowed_tools"):
-            cmd.extend(["--allowedTools", ",".join(kwargs["allowed_tools"])])
 
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            cwd=self.working_dir
-        )
+class AgentPool:
+    """Manages a pool of agent sessions."""
 
-        for line in process.stdout:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    # Capture session ID from stream
-                    if data.get("session_id"):
-                        self.current_session = data["session_id"]
-                    yield data
-                except json.JSONDecodeError:
-                    yield {"type": "raw", "content": line}
+    def __init__(self, agents_dir: Path = None):
+        self.agents_dir = agents_dir or Path(".claude/agents")
+        self.sessions: dict[str, AgentSession] = {}
+        self._load_agents()
 
-        process.wait()
+    def _load_agents(self):
+        """Load agent configurations from disk."""
+        if not self.agents_dir.exists():
+            return
+
+        for agent_file in self.agents_dir.glob("*.md"):
+            config = self._parse_agent_file(agent_file)
+            if config:
+                self.sessions[config.name] = AgentSession(config=config)
+
+    def _parse_agent_file(self, path: Path) -> Optional[AgentConfig]:
+        """Parse an agent definition file."""
+        content = path.read_text()
+
+        # Parse YAML frontmatter
+        if content.startswith("---"):
+            parts = content.split("---", 2)
+            if len(parts) >= 3:
+                import yaml
+                frontmatter = yaml.safe_load(parts[1])
+
+                # Extract display name and icon from content
+                body = parts[2]
+                display_name = frontmatter.get("name", path.stem).title()
+                icon = "🤖"
+
+                # Try to find icon in content
+                for line in body.split("\n"):
+                    if "**Icon:**" in line:
+                        icon = line.split("**Icon:**")[1].strip()
+                        break
+                    if "**Name:**" in line:
+                        display_name = line.split("**Name:**")[1].strip()
+
+                return AgentConfig(
+                    name=frontmatter.get("name", path.stem),
+                    display_name=display_name,
+                    role=frontmatter.get("description", "Agent"),
+                    icon=icon,
+                    persona_path=path,
+                    tools=frontmatter.get("tools", "Read,Grep,Glob").split(","),
+                    model=frontmatter.get("model", "sonnet")
+                )
+        return None
+
+    def get_agent(self, name: str) -> Optional[AgentSession]:
+        """Get an agent session by name."""
+        return self.sessions.get(name)
+
+    def list_agents(self) -> list[str]:
+        """List available agent names."""
+        return list(self.sessions.keys())
+
+    def invoke_agent(
+        self,
+        agent_name: str,
+        prompt: str,
+        conversation_history: str = ""
+    ) -> str:
+        """Invoke a specific agent."""
+        session = self.get_agent(agent_name)
+        if not session:
+            return f"[Error: Agent '{agent_name}' not found]"
+
+        return session.invoke(prompt, conversation_history)
+```
+
+### 3.2 Meeting Orchestrator
+
+**`src/meeting/orchestrator.py`**
+
+```python
+"""Main orchestrator for multi-agent meetings."""
+
+import re
+from datetime import datetime
+from pathlib import Path
+from dataclasses import dataclass, field
+from typing import Optional, Callable
+
+from .messages import (
+    MeetingMessage, MeetingConfig, MessageType, ControlSignal
+)
+from .kafka_client import MeetingKafkaClient, KafkaConfig
+from .agent_session import AgentPool, AgentSession
+
+
+@dataclass
+class MeetingState:
+    """Current state of a meeting."""
+    config: MeetingConfig
+    current_round: int = 0
+    active_agents: list[str] = field(default_factory=list)
+    transcript: list[MeetingMessage] = field(default_factory=list)
+    decisions: list[str] = field(default_factory=list)
+    action_items: list[str] = field(default_factory=list)
+    is_complete: bool = False
+    awaiting_user: bool = False
 
 
 class MeetingOrchestrator:
     """Orchestrates multi-agent meeting discussions."""
 
-    def __init__(self, topic: str, output_dir: Path = None):
-        self.topic = topic
-        self.output_dir = output_dir or Path("./meeting_outputs")
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(
+        self,
+        config: MeetingConfig,
+        kafka_config: KafkaConfig = None,
+        agents_dir: Path = None,
+        on_message: Callable[[MeetingMessage], None] = None
+    ):
+        self.config = config
+        self.kafka = MeetingKafkaClient(kafka_config or KafkaConfig())
+        self.agent_pool = AgentPool(agents_dir)
+        self.state = MeetingState(config=config, active_agents=config.agents.copy())
+        self.on_message = on_message or (lambda m: None)
 
-        self.runner = ClaudeRunner()
-        self.session = MeetingSession(topic=topic)
-        self.transcript: list[str] = []
+        # Load facilitator
+        self.facilitator = self.agent_pool.get_agent("facilitator")
+        if not self.facilitator:
+            raise ValueError("Facilitator agent not found")
 
-    def log(self, message: str):
-        """Log message to console and transcript."""
-        print(message)
-        self.transcript.append(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
+    def run(self):
+        """Run the complete meeting."""
+        self.kafka.ensure_topics_exist()
 
-    def run_meeting(self):
-        """Execute the full meeting workflow."""
+        # Start meeting
+        self._emit_control(ControlSignal.MEETING_START, {
+            "topic": self.config.topic,
+            "agents": self.config.agents,
+            "interactive": self.config.interactive
+        })
 
-        self.log(f"\n{'='*60}")
-        self.log(f"Starting Meeting: {self.topic}")
-        self.log(f"{'='*60}\n")
+        # Opening round
+        self._run_opening()
 
-        # Phase 1: Opening
-        self.log("Phase 1: Opening the meeting...")
-        opening = self._run_phase(
-            f"""You are facilitating a meeting about: {self.topic}
+        # Discussion rounds
+        while self.state.current_round < self.config.max_rounds and not self.state.is_complete:
+            self.state.current_round += 1
+            self._run_discussion_round()
 
-Using the meeting-orchestration skill, open this meeting:
-1. Introduce the topic
-2. Select 2-3 relevant agents from the roster
-3. Set the agenda
-4. Invite the first agent to share their perspective
-
-Format agent responses as: 🎭 **[Name] ([Role]):** [Their input]"""
-        )
-        self.log(f"\n{opening}\n")
-
-        # Phase 2: Discussion rounds
-        for round_num in range(1, 4):
-            self.log(f"\nPhase 2.{round_num}: Discussion round {round_num}...")
-
-            discussion = self._run_phase(
-                f"""Continue the meeting discussion (round {round_num}/3).
-
-Have the agents:
-- Build on previous points
-- Offer different perspectives
-- Identify areas of agreement and disagreement
-- Ask each other clarifying questions
-
-End this round with a question for the user (Project Lead)."""
-            )
-            self.log(f"\n{discussion}\n")
-
-            # Get user input
-            user_input = input("\n[Your response as Project Lead]: ").strip()
-            if user_input.lower() in ['exit', 'quit', 'done']:
+            # Check if facilitator ended meeting
+            if self.state.is_complete:
                 break
 
-            # Continue with user input
-            self._run_phase(f"The Project Lead responds: {user_input}")
+            # Handle user input if interactive and requested
+            if self.config.interactive and self.state.awaiting_user:
+                self._emit_control(ControlSignal.AWAIT_USER)
+                # TUI will handle user input and publish to Kafka
+                user_msg = self._wait_for_user_input()
+                if user_msg:
+                    self._process_user_message(user_msg)
+                self.state.awaiting_user = False
 
-        # Phase 3: Synthesis
-        self.log("\nPhase 3: Synthesizing discussion...")
-        synthesis = self._run_phase(
-            """Synthesize the meeting discussion:
-1. Summarize key points from each agent
-2. Highlight areas of agreement
-3. Note any unresolved tensions
-4. Propose decisions to make"""
+        # Closing
+        self._run_closing()
+
+        # Generate outputs
+        self._generate_outputs()
+
+        self._emit_control(ControlSignal.MEETING_END)
+
+    def _run_opening(self):
+        """Run the meeting opening."""
+        prompt = f"""
+You are facilitating a meeting about: **{self.config.topic}**
+
+Participating agents: {', '.join(self.config.agents)}
+Interactive mode: {'Yes - user can participate' if self.config.interactive else 'No - autonomous discussion'}
+
+Open this meeting:
+1. Welcome participants
+2. State the topic and objectives
+3. Set the agenda
+4. Invite the first relevant agent(s) to share their perspective
+
+Use [NEXT_SPEAKER: agent_name] to indicate who should speak.
+"""
+        response = self.facilitator.invoke(prompt)
+        self._publish_agent_message("facilitator", "Facilitator", "🎯", response)
+
+        # Parse and invoke next speakers
+        self._handle_facilitator_response(response)
+
+    def _run_discussion_round(self):
+        """Run a single discussion round."""
+        # Get conversation history
+        history = self._format_conversation_history()
+
+        # Ask facilitator to continue
+        prompt = f"""
+Continue the discussion (Round {self.state.current_round}/{self.config.max_rounds}).
+
+Have agents:
+- Build on previous points
+- Offer different perspectives
+- Identify areas of agreement/disagreement
+
+{"End this round with [AWAIT_USER] if you need user input." if self.config.interactive else ""}
+Use [NEXT_SPEAKER: agent_name] to call on specific agents.
+Use [ROUND_COMPLETE] when this round is done.
+Use [MEETING_END] if the discussion has reached a natural conclusion.
+"""
+        response = self.facilitator.invoke(prompt, history)
+        self._publish_agent_message("facilitator", "Facilitator", "🎯", response)
+
+        self._handle_facilitator_response(response)
+
+    def _run_closing(self):
+        """Run the meeting closing."""
+        history = self._format_conversation_history()
+
+        prompt = """
+Close this meeting:
+1. Summarize key points discussed
+2. List decisions made
+3. Assign action items with owners
+4. Note any open questions
+5. Thank participants
+
+Format decisions as: `DECISION: [description]`
+Format action items as: `ACTION: [description] - Owner: [agent]`
+"""
+        response = self.facilitator.invoke(prompt, history)
+        self._publish_agent_message("facilitator", "Facilitator", "🎯", response)
+
+        # Extract decisions and action items
+        self._extract_outcomes(response)
+
+    def _handle_facilitator_response(self, response: str):
+        """Parse facilitator response and invoke agents."""
+
+        # Check for control signals
+        if "[MEETING_END]" in response:
+            self.state.is_complete = True
+            return
+
+        if "[AWAIT_USER]" in response:
+            self.state.awaiting_user = True
+
+        if "[ROUND_COMPLETE]" in response:
+            self._emit_control(ControlSignal.ROUND_COMPLETE, {
+                "round": self.state.current_round
+            })
+            return
+
+        # Find next speakers
+        next_speakers = re.findall(r'\[NEXT_SPEAKER:\s*(\w+)\]', response)
+        if not next_speakers:
+            # Also check for @mentions
+            next_speakers = re.findall(r'@(\w+)', response)
+
+        # Invoke each speaker
+        history = self._format_conversation_history()
+        for speaker in next_speakers:
+            if speaker in self.state.active_agents:
+                self._invoke_agent(speaker, history)
+
+    def _invoke_agent(self, agent_name: str, conversation_history: str):
+        """Invoke a specific agent and publish their response."""
+        session = self.agent_pool.get_agent(agent_name)
+        if not session:
+            return
+
+        prompt = f"""
+The Facilitator has called on you to contribute to the discussion.
+
+Review the conversation and provide your perspective.
+Be concise and focused. Reference other agents' points when relevant.
+"""
+        response = session.invoke(prompt, conversation_history)
+
+        self._publish_agent_message(
+            session.config.name,
+            session.config.display_name,
+            session.config.icon,
+            response
         )
-        self.log(f"\n{synthesis}\n")
 
-        # Phase 4: Decisions
-        self.log("\nPhase 4: Finalizing decisions and action items...")
-        decisions = self._run_phase(
-            """Finalize the meeting:
-1. List all decisions made (get user confirmation)
-2. Assign action items with owners
-3. Note open questions for follow-up
-4. Summarize next steps"""
-        )
-        self.log(f"\n{decisions}\n")
-
-        # Phase 5: Generate documentation
-        self.log("\nPhase 5: Generating meeting documentation...")
-        self._generate_documentation()
-
-        self.log(f"\n{'='*60}")
-        self.log(f"Meeting Complete: {self.topic}")
-        self.log(f"Duration: {(datetime.now() - self.session.start_time).total_seconds():.1f}s")
-        self.log(f"{'='*60}\n")
-
-    def _run_phase(self, prompt: str) -> str:
-        """Run a meeting phase and capture response."""
-
-        result = self.runner.run(
-            prompt=prompt,
-            allowed_tools=["Read", "Grep", "Glob"],
+    def _publish_agent_message(
+        self,
+        agent_name: str,
+        display_name: str,
+        icon: str,
+        content: str
+    ):
+        """Publish an agent message to Kafka."""
+        message = MeetingMessage(
+            sender=display_name,
+            sender_role=agent_name,
+            sender_icon=icon,
+            message_type=MessageType.AGENT_MESSAGE.value,
+            content=content,
+            meeting_id=self.config.meeting_id,
+            round_number=self.state.current_round
         )
 
-        if result.get("is_error"):
-            return f"Error: {result.get('error', 'Unknown error')}"
+        self.state.transcript.append(message)
+        self.kafka.publish_message(message)
+        self.on_message(message)
 
-        response_text = result.get("result", "")
-        self.session.responses.append(AgentResponse(
-            agent="Meeting",
-            content=response_text
-        ))
-
-        # Store session ID
-        if result.get("session_id"):
-            self.session.session_id = result["session_id"]
-
-        return response_text
-
-    def _generate_documentation(self):
-        """Generate meeting summary document."""
-
-        # Ask Claude to generate the summary
-        summary = self._run_phase(
-            f"""Generate a complete meeting summary document following the format in @output-format.md.
-
-Include:
-- Executive summary
-- Discussion summary by topic
-- All decisions made
-- Action items with owners
-- Open questions
-- Next steps
-
-Topic: {self.topic}"""
+    def _emit_control(self, signal: ControlSignal, data: dict = None):
+        """Emit a control signal."""
+        message = MeetingMessage(
+            sender="system",
+            sender_role="control",
+            message_type=MessageType.CONTROL.value,
+            control_signal=signal.value,
+            control_data=data or {},
+            meeting_id=self.config.meeting_id,
+            round_number=self.state.current_round
         )
 
-        # Save to file
-        slug = self.topic.lower().replace(" ", "-")[:30]
+        self.kafka.publish_message(message)
+        self.on_message(message)
+
+    def _format_conversation_history(self) -> str:
+        """Format transcript as markdown for agent context."""
+        lines = []
+        for msg in self.state.transcript:
+            lines.append(msg.to_markdown())
+        return "\n".join(lines)
+
+    def _wait_for_user_input(self, timeout: float = 300) -> Optional[MeetingMessage]:
+        """Wait for user input from Kafka."""
+        for message in self.kafka.consume_messages(
+            [self.kafka.TOPIC_USER_INPUT],
+            self.config.meeting_id,
+            timeout=timeout
+        ):
+            if message.message_type == MessageType.USER_INPUT.value:
+                self.state.transcript.append(message)
+                return message
+        return None
+
+    def _process_user_message(self, message: MeetingMessage):
+        """Process user input and continue discussion."""
+        # Facilitator acknowledges user input
+        history = self._format_conversation_history()
+        prompt = f"""
+The user (Project Lead) has provided input:
+
+"{message.content}"
+
+Acknowledge their input and continue the discussion appropriately.
+"""
+        response = self.facilitator.invoke(prompt, history)
+        self._publish_agent_message("facilitator", "Facilitator", "🎯", response)
+        self._handle_facilitator_response(response)
+
+    def _extract_outcomes(self, closing_response: str):
+        """Extract decisions and action items from closing."""
+        # Extract decisions
+        decisions = re.findall(r'DECISION:\s*(.+?)(?:\n|$)', closing_response)
+        self.state.decisions.extend(decisions)
+
+        # Extract action items
+        actions = re.findall(r'ACTION:\s*(.+?)(?:\n|$)', closing_response)
+        self.state.action_items.extend(actions)
+
+    def _generate_outputs(self):
+        """Generate meeting output documents."""
+        output_dir = Path(self.config.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         date_str = datetime.now().strftime("%Y-%m-%d")
-        filename = f"meeting-{slug}-{date_str}.md"
-
-        output_path = self.output_dir / filename
-        output_path.write_text(summary)
-        self.log(f"\nSaved meeting summary to: {output_path}")
-
-        # Also save raw transcript
-        transcript_path = self.output_dir / f"transcript-{slug}-{date_str}.txt"
-        transcript_path.write_text("\n".join(self.transcript))
-        self.log(f"Saved transcript to: {transcript_path}")
-
-        # Save JSON for programmatic access
-        json_path = self.output_dir / f"meeting-{slug}-{date_str}.json"
-        json_data = {
-            "topic": self.topic,
-            "session_id": self.session.session_id,
-            "start_time": self.session.start_time.isoformat(),
-            "end_time": datetime.now().isoformat(),
-            "responses": [
-                {
-                    "agent": r.agent,
-                    "content": r.content,
-                    "timestamp": r.timestamp.isoformat()
-                }
-                for r in self.session.responses
-            ]
-        }
-        json_path.write_text(json.dumps(json_data, indent=2))
-        self.log(f"Saved JSON data to: {json_path}")
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Run a multi-agent meeting")
-    parser.add_argument("topic", help="Meeting topic")
-    parser.add_argument("--output", "-o", default="./meeting_outputs", help="Output directory")
-    args = parser.parse_args()
-
-    orchestrator = MeetingOrchestrator(
-        topic=args.topic,
-        output_dir=Path(args.output)
-    )
-    orchestrator.run_meeting()
-
-
-if __name__ == "__main__":
-    main()
-```
-
-### 3.2 Live Stream Monitor
-
-**`scripts/stream_monitor.py`**
-
-```python
-#!/usr/bin/env python3
-"""
-Stream Monitor - Real-time display of Claude Code output.
-"""
-
-import subprocess
-import json
-import sys
-from datetime import datetime
-
-try:
-    from rich.console import Console
-    from rich.live import Live
-    from rich.panel import Panel
-    from rich.text import Text
-    RICH_AVAILABLE = True
-except ImportError:
-    RICH_AVAILABLE = False
-    print("Note: Install 'rich' for better display: pip install rich")
-
-
-def stream_meeting(prompt: str):
-    """Stream a meeting session with live display."""
-
-    cmd = [
-        "claude", "-p", prompt,
-        "--output-format", "stream-json",
-        "--allowedTools", "Read,Grep,Glob"
-    ]
-
-    process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-
-    current_text = ""
-
-    if RICH_AVAILABLE:
-        console = Console()
-        with Live(Panel("Starting meeting...", title="Meeting"), refresh_per_second=4) as live:
-            for line in process.stdout:
-                if line.strip():
-                    try:
-                        data = json.loads(line)
-
-                        # Handle different message types
-                        if data.get("type") == "content_block_delta":
-                            delta = data.get("delta", {})
-                            if delta.get("type") == "text_delta":
-                                current_text += delta.get("text", "")
-                                live.update(Panel(
-                                    Text(current_text[-2000:]),  # Last 2000 chars
-                                    title="Meeting in Progress"
-                                ))
-
-                        elif data.get("type") == "result":
-                            live.update(Panel(
-                                data.get("result", "Complete"),
-                                title="Meeting Complete"
-                            ))
-
-                    except json.JSONDecodeError:
-                        pass
-    else:
-        # Simple fallback without rich
-        for line in process.stdout:
-            if line.strip():
-                try:
-                    data = json.loads(line)
-                    if data.get("type") == "content_block_delta":
-                        delta = data.get("delta", {})
-                        if delta.get("type") == "text_delta":
-                            print(delta.get("text", ""), end="", flush=True)
-                except json.JSONDecodeError:
-                    pass
-
-    process.wait()
-
-
-if __name__ == "__main__":
-    topic = " ".join(sys.argv[1:]) or "Project Planning Discussion"
-    prompt = f"""Run a meeting about: {topic}
-
-Using the meeting-orchestration skill, facilitate a full meeting with multiple agent perspectives."""
-
-    stream_meeting(prompt)
-```
-
----
-
-## Phase 4: Live Monitoring with Hooks
-
-Configure hooks for automatic logging and monitoring.
-
-### 4.1 Hook Configuration
-
-Add to `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python scripts/hooks/log_tool_use.py pre"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python scripts/hooks/log_tool_use.py post"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python scripts/hooks/session_complete.py"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### 4.2 Tool Logging Hook
-
-**`scripts/hooks/log_tool_use.py`**
-
-```python
-#!/usr/bin/env python3
-"""Hook script to log tool usage."""
-
-import json
-import sys
-from datetime import datetime
-from pathlib import Path
-
-LOG_FILE = Path.home() / ".claude" / "meeting_tool_log.jsonl"
-
-def main():
-    phase = sys.argv[1] if len(sys.argv) > 1 else "unknown"
-
-    # Read hook input from stdin
-    try:
-        input_data = json.load(sys.stdin)
-    except:
-        input_data = {}
-
-    log_entry = {
-        "timestamp": datetime.now().isoformat(),
-        "phase": phase,
-        "tool": input_data.get("tool_name", "unknown"),
-        "input": input_data.get("tool_input", {}),
-    }
-
-    # Append to log file
-    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(LOG_FILE, "a") as f:
-        f.write(json.dumps(log_entry) + "\n")
-
-    # Allow operation to proceed
-    sys.exit(0)
-
-if __name__ == "__main__":
-    main()
-```
-
-### 4.3 Session Complete Hook
-
-**`scripts/hooks/session_complete.py`**
-
-```python
-#!/usr/bin/env python3
-"""Hook script called when Claude session completes."""
-
-import json
-import sys
-from datetime import datetime
-from pathlib import Path
-
-def main():
-    # Read session data from stdin
-    try:
-        session_data = json.load(sys.stdin)
-    except:
-        session_data = {}
-
-    # Log session completion
-    log_entry = {
-        "timestamp": datetime.now().isoformat(),
-        "event": "session_complete",
-        "session_id": session_data.get("session_id"),
-        "duration_ms": session_data.get("duration_ms"),
-        "num_turns": session_data.get("num_turns")
-    }
-
-    log_file = Path.home() / ".claude" / "session_log.jsonl"
-    log_file.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(log_file, "a") as f:
-        f.write(json.dumps(log_entry) + "\n")
-
-    print(f"Session complete: {session_data.get('session_id', 'unknown')}")
-    sys.exit(0)
-
-if __name__ == "__main__":
-    main()
-```
-
----
-
-## Phase 5: Documentation Generation
-
-### 5.1 Slash Command for Quick Summary
-
-**`.claude/commands/meeting-summary.md`**
-
-```markdown
----
-description: Generate a meeting summary from the current session
-allowed-tools: Read,Write,Grep
----
-
-# Generate Meeting Summary
-
-Based on our discussion, generate a comprehensive meeting summary.
-
-## Required Sections
-
-1. **Executive Summary** - 2-3 sentences capturing key outcomes
-2. **Discussion Points** - Main topics covered with different perspectives
-3. **Decisions Made** - Table with decision, rationale, and owner
-4. **Action Items** - Checklist with owner and due date
-5. **Open Questions** - Items needing follow-up
-6. **Next Steps** - What happens next
-
-## Output Location
-
-Save the summary to: `./meeting_outputs/summary-{date}.md`
-
-## Format
-
-Use Markdown with clear headings and formatting.
-```
-
-### 5.2 Post-Meeting Report Generator
-
-**`scripts/generate_report.py`**
-
-```python
-#!/usr/bin/env python3
-"""Generate formatted reports from meeting transcripts."""
-
-import json
-import sys
-from pathlib import Path
-from datetime import datetime
-
-def generate_markdown_report(json_path: Path) -> str:
-    """Generate Markdown from meeting JSON."""
-
-    with open(json_path) as f:
-        data = json.load(f)
-
-    md_lines = [
-        f"# Meeting Report: {data['topic']}",
-        "",
-        f"**Date:** {data['start_time'][:10]}",
-        f"**Session ID:** {data.get('session_id', 'N/A')}",
-        "",
-        "---",
-        "",
-        "## Transcript",
-        ""
-    ]
-
-    for response in data.get("responses", []):
-        md_lines.extend([
-            f"### {response['timestamp'][:19]}",
-            "",
-            response["content"],
-            "",
+        topic_slug = self.config.topic.lower().replace(" ", "-")[:30]
+
+        # Always save transcript
+        transcript_path = output_dir / f"transcript-{topic_slug}-{date_str}.md"
+        transcript_content = self._generate_transcript()
+        transcript_path.write_text(transcript_content)
+
+        # Generate requested document templates
+        for template_name in self.config.output_templates:
+            self._generate_from_template(template_name, output_dir, topic_slug, date_str)
+
+    def _generate_transcript(self) -> str:
+        """Generate full meeting transcript."""
+        lines = [
+            f"# Meeting Transcript: {self.config.topic}",
+            f"",
+            f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            f"**Participants:** {', '.join(self.config.agents)}",
+            f"**Interactive:** {'Yes' if self.config.interactive else 'No'}",
+            f"",
             "---",
             ""
+        ]
+
+        current_round = 0
+        for msg in self.state.transcript:
+            if msg.round_number > current_round:
+                current_round = msg.round_number
+                lines.append(f"\n## Round {current_round}\n")
+
+            lines.append(msg.to_markdown())
+
+        lines.extend([
+            "",
+            "---",
+            "",
+            "## Decisions",
+            ""
         ])
+        for i, decision in enumerate(self.state.decisions, 1):
+            lines.append(f"{i}. {decision}")
 
-    md_lines.extend([
-        "",
-        f"*Generated: {datetime.now().isoformat()}*"
-    ])
+        lines.extend([
+            "",
+            "## Action Items",
+            ""
+        ])
+        for item in self.state.action_items:
+            lines.append(f"- [ ] {item}")
 
-    return "\n".join(md_lines)
+        return "\n".join(lines)
+
+    def _generate_from_template(
+        self,
+        template_name: str,
+        output_dir: Path,
+        topic_slug: str,
+        date_str: str
+    ):
+        """Generate a document from a template."""
+        template_path = Path(f".claude/templates/{template_name}.md")
+        if not template_path.exists():
+            return
+
+        # Use facilitator to generate document based on template
+        template_content = template_path.read_text()
+        history = self._format_conversation_history()
+
+        prompt = f"""
+Generate a document based on this template:
+
+{template_content}
+
+Use the meeting discussion to fill in the template.
+Decisions made: {self.state.decisions}
+Action items: {self.state.action_items}
+"""
+        document = self.facilitator.invoke(prompt, history)
+
+        output_path = output_dir / f"{template_name}-{topic_slug}-{date_str}.md"
+        output_path.write_text(document)
+```
+
+---
+
+## Phase 4: Textual TUI
+
+Rich terminal UI for interactive meetings.
+
+### 4.1 TUI Application
+
+**`src/meeting/tui.py`**
+
+```python
+"""Textual TUI for interactive meeting participation."""
+
+from textual.app import App, ComposeResult
+from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
+from textual.widgets import Header, Footer, Static, Input, Button, Label, ListView, ListItem
+from textual.reactive import reactive
+from textual.message import Message
+from rich.text import Text
+from rich.markdown import Markdown
+from pathlib import Path
+from datetime import datetime
+import threading
+
+from .messages import MeetingMessage, MeetingConfig, MessageType
+from .kafka_client import MeetingKafkaClient, KafkaConfig
+from .orchestrator import MeetingOrchestrator
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python generate_report.py <meeting.json>")
-        sys.exit(1)
+class MessageDisplay(Static):
+    """Widget to display a single meeting message."""
 
-    json_path = Path(sys.argv[1])
-    if not json_path.exists():
-        print(f"File not found: {json_path}")
-        sys.exit(1)
+    def __init__(self, message: MeetingMessage):
+        super().__init__()
+        self.message = message
 
-    report = generate_markdown_report(json_path)
-
-    output_path = json_path.with_suffix(".md")
-    output_path.write_text(report)
-    print(f"Generated: {output_path}")
+    def compose(self) -> ComposeResult:
+        formatted = f"{self.message.sender_icon} **{self.message.sender}:** {self.message.content}"
+        yield Static(Markdown(formatted))
 
 
-if __name__ == "__main__":
-    main()
+class ConversationView(ScrollableContainer):
+    """Scrollable view of the meeting conversation."""
+
+    def add_message(self, message: MeetingMessage):
+        """Add a new message to the view."""
+        widget = MessageDisplay(message)
+        self.mount(widget)
+        self.scroll_end(animate=False)
+
+
+class AgentSelector(Container):
+    """Widget for selecting meeting participants."""
+
+    def __init__(self, available_agents: list[str]):
+        super().__init__()
+        self.available_agents = available_agents
+        self.selected_agents: set[str] = set()
+
+    def compose(self) -> ComposeResult:
+        yield Label("Select Agents:")
+        for agent in self.available_agents:
+            yield Button(agent, id=f"agent-{agent}", variant="default")
+
+    def on_button_pressed(self, event: Button.Pressed):
+        agent_name = event.button.id.replace("agent-", "")
+        if agent_name in self.selected_agents:
+            self.selected_agents.discard(agent_name)
+            event.button.variant = "default"
+        else:
+            self.selected_agents.add(agent_name)
+            event.button.variant = "success"
+
+
+class MeetingTUI(App):
+    """Main TUI application for meeting orchestration."""
+
+    CSS = """
+    Screen {
+        layout: grid;
+        grid-size: 1 3;
+        grid-rows: auto 1fr auto;
+    }
+
+    #header-container {
+        height: 3;
+        background: $primary;
+        padding: 1;
+    }
+
+    #conversation {
+        border: round $primary;
+        padding: 1;
+    }
+
+    #input-container {
+        height: 5;
+        layout: horizontal;
+        padding: 1;
+    }
+
+    #user-input {
+        width: 80%;
+    }
+
+    #send-button {
+        width: 20%;
+    }
+
+    .agent-button {
+        margin: 1;
+    }
+
+    #status {
+        dock: bottom;
+        height: 1;
+        background: $surface;
+    }
+    """
+
+    BINDINGS = [
+        ("ctrl+q", "quit", "Quit"),
+        ("ctrl+s", "send", "Send"),
+        ("escape", "cancel", "Cancel"),
+    ]
+
+    meeting_active = reactive(False)
+    status_text = reactive("Ready")
+
+    def __init__(
+        self,
+        config: MeetingConfig = None,
+        kafka_config: KafkaConfig = None,
+        agents_dir: Path = None
+    ):
+        super().__init__()
+        self.config = config
+        self.kafka_config = kafka_config or KafkaConfig()
+        self.agents_dir = agents_dir or Path(".claude/agents")
+        self.kafka = MeetingKafkaClient(self.kafka_config)
+        self.orchestrator: MeetingOrchestrator = None
+        self.orchestrator_thread: threading.Thread = None
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+
+        with Container(id="header-container"):
+            yield Label(f"Meeting: {self.config.topic if self.config else 'New Meeting'}")
+
+        yield ConversationView(id="conversation")
+
+        with Horizontal(id="input-container"):
+            yield Input(
+                placeholder="Type your message (or leave empty to observe)...",
+                id="user-input"
+            )
+            yield Button("Send", id="send-button", variant="primary")
+
+        yield Footer()
+
+    def on_mount(self):
+        """Start meeting when mounted."""
+        if self.config:
+            self.start_meeting()
+
+    def start_meeting(self):
+        """Start the meeting orchestration in a background thread."""
+        self.meeting_active = True
+        self.status_text = "Meeting in progress..."
+
+        self.orchestrator = MeetingOrchestrator(
+            config=self.config,
+            kafka_config=self.kafka_config,
+            agents_dir=self.agents_dir,
+            on_message=self._on_message
+        )
+
+        self.orchestrator_thread = threading.Thread(target=self._run_meeting)
+        self.orchestrator_thread.daemon = True
+        self.orchestrator_thread.start()
+
+    def _run_meeting(self):
+        """Run meeting in background thread."""
+        try:
+            self.orchestrator.run()
+        except Exception as e:
+            self.call_from_thread(self._show_error, str(e))
+        finally:
+            self.call_from_thread(self._meeting_complete)
+
+    def _on_message(self, message: MeetingMessage):
+        """Handle new message from orchestrator."""
+        self.call_from_thread(self._add_message, message)
+
+    def _add_message(self, message: MeetingMessage):
+        """Add message to conversation view (main thread)."""
+        conversation = self.query_one("#conversation", ConversationView)
+        conversation.add_message(message)
+
+        # Update status
+        if message.control_signal == "await_user":
+            self.status_text = "Awaiting your input..."
+
+    def _meeting_complete(self):
+        """Handle meeting completion."""
+        self.meeting_active = False
+        self.status_text = "Meeting complete. Press Ctrl+Q to exit."
+
+    def _show_error(self, error: str):
+        """Show error message."""
+        self.status_text = f"Error: {error}"
+
+    def on_button_pressed(self, event: Button.Pressed):
+        """Handle send button."""
+        if event.button.id == "send-button":
+            self.action_send()
+
+    def action_send(self):
+        """Send user message."""
+        input_widget = self.query_one("#user-input", Input)
+        message_text = input_widget.value.strip()
+
+        if message_text:
+            # Publish user message to Kafka
+            message = MeetingMessage(
+                sender="You",
+                sender_role="Project Lead",
+                sender_icon="👤",
+                message_type=MessageType.USER_INPUT.value,
+                content=message_text,
+                meeting_id=self.config.meeting_id,
+                round_number=self.orchestrator.state.current_round if self.orchestrator else 0
+            )
+
+            self.kafka.publish_message(message)
+
+            # Add to local view
+            conversation = self.query_one("#conversation", ConversationView)
+            conversation.add_message(message)
+
+            # Clear input
+            input_widget.value = ""
+            self.status_text = "Message sent"
+
+    def action_quit(self):
+        """Quit the application."""
+        self.exit()
+
+
+def run_interactive_meeting(
+    topic: str,
+    agents: list[str],
+    facilitator_template: str = "default",
+    output_templates: list[str] = None,
+    output_dir: str = "./meeting_outputs"
+):
+    """Run an interactive meeting with TUI."""
+
+    config = MeetingConfig(
+        topic=topic,
+        agents=agents,
+        interactive=True,
+        facilitator_template=facilitator_template,
+        output_templates=output_templates or [],
+        output_dir=output_dir
+    )
+
+    app = MeetingTUI(config=config)
+    app.run()
+```
+
+---
+
+## Phase 5: Facilitator Templates
+
+Template-based facilitator strategies for different meeting types.
+
+### 5.1 Template Directory Structure
+
+```
+.claude/
+└── templates/
+    └── facilitator/
+        ├── default.md
+        ├── brainstorm.md
+        ├── decision.md
+        ├── retrospective.md
+        └── planning.md
+```
+
+### 5.2 Default Template
+
+**`.claude/templates/facilitator/default.md`**
+
+```markdown
+# Default Facilitator Template
+
+## Meeting Type
+
+General discussion with balanced participation
+
+## Opening Protocol
+
+1. Welcome all participants
+2. State the topic clearly
+3. Outline 2-3 key questions to address
+4. Invite perspectives from most relevant agents first
+
+## Discussion Protocol
+
+- Ensure each agent speaks at least once per round
+- Encourage cross-references between agents
+- Summarize key points before moving to next topic
+- Maximum 3 agents per exchange before synthesis
+
+## Closing Protocol
+
+1. Summarize major themes
+2. Highlight areas of agreement
+3. Note unresolved tensions
+4. Propose concrete decisions
+5. Assign action items
+
+## Agent Selection Criteria
+
+| Topic Category | Primary Agents       | Secondary Agents |
+| -------------- | -------------------- | ---------------- |
+| Requirements   | analyst, pm          | architect        |
+| Technical      | architect, developer | tester           |
+| Design         | designer, analyst    | developer        |
+| Process        | pm, tester           | developer        |
+```
+
+### 5.3 Brainstorm Template
+
+**`.claude/templates/facilitator/brainstorm.md`**
+
+```markdown
+# Brainstorm Facilitator Template
+
+## Meeting Type
+
+Creative ideation with divergent thinking
+
+## Opening Protocol
+
+1. State the challenge/opportunity
+2. Establish "no bad ideas" principle
+3. Set quantity over quality goal
+4. Start with most creative agents (designer, analyst)
+
+## Discussion Protocol
+
+- Rapid-fire contributions (short responses)
+- Build on others' ideas ("Yes, and...")
+- Encourage wild ideas
+- Defer judgment until closing
+- Use "What if..." prompts
+
+## Closing Protocol
+
+1. Group similar ideas into themes
+2. Identify top 3-5 ideas by novelty
+3. Identify top 3-5 ideas by feasibility
+4. Select ideas for further exploration
+5. Assign owners for follow-up
+
+## Special Rules
+
+- No criticism during ideation
+- Every agent must contribute at least 2 ideas
+- Facilitator prompts with "building on that..." if energy drops
+```
+
+### 5.4 Decision Template
+
+**`.claude/templates/facilitator/decision.md`**
+
+```markdown
+# Decision Facilitator Template
+
+## Meeting Type
+
+Structured decision-making with clear outcomes
+
+## Opening Protocol
+
+1. State the decision to be made
+2. Present the options (if known)
+3. Establish decision criteria
+4. Assign advocates for different options
+
+## Discussion Protocol
+
+- Each option gets equal airtime
+- Focus on trade-offs, not preferences
+- Require evidence for claims
+- Document pros/cons explicitly
+- Check for missing alternatives
+
+## Closing Protocol
+
+1. Summarize each option's pros/cons
+2. Apply decision criteria
+3. Call for recommendation from each agent
+4. Synthesize into final decision
+5. Document rationale
+
+## Decision Format
+```
+
+DECISION: [What was decided]
+RATIONALE: [Why this option]
+ALTERNATIVES CONSIDERED: [Other options]
+RISKS: [Potential issues]
+OWNER: [Who is responsible]
+
+```
+
+```
+
+---
+
+## Phase 6: Document Generation
+
+Template system for meeting output documents.
+
+### 6.1 Document Templates Directory
+
+```
+.claude/
+└── templates/
+    └── documents/
+        ├── meeting-summary.md
+        ├── action-items.md
+        ├── decision-record.md
+        ├── technical-spec.md
+        └── retrospective-report.md
+```
+
+### 6.2 Meeting Summary Template
+
+**`.claude/templates/documents/meeting-summary.md`**
+
+```markdown
+# Meeting Summary Template
+
+## Document Type
+
+Executive summary of meeting outcomes
+
+## Template
+
+# Meeting Summary: {{topic}}
+
+**Date:** {{date}}
+**Participants:** {{participants}}
+**Duration:** {{duration}}
+
+---
+
+## Executive Summary
+
+{{2-3 sentence summary of key outcomes}}
+
+---
+
+## Discussion Highlights
+
+### {{subtopic_1}}
+
+{{key points and perspectives}}
+
+### {{subtopic_2}}
+
+{{key points and perspectives}}
+
+---
+
+## Decisions Made
+
+| #   | Decision | Rationale | Owner |
+| --- | -------- | --------- | ----- |
+
+{{decisions_table}}
+
+---
+
+## Action Items
+
+{{action_items_checklist}}
+
+---
+
+## Open Questions
+
+{{open_questions}}
+
+---
+
+## Next Steps
+
+{{next_steps}}
+
+---
+
+_Generated by Meeting Orchestrator_
+```
+
+### 6.3 Decision Record Template (ADR Style)
+
+**`.claude/templates/documents/decision-record.md`**
+
+```markdown
+# Decision Record Template
+
+## Document Type
+
+Architecture Decision Record (ADR) style
+
+## Template
+
+# ADR-{{number}}: {{title}}
+
+**Date:** {{date}}
+**Status:** Accepted
+**Deciders:** {{participants}}
+
+## Context
+
+{{background and problem statement}}
+
+## Decision
+
+{{the decision that was made}}
+
+## Rationale
+
+{{why this decision was made}}
+
+### Options Considered
+
+#### Option 1: {{option_1_name}}
+
+- Pros: {{pros}}
+- Cons: {{cons}}
+
+#### Option 2: {{option_2_name}}
+
+- Pros: {{pros}}
+- Cons: {{cons}}
+
+### Decision Criteria Applied
+
+{{how the decision was evaluated}}
+
+## Consequences
+
+### Positive
+
+{{benefits of this decision}}
+
+### Negative
+
+{{trade-offs accepted}}
+
+### Risks
+
+{{potential issues to monitor}}
+
+## Follow-up Actions
+
+{{action_items}}
 ```
 
 ---
@@ -1239,43 +1855,52 @@ Complete project structure:
 
 ```
 your-project/
+├── docker/
+│   └── docker-compose.yml          # Kafka + Zookeeper
+│
 ├── .claude/
-│   ├── agents/                    # Agent personas
+│   ├── agents/                      # Agent personas
 │   │   ├── analyst.md
 │   │   ├── architect.md
 │   │   ├── pm.md
 │   │   ├── developer.md
-│   │   ├── scrum-master.md
-│   │   └── meeting-facilitator.md
+│   │   ├── designer.md
+│   │   ├── tester.md
+│   │   └── facilitator.md
 │   │
-│   ├── skills/                    # Skills
-│   │   └── meeting-orchestration/
-│   │       ├── SKILL.md
-│   │       ├── agents-roster.md
-│   │       ├── meeting-template.md
-│   │       └── output-format.md
+│   ├── templates/
+│   │   ├── facilitator/             # Facilitator strategies
+│   │   │   ├── default.md
+│   │   │   ├── brainstorm.md
+│   │   │   ├── decision.md
+│   │   │   └── retrospective.md
+│   │   │
+│   │   └── documents/               # Output document templates
+│   │       ├── meeting-summary.md
+│   │       ├── action-items.md
+│   │       ├── decision-record.md
+│   │       └── technical-spec.md
 │   │
-│   ├── commands/                  # Slash commands
-│   │   ├── meeting.md             # /meeting - start a meeting
-│   │   ├── meeting-summary.md     # /meeting-summary - generate summary
-│   │   └── agents-list.md         # /agents-list - show available agents
-│   │
-│   └── settings.json              # Hooks configuration
+│   └── commands/
+│       └── meeting.md               # /meeting slash command
+│
+├── src/
+│   └── meeting/
+│       ├── __init__.py
+│       ├── messages.py              # Message schemas
+│       ├── kafka_client.py          # Kafka communication
+│       ├── agent_session.py         # Claude session management
+│       ├── orchestrator.py          # Main orchestrator
+│       └── tui.py                   # Textual TUI
 │
 ├── scripts/
-│   ├── meeting_orchestrator.py    # Main orchestrator
-│   ├── stream_monitor.py          # Live streaming display
-│   ├── generate_report.py         # Report generator
-│   │
-│   └── hooks/                     # Hook scripts
-│       ├── log_tool_use.py
-│       └── session_complete.py
+│   └── run_meeting.py               # CLI entry point
 │
-├── meeting_outputs/               # Generated outputs
-│   ├── meeting-*.md
-│   ├── meeting-*.json
-│   └── transcript-*.txt
+├── meeting_outputs/                 # Generated outputs
+│   ├── transcript-*.md
+│   └── *.md
 │
+├── pyproject.toml
 └── README.md
 ```
 
@@ -1283,68 +1908,161 @@ your-project/
 
 ## Usage Examples
 
-### Interactive Meeting (Claude Code)
+### CLI Usage
 
 ```bash
-# Start Claude Code
-claude
+# Start Kafka infrastructure
+cd docker && docker-compose up -d
 
-# Run a meeting using the skill
-> Let's have a meeting about building a new authentication system
+# Run autonomous meeting (no user interaction)
+python scripts/run_meeting.py \
+  --topic "API Redesign Discussion" \
+  --agents architect developer tester \
+  --template decision \
+  --output-docs meeting-summary decision-record
 
-# Or use slash command
-> /meeting authentication system redesign
+# Run interactive meeting with TUI
+python scripts/run_meeting.py \
+  --topic "Sprint Planning" \
+  --agents pm analyst developer designer \
+  --interactive \
+  --template default \
+  --output-docs meeting-summary action-items
+
+# Quick meeting with defaults
+python scripts/run_meeting.py \
+  --topic "Bug Triage" \
+  --agents developer tester \
+  --interactive
 ```
 
-### Scripted Meeting (Python)
+### CLI Entry Point
 
-```bash
-# Run full orchestrated meeting
-python scripts/meeting_orchestrator.py "API Redesign Discussion"
+**`scripts/run_meeting.py`**
 
-# With custom output directory
-python scripts/meeting_orchestrator.py "Sprint Planning" -o ./sprint_outputs
+```python
+#!/usr/bin/env python3
+"""CLI entry point for meeting orchestration."""
+
+import argparse
+from pathlib import Path
+
+from src.meeting.messages import MeetingConfig
+from src.meeting.kafka_client import KafkaConfig
+from src.meeting.orchestrator import MeetingOrchestrator
+from src.meeting.tui import run_interactive_meeting
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Run a multi-agent meeting")
+    parser.add_argument("--topic", "-t", required=True, help="Meeting topic")
+    parser.add_argument(
+        "--agents", "-a", nargs="+", required=True,
+        help="Agents to participate (e.g., architect developer tester)"
+    )
+    parser.add_argument(
+        "--interactive", "-i", action="store_true",
+        help="Enable interactive mode with TUI for user participation"
+    )
+    parser.add_argument(
+        "--template", default="default",
+        help="Facilitator template (default, brainstorm, decision, retrospective)"
+    )
+    parser.add_argument(
+        "--output-docs", nargs="*", default=[],
+        help="Document templates to generate (meeting-summary, decision-record, etc.)"
+    )
+    parser.add_argument(
+        "--output-dir", "-o", default="./meeting_outputs",
+        help="Output directory for generated documents"
+    )
+    parser.add_argument(
+        "--kafka-server", default="localhost:9092",
+        help="Kafka bootstrap server"
+    )
+    parser.add_argument(
+        "--max-rounds", type=int, default=5,
+        help="Maximum discussion rounds"
+    )
+
+    args = parser.parse_args()
+
+    config = MeetingConfig(
+        topic=args.topic,
+        agents=args.agents,
+        interactive=args.interactive,
+        facilitator_template=args.template,
+        output_templates=args.output_docs,
+        max_rounds=args.max_rounds,
+        output_dir=args.output_dir
+    )
+
+    kafka_config = KafkaConfig(bootstrap_servers=args.kafka_server)
+
+    if args.interactive:
+        # Run with TUI
+        run_interactive_meeting(
+            topic=args.topic,
+            agents=args.agents,
+            facilitator_template=args.template,
+            output_templates=args.output_docs,
+            output_dir=args.output_dir
+        )
+    else:
+        # Run autonomously (no user interaction)
+        orchestrator = MeetingOrchestrator(
+            config=config,
+            kafka_config=kafka_config,
+            on_message=lambda m: print(m.to_markdown())
+        )
+        orchestrator.run()
+        print(f"\nMeeting complete. Outputs saved to: {args.output_dir}")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
-### Live Streaming
+### Programmatic Usage
 
-```bash
-# Watch meeting in real-time with rich display
-python scripts/stream_monitor.py "Architecture Review"
-```
+```python
+from src.meeting.messages import MeetingConfig
+from src.meeting.orchestrator import MeetingOrchestrator
 
-### Resume Previous Meeting
+# Autonomous meeting
+config = MeetingConfig(
+    topic="Authentication System Design",
+    agents=["architect", "developer", "tester"],
+    interactive=False,  # No user interaction
+    facilitator_template="decision",
+    output_templates=["meeting-summary", "decision-record"],
+    max_rounds=4
+)
 
-```bash
-# Continue a previous meeting session
-claude --resume "550e8400-e29b-41d4-a716-446655440000" \
-  -p "Let's continue our discussion from earlier"
-```
+orchestrator = MeetingOrchestrator(config)
+orchestrator.run()
 
-### Quick Summary Generation
-
-```bash
-# In Claude Code interactive mode
-/meeting-summary
-
-# Generate report from JSON
-python scripts/generate_report.py meeting_outputs/meeting-api-redesign-2024-01-15.json
+# Access results
+print(f"Decisions: {orchestrator.state.decisions}")
+print(f"Actions: {orchestrator.state.action_items}")
 ```
 
 ---
 
 ## Summary
 
-This implementation uses **only Claude Max subscription features**:
+This implementation provides **true multi-agent meetings** with:
 
-| Feature        | How We Use It                                     |
-| -------------- | ------------------------------------------------- |
-| Custom Agents  | Agent personas in `.claude/agents/`               |
-| Skills         | Meeting orchestration in `.claude/skills/`        |
-| Slash Commands | Quick actions like `/meeting`, `/meeting-summary` |
-| Hooks          | Real-time logging in `.claude/settings.json`      |
-| CLI `-p` Mode  | Python scripts calling `claude -p`                |
-| Session Resume | `--resume` for conversation continuity            |
-| Stream JSON    | Real-time output monitoring                       |
+| Feature                   | Implementation                                           |
+| ------------------------- | -------------------------------------------------------- |
+| **Independent sessions**  | Each agent runs as separate `claude -p` with own context |
+| **Kafka messaging**       | Decoupled pub/sub communication between agents           |
+| **Persistent state**      | Sessions maintained via `--resume` across turns          |
+| **Interactive mode**      | `--interactive` flag enables TUI and user participation  |
+| **Autonomous mode**       | Without flag, runs fully autonomous with no user input   |
+| **Agent selection**       | User specifies which agents participate                  |
+| **Facilitator templates** | Pluggable meeting strategies (brainstorm, decision, etc) |
+| **Document templates**    | User selects which output documents to generate          |
+| **Full transcript**       | Complete conversation saved to markdown                  |
 
-**No API keys required** - everything runs through Claude Code with your Claude Max subscription.
+**Key difference from BMAD Party Mode:** Each agent is a genuinely independent Claude session with its own context window, enabling true disagreement and independent reasoning.
