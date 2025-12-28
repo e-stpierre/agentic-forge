@@ -69,6 +69,24 @@ Interactive commands support optional `[context]` as the last parameter to provi
 
 Agentic workflows use JSON for structured, parseable communication between agents and Python orchestrators.
 
+For multi-agent meetings, Kafka message bus provides decoupled pub/sub communication between independent AI sessions.
+
+### AI Provider Abstraction
+
+The system supports multiple AI CLI providers, enabling mixed-provider workflows where different agents use different AI backends:
+
+| Provider   | CLI Command      | Status      | Session Resume | Notes                            |
+| ---------- | ---------------- | ----------- | -------------- | -------------------------------- |
+| **Claude** | `claude`         | Supported   | Yes            | Primary provider, full support   |
+| **Cursor** | `cursor-agent`   | Supported   | Yes            | Similar CLI structure to Claude  |
+| **Codex**  | `codex`          | Planned     | TBD            | OpenAI Codex CLI                 |
+| **Copilot**| `gh copilot`     | Planned     | No             | GitHub Copilot CLI               |
+
+Agents specify their provider in configuration, enabling scenarios like:
+
+- Facilitator (Claude) + Developer 1 (Claude) + Developer 2 (Cursor)
+- Architect (Claude) + Security Reviewer (Cursor) + Tester (Claude)
+
 ## Plugin Dependencies
 
 - **Core**: Foundation plugin, no dependencies. Provides common git workflows, code quality tools, and helper commands.
@@ -167,6 +185,38 @@ All workflows are Python CLI tools invoked in the terminal. The Python scripts c
 - `communication-archive.md`: Resolved communication messages
 - `logs.md` / `agent-<name>-logs.md`: Progress and error logs; agents write to base file or their specific log based on instructions
 
+### Multi-Agent Meetings
+
+Collaborative discussion system for complex decision-making, brainstorming, and planning sessions.
+
+**Philosophy**: True multi-session architecture where each agent runs as an independent AI process with separate context windows, enabling genuine disagreement and independent reasoning. Supports both autonomous execution and interactive user participation.
+
+**Infrastructure**: Kafka message bus for decoupled agent communication (Docker Compose provided for local development).
+
+**Key Features**:
+
+- **True multi-session**: Each agent runs as separate CLI process with own session
+- **AI-agnostic**: Mix providers (Claude, Cursor, Codex, Copilot) in the same meeting
+- **Interactive mode**: User participates via TUI when `--interactive` flag set
+- **Autonomous mode**: Fully autonomous discussion without user input
+- **Template-based**: Facilitator strategies (brainstorm, decision, planning) defined in templates
+- **Document generation**: User selects output templates (meeting-summary, decision-record, etc.)
+
+**Use Cases**:
+
+- Architecture decision meetings
+- Sprint planning sessions
+- Brainstorming sessions
+- Retrospectives
+- Technical design reviews
+- Cross-functional requirement discussions
+
+**Integration**: Meeting outputs (decisions, action items) can feed into SDLC workflows:
+
+- Decision records become input for `plan-feature`
+- Action items become specs for `agentic-build`
+- Meeting transcripts provide context for implementation
+
 ## Examples
 
 ### Interactive SDLC Workflow Examples
@@ -236,6 +286,38 @@ uv run agentic-workflow --type chore --spec k8s-security-audit.md
 ```bash
 uv run agentic-workflow --type feature --spec pentest-report-generator.md
 # Autonomous implementation of report generation from scan results
+```
+
+### Multi-Agent Meeting Examples
+
+**Architecture decision meeting (autonomous)**:
+
+```bash
+uv run meeting \
+  --topic "Microservices vs Monolith for MVP" \
+  --agents architect:claude developer:claude pm:cursor \
+  --template decision \
+  --output-docs decision-record meeting-summary
+```
+
+**Sprint planning with user participation**:
+
+```bash
+uv run meeting \
+  --topic "Sprint 12 Planning" \
+  --agents pm:claude developer:claude designer:cursor tester:claude \
+  --interactive \
+  --template planning
+```
+
+**Brainstorming session (mixed providers)**:
+
+```bash
+uv run meeting \
+  --topic "New Authentication Approaches" \
+  --agents architect:claude developer:cursor security:claude \
+  --template brainstorm \
+  --output-docs meeting-summary
 ```
 
 ## Future Ideas

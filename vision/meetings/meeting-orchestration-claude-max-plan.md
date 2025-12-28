@@ -1,6 +1,6 @@
-# Implementation Plan: Multi-Agent Meeting Orchestration (Claude Max)
+# Implementation Plan: Multi-Agent Meeting Orchestration
 
-This plan describes how to build a **true multi-agent** meeting orchestration system where **independent Claude sessions** communicate via Kafka messaging, works with **Claude Max subscription** - no API keys required.
+This plan describes how to build a **true multi-agent** meeting orchestration system where **independent AI sessions** communicate via Kafka messaging. The system is **AI-agnostic**, supporting multiple CLI providers (Claude, Cursor, Codex, Copilot) in the same meeting - no API keys required when using consumer subscriptions.
 
 ---
 
@@ -10,71 +10,91 @@ This plan describes how to build a **true multi-agent** meeting orchestration sy
 2. [Infrastructure Setup](#2-infrastructure-setup)
 3. [Phase 1: Agent Personas](#phase-1-agent-personas)
 4. [Phase 2: Kafka Messaging Layer](#phase-2-kafka-messaging-layer)
-5. [Phase 3: Multi-Session Orchestrator](#phase-3-multi-session-orchestrator)
-6. [Phase 4: Textual TUI](#phase-4-textual-tui)
-7. [Phase 5: Facilitator Templates](#phase-5-facilitator-templates)
-8. [Phase 6: Document Generation](#phase-6-document-generation)
-9. [File Structure](#file-structure)
-10. [Usage Examples](#usage-examples)
+5. [Phase 3: CLI Provider Abstraction](#phase-3-cli-provider-abstraction)
+6. [Phase 4: Multi-Session Orchestrator](#phase-4-multi-session-orchestrator)
+7. [Phase 5: Textual TUI](#phase-5-textual-tui)
+8. [Phase 6: Facilitator Templates](#phase-6-facilitator-templates)
+9. [Phase 7: Document Generation](#phase-7-document-generation)
+10. [File Structure](#file-structure)
+11. [Usage Examples](#usage-examples)
 
 ---
 
 ## 1. Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                    Multi-Agent Meeting System (True Multi-Session)               │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│  ┌────────────────────────────────────────────────────────────────────────────┐ │
-│  │                           KAFKA MESSAGE BUS                                 │ │
-│  │  Topics: meeting.messages | meeting.control | meeting.user-input            │ │
-│  └────────────────────────────────────────────────────────────────────────────┘ │
-│         ▲              ▲              ▲              ▲              ▲           │
-│         │              │              │              │              │           │
-│         ▼              ▼              ▼              ▼              ▼           │
-│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐    │
-│  │ Facilitator│ │  Agent 1   │ │  Agent 2   │ │  Agent N   │ │    User    │    │
-│  │  Session   │ │  Session   │ │  Session   │ │  Session   │ │   (TUI)    │    │
-│  │            │ │            │ │            │ │            │ │            │    │
-│  │ claude -p  │ │ claude -p  │ │ claude -p  │ │ claude -p  │ │  Textual   │    │
-│  │ --resume X │ │ --resume Y │ │ --resume Z │ │ --resume W │ │    App     │    │
-│  └────────────┘ └────────────┘ └────────────┘ └────────────┘ └────────────┘    │
-│         │              │              │              │              │           │
-│         └──────────────┴──────────────┴──────────────┴──────────────┘           │
-│                                       │                                          │
-│                                       ▼                                          │
-│                          ┌────────────────────────┐                             │
-│                          │   Python Orchestrator   │                             │
-│                          │                        │                             │
-│                          │  • Session management  │                             │
-│                          │  • Turn coordination   │                             │
-│                          │  • Transcript capture  │                             │
-│                          │  • Document generation │                             │
-│                          └────────────────────────┘                             │
-│                                       │                                          │
-│                                       ▼                                          │
-│                          ┌────────────────────────┐                             │
-│                          │       Outputs          │                             │
-│                          │  • meeting-transcript  │                             │
-│                          │  • generated-docs      │                             │
-│                          │  • decisions.json      │                             │
-│                          └────────────────────────┘                             │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│              Multi-Agent Meeting System (AI-Agnostic, True Multi-Session)          │
+├───────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                    │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐ │
+│  │                            KAFKA MESSAGE BUS                                  │ │
+│  │   Topics: meeting.messages | meeting.control | meeting.user-input             │ │
+│  └──────────────────────────────────────────────────────────────────────────────┘ │
+│         ▲              ▲              ▲              ▲              ▲             │
+│         │              │              │              │              │             │
+│         ▼              ▼              ▼              ▼              ▼             │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐      │
+│  │ Facilitator│ │  Agent 1   │ │  Agent 2   │ │  Agent N   │ │    User    │      │
+│  │  (Claude)  │ │  (Claude)  │ │  (Cursor)  │ │  (Codex)   │ │   (TUI)    │      │
+│  │            │ │            │ │            │ │            │ │            │      │
+│  │ claude -p  │ │ claude -p  │ │cursor-agent│ │ codex exec │ │  Textual   │      │
+│  │ --resume X │ │ --resume Y │ │ --resume Z │ │    ...     │ │    App     │      │
+│  └────────────┘ └────────────┘ └────────────┘ └────────────┘ └────────────┘      │
+│         │              │              │              │              │             │
+│         └──────────────┴──────────────┴──────────────┴──────────────┘             │
+│                                       │                                            │
+│                                       ▼                                            │
+│                    ┌──────────────────────────────────┐                           │
+│                    │       CLI Provider Abstraction    │                           │
+│                    │  ┌────────┬────────┬───────────┐ │                           │
+│                    │  │ Claude │ Cursor │  Codex    │ │                           │
+│                    │  │Provider│Provider│ Provider  │ │                           │
+│                    │  └────────┴────────┴───────────┘ │                           │
+│                    └──────────────────────────────────┘                           │
+│                                       │                                            │
+│                                       ▼                                            │
+│                          ┌────────────────────────┐                               │
+│                          │   Python Orchestrator   │                               │
+│                          │                        │                               │
+│                          │  • Session management  │                               │
+│                          │  • Turn coordination   │                               │
+│                          │  • Transcript capture  │                               │
+│                          │  • Document generation │                               │
+│                          └────────────────────────┘                               │
+│                                       │                                            │
+│                                       ▼                                            │
+│                          ┌────────────────────────┐                               │
+│                          │       Outputs          │                               │
+│                          │  • meeting-transcript  │                               │
+│                          │  • generated-docs      │                               │
+│                          │  • decisions.json      │                               │
+│                          └────────────────────────┘                               │
+└───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Principles
 
 | Principle                      | Implementation                                                           |
 | ------------------------------ | ------------------------------------------------------------------------ |
-| **True multi-session**         | Each agent runs as separate `claude -p` process with own session         |
+| **AI-agnostic**                | Support multiple CLI providers (Claude, Cursor, Codex, Copilot)          |
+| **True multi-session**         | Each agent runs as separate CLI process with own session                 |
 | **Independent reasoning**      | Agents have separate context windows, can genuinely disagree             |
 | **Kafka messaging**            | Decoupled communication via pub/sub topics                               |
-| **Persistent sessions**        | Each agent maintains state via `--resume` across turns                   |
+| **Persistent sessions**        | Each agent maintains state via `--resume` across turns (if supported)    |
 | **Sequential turn-taking**     | Agents respond one at a time, seeing full conversation history           |
 | **Topic-based selection**      | Facilitator analyzes topic, selects relevant agents per round            |
 | **Template-based facilitator** | Facilitator behavior defined in markdown templates                       |
 | **Interactive mode flag**      | `--interactive` enables user participation, without it runs autonomously |
+
+### Supported CLI Providers
+
+| Provider    | CLI Command      | Status        | Session Resume | Output Format   |
+| ----------- | ---------------- | ------------- | -------------- | --------------- |
+| **Claude**  | `claude`         | ✅ Supported  | `--resume`     | `--output-format json` |
+| **Cursor**  | `cursor-agent`   | ✅ Supported  | `--resume`     | `--output-format`      |
+| **Codex**   | `codex`          | 🚧 Planned    | TBD            | TBD             |
+| **Copilot** | `gh copilot`     | 🚧 Planned    | No             | Text only       |
 
 ---
 
@@ -540,11 +560,16 @@ class MeetingConfig:
     meeting_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     topic: str = ""
     agents: list[str] = field(default_factory=list)  # List of agent names
+    agent_providers: dict[str, str] = field(default_factory=dict)  # agent -> provider mapping
     interactive: bool = False             # Whether user can participate
     facilitator_template: str = "default" # Which facilitator template to use
     output_templates: list[str] = field(default_factory=list)  # Document templates
     max_rounds: int = 5
     output_dir: str = "./meeting_outputs"
+
+    def get_provider(self, agent_name: str) -> str:
+        """Get the provider for an agent, defaulting to 'claude'."""
+        return self.agent_providers.get(agent_name, "claude")
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
@@ -713,24 +738,418 @@ class MeetingKafkaClient:
 
 ---
 
-## Phase 3: Multi-Session Orchestrator
+## Phase 3: CLI Provider Abstraction
 
-The orchestrator manages independent Claude sessions for each agent.
+Abstraction layer enabling multiple AI CLI providers in the same meeting.
 
-### 3.1 Agent Session Manager
+### 3.1 Provider Interface
+
+**`src/meeting/providers/base.py`**
+
+```python
+"""Base interface for AI CLI providers."""
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Optional
+from pathlib import Path
+
+
+@dataclass
+class ProviderResponse:
+    """Standardized response from any provider."""
+    content: str
+    session_id: Optional[str] = None
+    raw_output: str = ""
+    is_error: bool = False
+    error_message: str = ""
+
+
+class CLIProvider(ABC):
+    """Abstract base class for AI CLI providers."""
+
+    name: str = "base"
+
+    @abstractmethod
+    def build_command(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        session_id: Optional[str] = None,
+        model: Optional[str] = None,
+        tools: Optional[list[str]] = None,
+        working_dir: Optional[Path] = None
+    ) -> list[str]:
+        """Build the CLI command for this provider."""
+        pass
+
+    @abstractmethod
+    def parse_response(self, stdout: str, stderr: str, return_code: int) -> ProviderResponse:
+        """Parse the CLI output into a standardized response."""
+        pass
+
+    @abstractmethod
+    def supports_session_resume(self) -> bool:
+        """Whether this provider supports session resumption."""
+        pass
+
+    @abstractmethod
+    def supports_json_output(self) -> bool:
+        """Whether this provider supports structured JSON output."""
+        pass
+
+    def supports_tools(self) -> bool:
+        """Whether this provider supports tool/sandbox restrictions."""
+        return False
+```
+
+### 3.2 Claude Provider
+
+**`src/meeting/providers/claude.py`**
+
+```python
+"""Claude CLI provider implementation."""
+
+import json
+from typing import Optional
+from pathlib import Path
+
+from .base import CLIProvider, ProviderResponse
+
+
+class ClaudeProvider(CLIProvider):
+    """Provider for Anthropic's Claude CLI."""
+
+    name = "claude"
+
+    def build_command(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        session_id: Optional[str] = None,
+        model: Optional[str] = None,
+        tools: Optional[list[str]] = None,
+        working_dir: Optional[Path] = None
+    ) -> list[str]:
+        """Build claude CLI command."""
+        cmd = ["claude", "-p", prompt, "--output-format", "json"]
+
+        if system_prompt:
+            cmd.extend(["--append-system-prompt", system_prompt])
+
+        if session_id:
+            cmd.extend(["--resume", session_id])
+
+        if model:
+            cmd.extend(["--model", model])
+
+        if tools:
+            cmd.extend(["--allowedTools", ",".join(tools)])
+
+        return cmd
+
+    def parse_response(self, stdout: str, stderr: str, return_code: int) -> ProviderResponse:
+        """Parse Claude CLI JSON output."""
+        if return_code != 0:
+            return ProviderResponse(
+                content="",
+                is_error=True,
+                error_message=stderr,
+                raw_output=stdout
+            )
+
+        try:
+            data = json.loads(stdout)
+            return ProviderResponse(
+                content=data.get("result", ""),
+                session_id=data.get("session_id"),
+                raw_output=stdout
+            )
+        except json.JSONDecodeError:
+            return ProviderResponse(
+                content=stdout,
+                raw_output=stdout
+            )
+
+    def supports_session_resume(self) -> bool:
+        return True
+
+    def supports_json_output(self) -> bool:
+        return True
+
+    def supports_tools(self) -> bool:
+        return True
+```
+
+### 3.3 Cursor Provider
+
+**`src/meeting/providers/cursor.py`**
+
+```python
+"""Cursor CLI provider implementation."""
+
+import json
+from typing import Optional
+from pathlib import Path
+
+from .base import CLIProvider, ProviderResponse
+
+
+class CursorProvider(CLIProvider):
+    """Provider for Cursor's cursor-agent CLI."""
+
+    name = "cursor"
+
+    def build_command(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        session_id: Optional[str] = None,
+        model: Optional[str] = None,
+        tools: Optional[list[str]] = None,
+        working_dir: Optional[Path] = None
+    ) -> list[str]:
+        """Build cursor-agent CLI command."""
+        cmd = ["cursor-agent", "-p", prompt]
+
+        if model:
+            cmd.extend(["--model", model])
+
+        if session_id:
+            cmd.extend([f"--resume={session_id}"])
+
+        # Cursor uses --output-format similar to Claude
+        cmd.extend(["--output-format", "text"])
+
+        # Note: System prompt handling may differ - prepend to prompt if needed
+        if system_prompt:
+            # Cursor may not have --append-system-prompt, embed in prompt
+            prompt_with_system = f"<system>{system_prompt}</system>\n\n{prompt}"
+            cmd[2] = prompt_with_system
+
+        return cmd
+
+    def parse_response(self, stdout: str, stderr: str, return_code: int) -> ProviderResponse:
+        """Parse Cursor CLI output."""
+        if return_code != 0:
+            return ProviderResponse(
+                content="",
+                is_error=True,
+                error_message=stderr,
+                raw_output=stdout
+            )
+
+        # Try to parse as JSON first
+        try:
+            data = json.loads(stdout)
+            return ProviderResponse(
+                content=data.get("result", data.get("response", stdout)),
+                session_id=data.get("session_id", data.get("chat_id")),
+                raw_output=stdout
+            )
+        except json.JSONDecodeError:
+            # Fall back to plain text
+            return ProviderResponse(
+                content=stdout.strip(),
+                raw_output=stdout
+            )
+
+    def supports_session_resume(self) -> bool:
+        return True
+
+    def supports_json_output(self) -> bool:
+        return True  # Cursor supports --output-format
+
+    def supports_tools(self) -> bool:
+        return False  # Cursor doesn't have tool restrictions like Claude
+```
+
+### 3.4 Placeholder Providers (Future)
+
+**`src/meeting/providers/codex.py`**
+
+```python
+"""OpenAI Codex CLI provider (placeholder)."""
+
+from typing import Optional
+from pathlib import Path
+
+from .base import CLIProvider, ProviderResponse
+
+
+class CodexProvider(CLIProvider):
+    """Provider for OpenAI Codex CLI (placeholder implementation)."""
+
+    name = "codex"
+
+    def build_command(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        session_id: Optional[str] = None,
+        model: Optional[str] = None,
+        tools: Optional[list[str]] = None,
+        working_dir: Optional[Path] = None
+    ) -> list[str]:
+        """Build codex CLI command."""
+        # Placeholder - adjust when Codex CLI is available
+        cmd = ["codex", "exec", prompt]
+
+        if model:
+            cmd.extend(["--model", model])
+
+        if system_prompt:
+            cmd.extend(["--system", system_prompt])
+
+        return cmd
+
+    def parse_response(self, stdout: str, stderr: str, return_code: int) -> ProviderResponse:
+        """Parse Codex CLI output."""
+        if return_code != 0:
+            return ProviderResponse(
+                content="",
+                is_error=True,
+                error_message=stderr,
+                raw_output=stdout
+            )
+
+        return ProviderResponse(
+            content=stdout.strip(),
+            raw_output=stdout
+        )
+
+    def supports_session_resume(self) -> bool:
+        return False  # TBD
+
+    def supports_json_output(self) -> bool:
+        return False  # TBD
+```
+
+**`src/meeting/providers/copilot.py`**
+
+```python
+"""GitHub Copilot CLI provider (placeholder)."""
+
+from typing import Optional
+from pathlib import Path
+
+from .base import CLIProvider, ProviderResponse
+
+
+class CopilotProvider(CLIProvider):
+    """Provider for GitHub Copilot CLI (placeholder implementation)."""
+
+    name = "copilot"
+
+    def build_command(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        session_id: Optional[str] = None,
+        model: Optional[str] = None,
+        tools: Optional[list[str]] = None,
+        working_dir: Optional[Path] = None
+    ) -> list[str]:
+        """Build gh copilot CLI command."""
+        # GitHub Copilot CLI has limited capabilities
+        cmd = ["gh", "copilot", "suggest", "-t", "shell", prompt]
+        return cmd
+
+    def parse_response(self, stdout: str, stderr: str, return_code: int) -> ProviderResponse:
+        """Parse Copilot CLI output."""
+        if return_code != 0:
+            return ProviderResponse(
+                content="",
+                is_error=True,
+                error_message=stderr,
+                raw_output=stdout
+            )
+
+        return ProviderResponse(
+            content=stdout.strip(),
+            raw_output=stdout
+        )
+
+    def supports_session_resume(self) -> bool:
+        return False  # Copilot doesn't support session resume
+
+    def supports_json_output(self) -> bool:
+        return False  # Copilot outputs text only
+```
+
+### 3.5 Provider Factory
+
+**`src/meeting/providers/__init__.py`**
+
+```python
+"""CLI Provider factory and registry."""
+
+from typing import Dict, Type
+
+from .base import CLIProvider, ProviderResponse
+from .claude import ClaudeProvider
+from .cursor import CursorProvider
+from .codex import CodexProvider
+from .copilot import CopilotProvider
+
+
+# Provider registry
+PROVIDERS: Dict[str, Type[CLIProvider]] = {
+    "claude": ClaudeProvider,
+    "cursor": CursorProvider,
+    "codex": CodexProvider,
+    "copilot": CopilotProvider,
+}
+
+
+def get_provider(name: str) -> CLIProvider:
+    """Get a provider instance by name."""
+    provider_class = PROVIDERS.get(name.lower())
+    if not provider_class:
+        raise ValueError(
+            f"Unknown provider: {name}. "
+            f"Available: {', '.join(PROVIDERS.keys())}"
+        )
+    return provider_class()
+
+
+def list_providers() -> list[str]:
+    """List all available provider names."""
+    return list(PROVIDERS.keys())
+
+
+__all__ = [
+    "CLIProvider",
+    "ProviderResponse",
+    "ClaudeProvider",
+    "CursorProvider",
+    "CodexProvider",
+    "CopilotProvider",
+    "get_provider",
+    "list_providers",
+    "PROVIDERS",
+]
+```
+
+---
+
+## Phase 4: Multi-Session Orchestrator
+
+The orchestrator manages independent AI sessions for each agent using the provider abstraction.
+
+### 4.1 Agent Session Manager
 
 **`src/meeting/agent_session.py`**
 
 ```python
-"""Manages individual Claude CLI sessions for agents."""
+"""Manages individual AI CLI sessions for agents."""
 
 import subprocess
-import json
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
-import threading
-import queue
+
+from .providers import get_provider, CLIProvider
 
 
 @dataclass
@@ -741,17 +1160,26 @@ class AgentConfig:
     role: str
     icon: str
     persona_path: Path
+    provider: str = "claude"  # claude, cursor, codex, copilot
     tools: list[str] = field(default_factory=lambda: ["Read", "Grep", "Glob"])
     model: str = "sonnet"
 
 
 @dataclass
 class AgentSession:
-    """Represents a persistent Claude session for an agent."""
+    """Represents a persistent AI session for an agent."""
 
     config: AgentConfig
     session_id: Optional[str] = None
     working_dir: Path = field(default_factory=Path.cwd)
+    _provider: Optional[CLIProvider] = field(default=None, repr=False)
+
+    @property
+    def provider(self) -> CLIProvider:
+        """Get the CLI provider for this agent."""
+        if self._provider is None:
+            self._provider = get_provider(self.config.provider)
+        return self._provider
 
     def invoke(
         self,
@@ -764,21 +1192,20 @@ class AgentSession:
         # Build full prompt with conversation context
         full_prompt = self._build_prompt(prompt, conversation_history)
 
-        # Build command
-        cmd = [
-            "claude",
-            "-p", full_prompt,
-            "--output-format", "json",
-            "--allowedTools", ",".join(self.config.tools),
-        ]
-
-        # Add system prompt from persona file
+        # Read system prompt from persona file
+        system_prompt = None
         if self.config.persona_path.exists():
-            cmd.extend(["--append-system-prompt", self.config.persona_path.read_text()])
+            system_prompt = self.config.persona_path.read_text()
 
-        # Resume session if we have one
-        if self.session_id:
-            cmd.extend(["--resume", self.session_id])
+        # Build command using provider abstraction
+        cmd = self.provider.build_command(
+            prompt=full_prompt,
+            system_prompt=system_prompt,
+            session_id=self.session_id if self.provider.supports_session_resume() else None,
+            model=self.config.model,
+            tools=self.config.tools if self.provider.supports_tools() else None,
+            working_dir=self.working_dir
+        )
 
         # Execute
         result = subprocess.run(
@@ -789,17 +1216,21 @@ class AgentSession:
             timeout=timeout
         )
 
-        if result.returncode != 0:
-            return f"[Error: {result.stderr}]"
+        # Parse response using provider abstraction
+        response = self.provider.parse_response(
+            result.stdout,
+            result.stderr,
+            result.returncode
+        )
 
-        try:
-            data = json.loads(result.stdout)
-            # Store session ID for future invocations
-            if data.get("session_id"):
-                self.session_id = data["session_id"]
-            return data.get("result", "")
-        except json.JSONDecodeError:
-            return result.stdout
+        if response.is_error:
+            return f"[Error: {response.error_message}]"
+
+        # Store session ID for future invocations (if supported)
+        if response.session_id and self.provider.supports_session_resume():
+            self.session_id = response.session_id
+
+        return response.content
 
     def _build_prompt(self, prompt: str, conversation_history: str) -> str:
         """Build the full prompt with context."""
@@ -864,6 +1295,7 @@ class AgentPool:
                     role=frontmatter.get("description", "Agent"),
                     icon=icon,
                     persona_path=path,
+                    provider=frontmatter.get("provider", "claude"),  # NEW: provider field
                     tools=frontmatter.get("tools", "Read,Grep,Glob").split(","),
                     model=frontmatter.get("model", "sonnet")
                 )
@@ -889,9 +1321,34 @@ class AgentPool:
             return f"[Error: Agent '{agent_name}' not found]"
 
         return session.invoke(prompt, conversation_history)
+
+    def create_agent_with_provider(
+        self,
+        name: str,
+        display_name: str,
+        role: str,
+        icon: str,
+        provider: str,
+        model: str = None,
+        tools: list[str] = None
+    ) -> AgentSession:
+        """Create an agent dynamically with a specific provider."""
+        config = AgentConfig(
+            name=name,
+            display_name=display_name,
+            role=role,
+            icon=icon,
+            persona_path=Path(f".claude/agents/{name}.md"),
+            provider=provider,
+            model=model or "default",
+            tools=tools or []
+        )
+        session = AgentSession(config=config)
+        self.sessions[name] = session
+        return session
 ```
 
-### 3.2 Meeting Orchestrator
+### 4.2 Meeting Orchestrator
 
 **`src/meeting/orchestrator.py`**
 
@@ -1274,11 +1731,11 @@ Action items: {self.state.action_items}
 
 ---
 
-## Phase 4: Textual TUI
+## Phase 5: Textual TUI
 
 Rich terminal UI for interactive meetings.
 
-### 4.1 TUI Application
+### 5.1 TUI Application
 
 **`src/meeting/tui.py`**
 
@@ -1545,11 +2002,11 @@ def run_interactive_meeting(
 
 ---
 
-## Phase 5: Facilitator Templates
+## Phase 6: Facilitator Templates
 
 Template-based facilitator strategies for different meeting types.
 
-### 5.1 Template Directory Structure
+### 6.1 Template Directory Structure
 
 ```
 .claude/
@@ -1562,7 +2019,7 @@ Template-based facilitator strategies for different meeting types.
         └── planning.md
 ```
 
-### 5.2 Default Template
+### 6.2 Default Template
 
 **`.claude/templates/facilitator/default.md`**
 
@@ -1605,7 +2062,7 @@ General discussion with balanced participation
 | Process        | pm, tester           | developer        |
 ```
 
-### 5.3 Brainstorm Template
+### 6.3 Brainstorm Template
 
 **`.claude/templates/facilitator/brainstorm.md`**
 
@@ -1646,7 +2103,7 @@ Creative ideation with divergent thinking
 - Facilitator prompts with "building on that..." if energy drops
 ```
 
-### 5.4 Decision Template
+### 6.4 Decision Template
 
 **`.claude/templates/facilitator/decision.md`**
 
@@ -1695,11 +2152,11 @@ OWNER: [Who is responsible]
 
 ---
 
-## Phase 6: Document Generation
+## Phase 7: Document Generation
 
 Template system for meeting output documents.
 
-### 6.1 Document Templates Directory
+### 7.1 Document Templates Directory
 
 ```
 .claude/
@@ -1712,7 +2169,7 @@ Template system for meeting output documents.
         └── retrospective-report.md
 ```
 
-### 6.2 Meeting Summary Template
+### 7.2 Meeting Summary Template
 
 **`.claude/templates/documents/meeting-summary.md`**
 
@@ -1781,7 +2238,7 @@ Executive summary of meeting outcomes
 _Generated by Meeting Orchestrator_
 ```
 
-### 6.3 Decision Record Template (ADR Style)
+### 7.3 Decision Record Template (ADR Style)
 
 **`.claude/templates/documents/decision-record.md`**
 
@@ -1914,27 +2371,51 @@ your-project/
 # Start Kafka infrastructure
 cd docker && docker-compose up -d
 
-# Run autonomous meeting (no user interaction)
+# Run autonomous meeting - all agents use Claude (default provider)
 python scripts/run_meeting.py \
   --topic "API Redesign Discussion" \
   --agents architect developer tester \
   --template decision \
   --output-docs meeting-summary decision-record
 
-# Run interactive meeting with TUI
+# Run meeting with MIXED PROVIDERS (agent:provider syntax)
+python scripts/run_meeting.py \
+  --topic "Microservices Architecture" \
+  --agents architect:claude developer:cursor tester:claude \
+  --template decision \
+  --output-docs decision-record
+
+# Interactive meeting with TUI - mixed providers
 python scripts/run_meeting.py \
   --topic "Sprint Planning" \
-  --agents pm analyst developer designer \
+  --agents pm:claude analyst:claude developer:cursor designer:cursor \
   --interactive \
   --template default \
   --output-docs meeting-summary action-items
 
-# Quick meeting with defaults
+# Quick meeting with defaults (all Claude)
 python scripts/run_meeting.py \
   --topic "Bug Triage" \
   --agents developer tester \
   --interactive
+
+# All Cursor agents
+python scripts/run_meeting.py \
+  --topic "Code Review Session" \
+  --agents developer:cursor reviewer:cursor \
+  --template default
 ```
+
+### Agent Syntax
+
+Agents can be specified in two formats:
+
+| Format | Description | Example |
+|--------|-------------|---------|
+| `agent_name` | Uses default provider (claude) | `architect` |
+| `agent_name:provider` | Uses specified provider | `architect:cursor` |
+
+Supported providers: `claude`, `cursor`, `codex` (planned), `copilot` (planned)
 
 ### CLI Entry Point
 
@@ -1951,6 +2432,20 @@ from src.meeting.messages import MeetingConfig
 from src.meeting.kafka_client import KafkaConfig
 from src.meeting.orchestrator import MeetingOrchestrator
 from src.meeting.tui import run_interactive_meeting
+from src.meeting.providers import list_providers
+
+
+def parse_agent_spec(spec: str) -> tuple[str, str]:
+    """Parse agent:provider specification.
+
+    Examples:
+        'architect' -> ('architect', 'claude')
+        'developer:cursor' -> ('developer', 'cursor')
+    """
+    if ':' in spec:
+        agent, provider = spec.split(':', 1)
+        return agent, provider
+    return spec, 'claude'  # Default provider
 
 
 def main():
@@ -1958,7 +2453,8 @@ def main():
     parser.add_argument("--topic", "-t", required=True, help="Meeting topic")
     parser.add_argument(
         "--agents", "-a", nargs="+", required=True,
-        help="Agents to participate (e.g., architect developer tester)"
+        help="Agents to participate. Format: 'agent' or 'agent:provider' "
+             "(e.g., architect developer:cursor tester:claude)"
     )
     parser.add_argument(
         "--interactive", "-i", action="store_true",
@@ -1984,12 +2480,26 @@ def main():
         "--max-rounds", type=int, default=5,
         help="Maximum discussion rounds"
     )
+    parser.add_argument(
+        "--list-providers", action="store_true",
+        help="List available AI providers and exit"
+    )
 
     args = parser.parse_args()
 
+    if args.list_providers:
+        print("Available providers:", ", ".join(list_providers()))
+        return
+
+    # Parse agent specifications
+    agent_specs = [parse_agent_spec(spec) for spec in args.agents]
+    agent_names = [name for name, _ in agent_specs]
+    agent_providers = {name: provider for name, provider in agent_specs}
+
     config = MeetingConfig(
         topic=args.topic,
-        agents=args.agents,
+        agents=agent_names,
+        agent_providers=agent_providers,  # NEW: provider mapping
         interactive=args.interactive,
         facilitator_template=args.template,
         output_templates=args.output_docs,
@@ -2003,7 +2513,8 @@ def main():
         # Run with TUI
         run_interactive_meeting(
             topic=args.topic,
-            agents=args.agents,
+            agents=agent_names,
+            agent_providers=agent_providers,
             facilitator_template=args.template,
             output_templates=args.output_docs,
             output_dir=args.output_dir
@@ -2029,11 +2540,16 @@ if __name__ == "__main__":
 from src.meeting.messages import MeetingConfig
 from src.meeting.orchestrator import MeetingOrchestrator
 
-# Autonomous meeting
+# Autonomous meeting with MIXED PROVIDERS
 config = MeetingConfig(
     topic="Authentication System Design",
     agents=["architect", "developer", "tester"],
-    interactive=False,  # No user interaction
+    agent_providers={
+        "architect": "claude",
+        "developer": "cursor",  # Different provider
+        "tester": "claude"
+    },
+    interactive=False,
     facilitator_template="decision",
     output_templates=["meeting-summary", "decision-record"],
     max_rounds=4
@@ -2047,22 +2563,49 @@ print(f"Decisions: {orchestrator.state.decisions}")
 print(f"Actions: {orchestrator.state.action_items}")
 ```
 
+### Agent Definition with Provider
+
+Agents can also specify their default provider in the frontmatter:
+
+**`.claude/agents/developer-cursor.md`**
+
+```markdown
+---
+name: developer-cursor
+description: Developer using Cursor AI
+provider: cursor
+model: gpt-4
+tools: []
+---
+
+# Developer (Cursor)
+
+You are a senior developer participating in a multi-agent meeting.
+You use Cursor AI as your reasoning engine.
+
+## Response Format
+
+Always format: `💻 **Developer (Cursor):** [Your response]`
+```
+
 ---
 
 ## Summary
 
 This implementation provides **true multi-agent meetings** with:
 
-| Feature                   | Implementation                                           |
-| ------------------------- | -------------------------------------------------------- |
-| **Independent sessions**  | Each agent runs as separate `claude -p` with own context |
-| **Kafka messaging**       | Decoupled pub/sub communication between agents           |
-| **Persistent state**      | Sessions maintained via `--resume` across turns          |
-| **Interactive mode**      | `--interactive` flag enables TUI and user participation  |
-| **Autonomous mode**       | Without flag, runs fully autonomous with no user input   |
-| **Agent selection**       | User specifies which agents participate                  |
-| **Facilitator templates** | Pluggable meeting strategies (brainstorm, decision, etc) |
-| **Document templates**    | User selects which output documents to generate          |
-| **Full transcript**       | Complete conversation saved to markdown                  |
+| Feature                   | Implementation                                                    |
+| ------------------------- | ----------------------------------------------------------------- |
+| **AI-agnostic**           | Support for Claude, Cursor, Codex, Copilot via provider abstraction |
+| **Independent sessions**  | Each agent runs as separate CLI process with own context          |
+| **Mixed providers**       | Different agents can use different AI backends in same meeting    |
+| **Kafka messaging**       | Decoupled pub/sub communication between agents                    |
+| **Persistent state**      | Sessions maintained via `--resume` across turns (where supported) |
+| **Interactive mode**      | `--interactive` flag enables TUI and user participation           |
+| **Autonomous mode**       | Without flag, runs fully autonomous with no user input            |
+| **Agent selection**       | User specifies agents with optional provider (`agent:provider`)   |
+| **Facilitator templates** | Pluggable meeting strategies (brainstorm, decision, etc)          |
+| **Document templates**    | User selects which output documents to generate                   |
+| **Full transcript**       | Complete conversation saved to markdown                           |
 
-**Key difference from BMAD Party Mode:** Each agent is a genuinely independent Claude session with its own context window, enabling true disagreement and independent reasoning.
+**Key difference from BMAD Party Mode:** Each agent is a genuinely independent AI session with its own context window, enabling true disagreement and independent reasoning. Additionally, agents can use different AI providers (Claude, Cursor, etc.) in the same meeting for diverse perspectives.
