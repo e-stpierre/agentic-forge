@@ -6,4 +6,9 @@ venv/
 .idea/
 *.swp
 .DS_Store
+node_modules/
+package-lock.json
 
+# Claude
+.claude/**/*.local.json
+.staging/

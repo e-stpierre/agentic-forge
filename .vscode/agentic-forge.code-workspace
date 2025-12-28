@@ -5,9 +5,8 @@
     }
   ],
   "settings": {
-    "files.associations": {
-      "*.md": "markdown"
-    },
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
     "editor.wordWrap": "on",
     "files.exclude": {
       "**/.git": true
@@ -23,13 +22,12 @@
         "source.organizeImports": "explicit"
       }
     },
-    "[markdown]": {
-      "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
-      "editor.formatOnSave": true
-    }
+    "markdownlint.run": "onSave",
+    "prettier.resolveGlobalModules": false
   },
   "extensions": {
     "recommendations": [
+      "esbenp.prettier-vscode",
       "davidanson.vscode-markdownlint",
       "charliermarsh.ruff",
       "ms-python.python"

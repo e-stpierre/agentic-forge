@@ -3,21 +3,38 @@
 Update all plugins from the local marketplace.
 
 This script:
-1. Updates the marketplace from the local repository
-2. Reinstalls all plugins defined in marketplace.json
-3. Force reinstalls the Python tools (core, sdlc)
+1. Creates a staged copy of the repo (excluding node_modules, .git, etc.)
+2. Updates the marketplace from the staged copy
+3. Reinstalls all plugins defined in marketplace.json
+4. Force reinstalls the Python tools (core, agentic-sdlc)
 
 Usage:
-    python .claude/update-plugins.py
+    uv run .claude/update-plugins.py
 
     Or run from anywhere:
-    python path/to/update-plugins.py
+    uv run path/to/update-plugins.py
 """
 
 import json
+import shutil
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
+
+# Patterns to exclude when creating staged copy
+STAGING_IGNORE_PATTERNS = [
+    "node_modules",
+    ".pnpm",
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".ruff_cache",
+    "*.pyc",
+    ".DS_Store",
+    "dist",
+]
 
 
 # ANSI color codes
@@ -102,6 +119,71 @@ def run_command(cmd: list[str], description: str, cwd: Path | None = None) -> bo
     return True
 
 
+@contextmanager
+def staged_marketplace(repo_root: Path, marketplace_name: str):
+    """
+    Create a staged copy of the repository and temporarily register it as the marketplace.
+
+    This avoids Windows symlink issues with pnpm's node_modules/.pnpm structure
+    by creating a clean copy without those directories, then registering that
+    copy as the marketplace source for plugin installation.
+    """
+    staging_dir = repo_root / ".staging"
+
+    # Clean up any leftover staging directory
+    if staging_dir.exists():
+        print_info("Cleaning up previous staging directory...")
+        shutil.rmtree(staging_dir)
+
+    try:
+        print_info("Creating staged copy of repository...")
+        print_info(f"Excluding: {', '.join(STAGING_IGNORE_PATTERNS)}")
+
+        shutil.copytree(
+            repo_root,
+            staging_dir,
+            ignore=shutil.ignore_patterns(*STAGING_IGNORE_PATTERNS),
+            symlinks=False,
+            dirs_exist_ok=False,
+        )
+
+        print_success(f"Staged copy created at {staging_dir}")
+
+        # Remove existing marketplace and add staging directory as source
+        # Note: Claude CLI requires relative paths starting with "./"
+        print_info(f"Re-registering marketplace from staging directory...")
+        run_command(
+            ["claude", "plugin", "marketplace", "remove", marketplace_name],
+            f"Remove existing {marketplace_name} marketplace",
+        )
+        if not run_command(
+            ["claude", "plugin", "marketplace", "add", "./.staging"],
+            f"Add staging directory as {marketplace_name} marketplace",
+            cwd=repo_root,
+        ):
+            print_error("Failed to register staging marketplace")
+            raise RuntimeError("Failed to register staging marketplace")
+
+        yield staging_dir
+
+    finally:
+        # Restore original marketplace
+        print_info("Restoring original marketplace registration...")
+        run_command(
+            ["claude", "plugin", "marketplace", "remove", marketplace_name],
+            f"Remove staging {marketplace_name} marketplace",
+        )
+        run_command(
+            ["claude", "plugin", "marketplace", "add", "./"],
+            f"Re-add original {marketplace_name} marketplace",
+            cwd=repo_root,
+        )
+
+        if staging_dir.exists():
+            print_info("Cleaning up staging directory...")
+            shutil.rmtree(staging_dir)
+
+
 def main():
     # Print banner
     print(color("\n" + "=" * 60, Colors.BRIGHT_MAGENTA))
@@ -130,45 +212,41 @@ def main():
     total_steps = 3
     success_count = 0
     warning_count = 0
+    marketplace_name = "agentic-forge"
 
-    # Step 1: Update the marketplace from local repository
-    print_step(1, total_steps, "Update Marketplace")
-    if run_command(
-        ["claude", "plugin", "marketplace", "update", "agentic-forge"],
-        "Update marketplace from local repository",
-        cwd=repo_root,
-    ):
-        success_count += 1
+    # Step 1 & 2: Create staged copy, register as marketplace, and reinstall plugins
+    print_step(1, total_steps, "Create Staged Marketplace")
 
-    # Step 2: Reinstall each plugin (uninstall then install)
-    print_step(2, total_steps, "Reinstall Claude Code Plugins")
-    print_info(f"Reinstalling {len(plugins)} plugins...")
+    with staged_marketplace(repo_root, marketplace_name) as staging_dir:
+        # Reinstall each plugin from the staged marketplace
+        print_step(2, total_steps, "Reinstall Claude Code Plugins")
+        print_info(f"Reinstalling {len(plugins)} plugins from staged marketplace...")
 
-    for i, plugin in enumerate(plugins, 1):
-        print(f"\n  {color(f'[{i}/{len(plugins)}]', Colors.CYAN)} {color(plugin, Colors.BRIGHT_BLUE)}")
+        for i, plugin in enumerate(plugins, 1):
+            print(f"\n  {color(f'[{i}/{len(plugins)}]', Colors.CYAN)} {color(plugin, Colors.BRIGHT_BLUE)}")
 
-        # Uninstall first (ignore errors if not installed)
-        run_command(
-            ["claude", "plugin", "uninstall", plugin],
-            f"Uninstall {plugin}",
-        )
-        # Install from local marketplace
-        if run_command(
-            ["claude", "plugin", "install", plugin],
-            f"Install {plugin}",
-        ):
-            success_count += 1
-        else:
-            warning_count += 1
+            # Uninstall first (ignore errors if not installed)
+            run_command(
+                ["claude", "plugin", "uninstall", plugin],
+                f"Uninstall {plugin}",
+            )
+            # Install from staged marketplace
+            if run_command(
+                ["claude", "plugin", "install", plugin],
+                f"Install {plugin}",
+            ):
+                success_count += 1
+            else:
+                warning_count += 1
 
-    # Step 3: Force reinstall Python tools
+    # Step 3: Force reinstall Python tools (from original repo, not staged)
     print_step(3, total_steps, "Install Python CLI Tools")
 
-    # Note: sdlc depends on core, so we need to:
+    # Note: agentic-sdlc depends on core, so we need to:
     # 1. Build core first so it's available as a local package
-    # 2. Install sdlc with --find-links pointing to core's dist directory
+    # 2. Install agentic-sdlc with --find-links pointing to core's dist directory
     core_path = repo_root / "plugins" / "core"
-    sdlc_path = repo_root / "plugins" / "sdlc"
+    agentic_sdlc_path = repo_root / "plugins" / "agentic-sdlc"
 
     # Build core package first
     if core_path.exists():
@@ -177,8 +255,6 @@ def main():
         # Clean and build core
         dist_dir = core_path / "dist"
         if dist_dir.exists():
-            import shutil
-
             shutil.rmtree(dist_dir)
             print_info("Cleaned previous build artifacts")
 
@@ -200,15 +276,15 @@ def main():
         print_warning(f"Python tool path not found: {core_path}")
         warning_count += 1
 
-    # Install sdlc with --find-links to locate core dependency
-    if sdlc_path.exists():
-        print(f"\n  {color('Installing sdlc package...', Colors.CYAN)}")
+    # Install agentic-sdlc with --find-links to locate core dependency
+    if agentic_sdlc_path.exists():
+        print(f"\n  {color('Installing agentic-sdlc package...', Colors.CYAN)}")
 
         core_dist = core_path / "dist"
         if core_dist.exists():
             if run_command(
-                ["uv", "tool", "install", "--force", "--find-links", str(core_dist), str(sdlc_path)],
-                "Install claude-sdlc CLI tools (with local core)",
+                ["uv", "tool", "install", "--force", "--find-links", str(core_dist), str(agentic_sdlc_path)],
+                "Install agentic-sdlc CLI tools (with local core)",
             ):
                 success_count += 1
             else:
@@ -217,14 +293,14 @@ def main():
             # Fallback: try installing without find-links (may fail if core not in registry)
             print_warning("Core dist not found, trying without --find-links")
             if run_command(
-                ["uv", "tool", "install", "--force", str(sdlc_path)],
-                "Install claude-sdlc CLI tools",
+                ["uv", "tool", "install", "--force", str(agentic_sdlc_path)],
+                "Install agentic-sdlc CLI tools",
             ):
                 success_count += 1
             else:
                 warning_count += 1
     else:
-        print_warning(f"Python tool path not found: {sdlc_path}")
+        print_warning(f"Python tool path not found: {agentic_sdlc_path}")
         warning_count += 1
 
     # Summary
@@ -242,7 +318,7 @@ def main():
 
     print(f"\n  {color('Next steps:', Colors.BOLD)}")
     print(color("    1. Restart Claude Code to load updated plugins", Colors.DIM))
-    print(color("    2. Run 'claude-sdlc --help' to verify CLI tools", Colors.DIM))
+    print(color("    2. Run 'agentic-sdlc --help' to verify CLI tools", Colors.DIM))
     print()
 
 
