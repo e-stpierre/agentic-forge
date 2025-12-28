@@ -18,7 +18,8 @@ A foundational framework for orchestrating AI agents across diverse workflows - 
 10. [CLI Interface](#cli-interface)
 11. [Use Case Examples](#use-case-examples)
 12. [Plugin Structure](#plugin-structure)
-13. [Future Enhancements](#future-enhancements)
+13. [Technical Decisions](#technical-decisions)
+14. [Future Enhancements](#future-enhancements)
 
 ---
 
@@ -276,13 +277,30 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE workflows (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
-    type VARCHAR(50) NOT NULL,  -- one-shot, feature, epic, meeting
-    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    type VARCHAR(50) NOT NULL,  -- one-shot, feature, epic, meeting, analysis
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',  -- pending, running, paused, completed, failed
     config JSONB NOT NULL,
+    working_dir TEXT,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Step outputs (canonical storage)
+CREATE TABLE step_outputs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_id UUID REFERENCES workflows(id),
+    step_name VARCHAR(255) NOT NULL,
+    output_type VARCHAR(50) NOT NULL,  -- text, code, plan, report, decision
+    content TEXT,                       -- For small outputs
+    file_path TEXT,                     -- For large outputs (pointer to temp file)
+    file_hash VARCHAR(64),              -- SHA256 hash for integrity
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(workflow_id, step_name)
+);
+
+CREATE INDEX idx_step_outputs_workflow ON step_outputs(workflow_id);
 
 -- Agents table (registered agents)
 CREATE TABLE agents (
@@ -338,12 +356,24 @@ CREATE TABLE messages (
 CREATE INDEX idx_messages_workflow ON messages(workflow_id, created_at);
 CREATE INDEX idx_messages_agent ON messages(agent_name, created_at);
 
+-- Embedding models registry (for configurable dimensions)
+CREATE TABLE embedding_models (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) UNIQUE NOT NULL,  -- e.g., 'all-MiniLM-L6-v2'
+    dimensions INTEGER NOT NULL,         -- e.g., 384, 768, 1536
+    provider VARCHAR(50) NOT NULL,       -- 'sentence-transformers', 'openai', etc.
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Long-term memory (semantic search via pgvector)
+-- Note: embedding column uses max expected dimension; actual dimension stored in metadata
 CREATE TABLE memory (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     category VARCHAR(100) NOT NULL,  -- lesson, pattern, error, decision
     content TEXT NOT NULL,
-    embedding vector(1536),  -- OpenAI embedding dimension
+    embedding vector(1536),  -- Max dimension; actual size varies by model
+    embedding_model VARCHAR(100),    -- References embedding_models.name
     metadata JSONB,
     workflow_id UUID REFERENCES workflows(id),
     created_at TIMESTAMP DEFAULT NOW()
@@ -1440,251 +1470,9 @@ agentic memory search "authentication patterns"
 
 ---
 
-## Use Case Examples
+## Use Cases
 
-### Use Case 1: One-Shot Bugfix
-
-```
-User: agentic one-shot "Fix issue #1234" --git --pr
-
-┌─────────────────────────────────────────────────────────────┐
-│                     ONE-SHOT WORKFLOW                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. Create git branch: fix/issue-1234                        │
-│          │                                                   │
-│          ▼                                                   │
-│  2. Load relevant memories (past similar bugs)               │
-│          │                                                   │
-│          ▼                                                   │
-│  3. Invoke developer agent (Claude)                          │
-│     - Analyze issue                                          │
-│     - Make code changes                                      │
-│     - Write tests                                            │
-│          │                                                   │
-│          ▼                                                   │
-│  4. Commit changes                                           │
-│          │                                                   │
-│          ▼                                                   │
-│  5. Push and create PR                                       │
-│          │                                                   │
-│          ▼                                                   │
-│  6. Extract learnings → store in memory                      │
-│                                                              │
-│  Duration: ~5 minutes                                        │
-│  Agents: 1 (developer:claude)                                │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Use Case 2: Meeting/Brainstorm
-
-```
-User: agentic meeting "API versioning strategy" \
-        --agents architect:claude developer:cursor pm:claude
-
-┌─────────────────────────────────────────────────────────────┐
-│                     MEETING WORKFLOW                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. Start Kafka message bus for agent communication          │
-│          │                                                   │
-│          ▼                                                   │
-│  2. Initialize 3 independent AI sessions                     │
-│     - Architect (Claude)                                     │
-│     - Developer (Cursor)                                     │
-│     - PM (Claude)                                            │
-│          │                                                   │
-│          ▼                                                   │
-│  3. Facilitator orchestrates discussion (5 rounds)           │
-│     ┌──────────────────────────────────────┐                │
-│     │  Round N:                            │                │
-│     │  - Facilitator selects speakers      │                │
-│     │  - Each agent responds via Kafka     │                │
-│     │  - All messages logged to Postgres   │                │
-│     └──────────────────────────────────────┘                │
-│          │                                                   │
-│          ▼                                                   │
-│  4. Generate meeting summary and decision record             │
-│          │                                                   │
-│          ▼                                                   │
-│  5. Store decisions in long-term memory                      │
-│                                                              │
-│  Duration: ~15 minutes                                       │
-│  Agents: 3 (mixed providers)                                 │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Use Case 3: Feature Development
-
-```
-User: agentic run feature.yaml --var feature="Add OAuth login"
-
-┌─────────────────────────────────────────────────────────────┐
-│                   FEATURE WORKFLOW                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Step 1: PLAN (planner:claude)                               │
-│  ├─ Create implementation plan                               │
-│  ├─ Checkpoint saved                                         │
-│  └─ Output: plan.md                                          │
-│          │                                                   │
-│          ▼                                                   │
-│  Step 2: IMPLEMENT (developer:claude)                        │
-│  ├─ Read plan, make code changes                             │
-│  ├─ Commit incrementally                                     │
-│  ├─ Checkpoint saved                                         │
-│  └─ Output: code changes                                     │
-│          │                                                   │
-│          ▼                                                   │
-│  Step 3: VALIDATE (tester:cursor)                            │
-│  ├─ Review code, run tests                                   │
-│  ├─ If fail → retry implement step                           │
-│  └─ Output: validation report                                │
-│          │                                                   │
-│          ▼                                                   │
-│  Output: Feature complete, PR ready                          │
-│                                                              │
-│  Duration: ~30 minutes                                       │
-│  Agents: 3 (planner, developer, tester)                      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Use Case 4: Epic Development (Multi-Day)
-
-```
-User: agentic run epic.yaml \
-        --var epic="User Authentication System" \
-        --human-in-loop
-
-┌─────────────────────────────────────────────────────────────┐
-│                     EPIC WORKFLOW                            │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Phase 1: BRAINSTORM (Day 1, Hour 1)                         │
-│  ├─ Meeting with architect, pm, developer                    │
-│  ├─ [HUMAN APPROVAL REQUIRED]                                │
-│  └─ Checkpoint: brainstorm complete                          │
-│          │                                                   │
-│          ▼                                                   │
-│  Phase 2: DESIGN (Day 1, Hour 2)                             │
-│  ├─ Architect creates technical design                       │
-│  ├─ [HUMAN APPROVAL REQUIRED]                                │
-│  └─ Checkpoint: design complete                              │
-│          │                                                   │
-│          ▼                                                   │
-│  Phase 3: PLAN FEATURES (Day 1, Hour 3)                      │
-│  ├─ PM breaks epic into 5 features                           │
-│  └─ Checkpoint: features defined                             │
-│          │                                                   │
-│          ▼                                                   │
-│  Phase 4: IMPLEMENT FEATURES (Day 1-2)                       │
-│  ┌──────────────────────────────────────┐                   │
-│  │  For each feature (sequential):      │                   │
-│  │  ├─ Create branch from previous      │                   │
-│  │  ├─ Run feature.yaml workflow        │                   │
-│  │  ├─ Checkpoint after each feature    │                   │
-│  │  └─ [Crash recovery possible]        │                   │
-│  └──────────────────────────────────────┘                   │
-│          │                                                   │
-│          ▼                                                   │
-│  Phase 5: INTEGRATION TEST (Day 2)                           │
-│  ├─ Tester validates all features together                   │
-│  └─ Output: Epic complete                                    │
-│                                                              │
-│  Duration: ~8 hours (spread over 2 days)                     │
-│  Agents: 5+ (architect, pm, developer, tester, etc.)         │
-│  Checkpoints: 10+ (full crash recovery)                      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Use Case 5: Security Analysis
-
-```
-User: agentic analysis "Auth module security review" \
-        --agents security-researcher pentester appsec-developer \
-        --inputs "src/auth/**" "docs/architecture.md" \
-        --human-in-loop
-
-┌─────────────────────────────────────────────────────────────┐
-│                   ANALYSIS WORKFLOW                          │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. Load inputs                                              │
-│     ├─ Codebase: src/auth/**/*.ts (45 files)                │
-│     ├─ Documentation: docs/architecture.md                  │
-│     └─ External: OWASP Top 10 reference                     │
-│          │                                                   │
-│          ▼                                                   │
-│  2. THREAT MODELING (security-researcher:claude)            │
-│     ├─ Analyze attack surface                               │
-│     ├─ Identify threat vectors                              │
-│     └─ Checkpoint saved                                     │
-│          │                                                   │
-│          ▼                                                   │
-│  3. VULNERABILITY SCAN (pentester:claude)                   │
-│     ├─ Review code for vulnerabilities                      │
-│     ├─ Map to CWE/CVE references                            │
-│     └─ Output: vulnerability-report.md                      │
-│          │                                                   │
-│          ▼                                                   │
-│  4. REMEDIATION PLAN (appsec-developer:cursor)              │
-│     ├─ Create fix recommendations                           │
-│     ├─ Prioritize by severity                               │
-│     └─ Output: remediation-tasks.md                         │
-│          │                                                   │
-│          ▼                                                   │
-│  5. REVIEW MEETING (all 3 agents)                           │
-│     ├─ Discuss findings and priorities                      │
-│     ├─ [HUMAN DECIDES FINAL PRIORITIES]                     │
-│     └─ Output: security-report.md                           │
-│                                                              │
-│  Duration: ~20 minutes                                       │
-│  Agents: 3 (security-researcher, pentester, appsec-dev)     │
-│  Inputs: codebase + docs + external references              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Use Case 6: Pentest Planning
-
-```
-User: agentic run analysis.yaml \
-        --var target_url="https://example.com" \
-        --var scope_document="scope.md" \
-        --human-in-loop
-
-┌─────────────────────────────────────────────────────────────┐
-│                  PENTEST PLANNING WORKFLOW                   │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. Load scope and target information                        │
-│     ├─ Target: https://example.com                          │
-│     └─ Scope: Defined rules of engagement                   │
-│          │                                                   │
-│          ▼                                                   │
-│  2. RECONNAISSANCE (security-researcher:claude)             │
-│     ├─ Passive information gathering                        │
-│     ├─ Technology stack identification                      │
-│     ├─ Attack surface mapping                               │
-│     └─ Output: recon-report.md                              │
-│          │                                                   │
-│          ▼                                                   │
-│  3. ATTACK PLANNING (pentester:claude)                      │
-│     ├─ Develop attack methodology                           │
-│     ├─ Identify potential entry points                      │
-│     ├─ Plan exploitation techniques                         │
-│     └─ Output: attack-plan.md                               │
-│          │                                                   │
-│          ▼                                                   │
-│  4. METHODOLOGY REVIEW (meeting: both agents)               │
-│     ├─ Review and refine approach                           │
-│     ├─ [HUMAN APPROVAL REQUIRED]                            │
-│     └─ Output: pentest-plan.md                              │
-│                                                              │
-│  Duration: ~15 minutes                                       │
-│  Agents: 2 (security-researcher, pentester)                 │
-│  Output: Complete pentest methodology document              │
-└─────────────────────────────────────────────────────────────┘
-```
+Refer to `./agentic-core-use-cases.md`
 
 ---
 
@@ -1740,6 +1528,113 @@ plugins/agentic-core/
 
 ---
 
+## Technical Decisions
+
+Implementation decisions established during planning.
+
+### Core Stack
+
+| Component           | Choice                                     | Notes                                             |
+| ------------------- | ------------------------------------------ | ------------------------------------------------- |
+| **Python Version**  | 3.14+                                      | 3.12 support as optional extra                    |
+| **Async Framework** | asyncio + asyncpg + confluent-kafka-python | Native async support throughout                   |
+| **CLI Framework**   | typer                                      | Modern, type-hinted CLI                           |
+| **YAML Parser**     | ruamel.yaml                                | Preserves comments and formatting                 |
+| **Template Engine** | Jinja2                                     | For `{{ variable }}` resolution                   |
+| **Configuration**   | Environment variables                      | `AGENTIC_DATABASE_URL`, `AGENTIC_KAFKA_URL`, etc. |
+
+### Embedding & Memory
+
+| Setting                   | Value                           | Notes                                                 |
+| ------------------------- | ------------------------------- | ----------------------------------------------------- |
+| **Embedding Provider**    | sentence-transformers (local)   | No external API required                              |
+| **Embedding Dimensions**  | Configurable                    | Store `embedding_dim` + `embedding_model` in metadata |
+| **Memory Context Budget** | 1-2k tokens (~10-20% of prompt) | Prefer fewer, higher-quality memories                 |
+| **Learning Extraction**   | On-demand (Phase 1)             | Configurable per workflow, avoid noise                |
+| **pgvector**              | Optional                        | Disabled by default, enabled via flag                 |
+
+### CLI Provider Details
+
+**Claude CLI Output Format** (from `claude -p "prompt" --output-format json`):
+
+```json
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 15195,
+  "duration_api_ms": 24286,
+  "num_turns": 1,
+  "result": "...",
+  "session_id": "d1224248-b6fb-4f9b-b104-7d5bb3cb29d3",
+  "total_cost_usd": 0.21456675,
+  "usage": {
+    "input_tokens": 3,
+    "cache_creation_input_tokens": 27037,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 477
+  }
+}
+```
+
+**Cursor CLI Syntax**:
+
+```bash
+cursor-agent -p "prompt" --model "gpt-5"
+```
+
+### Input Processing
+
+| Input Type     | Processing                                     | Phase   |
+| -------------- | ---------------------------------------------- | ------- |
+| `codebase`     | RAG approach (embed chunks, retrieve relevant) | Phase 1 |
+| `url`          | Fetch + extract full readable text             | Phase 1 |
+| `file`         | Read file contents directly                    | Phase 1 |
+| `video`        | Extract audio + transcribe                     | Phase 2 |
+| `github_issue` | Fetch via GitHub API                           | Phase 1 |
+
+### Workflow Execution
+
+| Setting               | Default                                        | Notes                                              |
+| --------------------- | ---------------------------------------------- | -------------------------------------------------- |
+| **Step Timeout**      | Configurable per step                          | Can be high (1h for implementation)                |
+| **Working Directory** | Single `working_dir` for all agents            | Configured at workflow level                       |
+| **Git Operations**    | Shell out to git commands                      | Simple, portable                                   |
+| **Step Outputs**      | PostgreSQL (canonical) + in-memory map (speed) | Large artifacts: temp files with pointers + hashes |
+
+### Meeting Orchestration
+
+| Setting         | Default                        | Options                                          |
+| --------------- | ------------------------------ | ------------------------------------------------ |
+| **Turn-taking** | Facilitator-directed           | Round-robin available via config                 |
+| **Facilitator** | Python orchestrator with rules | Deterministic, auditable                         |
+| **Termination** | Configurable                   | Fixed rounds, facilitator decision, or consensus |
+
+### Human-in-the-Loop
+
+| Mode            | Behavior                                    |
+| --------------- | ------------------------------------------- |
+| **Default**     | Pause + wait for `agentic resume --approve` |
+| **Interactive** | `--interactive` flag enables CLI prompts    |
+| **User Input**  | Free-text messages + suggested options      |
+
+### Error Handling
+
+| Setting              | Default                         | Notes                                                |
+| -------------------- | ------------------------------- | ---------------------------------------------------- |
+| **Retry Strategy**   | Exponential backoff with jitter | Max 3 retries default                                |
+| **Failure Behavior** | Pause for human intervention    | Configurable: abort, skip, pause                     |
+| **Checkpointing**    | After every step                | `checkpoint: true` marks named/important checkpoints |
+
+### Testing
+
+| Feature            | Implementation                 |
+| ------------------ | ------------------------------ | ------------------------------------------- |
+| **Mock Providers** | Required for CI                | Deterministic mock CLIs                     |
+| **Dry-run Mode**   | Validate + show execution plan | `--dry-run --with-mocks` for mock execution |
+
+---
+
 ## Future Enhancements
 
 ### Phase 1 (Current)
@@ -1792,6 +1687,7 @@ Agentic Core provides a **production-ready foundation** for AI agent orchestrati
 This framework enables workflows ranging from 5-minute bugfixes to multi-day epic implementations to security analysis sessions, all with full observability, crash recovery, and continuous learning.
 
 **Workflow Types**:
+
 - `one-shot`: Quick single-agent tasks
 - `feature`: Multi-step feature development
 - `epic`: Multi-day, multi-feature projects
