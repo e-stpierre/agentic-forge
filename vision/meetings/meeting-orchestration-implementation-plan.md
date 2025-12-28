@@ -53,13 +53,13 @@ This document outlines how to replicate BMAD's Party Mode meeting orchestration 
 
 ### Core Concepts
 
-| Concept | BMAD Implementation | Our Implementation |
-|---------|---------------------|-------------------|
-| Agent Personas | YAML files + XML manifest | YAML files + Python dataclasses |
-| Orchestration | Prompt-based (single LLM) | Python SDK with session chaining |
-| Live Monitoring | TTS hooks (optional) | WebSocket + CLI streaming |
-| Output Recording | Retrospective workflow | Automatic transcript + Markdown generator |
-| Context Sharing | Same LLM context window | Session resume (`--resume`) or SDK client |
+| Concept          | BMAD Implementation       | Our Implementation                        |
+| ---------------- | ------------------------- | ----------------------------------------- |
+| Agent Personas   | YAML files + XML manifest | YAML files + Python dataclasses           |
+| Orchestration    | Prompt-based (single LLM) | Python SDK with session chaining          |
+| Live Monitoring  | TTS hooks (optional)      | WebSocket + CLI streaming                 |
+| Output Recording | Retrospective workflow    | Automatic transcript + Markdown generator |
+| Context Sharing  | Same LLM context window   | Session resume (`--resume`) or SDK client |
 
 ---
 
@@ -67,15 +67,15 @@ This document outlines how to replicate BMAD's Party Mode meeting orchestration 
 
 ### Required Components
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Runtime | Python 3.11+ | Core orchestration logic |
-| Claude Integration | `claude-agent-sdk` | Programmatic Claude access |
-| CLI Fallback | `claude -p` (subprocess) | Alternative execution method |
-| Live Streaming | `asyncio` + WebSocket | Real-time monitoring |
-| Agent Definitions | YAML | Agent persona storage |
-| Output | Markdown + JSON | Meeting documentation |
-| Optional: Web UI | FastAPI + WebSocket | Browser-based monitoring |
+| Component          | Technology               | Purpose                      |
+| ------------------ | ------------------------ | ---------------------------- |
+| Runtime            | Python 3.11+             | Core orchestration logic     |
+| Claude Integration | `claude-agent-sdk`       | Programmatic Claude access   |
+| CLI Fallback       | `claude -p` (subprocess) | Alternative execution method |
+| Live Streaming     | `asyncio` + WebSocket    | Real-time monitoring         |
+| Agent Definitions  | YAML                     | Agent persona storage        |
+| Output             | Markdown + JSON          | Meeting documentation        |
+| Optional: Web UI   | FastAPI + WebSocket      | Browser-based monitoring     |
 
 ### Installation
 
@@ -99,6 +99,7 @@ pip install rich
 Stores agent personas in a format similar to BMAD's agent YAML files.
 
 **Schema:**
+
 ```yaml
 # agents/architect.yaml
 agent:
@@ -121,6 +122,7 @@ agent:
 Handles Claude SDK/CLI interactions with context preservation.
 
 **Key Responsibilities:**
+
 - Load agent personas into system prompts
 - Manage session IDs for context chaining
 - Route between SDK and CLI execution
@@ -131,6 +133,7 @@ Handles Claude SDK/CLI interactions with context preservation.
 Streams agent responses in real-time.
 
 **Approaches:**
+
 1. **CLI Streaming:** `--output-format stream-json` piped to processor
 2. **SDK Streaming:** Async iterator with event callbacks
 3. **WebSocket:** Push updates to connected clients
@@ -140,6 +143,7 @@ Streams agent responses in real-time.
 Captures complete conversation history.
 
 **Recorded Data:**
+
 - Agent messages with timestamps
 - Tool usage (what tools, inputs, outputs)
 - Decisions made (extracted via patterns or structured output)
@@ -150,6 +154,7 @@ Captures complete conversation history.
 Produces meeting documentation.
 
 **Output Formats:**
+
 - Markdown report (human-readable)
 - JSON transcript (machine-parseable)
 - HTML (optional, for web viewing)
@@ -161,12 +166,14 @@ Produces meeting documentation.
 ### Phase 1: Core Infrastructure (Foundation)
 
 **Deliverables:**
+
 - Agent registry with YAML loader
 - Basic session manager (CLI-based)
 - Simple transcript recorder
 - Markdown output generator
 
 **Tasks:**
+
 1. Create agent YAML schema and loader
 2. Implement CLI wrapper for `claude -p`
 3. Build transcript data structure
@@ -175,12 +182,14 @@ Produces meeting documentation.
 ### Phase 2: SDK Integration (Enhanced)
 
 **Deliverables:**
+
 - Python SDK integration
 - Session chaining for context preservation
 - Hook-based monitoring
 - Structured output capture
 
 **Tasks:**
+
 1. Migrate from CLI to `claude-agent-sdk`
 2. Implement `ClaudeSDKClient` session management
 3. Add pre/post tool hooks for monitoring
@@ -189,11 +198,13 @@ Produces meeting documentation.
 ### Phase 3: Live Monitoring (Real-time)
 
 **Deliverables:**
+
 - Real-time CLI display (Rich library)
 - WebSocket server for remote monitoring
 - Event-based architecture
 
 **Tasks:**
+
 1. Implement async streaming processor
 2. Create Rich-based CLI dashboard
 3. Add WebSocket server (FastAPI)
@@ -202,12 +213,14 @@ Produces meeting documentation.
 ### Phase 4: Advanced Features (Polish)
 
 **Deliverables:**
+
 - Multi-agent parallel execution
 - Decision extraction with NLP
 - Custom MCP tools for meeting actions
 - Integration with external services (Slack, GitHub)
 
 **Tasks:**
+
 1. Implement parallel agent orchestration
 2. Create MCP server for meeting-specific tools
 3. Add Slack/GitHub integrations
@@ -1085,12 +1098,12 @@ max_turns_per_phase: int = 10  # Limit agent iterations
 
 ### Integration Points
 
-| Integration | Implementation |
-|-------------|----------------|
-| Slack | Post summaries via Slack API after meeting |
-| GitHub | Create issues for action items |
-| Calendar | Schedule follow-up meetings |
-| Confluence | Publish meeting notes |
+| Integration | Implementation                             |
+| ----------- | ------------------------------------------ |
+| Slack       | Post summaries via Slack API after meeting |
+| GitHub      | Create issues for action items             |
+| Calendar    | Schedule follow-up meetings                |
+| Confluence  | Publish meeting notes                      |
 
 ---
 

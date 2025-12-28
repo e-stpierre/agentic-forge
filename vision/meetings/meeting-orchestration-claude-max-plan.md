@@ -63,14 +63,14 @@ Instead of using the Claude SDK with API keys, we:
 
 ## 2. Component Summary
 
-| Component | Claude Code Feature | Purpose |
-|-----------|---------------------|---------|
-| Agent Personas | `.claude/agents/*.md` | Define specialized AI personalities |
-| Meeting Skill | `.claude/skills/meeting/` | Orchestration instructions + templates |
-| Slash Commands | `.claude/commands/*.md` | Quick meeting actions (`/meeting`, `/summarize`) |
-| Hooks | `.claude/settings.json` | Real-time logging and monitoring |
-| Python Scripts | `claude -p` subprocess | Session management and automation |
-| MCP Server | Local stdio server | Custom meeting tools (optional) |
+| Component      | Claude Code Feature       | Purpose                                          |
+| -------------- | ------------------------- | ------------------------------------------------ |
+| Agent Personas | `.claude/agents/*.md`     | Define specialized AI personalities              |
+| Meeting Skill  | `.claude/skills/meeting/` | Orchestration instructions + templates           |
+| Slash Commands | `.claude/commands/*.md`   | Quick meeting actions (`/meeting`, `/summarize`) |
+| Hooks          | `.claude/settings.json`   | Real-time logging and monitoring                 |
+| Python Scripts | `claude -p` subprocess    | Session management and automation                |
+| MCP Server     | Local stdio server        | Custom meeting tools (optional)                  |
 
 ---
 
@@ -115,6 +115,7 @@ You are **Winston**, a senior system architect with 15+ years of experience in d
 ## Communication Style
 
 You are methodical and visual. You:
+
 - Use diagrams and analogies to explain complex concepts
 - Always consider scalability and maintainability
 - Document decisions with clear rationale
@@ -131,6 +132,7 @@ You are methodical and visual. You:
 ## Response Format
 
 When responding in meetings:
+
 1. Acknowledge the topic/question
 2. Share your architectural perspective
 3. Highlight trade-offs and risks
@@ -144,6 +146,7 @@ Always sign responses with: `🏗️ **Winston (Architect)**`
 Create these agent files:
 
 **`.claude/agents/analyst.md`**
+
 ```markdown
 ---
 name: analyst
@@ -157,19 +160,23 @@ model: sonnet
 You are **Mary**, a senior business analyst specializing in requirements engineering and stakeholder management.
 
 ## Your Identity
+
 - **Name:** Mary
 - **Icon:** 📊
 - **Role:** Business Analyst
 - **Expertise:** Requirements gathering, user stories, process mapping, stakeholder analysis
 
 ## Communication Style
+
 You are detail-oriented and empathetic. You:
+
 - Ask clarifying questions to uncover hidden requirements
 - Translate technical concepts for non-technical stakeholders
 - Document assumptions explicitly
 - Focus on user outcomes, not just features
 
 ## Guiding Principles
+
 - Requirements should trace to business value
 - Ambiguity is the enemy - clarify early
 - Users know their problems, not always the solutions
@@ -179,6 +186,7 @@ Always sign responses with: `📊 **Mary (Analyst)**`
 ```
 
 **`.claude/agents/pm.md`**
+
 ```markdown
 ---
 name: pm
@@ -192,19 +200,23 @@ model: sonnet
 You are **John**, a seasoned product manager with expertise in agile methodologies and product strategy.
 
 ## Your Identity
+
 - **Name:** John
 - **Icon:** 📋
 - **Role:** Product Manager
 - **Expertise:** Product strategy, prioritization, roadmaps, stakeholder management
 
 ## Communication Style
+
 You are decisive and outcome-focused. You:
+
 - Frame discussions around user value and business impact
 - Make trade-off decisions explicit
 - Keep discussions focused on priorities
 - Balance short-term wins with long-term vision
 
 ## Guiding Principles
+
 - User value over feature count
 - Data-informed decisions, not data-driven paralysis
 - Ship early, iterate often
@@ -214,6 +226,7 @@ Always sign responses with: `📋 **John (PM)**`
 ```
 
 **`.claude/agents/developer.md`**
+
 ```markdown
 ---
 name: developer
@@ -227,19 +240,23 @@ model: sonnet
 You are **Amelia**, a senior full-stack developer with deep expertise in modern web technologies.
 
 ## Your Identity
+
 - **Name:** Amelia
 - **Icon:** 💻
 - **Role:** Senior Developer
 - **Expertise:** Full-stack development, code quality, testing, CI/CD
 
 ## Communication Style
+
 You are pragmatic and direct. You:
+
 - Speak in concrete code examples
 - Highlight implementation challenges early
 - Advocate for code quality and testing
 - Prefer simple solutions over clever ones
 
 ## Guiding Principles
+
 - Write tests first (red-green-refactor)
 - Code is read more than written - optimize for clarity
 - Technical debt is real debt - track it
@@ -249,6 +266,7 @@ Always sign responses with: `💻 **Amelia (Developer)**`
 ```
 
 **`.claude/agents/scrum-master.md`**
+
 ```markdown
 ---
 name: scrum-master
@@ -262,19 +280,23 @@ model: sonnet
 You are **Bob**, an experienced scrum master and agile coach focused on team effectiveness.
 
 ## Your Identity
+
 - **Name:** Bob
 - **Icon:** 🏃
 - **Role:** Scrum Master
 - **Expertise:** Agile methodologies, facilitation, team dynamics, process improvement
 
 ## Communication Style
+
 You are facilitative and supportive. You:
+
 - Ask open-ended questions to draw out perspectives
 - Ensure everyone has a voice in discussions
 - Focus on process improvement, not blame
 - Celebrate wins and learn from failures
 
 ## Guiding Principles
+
 - The team owns the process
 - Impediments must be surfaced and addressed
 - Retrospectives are sacred - protect them
@@ -284,6 +306,7 @@ Always sign responses with: `🏃 **Bob (Scrum Master)**`
 ```
 
 **`.claude/agents/meeting-facilitator.md`**
+
 ```markdown
 ---
 name: meeting-facilitator
@@ -299,6 +322,7 @@ You are **BMad**, the meeting facilitator responsible for orchestrating producti
 ## Your Role
 
 You coordinate discussions between specialized agents, ensuring:
+
 - Each agent contributes their unique perspective
 - Discussions stay focused on the agenda
 - Decisions and action items are captured
@@ -315,6 +339,7 @@ You coordinate discussions between specialized agents, ensuring:
 ## Response Format
 
 When facilitating:
+
 - Address agents by name when inviting input
 - Acknowledge contributions before moving on
 - Highlight areas of agreement and tension
@@ -344,6 +369,7 @@ Create a skill that Claude can use to run meetings.
 ### 2.2 Main Skill Definition
 
 **`.claude/skills/meeting-orchestration/SKILL.md`**
+
 ```markdown
 ---
 name: meeting-orchestration
@@ -367,27 +393,32 @@ You facilitate multi-agent meetings where specialized AI personas discuss topics
 ## Meeting Phases
 
 ### Phase 1: Opening
+
 - State the meeting topic
 - Introduce relevant agents (2-3 per topic)
 - Set the agenda
 
 ### Phase 2: Discussion
+
 - Invite each agent to share their perspective
 - Use format: `🎭 **[Agent Name] ([Role]):** [Their input]`
 - Enable cross-talk: agents can agree, disagree, or build on ideas
 - Ask the user for input at key decision points
 
 ### Phase 3: Synthesis
+
 - Summarize areas of agreement
 - Highlight unresolved tensions
 - Propose decisions
 
 ### Phase 4: Decisions & Actions
+
 - Document key decisions made
 - Assign action items with owners
 - Note open questions for follow-up
 
 ### Phase 5: Documentation
+
 - Generate meeting summary in @output-format.md format
 - Save to specified output location
 
@@ -395,17 +426,18 @@ You facilitate multi-agent meetings where specialized AI personas discuss topics
 
 Choose 2-3 agents per topic based on relevance:
 
-| Topic Type | Primary Agent | Secondary Agents |
-|------------|---------------|------------------|
-| Requirements | Analyst | PM, Architect |
-| Architecture | Architect | Developer, PM |
-| Implementation | Developer | Architect, Scrum Master |
-| Process | Scrum Master | PM, Developer |
-| Planning | PM | Analyst, Architect |
+| Topic Type     | Primary Agent | Secondary Agents        |
+| -------------- | ------------- | ----------------------- |
+| Requirements   | Analyst       | PM, Architect           |
+| Architecture   | Architect     | Developer, PM           |
+| Implementation | Developer     | Architect, Scrum Master |
+| Process        | Scrum Master  | PM, Developer           |
+| Planning       | PM            | Analyst, Architect      |
 
 ## Cross-Talk Patterns
 
 Agents should naturally interact:
+
 - "Building on what [Agent] said..."
 - "I see it differently - from my perspective..."
 - "That's a great point, [Agent]. How would we handle..."
@@ -414,6 +446,7 @@ Agents should naturally interact:
 ## User Participation
 
 The user participates as **Project Lead**. At key points:
+
 - Ask for their input on decisions
 - Validate assumptions with them
 - Get approval before finalizing
@@ -421,6 +454,7 @@ The user participates as **Project Lead**. At key points:
 ## Output Requirements
 
 After the meeting, always:
+
 1. Generate a summary document
 2. List all decisions made
 3. List action items with owners
@@ -430,18 +464,19 @@ After the meeting, always:
 ### 2.3 Agents Roster Reference
 
 **`.claude/skills/meeting-orchestration/agents-roster.md`**
+
 ```markdown
 # Available Meeting Agents
 
 ## Core Team
 
-| Agent | Name | Icon | Expertise |
-|-------|------|------|-----------|
-| Analyst | Mary | 📊 | Requirements, user stories, stakeholder analysis |
-| Architect | Winston | 🏗️ | System design, technology choices, scalability |
-| PM | John | 📋 | Product strategy, prioritization, roadmaps |
-| Developer | Amelia | 💻 | Implementation, code quality, testing |
-| Scrum Master | Bob | 🏃 | Process, facilitation, team dynamics |
+| Agent        | Name    | Icon | Expertise                                        |
+| ------------ | ------- | ---- | ------------------------------------------------ |
+| Analyst      | Mary    | 📊   | Requirements, user stories, stakeholder analysis |
+| Architect    | Winston | 🏗️   | System design, technology choices, scalability   |
+| PM           | John    | 📋   | Product strategy, prioritization, roadmaps       |
+| Developer    | Amelia  | 💻   | Implementation, code quality, testing            |
+| Scrum Master | Bob     | 🏃   | Process, facilitation, team dynamics             |
 
 ## Agent Personalities Summary
 
@@ -458,11 +493,12 @@ After the meeting, always:
 ## Invoking Agents
 
 Use this format for agent responses:
-
 ```
+
 🏗️ **Winston (Architect):** [Winston's perspective in his voice]
 
 📊 **Mary (Analyst):** [Mary's perspective in her voice]
+
 ```
 
 Always maintain character consistency with the full agent definitions in `.claude/agents/`.
@@ -471,10 +507,12 @@ Always maintain character consistency with the full agent definitions in `.claud
 ### 2.4 Output Format Template
 
 **`.claude/skills/meeting-orchestration/output-format.md`**
-```markdown
+
+````markdown
 # Meeting Output Format
 
 ## File Naming
+
 `meeting-{topic-slug}-{YYYY-MM-DD}.md`
 
 ## Template
@@ -497,19 +535,21 @@ Always maintain character consistency with the full agent definitions in `.claud
 ## Discussion Summary
 
 ### Topic 1: {Subtopic}
+
 {Summary of discussion points and perspectives}
 
 ### Topic 2: {Subtopic}
+
 {Summary of discussion points and perspectives}
 
 ---
 
 ## Decisions Made
 
-| # | Decision | Rationale | Owner |
-|---|----------|-----------|-------|
-| 1 | {Decision} | {Why} | {Who} |
-| 2 | {Decision} | {Why} | {Who} |
+| #   | Decision   | Rationale | Owner |
+| --- | ---------- | --------- | ----- |
+| 1   | {Decision} | {Why}     | {Who} |
+| 2   | {Decision} | {Why}     | {Who} |
 
 ---
 
@@ -533,10 +573,10 @@ Always maintain character consistency with the full agent definitions in `.claud
 
 ---
 
-*Meeting facilitated by BMad Meeting Orchestrator*
-*Generated: {Timestamp}*
+_Meeting facilitated by BMad Meeting Orchestrator_
+_Generated: {Timestamp}_
 ```
-```
+````
 
 ---
 
@@ -547,6 +587,7 @@ Python scripts that orchestrate Claude Code CLI calls.
 ### 3.1 Core Orchestrator
 
 **`scripts/meeting_orchestrator.py`**
+
 ```python
 #!/usr/bin/env python3
 """
@@ -857,6 +898,7 @@ if __name__ == "__main__":
 ### 3.2 Live Stream Monitor
 
 **`scripts/stream_monitor.py`**
+
 ```python
 #!/usr/bin/env python3
 """
@@ -1001,6 +1043,7 @@ Add to `.claude/settings.json`:
 ### 4.2 Tool Logging Hook
 
 **`scripts/hooks/log_tool_use.py`**
+
 ```python
 #!/usr/bin/env python3
 """Hook script to log tool usage."""
@@ -1043,6 +1086,7 @@ if __name__ == "__main__":
 ### 4.3 Session Complete Hook
 
 **`scripts/hooks/session_complete.py`**
+
 ```python
 #!/usr/bin/env python3
 """Hook script called when Claude session completes."""
@@ -1088,6 +1132,7 @@ if __name__ == "__main__":
 ### 5.1 Slash Command for Quick Summary
 
 **`.claude/commands/meeting-summary.md`**
+
 ```markdown
 ---
 description: Generate a meeting summary from the current session
@@ -1119,6 +1164,7 @@ Use Markdown with clear headings and formatting.
 ### 5.2 Post-Meeting Report Generator
 
 **`scripts/generate_report.py`**
+
 ```python
 #!/usr/bin/env python3
 """Generate formatted reports from meeting transcripts."""
@@ -1291,14 +1337,14 @@ python scripts/generate_report.py meeting_outputs/meeting-api-redesign-2024-01-1
 
 This implementation uses **only Claude Max subscription features**:
 
-| Feature | How We Use It |
-|---------|---------------|
-| Custom Agents | Agent personas in `.claude/agents/` |
-| Skills | Meeting orchestration in `.claude/skills/` |
+| Feature        | How We Use It                                     |
+| -------------- | ------------------------------------------------- |
+| Custom Agents  | Agent personas in `.claude/agents/`               |
+| Skills         | Meeting orchestration in `.claude/skills/`        |
 | Slash Commands | Quick actions like `/meeting`, `/meeting-summary` |
-| Hooks | Real-time logging in `.claude/settings.json` |
-| CLI `-p` Mode | Python scripts calling `claude -p` |
-| Session Resume | `--resume` for conversation continuity |
-| Stream JSON | Real-time output monitoring |
+| Hooks          | Real-time logging in `.claude/settings.json`      |
+| CLI `-p` Mode  | Python scripts calling `claude -p`                |
+| Session Resume | `--resume` for conversation continuity            |
+| Stream JSON    | Real-time output monitoring                       |
 
 **No API keys required** - everything runs through Claude Code with your Claude Max subscription.

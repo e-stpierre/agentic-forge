@@ -46,6 +46,7 @@ This document explains how BMAD Method orchestrates complex multi-workflow proce
 ```
 
 **Key Point:** The **USER is the orchestrator**. They:
+
 1. Load different agents (PM, Architect, Developer)
 2. Trigger workflows manually (`*workflow-status`, `*create-story`, `*dev-story`)
 3. Review outputs
@@ -71,6 +72,7 @@ It's a **system prompt template** that tells Claude how to interpret workflow in
 ```
 
 **This is loaded into Claude's context** when an agent triggers a workflow. Claude then:
+
 - Reads the workflow instructions
 - Follows the step-by-step XML/Markdown
 - Prompts the user when needed
@@ -84,6 +86,7 @@ It's a **system prompt template** that tells Claude how to interpret workflow in
 All progress tracking uses YAML files:
 
 **sprint-status.yaml:**
+
 ```yaml
 development_status:
   epic-1: in-progress
@@ -93,6 +96,7 @@ development_status:
 ```
 
 **workflow-status.yaml (BMGD):**
+
 ```yaml
 workflow_status:
   brainstorm-game: /path/to/brainstorm.md
@@ -103,6 +107,7 @@ workflow_status:
 ```
 
 **How Workflows Use State:**
+
 1. Load state file (e.g., `sprint-status.yaml`)
 2. Find next incomplete item
 3. Execute workflow for that item
@@ -164,6 +169,7 @@ Next steps:
 ### 2.1 What BMAD Does Well
 
 BMAD excels at:
+
 - **Rich context provision** - Workflows load extensive project context
 - **Quality gates** - Validation workflows check output quality
 - **State persistence** - YAML files survive session restarts
@@ -173,6 +179,7 @@ BMAD excels at:
 ### 2.2 What BMAD Doesn't Do
 
 BMAD does NOT:
+
 - ❌ **Automatically progress through workflows** - User triggers each one
 - ❌ **Run workflows in parallel** - One agent, one workflow at a time
 - ❌ **Retry on failure** - User must debug and re-run
@@ -183,6 +190,7 @@ BMAD does NOT:
 ### 2.3 The User as Orchestrator
 
 The user provides:
+
 - **Decision-making** - Which workflow to run next
 - **Error handling** - If workflow fails, user fixes and re-runs
 - **Parallelization** - User could open multiple terminal sessions
@@ -235,16 +243,16 @@ For your use case (brainstorm-plan-build-validate with multiple PRs, dependencie
 
 ### 3.2 Core Components
 
-| Component | Purpose | Technology |
-|-----------|---------|------------|
-| **Workflow Definition** | DAG of tasks with dependencies | YAML or Python dataclass |
-| **State Manager** | Track task status (pending/running/done/failed) | SQLite or YAML |
-| **Task Executor** | Spawn `claude -p` subprocess | Python subprocess |
-| **Session Manager** | Track Claude session IDs for context | Dict/Database |
-| **Dependency Resolver** | Determine which tasks can run | Topological sort |
-| **Parallel Executor** | Run independent tasks concurrently | asyncio or threading |
-| **Retry Handler** | Retry failed tasks with backoff | Configurable retry policy |
-| **Output Collector** | Gather results from all tasks | File system + database |
+| Component               | Purpose                                         | Technology                |
+| ----------------------- | ----------------------------------------------- | ------------------------- |
+| **Workflow Definition** | DAG of tasks with dependencies                  | YAML or Python dataclass  |
+| **State Manager**       | Track task status (pending/running/done/failed) | SQLite or YAML            |
+| **Task Executor**       | Spawn `claude -p` subprocess                    | Python subprocess         |
+| **Session Manager**     | Track Claude session IDs for context            | Dict/Database             |
+| **Dependency Resolver** | Determine which tasks can run                   | Topological sort          |
+| **Parallel Executor**   | Run independent tasks concurrently              | asyncio or threading      |
+| **Retry Handler**       | Retry failed tasks with backoff                 | Configurable retry policy |
+| **Output Collector**    | Gather results from all tasks                   | File system + database    |
 
 ### 3.3 Design Principles
 
@@ -336,7 +344,7 @@ tasks:
 
   # Dynamic tasks generated from sprint_plan.yaml
   implement_story:
-    template: true  # This will be instantiated per story
+    template: true # This will be instantiated per story
     agent: developer
     description: "Implement story {{story_id}}"
     command: |
@@ -408,7 +416,7 @@ tasks:
     outputs:
       - validation_report.md
     dependencies:
-      - create_pr  # All PRs must be created
+      - create_pr # All PRs must be created
 
 # Execution order
 execution:
@@ -971,7 +979,7 @@ tasks:
       - Grep
       - Glob
     dependencies:
-      - create_pr  # All PRs complete
+      - create_pr # All PRs complete
 
 execution:
   sequential_phases:
@@ -1070,14 +1078,14 @@ def get_parallel_tasks(ready_tasks: List[str], max_parallel: int) -> List[str]:
 
 ### 6.3 Handling Cross-Task Dependencies
 
-**Example: Story B depends on Story A's database schema**
+#### Example: Story B depends on Story A's database schema
 
 ```yaml
 tasks:
   implement_story_a:
     outputs:
       - impl/story_a.md
-      - database/schema_v1.sql  # Creates schema
+      - database/schema_v1.sql # Creates schema
 
   implement_story_b:
     command: |
@@ -1088,7 +1096,7 @@ tasks:
 
       Use the schema when implementing.
     dependencies:
-      - implement_story_a  # Ensures schema exists first
+      - implement_story_a # Ensures schema exists first
 ```
 
 The orchestrator ensures `story_a` completes before `story_b` starts.
@@ -1133,23 +1141,23 @@ async def execute_with_exponential_backoff(
 
 ### 7.2 Failure Handling Strategies
 
-| Strategy | When to Use | Implementation |
-|----------|-------------|----------------|
-| **Retry** | Transient failures (network, rate limit) | Exponential backoff |
-| **Skip** | Optional tasks | Mark as SKIPPED, continue |
-| **Abort** | Critical task failure | Stop entire workflow |
-| **Continue** | Non-blocking failure | Mark as FAILED, continue with other tasks |
-| **Manual Intervention** | Complex failures | Pause, notify user, wait for fix |
+| Strategy                | When to Use                              | Implementation                            |
+| ----------------------- | ---------------------------------------- | ----------------------------------------- |
+| **Retry**               | Transient failures (network, rate limit) | Exponential backoff                       |
+| **Skip**                | Optional tasks                           | Mark as SKIPPED, continue                 |
+| **Abort**               | Critical task failure                    | Stop entire workflow                      |
+| **Continue**            | Non-blocking failure                     | Mark as FAILED, continue with other tasks |
+| **Manual Intervention** | Complex failures                         | Pause, notify user, wait for fix          |
 
 **Example Configuration:**
 
 ```yaml
 tasks:
   critical_task:
-    on_failure: abort  # Stop everything
+    on_failure: abort # Stop everything
 
   optional_task:
-    on_failure: skip  # Continue without it
+    on_failure: skip # Continue without it
 
   flaky_task:
     on_failure: retry

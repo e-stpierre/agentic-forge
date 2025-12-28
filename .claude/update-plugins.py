@@ -151,7 +151,7 @@ def staged_marketplace(repo_root: Path, marketplace_name: str):
 
         # Remove existing marketplace and add staging directory as source
         # Note: Claude CLI requires relative paths starting with "./"
-        print_info(f"Re-registering marketplace from staging directory...")
+        print_info("Re-registering marketplace from staging directory...")
         run_command(
             ["claude", "plugin", "marketplace", "remove", marketplace_name],
             f"Remove existing {marketplace_name} marketplace",
@@ -217,7 +217,7 @@ def main():
     # Step 1 & 2: Create staged copy, register as marketplace, and reinstall plugins
     print_step(1, total_steps, "Create Staged Marketplace")
 
-    with staged_marketplace(repo_root, marketplace_name) as staging_dir:
+    with staged_marketplace(repo_root, marketplace_name):
         # Reinstall each plugin from the staged marketplace
         print_step(2, total_steps, "Reinstall Claude Code Plugins")
         print_info(f"Reinstalling {len(plugins)} plugins from staged marketplace...")

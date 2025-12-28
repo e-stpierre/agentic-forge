@@ -35,6 +35,7 @@ The agent manifest is an XML document generated during installation that contain
 ```
 
 **Key attributes per agent:**
+
 - `name` - Display name (e.g., "John", "Winston", "Amelia")
 - `title` - Formal role (e.g., "Product Manager", "Architect")
 - `icon` - Visual emoji identifier
@@ -89,22 +90,24 @@ party: "./default-party.csv"
 2. **Manifest Loading:** The workflow loads `_bmad/_config/agent-manifest.csv` and parses all agent entries with complete personality data
 
 3. **Welcome Message:**
-```
-🎉 PARTY MODE ACTIVATED! 🎉
 
-Welcome {{user_name}}! All BMAD agents are here and ready for a dynamic
-group discussion. I've brought together our complete team of experts...
-```
+   ```
+   🎉 PARTY MODE ACTIVATED! 🎉
+
+   Welcome {{user_name}}! All BMAD agents are here and ready for a dynamic
+   group discussion. I've brought together our complete team of experts...
+   ```
 
 4. **State Tracking:** Frontmatter tracks session state:
+
 ```yaml
 ---
 stepsCompleted: [1]
-workflowType: 'party-mode'
-user_name: '{{user_name}}'
+workflowType: "party-mode"
+user_name: "{{user_name}}"
 agents_loaded: true
 party_active: true
-exit_triggers: ['*exit', 'goodbye', 'end party', 'quit']
+exit_triggers: ["*exit", "goodbye", "end party", "quit"]
 ---
 ```
 
@@ -119,6 +122,7 @@ exit_triggers: ['*exit', 'goodbye', 'end party', 'quit']
    - Tertiary Agent: Cross-domain insight or devil's advocate
 
 **Priority Rules:**
+
 - If user names a specific agent → prioritize that agent + 1-2 complementary agents
 - Rotate participation to ensure diverse perspectives over time
 
@@ -135,6 +139,7 @@ Each selected agent responds in character:
 **Cross-Talk Patterns:**
 
 Agents can reference each other naturally:
+
 - "As [Another Agent] mentioned..."
 - "[Another Agent] makes a great point about..."
 - "I see it differently than [Another Agent]..."
@@ -142,17 +147,18 @@ Agents can reference each other naturally:
 
 **Question Handling:**
 
-| Question Type | Behavior |
-|--------------|----------|
-| Direct to User | End round, wait for user input |
-| Inter-Agent | Allow natural back-and-forth within same round |
-| Rhetorical | Continue without pausing flow |
+| Question Type  | Behavior                                       |
+| -------------- | ---------------------------------------------- |
+| Direct to User | End round, wait for user input                 |
+| Inter-Agent    | Allow natural back-and-forth within same round |
+| Rhetorical     | Continue without pausing flow                  |
 
 ### Phase 3: Session Conclusion
 
 **Exit Triggers:** `*exit`, `goodbye`, `end party`, `quit`
 
 **Graceful Exit Sequence:**
+
 1. Acknowledgment of session conclusion
 2. 2-3 selected agents give in-character farewells
 3. Session highlights summary
@@ -172,6 +178,7 @@ Party Mode itself is an interactive session that does not automatically persist 
 The retrospective workflow uses Party Mode dialogue format but adds document generation:
 
 **Dialogue Format:**
+
 ```
 Bob (Scrum Master): "Let's begin the retrospective..."
 Alice (Product Owner): "The authentication flow exceeded expectations."
@@ -180,6 +187,7 @@ Charlie (Senior Dev): "The caching strategy cut API calls by 60%."
 ```
 
 **Output Configuration:**
+
 ```yaml
 config_source: "{project-root}/_bmad/bmm/config.yaml"
 output_folder: "{config_source}:output_folder"
@@ -191,6 +199,7 @@ retrospectives_folder: "{sprint_artifacts}"
 Output file: `{retrospectives_folder}/epic-{{epic_number}}-retro-{date}.md`
 
 Contents:
+
 - Epic summary and metrics (stories completed, velocity)
 - Quality/technical metrics (blockers, technical debt, test coverage)
 - Business outcomes (goals achieved, stakeholder feedback)
@@ -203,6 +212,7 @@ Contents:
 **Status Tracking:**
 
 Updates `sprint-status.yaml`:
+
 ```yaml
 epic-{{epic_number}}-retrospective: done
 ```
@@ -212,6 +222,7 @@ epic-{{epic_number}}-retrospective: done
 **Location:** `src/core/workflows/brainstorming/`
 
 Uses 62 brainstorming techniques from `brain-methods.csv` with multi-agent facilitation. The Brainstorming Coach (Carson) guides sessions through:
+
 - Session setup and technique selection
 - Execution with collaborative patterns
 - Idea organization and synthesis
@@ -223,34 +234,37 @@ Uses 62 brainstorming techniques from `brain-methods.csv` with multi-agent facil
 **19+ agents available across modules:**
 
 ### BMM Module (12 agents)
-| Agent | Name | Role |
-|-------|------|------|
-| PM | John | Product Manager |
-| Analyst | Mary | Business Analyst |
-| Architect | Winston | System Architect |
-| SM | Bob | Scrum Master |
-| DEV | Amelia | Developer |
-| TEA | Murat | Test Architect |
-| UX Designer | Sally | UX Specialist |
-| Tech Writer | Paige | Documentation |
-| Quick Flow Dev | Barry | Solo Full-Stack |
-| Game Designer | - | Game Design |
-| Game Dev | - | Game Development |
-| Game Architect | - | Game Architecture |
+
+| Agent          | Name    | Role              |
+| -------------- | ------- | ----------------- |
+| PM             | John    | Product Manager   |
+| Analyst        | Mary    | Business Analyst  |
+| Architect      | Winston | System Architect  |
+| SM             | Bob     | Scrum Master      |
+| DEV            | Amelia  | Developer         |
+| TEA            | Murat   | Test Architect    |
+| UX Designer    | Sally   | UX Specialist     |
+| Tech Writer    | Paige   | Documentation     |
+| Quick Flow Dev | Barry   | Solo Full-Stack   |
+| Game Designer  | -       | Game Design       |
+| Game Dev       | -       | Game Development  |
+| Game Architect | -       | Game Architecture |
 
 ### CIS Module (Creative Intelligence Suite)
-| Agent | Name | Role |
-|-------|------|------|
-| Brainstorming Coach | Carson | Innovation Facilitator |
-| Creative Problem Solver | Dr. Quinn | Solutions Architect |
-| Design Thinking Coach | Maya | Human-Centered Design |
-| Innovation Strategist | Victor | Business Model Innovation |
-| Storyteller | Sophia | Narrative Expert |
-| Presentation Master | Spike | Visual Communication |
+
+| Agent                   | Name      | Role                      |
+| ----------------------- | --------- | ------------------------- |
+| Brainstorming Coach     | Carson    | Innovation Facilitator    |
+| Creative Problem Solver | Dr. Quinn | Solutions Architect       |
+| Design Thinking Coach   | Maya      | Human-Centered Design     |
+| Innovation Strategist   | Victor    | Business Model Innovation |
+| Storyteller             | Sophia    | Narrative Expert          |
+| Presentation Master     | Spike     | Visual Communication      |
 
 ### Core Module
-| Agent | Role |
-|-------|------|
+
+| Agent       | Role                     |
+| ----------- | ------------------------ |
 | BMad Master | Orchestrator/Facilitator |
 
 ---
@@ -293,8 +307,8 @@ Users can customize agents via override files:
 agent:
   persona:
     principles:
-      - 'HIPAA compliance is non-negotiable'
-      - 'Patient safety over feature velocity'
+      - "HIPAA compliance is non-negotiable"
+      - "Patient safety over feature velocity"
 ```
 
 After creating customization, run `npx bmad-method install` to rebuild agents with merged personalities.
@@ -331,32 +345,32 @@ Triggered after each agent's text response for voice synthesis.
 
 ## Use Cases
 
-| Scenario | Recommended Approach |
-|----------|---------------------|
-| Multi-perspective decisions | Party Mode |
+| Scenario                        | Recommended Approach                              |
+| ------------------------------- | ------------------------------------------------- |
+| Multi-perspective decisions     | Party Mode                                        |
 | Post-mortems and retrospectives | Retrospective workflow (uses Party Mode protocol) |
-| Creative brainstorming | Party Mode + Brainstorming workflow |
-| Sprint planning | Party Mode |
-| Complex problem-solving | Party Mode with relevant agents |
-| Simple implementation questions | Single agent (DEV) |
-| Document review | Single agent (Tech Writer) |
+| Creative brainstorming          | Party Mode + Brainstorming workflow               |
+| Sprint planning                 | Party Mode                                        |
+| Complex problem-solving         | Party Mode with relevant agents                   |
+| Simple implementation questions | Single agent (DEV)                                |
+| Document review                 | Single agent (Tech Writer)                        |
 
 ---
 
 ## File Reference
 
-| Component | Path |
-|-----------|------|
-| Party Mode Workflow | `src/core/workflows/party-mode/workflow.md` |
-| Agent Loading Step | `src/core/workflows/party-mode/steps/step-01-agent-loading.md` |
-| Discussion Orchestration | `src/core/workflows/party-mode/steps/step-02-discussion-orchestration.md` |
-| Graceful Exit | `src/core/workflows/party-mode/steps/step-03-graceful-exit.md` |
-| Agent Manifest Generator | `tools/cli/lib/agent-party-generator.js` |
-| Retrospective Workflow | `src/modules/bmm/workflows/4-implementation/retrospective/` |
+| Component                  | Path                                                                       |
+| -------------------------- | -------------------------------------------------------------------------- |
+| Party Mode Workflow        | `src/core/workflows/party-mode/workflow.md`                                |
+| Agent Loading Step         | `src/core/workflows/party-mode/steps/step-01-agent-loading.md`             |
+| Discussion Orchestration   | `src/core/workflows/party-mode/steps/step-02-discussion-orchestration.md`  |
+| Graceful Exit              | `src/core/workflows/party-mode/steps/step-03-graceful-exit.md`             |
+| Agent Manifest Generator   | `tools/cli/lib/agent-party-generator.js`                                   |
+| Retrospective Workflow     | `src/modules/bmm/workflows/4-implementation/retrospective/`                |
 | Retrospective Instructions | `src/modules/bmm/workflows/4-implementation/retrospective/instructions.md` |
-| Team Configurations | `src/modules/*/teams/team-*.yaml` |
-| Party Documentation | `src/modules/bmm/docs/party-mode.md` |
-| Brainstorming Techniques | `src/core/workflows/brainstorming/brain-methods.csv` |
+| Team Configurations        | `src/modules/*/teams/team-*.yaml`                                          |
+| Party Documentation        | `src/modules/bmm/docs/party-mode.md`                                       |
+| Brainstorming Techniques   | `src/core/workflows/brainstorming/brain-methods.csv`                       |
 
 ---
 
