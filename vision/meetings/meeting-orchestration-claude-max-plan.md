@@ -89,12 +89,12 @@ This plan describes how to build a **true multi-agent** meeting orchestration sy
 
 ### Supported CLI Providers
 
-| Provider    | CLI Command      | Status        | Session Resume | Output Format   |
-| ----------- | ---------------- | ------------- | -------------- | --------------- |
-| **Claude**  | `claude`         | ✅ Supported  | `--resume`     | `--output-format json` |
-| **Cursor**  | `cursor-agent`   | ✅ Supported  | `--resume`     | `--output-format`      |
-| **Codex**   | `codex`          | 🚧 Planned    | TBD            | TBD             |
-| **Copilot** | `gh copilot`     | 🚧 Planned    | No             | Text only       |
+| Provider    | CLI Command    | Status       | Session Resume | Output Format          |
+| ----------- | -------------- | ------------ | -------------- | ---------------------- |
+| **Claude**  | `claude`       | ✅ Supported | `--resume`     | `--output-format json` |
+| **Cursor**  | `cursor-agent` | ✅ Supported | `--resume`     | `--output-format`      |
+| **Codex**   | `codex`        | 🚧 Planned   | TBD            | TBD                    |
+| **Copilot** | `gh copilot`   | 🚧 Planned   | No             | Text only              |
 
 ---
 
@@ -2410,10 +2410,10 @@ python scripts/run_meeting.py \
 
 Agents can be specified in two formats:
 
-| Format | Description | Example |
-|--------|-------------|---------|
-| `agent_name` | Uses default provider (claude) | `architect` |
-| `agent_name:provider` | Uses specified provider | `architect:cursor` |
+| Format                | Description                    | Example            |
+| --------------------- | ------------------------------ | ------------------ |
+| `agent_name`          | Uses default provider (claude) | `architect`        |
+| `agent_name:provider` | Uses specified provider        | `architect:cursor` |
 
 Supported providers: `claude`, `cursor`, `codex` (planned), `copilot` (planned)
 
@@ -2594,18 +2594,18 @@ Always format: `💻 **Developer (Cursor):** [Your response]`
 
 This implementation provides **true multi-agent meetings** with:
 
-| Feature                   | Implementation                                                    |
-| ------------------------- | ----------------------------------------------------------------- |
+| Feature                   | Implementation                                                      |
+| ------------------------- | ------------------------------------------------------------------- |
 | **AI-agnostic**           | Support for Claude, Cursor, Codex, Copilot via provider abstraction |
-| **Independent sessions**  | Each agent runs as separate CLI process with own context          |
-| **Mixed providers**       | Different agents can use different AI backends in same meeting    |
-| **Kafka messaging**       | Decoupled pub/sub communication between agents                    |
-| **Persistent state**      | Sessions maintained via `--resume` across turns (where supported) |
-| **Interactive mode**      | `--interactive` flag enables TUI and user participation           |
-| **Autonomous mode**       | Without flag, runs fully autonomous with no user input            |
-| **Agent selection**       | User specifies agents with optional provider (`agent:provider`)   |
-| **Facilitator templates** | Pluggable meeting strategies (brainstorm, decision, etc)          |
-| **Document templates**    | User selects which output documents to generate                   |
-| **Full transcript**       | Complete conversation saved to markdown                           |
+| **Independent sessions**  | Each agent runs as separate CLI process with own context            |
+| **Mixed providers**       | Different agents can use different AI backends in same meeting      |
+| **Kafka messaging**       | Decoupled pub/sub communication between agents                      |
+| **Persistent state**      | Sessions maintained via `--resume` across turns (where supported)   |
+| **Interactive mode**      | `--interactive` flag enables TUI and user participation             |
+| **Autonomous mode**       | Without flag, runs fully autonomous with no user input              |
+| **Agent selection**       | User specifies agents with optional provider (`agent:provider`)     |
+| **Facilitator templates** | Pluggable meeting strategies (brainstorm, decision, etc)            |
+| **Document templates**    | User selects which output documents to generate                     |
+| **Full transcript**       | Complete conversation saved to markdown                             |
 
 **Key difference from BMAD Party Mode:** Each agent is a genuinely independent AI session with its own context window, enabling true disagreement and independent reasoning. Additionally, agents can use different AI providers (Claude, Cursor, etc.) in the same meeting for diverse perspectives.

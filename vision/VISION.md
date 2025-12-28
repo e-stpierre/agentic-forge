@@ -75,12 +75,12 @@ For multi-agent meetings, Kafka message bus provides decoupled pub/sub communica
 
 The system supports multiple AI CLI providers, enabling mixed-provider workflows where different agents use different AI backends:
 
-| Provider   | CLI Command      | Status      | Session Resume | Notes                            |
-| ---------- | ---------------- | ----------- | -------------- | -------------------------------- |
-| **Claude** | `claude`         | Supported   | Yes            | Primary provider, full support   |
-| **Cursor** | `cursor-agent`   | Supported   | Yes            | Similar CLI structure to Claude  |
-| **Codex**  | `codex`          | Planned     | TBD            | OpenAI Codex CLI                 |
-| **Copilot**| `gh copilot`     | Planned     | No             | GitHub Copilot CLI               |
+| Provider    | CLI Command    | Status    | Session Resume | Notes                           |
+| ----------- | -------------- | --------- | -------------- | ------------------------------- |
+| **Claude**  | `claude`       | Supported | Yes            | Primary provider, full support  |
+| **Cursor**  | `cursor-agent` | Supported | Yes            | Similar CLI structure to Claude |
+| **Codex**   | `codex`        | Planned   | TBD            | OpenAI Codex CLI                |
+| **Copilot** | `gh copilot`   | Planned   | No             | GitHub Copilot CLI              |
 
 Agents specify their provider in configuration, enabling scenarios like:
 
@@ -89,14 +89,74 @@ Agents specify their provider in configuration, enabling scenarios like:
 
 ## Plugin Dependencies
 
-- **Core**: Foundation plugin, no dependencies. Provides common git workflows, code quality tools, and helper commands.
-- **Interactive SDLC**: Depends on Core
-- **Agentic SDLC**: Depends on Core
-- **AppSec**: Integrates with both SDLC plugins
+- **Agentic Core**: Foundation framework for all agent orchestration. Provides Kafka messaging, PostgreSQL storage, CLI provider abstraction, and workflow engine.
+- **Core**: Utility plugin for common git workflows, code quality tools, and helper commands. No dependencies.
+- **Interactive SDLC**: Depends on Core. Human-in-the-loop workflows.
+- **Agentic SDLC**: Depends on Agentic Core. Fully autonomous workflows.
+- **AppSec**: Integrates with both SDLC plugins.
+- **Multi-Agent Meetings**: Depends on Agentic Core. Collaborative agent discussions.
+
+```
+                    ┌─────────────────┐
+                    │  Agentic Core   │
+                    │  (Kafka, PG,    │
+                    │   Providers)    │
+                    └────────┬────────┘
+                             │
+         ┌───────────────────┼───────────────────┐
+         │                   │                   │
+         ▼                   ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│  Agentic SDLC   │ │ Multi-Agent     │ │    Future       │
+│  (Autonomous)   │ │ Meetings        │ │   Plugins       │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│     Core        │
+│  (Git, Utils)   │
+└─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Interactive SDLC│
+│  (Human-in-loop)│
+└─────────────────┘
+```
 
 **Note**: Interactive SDLC and Agentic SDLC are independent and cannot be used together. They represent different approaches to AI-assisted development - one interactive with human guidance, the other fully autonomous.
 
 ## Plugins
+
+### Agentic Core
+
+Foundation framework providing infrastructure for all agent orchestration workflows. See [agentic-core.md](./agentic-core.md) for detailed documentation.
+
+**Philosophy**: Provide a robust, provider-agnostic infrastructure layer that enables everything from 5-minute one-shot tasks to multi-day epic implementations.
+
+**Infrastructure**:
+
+- **Kafka**: Message bus for decoupled agent communication and event sourcing
+- **PostgreSQL + pgvector**: Persistent state, checkpoints, and semantic memory
+- **CLI Provider Abstraction**: Unified interface to Claude, Cursor, Codex, Copilot
+
+**Key Features**:
+
+- YAML-based declarative workflow definitions
+- Crash recovery via Kafka replay and PostgreSQL checkpoints
+- Long-term memory with semantic search (pgvector)
+- Human-in-the-loop optional at any checkpoint
+- Full telemetry and audit logging
+
+**CLI Commands**:
+
+```bash
+agentic infra up              # Start infrastructure
+agentic run workflow.yaml     # Run any workflow
+agentic one-shot "Fix bug"    # Quick one-shot task
+agentic meeting "Topic"       # Start agent meeting
+agentic resume <workflow-id>  # Resume from checkpoint
+```
 
 ### AppSec
 
@@ -132,14 +192,15 @@ Human-in-the-loop plugin for guided development within Claude Code sessions.
 
 ### Agentic SDLC
 
-Fully autonomous plugin for zero-interaction workflows.
+Fully autonomous plugin for zero-interaction workflows. **Depends on Agentic Core** for infrastructure (Kafka, PostgreSQL, CLI providers).
 
-**Philosophy**: No developer interaction during execution; suitable for CI/CD integration. Leverages Claude prompts (commands, agents, skills, hooks) and Python scripts for complete agentic workflows.
+**Philosophy**: No developer interaction during execution; suitable for CI/CD integration. Uses Agentic Core's workflow engine with YAML-defined workflows and SDLC-specific agent personas.
 
-**Orchestrator Architecture**:
+**Infrastructure** (provided by Agentic Core):
 
-- **Python orchestrator**: Main loop (30s intervals) that monitors agent progress, validates status, handles retries, and stops on failures (3 attempts max)
-- **Orchestrator agent**: Claude agent triggered by the main loop to validate progress and update orchestration.md
+- **Kafka**: Agent communication and event sourcing
+- **PostgreSQL + pgvector**: State, checkpoints, long-term memory
+- **Python orchestrator**: Workflow execution with crash recovery
 
 **Agents** (extensible):
 
