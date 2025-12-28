@@ -549,7 +549,7 @@ class CursorProvider(CLIProvider):
 ```yaml
 # workflow.yaml
 name: string # Unique workflow name
-type: one-shot | feature | epic | meeting | custom
+type: one-shot | feature | epic | meeting | analysis | custom
 version: "1.0"
 
 # Global settings
@@ -573,6 +573,12 @@ agents:
     persona: string | file_reference
     tools: [string]
 
+# Input sources (for analysis workflows)
+inputs:
+  - type: file | url | video | codebase | github_issue
+    path: string # File path, URL, or glob pattern
+    description: string # What this input contains
+
 # Workflow steps
 steps:
   - name: string
@@ -581,7 +587,7 @@ steps:
     task:
       description: string
       context: [string | file_reference]
-      expected_output: code | text | decision | plan
+      expected_output: code | text | decision | plan | report
     conditions:
       requires: [step_name] # Dependencies
       if: expression # Conditional execution
@@ -792,6 +798,176 @@ outputs:
     type: file
     path: docs/epics/authentication.md
     template: templates/epic-summary.md
+```
+
+### Analysis Workflow Example
+
+Analysis workflows support 1-5 agents collaborating to analyze a topic with diverse inputs (code, videos, web references, documents).
+
+```yaml
+name: security-analysis
+type: analysis
+version: "1.0"
+
+settings:
+  human_in_loop: true # Human decides when agents disagree
+  max_rounds: 10 # Maximum discussion rounds
+  output_dir: reports/security/
+
+# Diverse input sources
+inputs:
+  - type: codebase
+    path: "src/auth/**/*.ts"
+    description: "Authentication module source code"
+
+  - type: url
+    path: "https://owasp.org/Top10/"
+    description: "OWASP Top 10 reference"
+
+  - type: file
+    path: "docs/architecture.md"
+    description: "System architecture documentation"
+
+  - type: video
+    path: "recordings/auth-demo.mp4"
+    description: "Authentication flow walkthrough"
+
+# Security-focused agents
+agents:
+  - name: security-researcher
+    provider: claude
+    persona: personas/security-researcher.md
+    tools: [read, grep, web_search]
+
+  - name: pentester
+    provider: claude
+    persona: personas/pentester.md
+    tools: [read, grep, bash]
+
+  - name: appsec-developer
+    provider: cursor
+    persona: personas/appsec-developer.md
+    tools: [read, grep, edit]
+
+steps:
+  # Phase 1: Individual Analysis
+  - name: threat-modeling
+    agent: security-researcher
+    task:
+      description: "Analyze the codebase for potential threat vectors"
+      context:
+        - "{{ inputs.codebase }}"
+        - "{{ inputs.architecture }}"
+      expected_output: report
+    checkpoint: true
+
+  - name: vulnerability-scan
+    agent: pentester
+    task:
+      description: "Identify specific vulnerabilities and attack vectors"
+      context:
+        - "{{ inputs.codebase }}"
+        - "{{ outputs.threat-modeling }}"
+      expected_output: report
+    conditions:
+      requires: [threat-modeling]
+
+  - name: remediation-plan
+    agent: appsec-developer
+    task:
+      description: "Create remediation plan with code fixes"
+      context:
+        - "{{ outputs.vulnerability-scan }}"
+        - "{{ inputs.owasp }}"
+      expected_output: plan
+    conditions:
+      requires: [vulnerability-scan]
+
+  # Phase 2: Collaborative Discussion
+  - name: review-meeting
+    type: meeting
+    agents: [security-researcher, pentester, appsec-developer]
+    task:
+      description: "Review findings and prioritize remediation"
+      template: meetings/security-review
+    human_approval: true # Human decides final priorities
+    checkpoint: true
+
+outputs:
+  - name: security-report
+    type: file
+    path: "{{ settings.output_dir }}/{{ analysis_name }}-report.md"
+    template: templates/security-report.md
+
+  - name: remediation-tasks
+    type: file
+    path: "{{ settings.output_dir }}/{{ analysis_name }}-tasks.md"
+    template: templates/remediation-tasks.md
+```
+
+### Pentest Planning Workflow Example
+
+```yaml
+name: pentest-planning
+type: analysis
+version: "1.0"
+
+settings:
+  human_in_loop: true
+  max_rounds: 8
+
+inputs:
+  - type: url
+    path: "{{ target_url }}"
+    description: "Target web application"
+
+  - type: file
+    path: "{{ scope_document }}"
+    description: "Pentest scope and rules of engagement"
+
+agents:
+  - name: security-researcher
+    provider: claude
+    persona: |
+      You are a security researcher specializing in reconnaissance
+      and threat intelligence. Focus on attack surface mapping.
+
+  - name: pentester
+    provider: claude
+    persona: |
+      You are an experienced penetration tester. Focus on practical
+      exploitation techniques and proof-of-concept development.
+
+steps:
+  - name: reconnaissance
+    agent: security-researcher
+    task:
+      description: "Perform passive reconnaissance on {{ target_url }}"
+      expected_output: report
+
+  - name: attack-planning
+    agent: pentester
+    task:
+      description: "Develop attack plan based on reconnaissance"
+      context:
+        - "{{ outputs.reconnaissance }}"
+        - "{{ inputs.scope }}"
+      expected_output: plan
+    conditions:
+      requires: [reconnaissance]
+
+  - name: methodology-review
+    type: meeting
+    agents: [security-researcher, pentester]
+    task:
+      description: "Review and refine the pentest methodology"
+      template: meetings/brainstorm
+    human_approval: true
+
+outputs:
+  - name: pentest-plan
+    type: file
+    path: reports/pentest-plan-{{ target_name }}.md
 ```
 
 ---
@@ -1150,7 +1326,10 @@ plugins/agentic-core/
 │       │       ├── developer.md
 │       │       ├── planner.md
 │       │       ├── tester.md
-│       │       └── architect.md
+│       │       ├── architect.md
+│       │       ├── security-researcher.md
+│       │       ├── pentester.md
+│       │       └── appsec-developer.md
 │       │
 │       ├── checkpoints/              # State recovery
 │       │   ├── __init__.py
@@ -1165,7 +1344,8 @@ plugins/agentic-core/
 │   ├── one-shot.yaml
 │   ├── feature.yaml
 │   ├── epic.yaml
-│   └── meeting.yaml
+│   ├── meeting.yaml
+│   └── analysis.yaml
 │
 └── tests/
     ├── test_providers.py
@@ -1206,6 +1386,7 @@ agentic run workflow.yaml --from-step plan  # Resume from specific step
 agentic one-shot "Fix the login bug"        # Quick one-shot workflow
 agentic feature "Add dark mode"             # Feature development
 agentic meeting "Sprint planning"           # Start a meeting
+agentic analysis "Security review of auth"  # Start an analysis session
 
 # Workflow management
 agentic list                                # List all workflows
@@ -1416,6 +1597,95 @@ User: agentic run epic.yaml \
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Use Case 5: Security Analysis
+
+```
+User: agentic analysis "Auth module security review" \
+        --agents security-researcher pentester appsec-developer \
+        --inputs "src/auth/**" "docs/architecture.md" \
+        --human-in-loop
+
+┌─────────────────────────────────────────────────────────────┐
+│                   ANALYSIS WORKFLOW                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. Load inputs                                              │
+│     ├─ Codebase: src/auth/**/*.ts (45 files)                │
+│     ├─ Documentation: docs/architecture.md                  │
+│     └─ External: OWASP Top 10 reference                     │
+│          │                                                   │
+│          ▼                                                   │
+│  2. THREAT MODELING (security-researcher:claude)            │
+│     ├─ Analyze attack surface                               │
+│     ├─ Identify threat vectors                              │
+│     └─ Checkpoint saved                                     │
+│          │                                                   │
+│          ▼                                                   │
+│  3. VULNERABILITY SCAN (pentester:claude)                   │
+│     ├─ Review code for vulnerabilities                      │
+│     ├─ Map to CWE/CVE references                            │
+│     └─ Output: vulnerability-report.md                      │
+│          │                                                   │
+│          ▼                                                   │
+│  4. REMEDIATION PLAN (appsec-developer:cursor)              │
+│     ├─ Create fix recommendations                           │
+│     ├─ Prioritize by severity                               │
+│     └─ Output: remediation-tasks.md                         │
+│          │                                                   │
+│          ▼                                                   │
+│  5. REVIEW MEETING (all 3 agents)                           │
+│     ├─ Discuss findings and priorities                      │
+│     ├─ [HUMAN DECIDES FINAL PRIORITIES]                     │
+│     └─ Output: security-report.md                           │
+│                                                              │
+│  Duration: ~20 minutes                                       │
+│  Agents: 3 (security-researcher, pentester, appsec-dev)     │
+│  Inputs: codebase + docs + external references              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Use Case 6: Pentest Planning
+
+```
+User: agentic run analysis.yaml \
+        --var target_url="https://example.com" \
+        --var scope_document="scope.md" \
+        --human-in-loop
+
+┌─────────────────────────────────────────────────────────────┐
+│                  PENTEST PLANNING WORKFLOW                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. Load scope and target information                        │
+│     ├─ Target: https://example.com                          │
+│     └─ Scope: Defined rules of engagement                   │
+│          │                                                   │
+│          ▼                                                   │
+│  2. RECONNAISSANCE (security-researcher:claude)             │
+│     ├─ Passive information gathering                        │
+│     ├─ Technology stack identification                      │
+│     ├─ Attack surface mapping                               │
+│     └─ Output: recon-report.md                              │
+│          │                                                   │
+│          ▼                                                   │
+│  3. ATTACK PLANNING (pentester:claude)                      │
+│     ├─ Develop attack methodology                           │
+│     ├─ Identify potential entry points                      │
+│     ├─ Plan exploitation techniques                         │
+│     └─ Output: attack-plan.md                               │
+│          │                                                   │
+│          ▼                                                   │
+│  4. METHODOLOGY REVIEW (meeting: both agents)               │
+│     ├─ Review and refine approach                           │
+│     ├─ [HUMAN APPROVAL REQUIRED]                            │
+│     └─ Output: pentest-plan.md                              │
+│                                                              │
+│  Duration: ~15 minutes                                       │
+│  Agents: 2 (security-researcher, pentester)                 │
+│  Output: Complete pentest methodology document              │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Plugin Structure
@@ -1440,24 +1710,32 @@ plugins/agentic-core/
 │   ├── one-shot.yaml
 │   ├── feature.yaml
 │   ├── epic.yaml
-│   └── meeting.yaml
+│   ├── meeting.yaml
+│   └── analysis.yaml
 │
 ├── personas/                         # Built-in agent personas
 │   ├── developer.md
 │   ├── architect.md
 │   ├── tester.md
 │   ├── planner.md
-│   └── facilitator.md
+│   ├── facilitator.md
+│   ├── security-researcher.md
+│   ├── pentester.md
+│   └── appsec-developer.md
 │
 ├── templates/                        # Output templates
 │   ├── pr-description.md
 │   ├── feature-summary.md
-│   └── epic-summary.md
+│   ├── epic-summary.md
+│   ├── security-report.md
+│   ├── remediation-tasks.md
+│   └── pentest-plan.md
 │
 └── skills/                           # Claude Code skills
     ├── run.md                        # /agentic-core:run
     ├── one-shot.md                   # /agentic-core:one-shot
-    └── meeting.md                    # /agentic-core:meeting
+    ├── meeting.md                    # /agentic-core:meeting
+    └── analysis.md                   # /agentic-core:analysis
 ```
 
 ---
@@ -1467,13 +1745,17 @@ plugins/agentic-core/
 ### Phase 1 (Current)
 
 - [x] Core architecture design
+- [x] Analysis workflow type with multi-input support
+- [x] Security agent personas (security-researcher, pentester, appsec-developer)
 - [ ] CLI provider abstraction (Claude, Cursor)
 - [ ] Kafka messaging layer
 - [ ] PostgreSQL + pgvector storage
 - [ ] YAML workflow parser
-- [ ] Basic workflow execution
+- [ ] Basic workflow execution (sequential steps)
 - [ ] Checkpoint/recovery system
 - [ ] CLI interface
+
+**Design Decision**: Phase 1 implements sequential step execution only. The architecture uses a step dependency graph (`conditions.requires`) that naturally supports parallel execution in Phase 2 without structural changes.
 
 ### Phase 2
 
@@ -1481,7 +1763,7 @@ plugins/agentic-core/
 - [ ] Meeting orchestration integration
 - [ ] Advanced memory search (RAG)
 - [ ] Learning extraction from workflows
-- [ ] Parallel step execution
+- [ ] **Parallel step execution** (execute independent steps concurrently based on dependency graph)
 
 ### Phase 3
 
@@ -1507,4 +1789,11 @@ Agentic Core provides a **production-ready foundation** for AI agent orchestrati
 | **Learning**        | pgvector embeddings                  | Semantic search over past experiences       |
 | **CLI**             | uv tool                              | `agentic run`, `agentic one-shot`, etc.     |
 
-This framework enables workflows ranging from 5-minute bugfixes to multi-day epic implementations, all with full observability, crash recovery, and continuous learning.
+This framework enables workflows ranging from 5-minute bugfixes to multi-day epic implementations to security analysis sessions, all with full observability, crash recovery, and continuous learning.
+
+**Workflow Types**:
+- `one-shot`: Quick single-agent tasks
+- `feature`: Multi-step feature development
+- `epic`: Multi-day, multi-feature projects
+- `meeting`: Collaborative agent discussions
+- `analysis`: Multi-agent analysis with diverse inputs (code, docs, videos, web)
