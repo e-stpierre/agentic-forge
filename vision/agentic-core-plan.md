@@ -37,14 +37,14 @@ Build a production-ready framework that enables:
 
 ### Key Capabilities
 
-| Capability              | Description                                                          |
-| ----------------------- | -------------------------------------------------------------------- |
-| Provider Agnostic       | Support Claude, Cursor, Codex, Copilot CLIs                          |
-| Workflow Flexibility    | Declarative YAML workflows from one-shot to multi-day epics          |
-| Crash Recovery          | Kafka replay + PostgreSQL checkpoints for full recovery              |
-| Human-in-the-Loop       | Optional human approval at any checkpoint                            |
-| Long-term Memory        | Semantic search over past learnings (optional pgvector)              |
-| Full Observability      | Every message, decision, and state change logged                     |
+| Capability           | Description                                                 |
+| -------------------- | ----------------------------------------------------------- |
+| Provider Agnostic    | Support Claude, Cursor, Codex, Copilot CLIs                 |
+| Workflow Flexibility | Declarative YAML workflows from one-shot to multi-day epics |
+| Crash Recovery       | Kafka replay + PostgreSQL checkpoints for full recovery     |
+| Human-in-the-Loop    | Optional human approval at any checkpoint                   |
+| Long-term Memory     | Semantic search over past learnings (optional pgvector)     |
+| Full Observability   | Every message, decision, and state change logged            |
 
 ### Dependencies
 
@@ -62,28 +62,28 @@ Agentic Core (this plan)
 
 ### Core Technologies
 
-| Component         | Technology                         | Version   |
-| ----------------- | ---------------------------------- | --------- |
-| Python            | Python                             | 3.14+     |
-| Async Runtime     | asyncio + asyncpg                  | Latest    |
-| Message Bus       | Apache Kafka (KRaft mode)          | 3.6+      |
-| Kafka Client      | confluent-kafka-python             | Latest    |
-| Database          | PostgreSQL                         | 16+       |
-| Vector Search     | pgvector (optional)                | Latest    |
-| CLI Framework     | typer                              | Latest    |
-| YAML Parser       | ruamel.yaml                        | Latest    |
-| Template Engine   | Jinja2                             | Latest    |
-| Embeddings        | sentence-transformers (local)      | Latest    |
+| Component       | Technology                    | Version |
+| --------------- | ----------------------------- | ------- |
+| Python          | Python                        | 3.14+   |
+| Async Runtime   | asyncio + asyncpg             | Latest  |
+| Message Bus     | Apache Kafka (KRaft mode)     | 3.6+    |
+| Kafka Client    | confluent-kafka-python        | Latest  |
+| Database        | PostgreSQL                    | 16+     |
+| Vector Search   | pgvector (optional)           | Latest  |
+| CLI Framework   | typer                         | Latest  |
+| YAML Parser     | ruamel.yaml                   | Latest  |
+| Template Engine | Jinja2                        | Latest  |
+| Embeddings      | sentence-transformers (local) | Latest  |
 
 ### Development Tools
 
-| Tool              | Purpose                            |
-| ----------------- | ---------------------------------- |
-| uv                | Package management                 |
-| pytest            | Testing framework                  |
-| pytest-asyncio    | Async test support                 |
-| Docker Compose    | Local infrastructure               |
-| ruff              | Linting and formatting             |
+| Tool           | Purpose                |
+| -------------- | ---------------------- |
+| uv             | Package management     |
+| pytest         | Testing framework      |
+| pytest-asyncio | Async test support     |
+| Docker Compose | Local infrastructure   |
+| ruff           | Linting and formatting |
 
 ### Environment Variables
 
@@ -243,6 +243,7 @@ Create `docker/docker-compose.yml` with:
 - **Redis** (optional, for future caching)
 
 Key settings:
+
 - Kafka infinite retention for replay
 - PostgreSQL with pgvector extension
 - All data persisted in named volumes
@@ -251,19 +252,20 @@ Key settings:
 
 Create `docker/init.sql` with tables:
 
-| Table              | Purpose                                      |
-| ------------------ | -------------------------------------------- |
-| `workflows`        | Workflow instances and status                |
-| `step_outputs`     | Canonical step output storage                |
-| `agents`           | Registered agent definitions                 |
-| `agent_sessions`   | CLI session IDs for --resume                 |
-| `checkpoints`      | Recovery checkpoints with Kafka offsets      |
-| `messages`         | Message log (mirror of Kafka for queries)    |
-| `embedding_models` | Configurable embedding dimensions            |
-| `memory`           | Long-term semantic memory (pgvector)         |
-| `telemetry`        | Performance and audit logging                |
+| Table              | Purpose                                   |
+| ------------------ | ----------------------------------------- |
+| `workflows`        | Workflow instances and status             |
+| `step_outputs`     | Canonical step output storage             |
+| `agents`           | Registered agent definitions              |
+| `agent_sessions`   | CLI session IDs for --resume              |
+| `checkpoints`      | Recovery checkpoints with Kafka offsets   |
+| `messages`         | Message log (mirror of Kafka for queries) |
+| `embedding_models` | Configurable embedding dimensions         |
+| `memory`           | Long-term semantic memory (pgvector)      |
+| `telemetry`        | Performance and audit logging             |
 
 Key design decisions:
+
 - `memory.embedding` uses max dimension (1536) with actual size in metadata
 - `step_outputs` stores small outputs inline, large outputs as file pointers
 - All tables have proper indexes for performance
@@ -279,6 +281,7 @@ Create `src/agentic_core/storage/database.py`:
 ```
 
 Key functions:
+
 - `create_pool()` - Initialize asyncpg connection pool
 - `get_workflow()` - Fetch workflow by ID
 - `save_step_output()` - Store step results
@@ -296,17 +299,19 @@ Create `src/agentic_core/messaging/client.py`:
 ```
 
 Topics:
-| Topic              | Purpose                               | Retention |
-| ------------------ | ------------------------------------- | --------- |
-| `workflow.events`  | Workflow lifecycle events             | Infinite  |
-| `agent.messages`   | Agent-to-agent communication          | Infinite  |
-| `control.signals`  | Orchestrator commands                 | 7 days    |
-| `human.input`      | Human-in-the-loop responses           | 7 days    |
-| `telemetry.events` | Performance and audit events          | 30 days   |
+
+| Topic              | Purpose                      | Retention |
+| ------------------ | ---------------------------- | --------- |
+| `workflow.events`  | Workflow lifecycle events    | Infinite  |
+| `agent.messages`   | Agent-to-agent communication | Infinite  |
+| `control.signals`  | Orchestrator commands        | 7 days    |
+| `human.input`      | Human-in-the-loop responses  | 7 days    |
+| `telemetry.events` | Performance and audit events | 30 days   |
 
 #### 2.5 Create Infrastructure CLI Commands
 
 Add to CLI:
+
 - `agentic infra up` - Start Docker Compose
 - `agentic infra down` - Stop infrastructure
 - `agentic infra status` - Show service status
@@ -317,7 +322,7 @@ Add to CLI:
 - [ ] `agentic infra up` starts all services
 - [ ] PostgreSQL is accessible and schema is created
 - [ ] Kafka is running and topics are auto-created
-- [ ] Kafka UI is accessible at http://localhost:8080
+- [ ] Kafka UI is accessible at <http://localhost:8080>
 - [ ] `agentic infra status` shows healthy services
 
 ---
@@ -370,6 +375,7 @@ class CLIProvider(ABC):
 Create `src/agentic_core/providers/claude.py`:
 
 Full implementation including:
+
 - Command building with all supported flags
 - JSON output parsing (see Technical Decisions for format)
 - Session ID extraction for `--resume`
@@ -377,6 +383,7 @@ Full implementation including:
 - Error handling
 
 Supported flags:
+
 - `-p` / `--prompt` - Main prompt
 - `--output-format json` - Structured output
 - `--append-system-prompt` - System prompt injection
@@ -389,6 +396,7 @@ Supported flags:
 Create `src/agentic_core/providers/cursor.py`:
 
 Implementation for `cursor-agent` CLI:
+
 - Similar structure to Claude
 - Handle differences in flag syntax
 - System prompt embedding (if no native flag)
@@ -417,6 +425,7 @@ def list_providers() -> list[str]: ...
 #### 3.6 Add Provider CLI Commands
 
 Add to CLI:
+
 - `agentic providers list` - Show available providers
 - `agentic providers test <provider>` - Test provider connectivity
 
@@ -506,6 +515,7 @@ Create `src/agentic_core/workflow/parser.py`:
 Create `src/agentic_core/workflow/templates.py`:
 
 Jinja2-based template resolution:
+
 - `{{ variable }}` - From CLI arguments
 - `{{ outputs.step_name }}` - Previous step outputs
 - `{{ git.diff }}` - Git diff output
@@ -527,6 +537,7 @@ class WorkflowExecutor:
 ```
 
 Key behaviors:
+
 - Sequential step execution (parallel in Phase 2)
 - Checkpoint after every step
 - Named checkpoints when `checkpoint: true`
@@ -537,6 +548,7 @@ Key behaviors:
 Create `src/agentic_core/workflow/step_executor.py`:
 
 For each step:
+
 1. Resolve template variables
 2. Build agent prompt with context
 3. Inject relevant memories (if enabled)
@@ -566,15 +578,16 @@ For each step:
 
 Create `src/agentic_core/inputs/`:
 
-| Processor     | Implementation                                    |
-| ------------- | ------------------------------------------------- |
-| `file`        | Read file contents directly                       |
-| `codebase`    | Glob files, create RAG index, retrieve relevant   |
-| `url`         | Fetch URL, extract readable text (html2text)      |
-| `github_issue`| Fetch via `gh` CLI or GitHub API                  |
-| `video`       | Stub for Phase 2 (audio extraction + transcribe)  |
+| Processor      | Implementation                                   |
+| -------------- | ------------------------------------------------ |
+| `file`         | Read file contents directly                      |
+| `codebase`     | Glob files, create RAG index, retrieve relevant  |
+| `url`          | Fetch URL, extract readable text (html2text)     |
+| `github_issue` | Fetch via `gh` CLI or GitHub API                 |
+| `video`        | Stub for Phase 2 (audio extraction + transcribe) |
 
 RAG implementation for codebase:
+
 - Chunk files into ~500 token segments
 - Generate embeddings with sentence-transformers
 - Store in temporary vector index
@@ -599,10 +612,12 @@ All operations shell out to git commands.
 Create `src/agentic_core/outputs/`:
 
 Step output storage strategy:
+
 1. Small outputs (<10KB): Store in PostgreSQL `step_outputs.content`
 2. Large outputs: Write to temp file, store path + SHA256 hash in database
 
 Output processors:
+
 - `file` - Write to specified path
 - `message` - Log to console/Kafka
 - `artifact` - Store in outputs directory
@@ -622,6 +637,7 @@ class RetryStrategy:
 ```
 
 Behaviors by `on_failure`:
+
 - `retry` - Exponential backoff with jitter
 - `skip` - Log warning, continue to next step
 - `abort` - Fail workflow immediately
@@ -632,6 +648,7 @@ Behaviors by `on_failure`:
 Create `src/agentic_core/checkpoints/`:
 
 Recovery flow:
+
 1. Load latest checkpoint from PostgreSQL
 2. Get Kafka offset from checkpoint
 3. Replay messages since offset
@@ -673,6 +690,7 @@ class MemoryManager:
 ```
 
 Memory categories:
+
 - `lesson` - Learned from past mistakes
 - `pattern` - Successful approaches to reuse
 - `error` - Common errors and solutions
@@ -684,6 +702,7 @@ Memory categories:
 Create `src/agentic_core/memory/embeddings.py`:
 
 Local embedding with sentence-transformers:
+
 - Default model: `all-MiniLM-L6-v2` (384 dimensions)
 - Configurable model via `embedding_models` table
 - Store embedding dimension in metadata
@@ -693,17 +712,20 @@ Local embedding with sentence-transformers:
 Create `src/agentic_core/memory/learning.py`:
 
 On-demand learning extraction:
+
 - Analyze workflow messages and telemetry
 - Use agent to extract lessons, patterns, errors
 - Store in memory with workflow reference
 
 Not enabled by default - invoked via:
+
 - `agentic memory extract <workflow-id>`
 - Workflow setting `extract_learnings: true`
 
 #### 6.4 Add Memory CLI Commands
 
 Add to CLI:
+
 - `agentic memory search "<query>"` - Search memories
 - `agentic memory list --category lesson` - List by category
 - `agentic memory add lesson "content"` - Add manually
@@ -713,6 +735,7 @@ Add to CLI:
 #### 6.5 Integrate Memory into Step Execution
 
 Modify step executor to:
+
 1. Check if memory is enabled
 2. Search for relevant memories (budget: 1-2k tokens)
 3. Format as context section in prompt
@@ -750,6 +773,7 @@ class AgentSession:
 ```
 
 Features:
+
 - Load persona from file
 - Maintain session_id for --resume (if supported)
 - Build prompt with conversation history
@@ -789,17 +813,20 @@ class MeetingState:
 Create `src/agentic_core/meetings/orchestrator.py`:
 
 Facilitator-directed flow:
+
 1. **Opening**: State topic, set agenda, invite first speakers
 2. **Discussion rounds**: Facilitator selects speakers, captures points
 3. **Closing**: Summarize, list decisions, assign action items
 
 Control signals:
+
 - `[NEXT_SPEAKER: agent_name]` - Who speaks next
 - `[ROUND_COMPLETE]` - End of round
 - `[AWAIT_USER]` - Request human input (interactive mode)
 - `[MEETING_END]` - Conclude meeting
 
 Meeting termination (configurable):
+
 - Fixed number of rounds
 - Facilitator decides `[MEETING_END]`
 - Consensus detection
@@ -809,12 +836,14 @@ Meeting termination (configurable):
 Create `src/agentic_core/meetings/facilitator.py`:
 
 Python orchestrator with rules (deterministic):
+
 - Topic analysis to select relevant agents
 - Round management
 - Turn-taking enforcement
 - Decision/action item extraction
 
 Optional: Load facilitator templates from `templates/facilitator/`:
+
 - `default.md` - Balanced discussion
 - `brainstorm.md` - Creative ideation
 - `decision.md` - Structured decision-making
@@ -824,10 +853,12 @@ Optional: Load facilitator templates from `templates/facilitator/`:
 Create `src/agentic_core/meetings/human.py`:
 
 Two modes:
+
 1. **Default (async)**: Pause + wait for `agentic resume --approve`
 2. **Interactive**: CLI prompts for immediate input
 
 User input types:
+
 - Free-text messages
 - Selection from suggested options
 - Approval/rejection
@@ -837,6 +868,7 @@ User input types:
 Create `src/agentic_core/meetings/documents.py`:
 
 Generate outputs from templates:
+
 - `meeting-summary.md` - Executive summary
 - `decision-record.md` - ADR-style decisions
 - `action-items.md` - Task list
@@ -901,6 +933,7 @@ agentic agents test developer "Hello"        # Test an agent
 #### 8.4 Implement Dry-Run Mode
 
 `--dry-run` behavior:
+
 1. Parse and validate YAML
 2. Resolve all template variables
 3. Display execution plan (steps, agents, dependencies)
@@ -908,6 +941,7 @@ agentic agents test developer "Hello"        # Test an agent
 5. No actual execution
 
 `--dry-run --with-mocks` behavior:
+
 1. All of the above
 2. Execute with mock provider
 3. Validate output handling
@@ -916,6 +950,7 @@ agentic agents test developer "Hello"        # Test an agent
 #### 8.5 Implement Progress Display
 
 Use `rich` for:
+
 - Step progress bars
 - Agent output streaming
 - Error highlighting
@@ -942,6 +977,7 @@ Use `rich` for:
 #### 9.1 Unit Tests
 
 Test coverage for:
+
 - YAML parser validation
 - Template resolution
 - Provider command building
@@ -954,6 +990,7 @@ Test coverage for:
 #### 9.2 Integration Tests
 
 Test scenarios:
+
 - One-shot workflow end-to-end (mock provider)
 - Multi-step feature workflow
 - Workflow with checkpoint recovery
@@ -963,6 +1000,7 @@ Test scenarios:
 #### 9.3 Provider Integration Tests
 
 Separate test suite (requires real CLIs):
+
 - Claude provider with real `claude` CLI
 - Cursor provider with real `cursor-agent` CLI
 
@@ -971,6 +1009,7 @@ Mark as `@pytest.mark.integration` for selective runs.
 #### 9.4 Create Built-in Workflow Templates
 
 Create `workflows/`:
+
 - `one-shot.yaml` - Single-agent quick task
 - `feature.yaml` - Plan → Implement → Validate
 - `epic.yaml` - Multi-phase epic development
@@ -980,6 +1019,7 @@ Create `workflows/`:
 #### 9.5 Create Built-in Agent Personas
 
 Create `personas/`:
+
 - `developer.md` - Senior developer
 - `planner.md` - Technical planner
 - `tester.md` - QA engineer
@@ -992,6 +1032,7 @@ Create `personas/`:
 #### 9.6 Create Output Templates
 
 Create `templates/`:
+
 - `pr-description.md` - Pull request template
 - `feature-summary.md` - Feature documentation
 - `epic-summary.md` - Epic documentation
@@ -1002,6 +1043,7 @@ Create `templates/`:
 #### 9.7 Documentation
 
 Update `README.md` with:
+
 - Installation instructions
 - Quick start guide
 - Configuration reference
@@ -1037,18 +1079,21 @@ Each milestone is complete when:
 The framework is ready when these scenarios work:
 
 #### Scenario 1: One-Shot Bugfix
+
 ```bash
 agentic one-shot "Fix login timeout bug" --git --pr
 # Creates branch, fixes bug, commits, creates PR
 ```
 
 #### Scenario 2: Feature Development
+
 ```bash
 agentic run workflows/feature.yaml --var feature="Add dark mode"
 # Runs plan → implement → validate pipeline
 ```
 
 #### Scenario 3: Crash Recovery
+
 ```bash
 agentic run workflows/feature.yaml
 # Simulate crash during implementation
@@ -1057,6 +1102,7 @@ agentic resume <workflow-id>
 ```
 
 #### Scenario 4: Multi-Agent Meeting
+
 ```bash
 agentic meeting "API versioning strategy" \
     --agents architect:claude developer:cursor pm:claude
@@ -1064,6 +1110,7 @@ agentic meeting "API versioning strategy" \
 ```
 
 #### Scenario 5: Human-in-the-Loop
+
 ```bash
 agentic run workflows/epic.yaml --human-in-loop
 # Pauses at approval points
@@ -1077,28 +1124,28 @@ agentic resume <workflow-id> --approve
 
 ### Technical Risks
 
-| Risk                          | Mitigation                                      |
-| ----------------------------- | ----------------------------------------------- |
-| CLI provider API changes      | Abstract via provider interface, easy to update |
-| Kafka complexity              | Start with simple topics, add complexity later  |
-| Embedding model performance   | Make memory optional, test with small models    |
-| Large workflow state          | Stream outputs to files, don't hold in memory   |
+| Risk                        | Mitigation                                      |
+| --------------------------- | ----------------------------------------------- |
+| CLI provider API changes    | Abstract via provider interface, easy to update |
+| Kafka complexity            | Start with simple topics, add complexity later  |
+| Embedding model performance | Make memory optional, test with small models    |
+| Large workflow state        | Stream outputs to files, don't hold in memory   |
 
 ### Dependency Risks
 
-| Risk                          | Mitigation                                      |
-| ----------------------------- | ----------------------------------------------- |
-| Claude CLI not installed      | Clear error messages, mock for development      |
-| Docker not available          | Document requirements, test in CI               |
-| PostgreSQL connection issues  | Connection retry logic, health checks           |
+| Risk                         | Mitigation                                 |
+| ---------------------------- | ------------------------------------------ |
+| Claude CLI not installed     | Clear error messages, mock for development |
+| Docker not available         | Document requirements, test in CI          |
+| PostgreSQL connection issues | Connection retry logic, health checks      |
 
 ### Scope Risks
 
-| Risk                          | Mitigation                                      |
-| ----------------------------- | ----------------------------------------------- |
-| Feature creep                 | Strict Phase 1 scope, defer to Phase 2          |
-| Over-engineering              | Start simple, refactor when needed              |
-| Parallel execution complexity | Sequential in Phase 1, parallel in Phase 2      |
+| Risk                          | Mitigation                                 |
+| ----------------------------- | ------------------------------------------ |
+| Feature creep                 | Strict Phase 1 scope, defer to Phase 2     |
+| Over-engineering              | Start simple, refactor when needed         |
+| Parallel execution complexity | Sequential in Phase 1, parallel in Phase 2 |
 
 ---
 
@@ -1106,19 +1153,20 @@ agentic resume <workflow-id> --approve
 
 This implementation plan covers the complete Phase 1 development of Agentic Core:
 
-| Milestone | Focus Area                | Key Deliverables                           |
-| --------- | ------------------------- | ------------------------------------------ |
-| 1         | Foundation                | Package structure, CLI skeleton            |
-| 2         | Infrastructure            | Docker, PostgreSQL, Kafka                  |
-| 3         | Providers                 | Claude, Cursor, Mock providers             |
-| 4         | Workflow Engine           | YAML parser, executor, templates           |
-| 5         | Step Execution            | Inputs, git, outputs, retry, recovery      |
-| 6         | Memory                    | Embeddings, semantic search, learning      |
-| 7         | Meetings                  | Multi-agent orchestration, facilitation    |
-| 8         | CLI                       | All user-facing commands                   |
-| 9         | Testing                   | Tests, templates, documentation            |
+| Milestone | Focus Area      | Key Deliverables                        |
+| --------- | --------------- | --------------------------------------- |
+| 1         | Foundation      | Package structure, CLI skeleton         |
+| 2         | Infrastructure  | Docker, PostgreSQL, Kafka               |
+| 3         | Providers       | Claude, Cursor, Mock providers          |
+| 4         | Workflow Engine | YAML parser, executor, templates        |
+| 5         | Step Execution  | Inputs, git, outputs, retry, recovery   |
+| 6         | Memory          | Embeddings, semantic search, learning   |
+| 7         | Meetings        | Multi-agent orchestration, facilitation |
+| 8         | CLI             | All user-facing commands                |
+| 9         | Testing         | Tests, templates, documentation         |
 
 Upon completion, Agentic Core will support:
+
 - One-shot tasks (~5 minutes)
 - Feature development (~30 minutes)
 - Epic implementations (multi-day with recovery)

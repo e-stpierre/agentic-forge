@@ -1470,7 +1470,7 @@ agentic memory search "authentication patterns"
 
 ---
 
-## Use Cases
+## Use Case Examples
 
 Refer to `./agentic-core-use-cases.md`
 
