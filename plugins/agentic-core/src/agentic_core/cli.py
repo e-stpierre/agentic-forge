@@ -19,7 +19,9 @@ app = typer.Typer(
 
 # Sub-command groups
 infra_app = typer.Typer(help="Infrastructure management commands")
+providers_app = typer.Typer(help="Provider management commands")
 app.add_typer(infra_app, name="infra")
+app.add_typer(providers_app, name="providers")
 
 console = Console()
 
@@ -167,6 +169,89 @@ def infra_logs(
         cmd.append(service)
 
     _run_docker_compose(cmd)
+
+
+# Provider commands
+
+
+@providers_app.command("list")
+def providers_list():
+    """List available AI CLI providers."""
+    from agentic_core.providers import PROVIDERS, get_provider
+
+    table = Table(title="Available Providers")
+    table.add_column("Name", style="cyan")
+    table.add_column("Session Resume")
+    table.add_column("JSON Output")
+    table.add_column("Tool Restrictions")
+    table.add_column("Status")
+
+    for name in sorted(PROVIDERS.keys()):
+        provider = get_provider(name)
+        caps = provider.capabilities
+
+        # Check if provider is available
+        is_healthy = provider.health_check()
+        status = "[green]Available[/green]" if is_healthy else "[yellow]Not installed[/yellow]"
+        if name == "mock":
+            status = "[blue]Mock[/blue]"
+
+        table.add_row(
+            name,
+            "[green]Yes[/green]" if caps.session_resume else "[red]No[/red]",
+            "[green]Yes[/green]" if caps.json_output else "[red]No[/red]",
+            "[green]Yes[/green]" if caps.tool_restrictions else "[red]No[/red]",
+            status,
+        )
+
+    console.print(table)
+
+
+@providers_app.command("test")
+def providers_test(
+    provider_name: str = typer.Argument(..., help="Provider name (claude, cursor, mock)"),
+    prompt: str = typer.Option("Say 'Hello from agentic-core!'", "--prompt", "-p", help="Test prompt"),
+):
+    """Test a provider with a simple prompt."""
+    from agentic_core.providers import get_provider
+
+    try:
+        provider = get_provider(provider_name)
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Testing {provider_name} provider...[/bold]")
+
+    # Health check first
+    if not provider.health_check():
+        console.print(f"[yellow]Warning:[/yellow] {provider_name} CLI not found or not working")
+        if provider_name != "mock":
+            console.print("Try using 'mock' provider for testing without a real CLI")
+            raise typer.Exit(1)
+
+    # Invoke the provider
+    console.print(f"Prompt: {prompt}")
+    console.print("")
+
+    result = provider.invoke(prompt, timeout=60)
+
+    if result.is_error:
+        console.print(f"[red]Error:[/red] {result.error_message}")
+        raise typer.Exit(1)
+
+    console.print("[bold]Response:[/bold]")
+    console.print(result.content)
+    console.print("")
+
+    if result.session_id:
+        console.print(f"Session ID: {result.session_id}")
+    if result.tokens_in:
+        console.print(f"Tokens in: {result.tokens_in}")
+    if result.tokens_out:
+        console.print(f"Tokens out: {result.tokens_out}")
+    if result.duration_ms:
+        console.print(f"Duration: {result.duration_ms}ms")
 
 
 if __name__ == "__main__":
