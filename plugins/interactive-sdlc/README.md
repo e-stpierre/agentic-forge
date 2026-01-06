@@ -8,36 +8,30 @@ Interactive development with human guidance for accuracy through clarification a
 
 ## Commands
 
-All commands use the `/interactive-sdlc:` namespace prefix.
+All commands use the `/interactive-sdlc:` namespace prefix. Commands are organized into logical categories.
 
 ### Configuration
 
 - `/interactive-sdlc:configure` - Set up plugin configuration interactively
 
-### Planning
+### Planning (`commands/plan/`)
 
 - `/interactive-sdlc:plan-chore` - Plan a maintenance task
 - `/interactive-sdlc:plan-bug` - Plan a bug fix with root cause analysis
 - `/interactive-sdlc:plan-feature` - Plan a feature with milestones
 
-### Implementation
+### Development (`commands/dev/`)
 
 - `/interactive-sdlc:build` - Implement a plan file with checkpoint support
-
-### Validation
-
 - `/interactive-sdlc:validate` - Comprehensive validation (tests, code review, build, plan compliance)
+- `/interactive-sdlc:document` - Generate or update documentation with mermaid diagrams
 
-### Workflows
+### Workflows (`commands/workflows/`)
 
 - `/interactive-sdlc:one-shot` - Quick task without saved plan file
 - `/interactive-sdlc:plan-build-validate` - Full workflow from planning to validation
 
-### Documentation
-
-- `/interactive-sdlc:document` - Generate or update documentation with mermaid diagrams
-
-### Analysis
+### Analysis (`commands/analyse/`)
 
 - `/interactive-sdlc:analyse-bug` - Analyze codebase for bugs and logic errors
 - `/interactive-sdlc:analyse-doc` - Analyze documentation quality and accuracy

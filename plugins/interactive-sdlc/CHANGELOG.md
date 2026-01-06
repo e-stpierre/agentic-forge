@@ -2,6 +2,17 @@
 
 All notable changes to the interactive-sdlc plugin will be documented in this file.
 
+## [1.1.0] - 2026-01-06
+
+### Changed
+
+- Reorganized commands into logical subfolders:
+  - `commands/plan/` - Planning commands (plan-chore, plan-bug, plan-feature)
+  - `commands/dev/` - Development commands (build, validate, document)
+  - `commands/workflows/` - Workflow commands (one-shot, plan-build-validate)
+  - `commands/analyse/` - Analysis commands (analyse-bug, analyse-doc, analyse-debt, analyse-style, analyse-security)
+  - `commands/configure.md` remains at root level
+
 ## [1.0.0] - 2025-12-21
 
 ### Added
