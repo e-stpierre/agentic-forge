@@ -29,7 +29,7 @@ class MeetingConfig:
     facilitator: str = "facilitator"
     max_rounds: int = 5
     interactive: bool = False
-    outputs: list[str] = field(default_factory=lambda: ["summary", "decisions"])
+    outputs: list[str] = field(default_factory=lambda: ["summary", "decisions", "transcript"])
 
 
 @dataclass

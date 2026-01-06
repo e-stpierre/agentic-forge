@@ -11,13 +11,13 @@ class DocumentGenerator:
     """Generates documents from meeting state."""
 
     def generate_summary(self, state: "MeetingState") -> str:
-        """Generate meeting summary document.
+        """Generate meeting summary document with full transcript.
 
         Args:
             state: Meeting state
 
         Returns:
-            Markdown summary document
+            Markdown summary document with complete discussion
         """
         lines = [
             f"# Meeting Summary: {state.config.topic}",
@@ -26,21 +26,9 @@ class DocumentGenerator:
             f"**Participants:** {', '.join(state.config.agents)}",
             f"**Rounds:** {state.current_round}",
             "",
-            "## Key Points",
-            "",
         ]
 
-        # Extract key points from transcript
-        key_messages = [
-            msg for msg in state.transcript
-            if msg.message_type in ("summary", "decision") or len(msg.content) > 200
-        ]
-
-        for msg in key_messages[:10]:
-            lines.append(f"- **{msg.agent_name}:** {msg.content[:300]}...")
-            lines.append("")
-
-        # Decisions
+        # Decisions section first (if any extracted)
         if state.decisions:
             lines.append("## Decisions Made")
             lines.append("")
@@ -48,12 +36,35 @@ class DocumentGenerator:
                 lines.append(f"{i}. {decision}")
             lines.append("")
 
-        # Action items
+        # Action items (if any extracted)
         if state.action_items:
             lines.append("## Action Items")
             lines.append("")
             for i, action in enumerate(state.action_items, 1):
                 lines.append(f"- [ ] {action}")
+            lines.append("")
+
+        # Full discussion transcript
+        lines.append("## Discussion")
+        lines.append("")
+
+        current_round = -1
+        for msg in state.transcript:
+            msg_round = msg.metadata.get("round", 0)
+
+            # Add round header when round changes
+            if msg_round != current_round:
+                current_round = msg_round
+                if current_round == 0:
+                    lines.append("### Opening")
+                else:
+                    lines.append(f"### Round {current_round}")
+                lines.append("")
+
+            # Include FULL message content (no truncation)
+            lines.append(f"**{msg.agent_name}:**")
+            lines.append("")
+            lines.append(msg.content)
             lines.append("")
 
         # Footer
@@ -65,13 +76,13 @@ class DocumentGenerator:
         return "\n".join(lines)
 
     def generate_decision_record(self, state: "MeetingState") -> str:
-        """Generate ADR-style decision record.
+        """Generate comprehensive decision record with full discussion.
 
         Args:
             state: Meeting state
 
         Returns:
-            Markdown decision record
+            Markdown decision record with complete content
         """
         lines = [
             f"# Decision Record: {state.config.topic}",
@@ -84,40 +95,67 @@ class DocumentGenerator:
             "",
             f"This decision was made during a meeting on {state.started_at.strftime('%Y-%m-%d') if state.started_at else 'N/A'}.",
             f"Participants: {', '.join(state.config.agents)}",
-            "",
-            "## Decisions",
+            f"Facilitator: {state.config.facilitator}",
+            f"Rounds: {state.current_round}",
             "",
         ]
 
-        for i, decision in enumerate(state.decisions, 1):
-            lines.append(f"### Decision {i}")
-            lines.append("")
-            lines.append(decision)
-            lines.append("")
+        # Decisions section
+        lines.append("## Decisions")
+        lines.append("")
 
-        lines.extend([
-            "## Consequences",
-            "",
-            "The following action items were identified:",
-            "",
-        ])
-
-        for action in state.action_items:
-            lines.append(f"- {action}")
-
-        lines.extend([
-            "",
-            "## Discussion",
-            "",
-            "Key points from the discussion:",
-            "",
-        ])
-
-        # Add relevant excerpts
-        for msg in state.transcript[-5:]:
-            if msg.message_type != "opening":
-                lines.append(f"> **{msg.agent_name}:** {msg.content[:200]}...")
+        if state.decisions:
+            for i, decision in enumerate(state.decisions, 1):
+                lines.append(f"### Decision {i}")
                 lines.append("")
+                lines.append(decision)
+                lines.append("")
+        else:
+            # If no extracted decisions, note that decisions are in discussion
+            lines.append("*See Discussion section for detailed decisions and rationale.*")
+            lines.append("")
+
+        # Consequences / Action Items
+        lines.append("## Consequences")
+        lines.append("")
+
+        if state.action_items:
+            lines.append("The following action items were identified:")
+            lines.append("")
+            for action in state.action_items:
+                lines.append(f"- [ ] {action}")
+        else:
+            lines.append("*See Discussion section for action items and next steps.*")
+        lines.append("")
+
+        # Full discussion - include ALL messages with FULL content
+        lines.append("## Discussion")
+        lines.append("")
+        lines.append("Complete meeting transcript:")
+        lines.append("")
+
+        current_round = -1
+        for msg in state.transcript:
+            msg_round = msg.metadata.get("round", 0)
+
+            # Add round header when round changes
+            if msg_round != current_round:
+                current_round = msg_round
+                if current_round == 0:
+                    lines.append("### Opening")
+                else:
+                    lines.append(f"### Round {current_round}")
+                lines.append("")
+
+            # Include FULL message content (no truncation)
+            timestamp = msg.timestamp.strftime("%H:%M:%S") if msg.timestamp else ""
+            if timestamp:
+                lines.append(f"**{msg.agent_name}** [{timestamp}]:")
+            else:
+                lines.append(f"**{msg.agent_name}:**")
+            lines.append("")
+            lines.append(msg.content)
+            lines.append("")
 
         return "\n".join(lines)
 

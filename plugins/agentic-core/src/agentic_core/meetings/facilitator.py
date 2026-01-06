@@ -162,32 +162,82 @@ Focus on adding new insights or building on what others have said."""
     def extract_decisions(self, content: str) -> list[str]:
         """Extract decisions from content.
 
+        Handles multiple formats:
+        - Bullet lists under "Decision" headers
+        - Markdown tables with Decision/Outcome columns
+        - Numbered lists of decisions
+
         Args:
             content: Content to parse
 
         Returns:
             List of decisions found
         """
+        import re
+
         decisions = []
         lines = content.split("\n")
 
+        # Pattern 1: Standard list items under decision headers
         in_decisions = False
-        for line in lines:
-            line = line.strip()
-            if "decision" in line.lower() and ":" in line:
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            line_lower = line_stripped.lower()
+
+            # Check for decision section headers
+            if any(
+                pattern in line_lower
+                for pattern in [
+                    "## decision",
+                    "### decision",
+                    "decisions made",
+                    "decisions:",
+                    "decision:",
+                ]
+            ):
                 in_decisions = True
                 continue
-            if in_decisions and line.startswith(("-", "*", "1", "2", "3")):
-                decision = line.lstrip("-*123456789. ")
-                if decision:
-                    decisions.append(decision)
-            elif in_decisions and not line:
-                in_decisions = False
 
-        return decisions
+            # Check for section end (new header or empty line after content)
+            if in_decisions:
+                if line_stripped.startswith("#") and "decision" not in line_lower:
+                    in_decisions = False
+                    continue
+
+                # Extract list items
+                if line_stripped.startswith(("-", "*")) or re.match(
+                    r"^\d+\.", line_stripped
+                ):
+                    decision = re.sub(r"^[-*\d.]+\s*", "", line_stripped)
+                    # Skip if it's a checkbox marker
+                    decision = re.sub(r"^\[[ x]\]\s*", "", decision)
+                    if decision and len(decision) > 5:
+                        decisions.append(decision)
+
+        # Pattern 2: Extract from markdown tables
+        table_pattern = r"\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|"
+        for match in re.finditer(table_pattern, content):
+            col1, col2 = match.group(1).strip(), match.group(2).strip()
+            # Skip header rows and separator rows
+            if "---" in col1 or "---" in col2:
+                continue
+            if col1.lower() in ("decision", "item", "#", "question"):
+                continue
+            # If first column looks like a decision topic
+            if col2 and len(col2) > 3 and col1 and len(col1) > 3:
+                if "decision" in content[: match.start()].lower()[-200:]:
+                    decisions.append(f"{col1}: {col2}")
+
+        return list(dict.fromkeys(decisions))  # Deduplicate while preserving order
 
     def extract_action_items(self, content: str) -> list[str]:
         """Extract action items from content.
+
+        Handles multiple formats:
+        - Bullet lists under "Action Items" headers
+        - Checkbox lists (- [ ] items)
+        - Markdown tables with Action/Owner columns
+        - "Next Steps" sections
 
         Args:
             content: Content to parse
@@ -195,20 +245,71 @@ Focus on adding new insights or building on what others have said."""
         Returns:
             List of action items found
         """
+        import re
+
         actions = []
         lines = content.split("\n")
 
+        # Pattern 1: Standard list items under action headers
         in_actions = False
-        for line in lines:
-            line = line.strip()
-            if "action" in line.lower() and "item" in line.lower():
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            line_lower = line_stripped.lower()
+
+            # Check for action section headers
+            if any(
+                pattern in line_lower
+                for pattern in [
+                    "## action",
+                    "### action",
+                    "action items",
+                    "next steps",
+                    "## next",
+                    "### next",
+                    "tasks:",
+                    "## tasks",
+                ]
+            ):
                 in_actions = True
                 continue
-            if in_actions and line.startswith(("-", "*", "1", "2", "3")):
-                action = line.lstrip("-*123456789. ")
-                if action:
-                    actions.append(action)
-            elif in_actions and not line:
-                in_actions = False
 
-        return actions
+            # Check for section end (new header)
+            if in_actions:
+                if (
+                    line_stripped.startswith("#")
+                    and "action" not in line_lower
+                    and "next" not in line_lower
+                    and "task" not in line_lower
+                ):
+                    in_actions = False
+                    continue
+
+                # Extract list items (including checkboxes)
+                if line_stripped.startswith(("-", "*")) or re.match(
+                    r"^\d+\.", line_stripped
+                ):
+                    action = re.sub(r"^[-*\d.]+\s*", "", line_stripped)
+                    # Handle checkbox format: - [ ] or - [x]
+                    action = re.sub(r"^\[[ x]\]\s*", "", action)
+                    if action and len(action) > 5:
+                        actions.append(action)
+
+        # Pattern 2: Extract from markdown tables with Action/Owner columns
+        table_pattern = r"\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|"
+        in_action_table = False
+        for match in re.finditer(table_pattern, content):
+            col1, col2 = match.group(1).strip(), match.group(2).strip()
+            # Skip separator rows
+            if "---" in col1 or "---" in col2:
+                continue
+            # Detect header row
+            if col1.lower() in ("action", "task", "#", "item"):
+                in_action_table = True
+                continue
+            if in_action_table and col1 and len(col1) > 3:
+                if col2:
+                    actions.append(f"{col1} (Owner: {col2})")
+                else:
+                    actions.append(col1)
+
+        return list(dict.fromkeys(actions))  # Deduplicate while preserving order
