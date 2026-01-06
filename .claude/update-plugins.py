@@ -315,8 +315,8 @@ def main():
         # 1. Build core first so it's available as a local package
         # 2. Install agentic-sdlc with --find-links pointing to core's dist directory
         core_path = repo_root / "plugins" / "core"
-        agentic_sdlc_path = repo_root / "plugins" / "agentic-sdlc"
-        agentic_core_path = repo_root / "plugins" / "agentic-core"
+        agentic_sdlc_path = repo_root / "experimental-plugins" / "agentic-sdlc"
+        agentic_core_path = repo_root / "experimental-plugins" / "agentic-core"
 
         # Build core package first if core or agentic-sdlc is requested
         # (agentic-sdlc depends on core)

@@ -56,17 +56,17 @@
       ],
       "strict": false,
       "commands": [
-        "./plugins/agentic-sdlc/commands/configure.md",
-        "./plugins/agentic-sdlc/commands/design.md",
-        "./plugins/agentic-sdlc/commands/plan.md",
-        "./plugins/agentic-sdlc/commands/plan-feature.md",
-        "./plugins/agentic-sdlc/commands/plan-bug.md",
-        "./plugins/agentic-sdlc/commands/plan-chore.md",
-        "./plugins/agentic-sdlc/commands/plan-build.md",
-        "./plugins/agentic-sdlc/commands/implement.md",
-        "./plugins/agentic-sdlc/commands/implement-from-plan.md",
-        "./plugins/agentic-sdlc/commands/review.md",
-        "./plugins/agentic-sdlc/commands/test.md"
+        "./experimental-plugins/agentic-sdlc/commands/configure.md",
+        "./experimental-plugins/agentic-sdlc/commands/design.md",
+        "./experimental-plugins/agentic-sdlc/commands/plan.md",
+        "./experimental-plugins/agentic-sdlc/commands/plan-feature.md",
+        "./experimental-plugins/agentic-sdlc/commands/plan-bug.md",
+        "./experimental-plugins/agentic-sdlc/commands/plan-chore.md",
+        "./experimental-plugins/agentic-sdlc/commands/plan-build.md",
+        "./experimental-plugins/agentic-sdlc/commands/implement.md",
+        "./experimental-plugins/agentic-sdlc/commands/implement-from-plan.md",
+        "./experimental-plugins/agentic-sdlc/commands/review.md",
+        "./experimental-plugins/agentic-sdlc/commands/test.md"
       ]
     },
     {
