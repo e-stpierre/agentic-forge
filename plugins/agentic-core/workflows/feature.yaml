@@ -1,0 +1,105 @@
+name: feature-development
+type: feature
+version: "1.0"
+description: Multi-step feature development workflow
+
+settings:
+  human_in_loop: false
+  max_retries: 3
+  timeout_minutes: 60
+  git:
+    enabled: true
+    auto_branch: true
+    auto_commit: true
+
+agents:
+  - name: planner
+    provider: claude
+    model: sonnet
+    persona: |
+      You are a technical architect. Create detailed, actionable implementation plans.
+      Focus on breaking down features into clear steps with specific file changes.
+
+  - name: developer
+    provider: claude
+    model: sonnet
+    persona: |
+      You are a senior software developer. Implement features following best practices.
+      Write clean, maintainable code with appropriate tests.
+
+  - name: reviewer
+    provider: claude
+    model: sonnet
+    persona: |
+      You are a code reviewer. Review changes for correctness, style, and potential issues.
+      Be thorough but constructive in your feedback.
+
+inputs:
+  - name: codebase
+    type: codebase
+    source: src/
+    glob: "**/*.{py,ts,js}"
+    required: false
+
+steps:
+  - name: plan
+    agent: planner
+    task:
+      description: Create implementation plan
+      prompt: |
+        Feature: {{ feature }}
+
+        {% if inputs.codebase %}
+        Relevant codebase context:
+        {{ inputs.codebase | truncate_lines(100) }}
+        {% endif %}
+
+        Create a detailed implementation plan including:
+        1. Files to create or modify
+        2. Key changes in each file
+        3. Any dependencies or considerations
+        4. Testing approach
+    checkpoint: true
+
+  - name: implement
+    agent: developer
+    task:
+      description: Implement the feature
+      prompt: |
+        Implement this feature based on the following plan:
+
+        {{ outputs.plan }}
+
+        Make all necessary code changes.
+    conditions:
+      requires:
+        - plan
+    checkpoint: true
+
+  - name: review
+    agent: reviewer
+    task:
+      description: Review the implementation
+      prompt: |
+        Review these changes for the feature: {{ feature }}
+
+        Implementation details:
+        {{ outputs.implement | truncate_lines(200) }}
+
+        Check for:
+        - Correctness
+        - Code style
+        - Potential bugs
+        - Test coverage
+    conditions:
+      requires:
+        - implement
+
+outputs:
+  - name: plan
+    type: file
+    path: .agentic/plan.md
+  - name: summary
+    type: file
+    path: .agentic/feature-summary.md
+    template: feature-summary.md
