@@ -72,8 +72,8 @@
     {
       "name": "core",
       "source": "./",
-      "description": "Foundation plugin with git commands, GitHub integration, and Python orchestration utilities for building other plugins",
-      "version": "1.0.0",
+      "description": "Python orchestration utilities for building Claude Code plugins and multi-session workflows",
+      "version": "2.0.0",
       "category": "core",
       "author": {
         "name": "Étienne St-Pierre",
@@ -84,27 +84,18 @@
         "core",
         "foundation",
         "utilities",
-        "building-blocks",
-        "git",
-        "worktree",
-        "github",
-        "orchestration"
+        "python",
+        "orchestration",
+        "library"
       ],
       "strict": false,
-      "commands": [
-        "./plugins/core/commands/git-branch.md",
-        "./plugins/core/commands/git-commit.md",
-        "./plugins/core/commands/git-pr.md",
-        "./plugins/core/commands/git-worktree.md",
-        "./plugins/core/commands/create-gh-issue.md",
-        "./plugins/core/commands/read-gh-issue.md"
-      ]
+      "commands": []
     },
     {
       "name": "interactive-sdlc",
       "source": "./",
       "description": "Interactive SDLC commands for guided development within Claude Code sessions",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "category": "sdlc",
       "author": {
         "name": "Étienne St-Pierre",
@@ -117,7 +108,9 @@
         "planning",
         "building",
         "validation",
-        "workflows"
+        "workflows",
+        "git",
+        "github"
       ],
       "strict": false,
       "commands": [
@@ -134,7 +127,13 @@
         "./plugins/interactive-sdlc/commands/analyse/analyse-doc.md",
         "./plugins/interactive-sdlc/commands/analyse/analyse-debt.md",
         "./plugins/interactive-sdlc/commands/analyse/analyse-style.md",
-        "./plugins/interactive-sdlc/commands/analyse/analyse-security.md"
+        "./plugins/interactive-sdlc/commands/analyse/analyse-security.md",
+        "./plugins/interactive-sdlc/commands/git/git-branch.md",
+        "./plugins/interactive-sdlc/commands/git/git-commit.md",
+        "./plugins/interactive-sdlc/commands/git/git-pr.md",
+        "./plugins/interactive-sdlc/commands/git/git-worktree.md",
+        "./plugins/interactive-sdlc/commands/github/create-gh-issue.md",
+        "./plugins/interactive-sdlc/commands/github/read-gh-issue.md"
       ]
     }
   ]

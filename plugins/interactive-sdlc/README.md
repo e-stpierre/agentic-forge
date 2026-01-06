@@ -39,6 +39,18 @@ All commands use the `/interactive-sdlc:` namespace prefix. Commands are organiz
 - `/interactive-sdlc:analyse-style` - Check code style, consistency, and best practices
 - `/interactive-sdlc:analyse-security` - Scan for security vulnerabilities and unsafe patterns
 
+### Git (`commands/git/`)
+
+- `/interactive-sdlc:git-branch` - Create branches with standardized naming conventions
+- `/interactive-sdlc:git-commit` - Commit and push changes with structured messages
+- `/interactive-sdlc:git-pr` - Create pull requests with contextual descriptions
+- `/interactive-sdlc:git-worktree` - Manage git worktrees for parallel development
+
+### GitHub (`commands/github/`)
+
+- `/interactive-sdlc:create-gh-issue` - Create GitHub issues with title, body, and labels
+- `/interactive-sdlc:read-gh-issue` - Read GitHub issue content by number
+
 ## Configuration
 
 Configure the plugin in `.claude/settings.json` (project scope, committed to git):
