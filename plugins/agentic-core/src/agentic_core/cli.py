@@ -1,5 +1,7 @@
 """CLI entry point for agentic-core."""
 
+import asyncio
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -7,6 +9,7 @@ from typing import Optional
 
 import typer
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 from agentic_core import __version__
@@ -20,13 +23,22 @@ app = typer.Typer(
 # Sub-command groups
 infra_app = typer.Typer(help="Infrastructure management commands")
 providers_app = typer.Typer(help="Provider management commands")
+memory_app = typer.Typer(help="Memory management commands")
+agents_app = typer.Typer(help="Agent management commands")
 app.add_typer(infra_app, name="infra")
 app.add_typer(providers_app, name="providers")
+app.add_typer(memory_app, name="memory")
+app.add_typer(agents_app, name="agents")
 
 console = Console()
 
 # Path to docker directory
 DOCKER_DIR = Path(__file__).parent.parent.parent.parent / "docker"
+
+
+def run_async(coro):
+    """Run async coroutine in sync context."""
+    return asyncio.get_event_loop().run_until_complete(coro)
 
 
 def version_callback(value: bool):
@@ -252,6 +264,275 @@ def providers_test(
         console.print(f"Tokens out: {result.tokens_out}")
     if result.duration_ms:
         console.print(f"Duration: {result.duration_ms}ms")
+
+
+# Workflow commands
+
+
+@app.command("run")
+def run_workflow(
+    workflow_file: Path = typer.Argument(..., help="Path to workflow YAML file"),
+    var: list[str] = typer.Option([], "--var", help="Variables (key=value)"),
+    from_step: Optional[str] = typer.Option(None, "--from-step", help="Resume from step"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Validate without executing"),
+    working_dir: Optional[Path] = typer.Option(None, "--working-dir", "-w", help="Working directory"),
+):
+    """Run a workflow from a YAML file."""
+    from agentic_core.workflow import WorkflowExecutor, WorkflowParser
+
+    if not workflow_file.exists():
+        console.print(f"[red]Error:[/red] Workflow file not found: {workflow_file}")
+        raise typer.Exit(1)
+
+    # Parse variables
+    variables = {}
+    for v in var:
+        if "=" in v:
+            key, value = v.split("=", 1)
+            variables[key] = value
+        else:
+            console.print(f"[yellow]Warning:[/yellow] Invalid variable format: {v}")
+
+    # Parse workflow
+    parser = WorkflowParser(base_path=workflow_file.parent)
+    try:
+        workflow = parser.parse_file(workflow_file)
+    except Exception as e:
+        console.print(f"[red]Error parsing workflow:[/red] {e}")
+        raise typer.Exit(1)
+
+    console.print(f"[bold]Running workflow:[/bold] {workflow.name}")
+    if dry_run:
+        console.print("[yellow]Dry run mode - no execution[/yellow]")
+
+    # Execute workflow
+    executor = WorkflowExecutor(working_dir=working_dir or Path.cwd())
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Executing workflow...", total=None)
+        result = run_async(executor.run(workflow, variables, from_step, dry_run))
+        progress.update(task, completed=True)
+
+    # Display result
+    if result.status.value == "completed":
+        console.print(f"\n[green]Workflow completed successfully![/green]")
+    else:
+        console.print(f"\n[red]Workflow {result.status.value}[/red]")
+        if result.error:
+            console.print(f"Error: {result.error}")
+
+    console.print(f"Duration: {result.duration_ms}ms")
+    console.print(f"Workflow ID: {result.workflow_id}")
+
+
+@app.command("one-shot")
+def one_shot(
+    task: str = typer.Argument(..., help="Task description"),
+    git: bool = typer.Option(False, "--git", help="Enable git integration"),
+    pr: bool = typer.Option(False, "--pr", help="Create a pull request"),
+    provider: str = typer.Option("claude", "--provider", "-p", help="Provider to use"),
+    model: str = typer.Option("sonnet", "--model", "-m", help="Model to use"),
+):
+    """Run a quick one-shot task."""
+    from agentic_core.providers import get_provider
+
+    console.print(f"[bold]One-shot task:[/bold] {task}")
+
+    prov = get_provider(provider)
+    system_prompt = "You are a skilled developer. Complete the following task efficiently and thoroughly."
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        prog_task = progress.add_task("Working on task...", total=None)
+        result = prov.invoke(
+            prompt=task,
+            system_prompt=system_prompt,
+            model=model,
+            timeout=300,
+        )
+        progress.update(prog_task, completed=True)
+
+    if result.is_error:
+        console.print(f"[red]Error:[/red] {result.error_message}")
+        raise typer.Exit(1)
+
+    console.print("\n[bold]Result:[/bold]")
+    console.print(result.content)
+
+    if result.tokens_in or result.tokens_out:
+        console.print(f"\nTokens: {result.tokens_in or 0} in, {result.tokens_out or 0} out")
+
+
+@app.command("meeting")
+def meeting_cmd(
+    topic: str = typer.Argument(..., help="Meeting topic"),
+    agents: str = typer.Option("architect,developer", "--agents", "-a", help="Comma-separated agent names"),
+    rounds: int = typer.Option(3, "--rounds", "-r", help="Number of discussion rounds"),
+    interactive: bool = typer.Option(False, "--interactive", "-i", help="Enable human-in-the-loop"),
+    output_dir: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
+):
+    """Start a multi-agent meeting."""
+    from agentic_core.agents.pool import AgentPool
+    from agentic_core.meetings.orchestrator import MeetingOrchestrator
+
+    agent_list = [a.strip() for a in agents.split(",")]
+
+    console.print(f"[bold]Starting meeting:[/bold] {topic}")
+    console.print(f"Participants: {', '.join(agent_list)}")
+    console.print(f"Rounds: {rounds}")
+
+    # Create agent pool
+    pool = AgentPool()
+
+    # Create mock agents for testing
+    for agent_name in agent_list:
+        pool.create_agent(name=agent_name, provider="mock")
+
+    # Create orchestrator
+    orchestrator = MeetingOrchestrator(agent_pool=pool)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Running meeting...", total=None)
+        state = run_async(orchestrator.run_meeting(
+            topic=topic,
+            agents=agent_list,
+            max_rounds=rounds,
+            interactive=interactive,
+        ))
+        progress.update(task, completed=True)
+
+    console.print("\n[bold]Meeting completed![/bold]")
+    console.print(f"Rounds: {state.current_round}")
+    console.print(f"Messages: {len(state.transcript)}")
+
+    if state.decisions:
+        console.print("\n[bold]Decisions:[/bold]")
+        for i, decision in enumerate(state.decisions, 1):
+            console.print(f"  {i}. {decision}")
+
+    if state.action_items:
+        console.print("\n[bold]Action Items:[/bold]")
+        for item in state.action_items:
+            console.print(f"  - {item}")
+
+    # Generate outputs
+    if output_dir or state.config.outputs:
+        outputs = run_async(orchestrator.generate_outputs(state, output_dir))
+        if outputs:
+            console.print("\n[bold]Outputs:[/bold]")
+            for name, path in outputs.items():
+                console.print(f"  {name}: {path}")
+
+
+# Agent commands
+
+
+@agents_app.command("list")
+def agents_list():
+    """List registered agents."""
+    from agentic_core.agents.pool import AgentPool
+
+    pool = AgentPool()
+    # Load from default agents directory if it exists
+    default_dir = Path.cwd() / "personas"
+    if default_dir.exists():
+        pool.agents_dir = default_dir
+        pool.load_from_directory()
+
+    agents = pool.list_agents()
+
+    if not agents:
+        console.print("[yellow]No agents registered.[/yellow]")
+        console.print("Add agent persona files to the 'personas/' directory.")
+        return
+
+    table = Table(title="Registered Agents")
+    table.add_column("Name", style="cyan")
+    table.add_column("Provider")
+    table.add_column("Model")
+    table.add_column("Icon")
+
+    for name in agents:
+        config = pool.get_config(name)
+        if config:
+            table.add_row(name, config.provider, config.model, config.icon or "-")
+
+    console.print(table)
+
+
+@agents_app.command("test")
+def agents_test(
+    agent_name: str = typer.Argument(..., help="Agent name"),
+    prompt: str = typer.Option("Hello, please introduce yourself.", "--prompt", "-p"),
+):
+    """Test an agent with a prompt."""
+    from agentic_core.agents.pool import AgentPool
+
+    pool = AgentPool()
+    pool.create_agent(name=agent_name, provider="mock")
+    session = pool.get_session(agent_name)
+
+    console.print(f"[bold]Testing agent:[/bold] {agent_name}")
+    console.print(f"Prompt: {prompt}\n")
+
+    response = run_async(session.invoke(prompt))
+
+    console.print("[bold]Response:[/bold]")
+    console.print(response)
+
+
+# Memory commands
+
+
+@memory_app.command("search")
+def memory_search(
+    query: str = typer.Argument(..., help="Search query"),
+    category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category"),
+    limit: int = typer.Option(5, "--limit", "-n", help="Maximum results"),
+):
+    """Search memories by semantic similarity."""
+    console.print("[yellow]Memory search requires database connection.[/yellow]")
+    console.print("Start infrastructure with: agentic infra up")
+    console.print(f"\nWould search for: {query}")
+    if category:
+        console.print(f"Category filter: {category}")
+
+
+@memory_app.command("add")
+def memory_add(
+    category: str = typer.Argument(..., help="Category (lesson, pattern, error, decision, context)"),
+    content: str = typer.Argument(..., help="Memory content"),
+):
+    """Add a memory manually."""
+    valid_categories = ["lesson", "pattern", "error", "decision", "context"]
+    if category not in valid_categories:
+        console.print(f"[red]Invalid category.[/red] Valid: {', '.join(valid_categories)}")
+        raise typer.Exit(1)
+
+    console.print("[yellow]Memory add requires database connection.[/yellow]")
+    console.print("Start infrastructure with: agentic infra up")
+    console.print(f"\nWould add {category}: {content[:100]}...")
+
+
+@memory_app.command("list")
+def memory_list_cmd(
+    category: str = typer.Option("lesson", "--category", "-c", help="Category to list"),
+    limit: int = typer.Option(20, "--limit", "-n", help="Maximum results"),
+):
+    """List memories by category."""
+    console.print("[yellow]Memory list requires database connection.[/yellow]")
+    console.print("Start infrastructure with: agentic infra up")
 
 
 if __name__ == "__main__":
