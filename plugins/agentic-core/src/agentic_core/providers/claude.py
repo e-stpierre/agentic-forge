@@ -45,13 +45,18 @@ class ClaudeProvider(CLIProvider):
         working_dir: Optional[Path] = None,
         timeout: int = 300,
         json_output: bool = True,
-    ) -> list[str]:
+    ) -> tuple[list[str], Optional[str]]:
         """Build Claude CLI command.
 
+        Uses stdin for prompt to avoid shell escaping issues with special
+        characters (like ## which gets interpreted as shell comment).
+
         Example output:
-            claude -p "Fix the bug" --output-format json --model sonnet
+            claude --print --output-format json --model sonnet
+            (prompt passed via stdin)
         """
-        cmd = [self.cli_path, "-p", prompt]
+        # Use --print flag which reads from stdin, avoiding shell escaping issues
+        cmd = [self.cli_path, "--print"]
 
         if json_output:
             cmd.extend(["--output-format", "json"])
@@ -68,7 +73,7 @@ class ClaudeProvider(CLIProvider):
         if tools:
             cmd.extend(["--allowedTools", ",".join(tools)])
 
-        return cmd
+        return cmd, prompt
 
     def parse_output(
         self,

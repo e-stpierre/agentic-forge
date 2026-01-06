@@ -2,13 +2,16 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 from uuid import uuid4
 
 from agentic_core.agents.pool import AgentPool
 from agentic_core.meetings.documents import DocumentGenerator
 from agentic_core.meetings.facilitator import FacilitatorStrategy
-from agentic_core.meetings.state import MeetingConfig, MeetingState
+from agentic_core.meetings.state import MeetingConfig, MeetingMessage, MeetingState
+
+# Type alias for message callback
+MessageCallback = Callable[[MeetingMessage], None]
 
 
 class MeetingOrchestrator:
@@ -19,6 +22,7 @@ class MeetingOrchestrator:
         agent_pool: AgentPool,
         kafka=None,
         working_dir: Optional[Path] = None,
+        on_message: Optional[MessageCallback] = None,
     ):
         """Initialize orchestrator.
 
@@ -26,12 +30,36 @@ class MeetingOrchestrator:
             agent_pool: Pool of available agents
             kafka: Kafka client for messaging (optional)
             working_dir: Working directory
+            on_message: Callback invoked when a message is added to the transcript
         """
         self.agent_pool = agent_pool
         self.kafka = kafka
         self.working_dir = working_dir or Path.cwd()
+        self.on_message = on_message
         self.facilitator_strategy = FacilitatorStrategy()
         self.document_generator = DocumentGenerator()
+
+    def _emit_message(self, state: MeetingState, message: MeetingMessage) -> None:
+        """Add a message to state and notify listeners.
+
+        Args:
+            state: Current meeting state
+            message: Message to add
+        """
+        state.transcript.append(message)
+
+        # Notify callback if set
+        if self.on_message:
+            self.on_message(message)
+
+        # Publish to Kafka if connected
+        if self.kafka:
+            self.kafka.publish_agent_message(
+                workflow_id=state.meeting_id,
+                from_agent=message.agent_name,
+                content=message.content,
+                message_type=message.message_type,
+            )
 
     async def run_meeting(
         self,
@@ -136,12 +164,13 @@ class MeetingOrchestrator:
             context=f"Topic: {state.config.topic}\nParticipants: {', '.join(state.config.agents)}",
         )
 
-        state.add_message(
+        message = MeetingMessage(
             agent_name=state.config.facilitator,
             content=response,
             message_type="opening",
             metadata={"round": 0},
         )
+        self._emit_message(state, message)
 
     async def _run_round(self, state: MeetingState) -> None:
         """Run a single discussion round."""
@@ -174,21 +203,14 @@ class MeetingOrchestrator:
                 context=f"Meeting topic: {state.config.topic}",
             )
 
-            # Add to transcript
-            state.add_message(
+            # Add to transcript and notify listeners
+            message = MeetingMessage(
                 agent_name=action.speaker,
                 content=response,
+                message_type="chat",
                 metadata={"round": state.current_round},
             )
-
-            # Publish message to Kafka
-            if self.kafka:
-                self.kafka.publish_agent_message(
-                    workflow_id=state.meeting_id,
-                    from_agent=action.speaker,
-                    content=response,
-                    message_type="chat",
-                )
+            self._emit_message(state, message)
 
     async def _run_closing(self, state: MeetingState) -> None:
         """Run the closing phase."""
@@ -203,11 +225,12 @@ class MeetingOrchestrator:
             conversation_history=transcript,
         )
 
-        state.add_message(
+        message = MeetingMessage(
             agent_name=state.config.facilitator,
             content=response,
             message_type="summary",
         )
+        self._emit_message(state, message)
 
         # Extract decisions and action items
         decisions = self.facilitator_strategy.extract_decisions(response)
@@ -235,11 +258,12 @@ class MeetingOrchestrator:
             Updated MeetingState
         """
         if user_input:
-            state.add_message(
+            message = MeetingMessage(
                 agent_name="user",
                 content=user_input,
                 message_type="input",
             )
+            self._emit_message(state, message)
             state.user_input = user_input
 
         state.awaiting_user = False

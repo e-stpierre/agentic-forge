@@ -58,7 +58,7 @@ class CLIProvider(ABC):
         working_dir: Optional[Path] = None,
         timeout: int = 300,
         json_output: bool = True,
-    ) -> list[str]:
+    ) -> tuple[list[str], Optional[str]]:
         """Build the CLI command for this provider.
 
         Args:
@@ -72,7 +72,8 @@ class CLIProvider(ABC):
             json_output: Whether to request JSON output format
 
         Returns:
-            List of command arguments
+            Tuple of (command arguments, stdin input).
+            Using stdin avoids shell escaping issues with special characters.
         """
         pass
 
@@ -123,7 +124,7 @@ class CLIProvider(ABC):
         Returns:
             InvocationResult with response content and metadata
         """
-        cmd = self.build_command(
+        cmd, stdin_prompt = self.build_command(
             prompt=prompt,
             system_prompt=system_prompt,
             session_id=session_id,
@@ -140,6 +141,7 @@ class CLIProvider(ABC):
         try:
             result = subprocess.run(
                 cmd,
+                input=stdin_prompt,
                 capture_output=True,
                 text=True,
                 cwd=str(cwd),

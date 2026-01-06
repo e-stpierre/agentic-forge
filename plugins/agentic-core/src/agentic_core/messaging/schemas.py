@@ -1,7 +1,7 @@
 """Kafka message schemas."""
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
@@ -22,7 +22,8 @@ class BaseMessage:
 
     message_id: str
     timestamp: str
-    workflow_id: Optional[str] = None
+    # Use kw_only to allow subclasses to have required fields after this default
+    workflow_id: Optional[str] = field(default=None, kw_only=True)
 
     def to_json(self) -> str:
         """Serialize to JSON."""

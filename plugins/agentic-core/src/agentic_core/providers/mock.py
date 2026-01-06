@@ -57,9 +57,9 @@ class MockProvider(CLIProvider):
         working_dir: Optional[Path] = None,
         timeout: int = 300,
         json_output: bool = True,
-    ) -> list[str]:
+    ) -> tuple[list[str], Optional[str]]:
         """Build mock command (not actually executed)."""
-        return ["mock-cli", "-p", prompt]
+        return ["mock-cli", "--print"], prompt
 
     def parse_output(
         self,

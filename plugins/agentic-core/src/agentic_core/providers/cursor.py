@@ -44,18 +44,22 @@ class CursorProvider(CLIProvider):
         working_dir: Optional[Path] = None,
         timeout: int = 300,
         json_output: bool = True,
-    ) -> list[str]:
+    ) -> tuple[list[str], Optional[str]]:
         """Build Cursor CLI command.
 
+        Uses stdin for prompt to avoid shell escaping issues.
+
         Example output:
-            cursor-agent -p "Fix the bug" --model gpt-4
+            cursor-agent --output-format json --model gpt-4
+            (prompt passed via stdin)
         """
         # Embed system prompt in the main prompt if provided
         full_prompt = prompt
         if system_prompt:
             full_prompt = f"{system_prompt}\n\n{prompt}"
 
-        cmd = [self.cli_path, "-p", full_prompt]
+        # Use stdin for prompt to avoid shell escaping issues
+        cmd = [self.cli_path, "--print"]
 
         if json_output:
             cmd.extend(["--output-format", "json"])
@@ -68,7 +72,7 @@ class CursorProvider(CLIProvider):
 
         # Note: tools parameter is ignored as Cursor doesn't support it
 
-        return cmd
+        return cmd, full_prompt
 
     def parse_output(
         self,

@@ -49,38 +49,43 @@ class TestClaudeProvider:
     """Tests for Claude provider."""
 
     def test_build_command_basic(self):
-        """Test building basic command."""
+        """Test building basic command returns tuple (cmd, stdin)."""
         provider = ClaudeProvider()
-        cmd = provider.build_command("Hello")
-        assert cmd == ["claude", "-p", "Hello", "--output-format", "json"]
+        cmd, stdin = provider.build_command("Hello")
+        assert cmd == ["claude", "--print", "--output-format", "json"]
+        assert stdin == "Hello"
 
     def test_build_command_with_model(self):
         """Test building command with model."""
         provider = ClaudeProvider()
-        cmd = provider.build_command("Hello", model="opus")
+        cmd, stdin = provider.build_command("Hello", model="opus")
         assert "--model" in cmd
         assert "opus" in cmd
+        assert stdin == "Hello"
 
     def test_build_command_with_session(self):
         """Test building command with session."""
         provider = ClaudeProvider()
-        cmd = provider.build_command("Hello", session_id="abc123")
+        cmd, stdin = provider.build_command("Hello", session_id="abc123")
         assert "--resume" in cmd
         assert "abc123" in cmd
+        assert stdin == "Hello"
 
     def test_build_command_with_system_prompt(self):
         """Test building command with system prompt."""
         provider = ClaudeProvider()
-        cmd = provider.build_command("Hello", system_prompt="You are helpful")
+        cmd, stdin = provider.build_command("Hello", system_prompt="You are helpful")
         assert "--append-system-prompt" in cmd
         assert "You are helpful" in cmd
+        assert stdin == "Hello"
 
     def test_build_command_with_tools(self):
         """Test building command with tools."""
         provider = ClaudeProvider()
-        cmd = provider.build_command("Hello", tools=["read", "write"])
+        cmd, stdin = provider.build_command("Hello", tools=["read", "write"])
         assert "--allowedTools" in cmd
         assert "read,write" in cmd
+        assert stdin == "Hello"
 
     def test_parse_output_success(self):
         """Test parsing successful JSON output."""
@@ -114,21 +119,20 @@ class TestCursorProvider:
     """Tests for Cursor provider."""
 
     def test_build_command_basic(self):
-        """Test building basic command."""
+        """Test building basic command returns tuple (cmd, stdin)."""
         provider = CursorProvider()
-        cmd = provider.build_command("Hello")
+        cmd, stdin = provider.build_command("Hello")
         assert cmd[0] == "cursor-agent"
-        assert "-p" in cmd
-        assert "Hello" in cmd
+        assert "--print" in cmd
+        assert stdin == "Hello"
 
     def test_build_command_with_system_prompt(self):
-        """Test system prompt is embedded in main prompt."""
+        """Test system prompt is embedded in stdin prompt."""
         provider = CursorProvider()
-        cmd = provider.build_command("Hello", system_prompt="You are helpful")
-        # System prompt should be embedded in the prompt argument
-        prompt_idx = cmd.index("-p") + 1
-        assert "You are helpful" in cmd[prompt_idx]
-        assert "Hello" in cmd[prompt_idx]
+        cmd, stdin = provider.build_command("Hello", system_prompt="You are helpful")
+        # System prompt should be embedded in the stdin prompt
+        assert "You are helpful" in stdin
+        assert "Hello" in stdin
 
     def test_capabilities(self):
         """Test provider capabilities."""

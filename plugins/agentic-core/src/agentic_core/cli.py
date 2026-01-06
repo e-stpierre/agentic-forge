@@ -64,7 +64,7 @@ DOCKER_DIR = _get_docker_dir()
 
 def run_async(coro):
     """Run async coroutine in sync context."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def version_callback(value: bool):
@@ -212,6 +212,36 @@ def infra_logs(
         cmd.append(service)
 
     _run_docker_compose(cmd)
+
+
+@infra_app.command("topics")
+def infra_topics():
+    """Create required Kafka topics for the messaging system."""
+    from agentic_core.messaging import get_kafka_client, Topics
+
+    console.print("[bold]Creating Kafka topics...[/bold]")
+
+    try:
+        kafka = get_kafka_client()
+
+        # Check Kafka health first
+        if not kafka.health_check():
+            console.print("[red]Error:[/red] Cannot connect to Kafka.")
+            console.print("Make sure infrastructure is running: [cyan]agentic infra up[/cyan]")
+            raise typer.Exit(1)
+
+        # Create topics
+        kafka.ensure_topics()
+
+        console.print("[green]Topics created successfully![/green]")
+        console.print("\n[bold]Created topics:[/bold]")
+        for topic in Topics.all_topics():
+            retention = "infinite" if topic.retention_hours == -1 else f"{topic.retention_hours}h"
+            console.print(f"  - {topic.name} (retention: {retention})")
+
+    except Exception as e:
+        console.print(f"[red]Error creating topics:[/red] {e}")
+        raise typer.Exit(1)
 
 
 # Provider commands
@@ -456,6 +486,27 @@ def one_shot(
     console.print(f"\n[green]Task completed successfully![/green]")
 
 
+def _print_meeting_message(message) -> None:
+    """Print a meeting message to the console with formatting."""
+    # Format agent name with style based on role
+    if message.agent_name == "facilitator":
+        name_style = "bold magenta"
+        icon = "[F]"
+    elif message.agent_name == "user":
+        name_style = "bold green"
+        icon = "[U]"
+    else:
+        name_style = "bold cyan"
+        icon = f"[{message.agent_name[0].upper()}]"
+
+    # Print separator for readability
+    console.print()
+    console.rule(f"[{name_style}]{icon} {message.agent_name}[/{name_style}]", style="dim")
+
+    # Print message content
+    console.print(message.content)
+
+
 @app.command("meeting")
 def meeting_cmd(
     topic: str = typer.Argument(..., help="Meeting topic"),
@@ -466,6 +517,8 @@ def meeting_cmd(
     output_dir: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
     worktree: bool = typer.Option(False, "--worktree", "-w", help="Run in isolated git worktree"),
     branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch name for worktree"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress real-time output"),
+    use_kafka: bool = typer.Option(False, "--kafka", "-k", help="Publish messages to Kafka"),
 ):
     """Start a multi-agent meeting."""
     from agentic_core.agents.pool import AgentPool
@@ -478,6 +531,21 @@ def meeting_cmd(
     console.print(f"Provider: {provider}")
     console.print(f"Rounds: {rounds}")
 
+    # Set up Kafka client if requested
+    kafka = None
+    if use_kafka:
+        from agentic_core.messaging import get_kafka_client
+
+        kafka = get_kafka_client()
+        if not kafka.health_check():
+            console.print("[yellow]Warning:[/yellow] Cannot connect to Kafka. Continuing without messaging.")
+            kafka = None
+        else:
+            console.print(f"Kafka: [green]connected[/green]")
+            kafka.ensure_topics()
+
+    console.print()
+
     # Create agent pool
     pool = AgentPool()
 
@@ -485,8 +553,11 @@ def meeting_cmd(
     for agent_name in agent_list:
         pool.create_agent(name=agent_name, provider=provider)
 
-    # Create orchestrator
-    orchestrator = MeetingOrchestrator(agent_pool=pool)
+    # Set up message callback for streaming output
+    on_message = None if quiet else _print_meeting_message
+
+    # Create orchestrator with streaming callback and Kafka
+    orchestrator = MeetingOrchestrator(agent_pool=pool, kafka=kafka, on_message=on_message)
 
     # Determine working directory
     working_dir = Path.cwd()
@@ -501,37 +572,24 @@ def meeting_cmd(
             console.print(f"[dim]Working in: {wt.path}[/dim]")
             working_dir = wt.path
 
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                task = progress.add_task("Running meeting...", total=None)
-                state = run_async(orchestrator.run_meeting(
-                    topic=topic,
-                    agents=agent_list,
-                    max_rounds=rounds,
-                    interactive=interactive,
-                ))
-                progress.update(task, completed=True)
-
-            console.print(f"\n[green]Worktree at:[/green] {wt.path}")
-    else:
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            task = progress.add_task("Running meeting...", total=None)
             state = run_async(orchestrator.run_meeting(
                 topic=topic,
                 agents=agent_list,
                 max_rounds=rounds,
                 interactive=interactive,
             ))
-            progress.update(task, completed=True)
 
-    console.print("\n[bold]Meeting completed![/bold]")
+            console.print(f"\n[green]Worktree at:[/green] {wt.path}")
+    else:
+        state = run_async(orchestrator.run_meeting(
+            topic=topic,
+            agents=agent_list,
+            max_rounds=rounds,
+            interactive=interactive,
+        ))
+
+    console.print()
+    console.rule("[bold]Meeting Completed[/bold]", style="green")
     console.print(f"Rounds: {state.current_round}")
     console.print(f"Messages: {len(state.transcript)}")
 
