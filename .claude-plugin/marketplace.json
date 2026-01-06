@@ -74,7 +74,7 @@
       "source": "./",
       "description": "Python orchestration utilities for building Claude Code plugins and multi-session workflows",
       "version": "2.0.0",
-      "category": "core",
+      "category": "experimental",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"

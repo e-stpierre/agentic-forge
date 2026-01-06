@@ -12,10 +12,10 @@ The Core plugin provides `agentic-forge-core`, a Python package for orchestratin
 
 ```bash
 # Windows (PowerShell)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\core"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\experimental-plugins\core"
 
 # macOS/Linux
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/core
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/core
 ```
 
 ## Library Usage
