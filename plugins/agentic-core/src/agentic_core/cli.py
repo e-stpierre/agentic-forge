@@ -32,8 +32,26 @@ app.add_typer(agents_app, name="agents")
 
 console = Console()
 
-# Path to docker directory
-DOCKER_DIR = Path(__file__).parent.parent.parent.parent / "docker"
+
+def _get_docker_dir() -> Path:
+    """Get path to docker directory, checking multiple locations."""
+    # 1. Check if installed as shared data (uv tool install)
+    if sys.prefix != sys.base_prefix:
+        # We're in a virtual environment
+        shared_data_path = Path(sys.prefix) / "share" / "agentic-core" / "docker"
+        if shared_data_path.exists():
+            return shared_data_path
+
+    # 2. Check relative to package for editable installs / development
+    dev_path = Path(__file__).parent.parent.parent.parent / "docker"
+    if dev_path.exists():
+        return dev_path
+
+    # 3. Return the expected installed path (will fail gracefully with helpful error)
+    return Path(sys.prefix) / "share" / "agentic-core" / "docker"
+
+
+DOCKER_DIR = _get_docker_dir()
 
 
 def run_async(coro):
