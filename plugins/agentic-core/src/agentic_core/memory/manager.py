@@ -64,6 +64,87 @@ class MemoryManager:
             self._embedder = get_embedding_provider(self._embedding_provider_name)
         return self._embedder
 
+    def is_connected(self) -> bool:
+        """Check if database is connected.
+
+        Returns:
+            True if database is available and connected
+        """
+        if not self.enabled:
+            return False
+        return self.db is not None
+
+    async def add(
+        self,
+        content: str,
+        category: str = "context",
+        metadata: dict[str, Any] = None,
+    ) -> str:
+        """Add a memory (convenience wrapper for store).
+
+        Args:
+            content: Memory content
+            category: Memory category
+            metadata: Additional metadata
+
+        Returns:
+            Memory ID
+        """
+        entry = await self.store(category=category, content=content, metadata=metadata)
+        return entry.id if entry else ""
+
+    async def list_memories(
+        self,
+        category: Optional[str] = None,
+        limit: int = 20,
+    ) -> list["MemoryEntry"]:
+        """List memories, optionally filtered by category.
+
+        Args:
+            category: Filter by category (None for all)
+            limit: Maximum results
+
+        Returns:
+            List of MemoryEntry objects
+        """
+        if not self.enabled or not self.db:
+            return []
+
+        async with self.db.acquire() as conn:
+            if category:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, category, content, metadata, created_at
+                    FROM memory
+                    WHERE category = $1
+                    ORDER BY created_at DESC
+                    LIMIT $2
+                    """,
+                    category,
+                    limit,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, category, content, metadata, created_at
+                    FROM memory
+                    ORDER BY created_at DESC
+                    LIMIT $1
+                    """,
+                    limit,
+                )
+
+            return [
+                MemoryEntry(
+                    id=str(row["id"]),
+                    category=row["category"],
+                    content=row["content"],
+                    metadata=json.loads(row["metadata"]) if row["metadata"] else {},
+                    created_at=row["created_at"],
+                )
+                for row in rows
+            ]
+
     async def store(
         self,
         category: str,

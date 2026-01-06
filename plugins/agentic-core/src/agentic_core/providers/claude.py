@@ -150,6 +150,7 @@ class ClaudeProvider(CLIProvider):
                 capture_output=True,
                 text=True,
                 timeout=10,
+                shell=True,  # Required on Windows for PATH resolution
             )
             return result.returncode == 0
         except Exception:
