@@ -101,10 +101,7 @@ class MeetingState:
     def get_round_summary(self, round_num: int) -> str:
         """Get summary of a specific round."""
         # Find messages for this round
-        round_messages = [
-            msg for msg in self.transcript
-            if msg.metadata.get("round") == round_num
-        ]
+        round_messages = [msg for msg in self.transcript if msg.metadata.get("round") == round_num]
         return "\n".join(msg.format() for msg in round_messages)
 
     def mark_complete(self) -> None:

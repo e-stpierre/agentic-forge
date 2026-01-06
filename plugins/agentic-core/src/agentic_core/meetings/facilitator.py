@@ -38,11 +38,11 @@ class FacilitatorStrategy:
         """
         prompt = f"""We're starting a meeting on: {state.config.topic}
 
-Participants: {', '.join(state.config.agents)}
+Participants: {", ".join(state.config.agents)}
 
-Please introduce the topic briefly and invite the first participant to share their thoughts.
+Please introduce the topic briefly and invite the first participant to share.
 
-REMINDER: All participants should keep contributions concise (300-500 words max), focused on key points, and avoid repetition."""
+REMINDER: Keep contributions concise (300-500 words max), focused, avoid repetition."""
 
         return FacilitatorAction(
             action_type="open",
@@ -112,9 +112,10 @@ IMPORTANT GUIDELINES:
                 prompt="The discussion has paused for your input. What would you like to add?",
             )
 
+        next_round = state.current_round + 2
         return FacilitatorAction(
             action_type="end_round",
-            prompt=f"Round {state.current_round + 1} complete. Starting round {state.current_round + 2}.",
+            prompt=f"Round {state.current_round + 1} complete. Starting round {next_round}.",
         )
 
     def end_meeting(self, state: MeetingState) -> FacilitatorAction:
@@ -165,6 +166,7 @@ Keep the summary brief and actionable. Use the exact headers above for proper pa
         # Parse [NEXT_SPEAKER: name]
         if "[NEXT_SPEAKER:" in content_upper:
             import re
+
             match = re.search(r"\[NEXT_SPEAKER:\s*(\w+)\]", content, re.IGNORECASE)
             if match:
                 return FacilitatorAction(
@@ -220,9 +222,7 @@ Keep the summary brief and actionable. Use the exact headers above for proper pa
                     continue
 
                 # Extract list items
-                if line_stripped.startswith(("-", "*")) or re.match(
-                    r"^\d+\.", line_stripped
-                ):
+                if line_stripped.startswith(("-", "*")) or re.match(r"^\d+\.", line_stripped):
                     decision = re.sub(r"^[-*\d.]+\s*", "", line_stripped)
                     # Skip if it's a checkbox marker
                     decision = re.sub(r"^\[[ x]\]\s*", "", decision)
@@ -300,9 +300,7 @@ Keep the summary brief and actionable. Use the exact headers above for proper pa
                     continue
 
                 # Extract list items (including checkboxes)
-                if line_stripped.startswith(("-", "*")) or re.match(
-                    r"^\d+\.", line_stripped
-                ):
+                if line_stripped.startswith(("-", "*")) or re.match(r"^\d+\.", line_stripped):
                     action = re.sub(r"^[-*\d.]+\s*", "", line_stripped)
                     # Handle checkbox format: - [ ] or - [x]
                     action = re.sub(r"^\[[ x]\]\s*", "", action)

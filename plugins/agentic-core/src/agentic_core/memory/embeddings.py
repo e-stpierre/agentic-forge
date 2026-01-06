@@ -1,6 +1,5 @@
 """Embedding providers for semantic memory."""
 
-import os
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -43,7 +42,6 @@ class LocalEmbeddingProvider(EmbeddingProvider):
     """
 
     name = "sentence-transformers"
-    dimensions = 384  # Default for all-MiniLM-L6-v2
 
     def __init__(
         self,
@@ -110,7 +108,7 @@ class MockEmbeddingProvider(EmbeddingProvider):
         text_hash = hashlib.md5(text.encode()).hexdigest()
         values = []
         for i in range(0, min(len(text_hash), self.dimensions * 2), 2):
-            hex_pair = text_hash[i:i + 2]
+            hex_pair = text_hash[i : i + 2]
             value = (int(hex_pair, 16) - 128) / 128  # Normalize to [-1, 1]
             values.append(value)
 
@@ -118,7 +116,7 @@ class MockEmbeddingProvider(EmbeddingProvider):
         while len(values) < self.dimensions:
             values.append(0.0)
 
-        return values[:self.dimensions]
+        return values[: self.dimensions]
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Generate mock embeddings for multiple texts."""

@@ -3,7 +3,6 @@
 import asyncio
 import random
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any, Callable, Optional, TypeVar
 from uuid import UUID
 
@@ -30,7 +29,7 @@ class RetryStrategy:
             Delay in seconds
         """
         delay = min(
-            self.base_delay * (self.exponential_base ** attempt),
+            self.base_delay * (self.exponential_base**attempt),
             self.max_delay,
         )
         if self.jitter:
@@ -123,6 +122,7 @@ class CheckpointManager:
         if self.kafka:
             try:
                 from agentic_core.messaging.topics import Topics
+
                 kafka_offset = self.kafka.get_latest_offset(Topics.WORKFLOW_EVENTS)
             except Exception:
                 pass
@@ -196,6 +196,7 @@ class CheckpointManager:
         if self.kafka and checkpoint.kafka_offset:
             try:
                 from agentic_core.messaging.topics import Topics
+
                 messages = self.kafka.consume_from_offset(
                     Topics.WORKFLOW_EVENTS,
                     offset=checkpoint.kafka_offset,
@@ -212,6 +213,7 @@ class CheckpointManager:
         for msg in additional_messages:
             try:
                 import json
+
                 event = json.loads(msg.value)
                 if event.get("event_type") == "step_completed":
                     step = event.get("step_name")
@@ -249,12 +251,14 @@ class CheckpointManager:
         # For now, just return the latest
         checkpoint = await self.db.get_latest_checkpoint(UUID(workflow_id))
         if checkpoint:
-            return [{
-                "id": str(checkpoint.id),
-                "step_name": checkpoint.step_name,
-                "status": checkpoint.status,
-                "created_at": checkpoint.created_at.isoformat(),
-            }]
+            return [
+                {
+                    "id": str(checkpoint.id),
+                    "step_name": checkpoint.step_name,
+                    "status": checkpoint.status,
+                    "created_at": checkpoint.created_at.isoformat(),
+                }
+            ]
         return []
 
 

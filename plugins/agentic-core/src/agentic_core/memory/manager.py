@@ -212,7 +212,10 @@ class MemoryManager:
 
             await conn.execute(
                 """
-                INSERT INTO memory (id, category, content, embedding, embedding_model, metadata, workflow_id)
+                INSERT INTO memory (
+                    id, category, content, embedding, embedding_model,
+                    metadata, workflow_id
+                )
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 """,
                 UUID(memory_id),

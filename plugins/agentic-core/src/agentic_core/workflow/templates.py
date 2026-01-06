@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from jinja2 import Environment, StrictUndefined, Template
+from jinja2 import Environment, StrictUndefined
 
 
 class TemplateResolver:

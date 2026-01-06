@@ -2,7 +2,12 @@
 
 from typing import Type
 
-from agentic_core.providers.base import CLIProvider, ExecutionMode, InvocationResult, ProviderCapabilities
+from agentic_core.providers.base import (
+    CLIProvider,
+    ExecutionMode,
+    InvocationResult,
+    ProviderCapabilities,
+)
 from agentic_core.providers.claude import ClaudeProvider
 from agentic_core.providers.cursor import CursorProvider
 from agentic_core.providers.mock import MockProvider

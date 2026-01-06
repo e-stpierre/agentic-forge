@@ -3,7 +3,6 @@
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -131,7 +130,9 @@ class GitOperations:
         """
         return self._run(["commit", "-m", message])
 
-    def push(self, remote: str = "origin", branch: str = None, set_upstream: bool = True) -> GitResult:
+    def push(
+        self, remote: str = "origin", branch: str = None, set_upstream: bool = True
+    ) -> GitResult:
         """Push to remote.
 
         Args:

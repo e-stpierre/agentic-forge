@@ -9,7 +9,6 @@ rather than just returning text responses.
 from __future__ import annotations
 
 import subprocess
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 

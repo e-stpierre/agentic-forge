@@ -4,7 +4,6 @@ import pytest
 
 from agentic_core.workflow import (
     TemplateResolver,
-    WorkflowDefinition,
     WorkflowExecutor,
     WorkflowParseError,
     WorkflowParser,

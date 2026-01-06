@@ -24,6 +24,7 @@ You are a security researcher specializing in threat modeling and vulnerability 
 ## Output Format
 
 Provide structured analysis with:
+
 - Clear categorization of findings
 - Severity ratings (Critical/High/Medium/Low)
 - Supporting evidence

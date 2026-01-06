@@ -1,10 +1,9 @@
 """Kafka client for message bus operations."""
 
-import json
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Optional
 from uuid import uuid4
 
 from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
@@ -14,8 +13,6 @@ from agentic_core.messaging.schemas import (
     AgentMessage,
     BaseMessage,
     ControlSignal,
-    HumanInput,
-    TelemetryEvent,
     WorkflowEvent,
 )
 from agentic_core.messaging.topics import TopicConfig, Topics
@@ -60,9 +57,7 @@ class KafkaClient:
     def _get_admin(self) -> AdminClient:
         """Get or create admin client."""
         if self._admin is None:
-            self._admin = AdminClient(
-                {"bootstrap.servers": self.bootstrap_servers}
-            )
+            self._admin = AdminClient({"bootstrap.servers": self.bootstrap_servers})
         return self._admin
 
     def _get_consumer(self, group_id: str, topics: list[str]) -> Consumer:
@@ -181,9 +176,7 @@ class KafkaClient:
         )
         try:
             # Get high watermark (latest offset)
-            low, high = consumer.get_watermark_offsets(
-                topic.name, partition, timeout=5.0
-            )
+            low, high = consumer.get_watermark_offsets(topic.name, partition, timeout=5.0)
             return high
         finally:
             consumer.close()

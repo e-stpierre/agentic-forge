@@ -1,8 +1,6 @@
 """Workflow executor for running workflows."""
 
-import asyncio
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
@@ -11,7 +9,6 @@ from agentic_core.providers import CLIProvider, get_provider
 from agentic_core.workflow.models import (
     StepDefinition,
     StepOutput,
-    StepStatus,
     WorkflowDefinition,
     WorkflowResult,
     WorkflowState,
@@ -239,13 +236,17 @@ class WorkflowExecutor:
         )
         if not agent_config:
             # Use default configuration
-            agent_config = type("Agent", (), {
-                "name": step.agent,
-                "provider": "claude",
-                "model": "sonnet",
-                "persona": None,
-                "tools": [],
-            })()
+            agent_config = type(
+                "Agent",
+                (),
+                {
+                    "name": step.agent,
+                    "provider": "claude",
+                    "model": "sonnet",
+                    "persona": None,
+                    "tools": [],
+                },
+            )()
 
         # Get provider
         provider = self._providers.get(agent_config.provider)

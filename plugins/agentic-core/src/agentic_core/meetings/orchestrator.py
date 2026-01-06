@@ -291,7 +291,7 @@ class MeetingOrchestrator:
 4. Track action items and their owners
 5. ENFORCE CONCISENESS - redirect verbose participants to focus on key points
 
-Participants in this meeting: {', '.join(config.agents)}
+Participants in this meeting: {", ".join(config.agents)}
 
 CRITICAL: Keep all responses brief and focused. Aim for 200-400 words maximum per message.
 Encourage participants to be concise and avoid repetition.

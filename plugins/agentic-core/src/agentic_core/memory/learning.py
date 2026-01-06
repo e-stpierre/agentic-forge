@@ -1,7 +1,7 @@
 """Learning extraction from workflows."""
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
 
 from agentic_core.memory.manager import MemoryManager
 from agentic_core.providers import get_provider
@@ -106,9 +106,7 @@ Format your response as JSON:
 
         # Format step outputs
         outputs_text = "\n".join(
-            f"### {name}\n{content[:1000]}..."
-            if len(content) > 1000
-            else f"### {name}\n{content}"
+            f"### {name}\n{content[:1000]}..." if len(content) > 1000 else f"### {name}\n{content}"
             for name, content in step_outputs.items()
         )
 

@@ -201,8 +201,8 @@ def parse_args(all_plugins: list[str]) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=f"""
 Supported plugins:
-  Claude Code plugins: {', '.join(all_plugins)}
-  Python CLI tools:    {', '.join(PYTHON_TOOLS)}
+  Claude Code plugins: {", ".join(all_plugins)}
+  Python CLI tools:    {", ".join(PYTHON_TOOLS)}
 
 Examples:
   %(prog)s                           # Reinstall everything
@@ -223,10 +223,7 @@ Examples:
     if args.plugins:
         invalid = [p for p in args.plugins if p not in supported]
         if invalid:
-            parser.error(
-                f"Invalid plugin(s): {', '.join(invalid)}\n"
-                f"Supported: {', '.join(supported)}"
-            )
+            parser.error(f"Invalid plugin(s): {', '.join(invalid)}\nSupported: {', '.join(supported)}")
 
     return args
 

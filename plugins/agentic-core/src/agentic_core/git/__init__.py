@@ -14,7 +14,6 @@ from agentic_core.git.worktree import (
     Worktree,
     branch_exists,
     create_worktree,
-    get_current_branch as worktree_get_current_branch,
     get_default_branch,
     get_repo_root,
     get_worktree_base_path,

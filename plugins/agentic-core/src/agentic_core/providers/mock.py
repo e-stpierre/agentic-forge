@@ -133,23 +133,51 @@ class MockProvider(CLIProvider):
 
         # Pattern-based responses
         if "fix" in prompt_lower and "bug" in prompt_lower:
-            return "I've analyzed the code and fixed the bug. The issue was in the error handling logic. Here's the fix:\n\n```python\n# Fixed error handling\ntry:\n    result = process_data()\nexcept ValueError as e:\n    logger.error(f'Invalid data: {e}')\n    return None\n```"
+            return (
+                "I've analyzed the code and fixed the bug. The issue was in the "
+                "error handling logic. Here's the fix:\n\n```python\n"
+                "# Fixed error handling\ntry:\n    result = process_data()\n"
+                "except ValueError as e:\n    logger.error(f'Invalid data: {e}')\n"
+                "    return None\n```"
+            )
 
         if "implement" in prompt_lower or "add" in prompt_lower:
-            return "I've implemented the requested feature. Here's a summary of the changes:\n\n1. Added new function `handle_feature()`\n2. Updated tests to cover new functionality\n3. Updated documentation\n\nThe implementation follows the existing patterns in the codebase."
+            return (
+                "I've implemented the requested feature. Here's a summary:\n\n"
+                "1. Added new function `handle_feature()`\n"
+                "2. Updated tests to cover new functionality\n"
+                "3. Updated documentation\n\n"
+                "The implementation follows the existing patterns in the codebase."
+            )
 
         if "test" in prompt_lower:
-            return "All tests pass. Here's the test output:\n\n```\n✓ test_basic_functionality\n✓ test_edge_cases\n✓ test_error_handling\n\n3 tests passed, 0 failed\n```"
+            return (
+                "All tests pass. Here's the test output:\n\n```\n"
+                "* test_basic_functionality\n* test_edge_cases\n"
+                "* test_error_handling\n\n3 tests passed, 0 failed\n```"
+            )
 
         if "review" in prompt_lower:
-            return "Code review complete. The code looks good overall with a few suggestions:\n\n1. Consider adding error handling for edge cases\n2. The function could be more readable with type hints\n3. Tests coverage could be improved"
+            return (
+                "Code review complete. The code looks good overall with a few "
+                "suggestions:\n\n1. Consider adding error handling for edge cases\n"
+                "2. The function could be more readable with type hints\n"
+                "3. Tests coverage could be improved"
+            )
 
         if "plan" in prompt_lower:
-            return "Here's the implementation plan:\n\n## Tasks\n1. Analyze requirements\n2. Design solution architecture\n3. Implement core functionality\n4. Write tests\n5. Update documentation\n\n## Considerations\n- Backward compatibility\n- Performance implications\n- Security review needed"
+            return (
+                "Here's the implementation plan:\n\n## Tasks\n"
+                "1. Analyze requirements\n2. Design solution architecture\n"
+                "3. Implement core functionality\n4. Write tests\n"
+                "5. Update documentation\n\n## Considerations\n"
+                "- Backward compatibility\n- Performance implications\n"
+                "- Security review needed"
+            )
 
         # Default: echo back a summary
         prompt_hash = hashlib.md5(prompt.encode()).hexdigest()[:8]
-        return f"Mock response for prompt ({prompt_hash}): Task acknowledged and completed successfully."
+        return f"Mock response ({prompt_hash}): Task acknowledged and completed."
 
     def health_check(self) -> bool:
         """Mock provider is always healthy."""

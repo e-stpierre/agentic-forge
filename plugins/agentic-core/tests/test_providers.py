@@ -90,7 +90,11 @@ class TestClaudeProvider:
     def test_parse_output_success(self):
         """Test parsing successful JSON output."""
         provider = ClaudeProvider()
-        stdout = '''{"type":"result","subtype":"success","is_error":false,"result":"Hello!","session_id":"abc123","usage":{"input_tokens":10,"output_tokens":5}}'''
+        stdout = (
+            '{"type":"result","subtype":"success","is_error":false,'
+            '"result":"Hello!","session_id":"abc123",'
+            '"usage":{"input_tokens":10,"output_tokens":5}}'
+        )
         result = provider.parse_output(stdout, "", 0, 100)
 
         assert result.content == "Hello!"
@@ -160,7 +164,7 @@ class TestMockProvider:
         result1 = provider.invoke("First prompt")
         session_id = result1.session_id
 
-        result2 = provider.invoke("Second prompt", session_id=session_id)
+        provider.invoke("Second prompt", session_id=session_id)
 
         history = provider.get_session_history(session_id)
         assert len(history) == 2
@@ -169,10 +173,7 @@ class TestMockProvider:
 
     def test_invoke_with_custom_response(self):
         """Test mock provider with custom response function."""
-        provider = MockProvider(
-            latency_ms=0,
-            response_fn=lambda p: f"Custom: {p}"
-        )
+        provider = MockProvider(latency_ms=0, response_fn=lambda p: f"Custom: {p}")
         result = provider.invoke("Test")
 
         assert result.content == "Custom: Test"

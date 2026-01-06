@@ -5,7 +5,7 @@ import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 from uuid import UUID
 
 import asyncpg
@@ -281,7 +281,10 @@ class Database:
         async with self.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                INSERT INTO step_outputs (workflow_id, step_name, output_type, content, file_path, file_hash, metadata)
+                INSERT INTO step_outputs (
+                    workflow_id, step_name, output_type, content,
+                    file_path, file_hash, metadata
+                )
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (workflow_id, step_name)
                 DO UPDATE SET
@@ -348,7 +351,10 @@ class Database:
         async with self.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                INSERT INTO messages (workflow_id, message_type, content, agent_name, metadata, kafka_topic, kafka_offset)
+                INSERT INTO messages (
+                    workflow_id, message_type, content, agent_name,
+                    metadata, kafka_topic, kafka_offset
+                )
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING id
                 """,
@@ -381,7 +387,10 @@ class Database:
         async with self.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                INSERT INTO telemetry (workflow_id, event_type, agent_name, provider, duration_ms, tokens_in, tokens_out, success, error, metadata)
+                INSERT INTO telemetry (
+                    workflow_id, event_type, agent_name, provider, duration_ms,
+                    tokens_in, tokens_out, success, error, metadata
+                )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 RETURNING id
                 """,

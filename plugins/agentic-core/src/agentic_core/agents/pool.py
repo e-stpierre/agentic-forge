@@ -51,7 +51,7 @@ class AgentPool:
                 end = persona.find("---", 3)
                 if end != -1:
                     frontmatter = persona[3:end]
-                    persona = persona[end + 3:].strip()
+                    persona = persona[end + 3 :].strip()
 
                     # Simple YAML parsing
                     for line in frontmatter.strip().split("\n"):

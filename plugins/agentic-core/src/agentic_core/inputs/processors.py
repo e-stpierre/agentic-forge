@@ -1,7 +1,5 @@
 """Input processors for different input types."""
 
-import asyncio
-import glob
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -161,12 +159,36 @@ class CodebaseProcessor(InputProcessor):
         """Check if file is likely a text file."""
         # Skip common binary extensions
         binary_extensions = {
-            ".pyc", ".pyo", ".exe", ".dll", ".so", ".dylib",
-            ".zip", ".tar", ".gz", ".bz2", ".xz",
-            ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico",
-            ".mp3", ".mp4", ".wav", ".avi", ".mov",
-            ".pdf", ".doc", ".docx", ".xls", ".xlsx",
-            ".db", ".sqlite", ".lock",
+            ".pyc",
+            ".pyo",
+            ".exe",
+            ".dll",
+            ".so",
+            ".dylib",
+            ".zip",
+            ".tar",
+            ".gz",
+            ".bz2",
+            ".xz",
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".bmp",
+            ".ico",
+            ".mp3",
+            ".mp4",
+            ".wav",
+            ".avi",
+            ".mov",
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".xls",
+            ".xlsx",
+            ".db",
+            ".sqlite",
+            ".lock",
         }
         if path.suffix.lower() in binary_extensions:
             return False
@@ -252,12 +274,26 @@ class GithubIssueProcessor(InputProcessor):
             if "#" in source:
                 if "/" in source:
                     repo_part, issue_num = source.rsplit("#", 1)
-                    cmd = ["gh", "issue", "view", issue_num, "-R", repo_part, "--json",
-                           "title,body,state,labels,author,comments"]
+                    cmd = [
+                        "gh",
+                        "issue",
+                        "view",
+                        issue_num,
+                        "-R",
+                        repo_part,
+                        "--json",
+                        "title,body,state,labels,author,comments",
+                    ]
                 else:
                     issue_num = source.replace("#", "")
-                    cmd = ["gh", "issue", "view", issue_num, "--json",
-                           "title,body,state,labels,author,comments"]
+                    cmd = [
+                        "gh",
+                        "issue",
+                        "view",
+                        issue_num,
+                        "--json",
+                        "title,body,state,labels,author,comments",
+                    ]
             else:
                 return ProcessedInput(
                     name=name,
@@ -283,6 +319,7 @@ class GithubIssueProcessor(InputProcessor):
                 )
 
             import json
+
             data = json.loads(result.stdout)
 
             # Format issue content

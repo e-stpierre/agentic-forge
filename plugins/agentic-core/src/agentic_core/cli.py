@@ -21,10 +21,13 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
+
 # Global context for storing options
 class AppContext:
     """Application context for sharing state between commands."""
+
     skip_permissions: bool = False
+
 
 _ctx = AppContext()
 
@@ -164,8 +167,6 @@ def infra_status():
         console.print(result.stderr)
         raise typer.Exit(1)
 
-    import json
-
     table = Table(title="Infrastructure Status")
     table.add_column("Service", style="cyan")
     table.add_column("Status", style="green")
@@ -183,9 +184,7 @@ def infra_status():
                 port_str = ""
                 if ports:
                     port_str = ", ".join(
-                        f"{p.get('PublishedPort', '')}"
-                        for p in ports
-                        if p.get("PublishedPort")
+                        f"{p.get('PublishedPort', '')}" for p in ports if p.get("PublishedPort")
                     )
 
                 status_style = "green" if state == "running" else "red"
@@ -217,7 +216,7 @@ def infra_logs(
 @infra_app.command("topics")
 def infra_topics():
     """Create required Kafka topics for the messaging system."""
-    from agentic_core.messaging import get_kafka_client, Topics
+    from agentic_core.messaging import Topics, get_kafka_client
 
     console.print("[bold]Creating Kafka topics...[/bold]")
 
@@ -283,7 +282,9 @@ def providers_list():
 @providers_app.command("test")
 def providers_test(
     provider_name: str = typer.Argument(..., help="Provider name (claude, cursor, mock)"),
-    prompt: str = typer.Option("Say 'Hello from agentic-core!'", "--prompt", "-p", help="Test prompt"),
+    prompt: str = typer.Option(
+        "Say 'Hello from agentic-core!'", "--prompt", "-p", help="Test prompt"
+    ),
 ):
     """Test a provider with a simple prompt."""
     from agentic_core.providers import get_provider
@@ -339,7 +340,9 @@ def run_workflow(
     working_dir: Optional[Path] = typer.Option(None, "--working-dir", help="Working directory"),
     worktree: bool = typer.Option(False, "--worktree", "-w", help="Run in isolated git worktree"),
     branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch name for worktree"),
-    keep_worktree: bool = typer.Option(False, "--keep-worktree", help="Don't delete worktree after completion"),
+    keep_worktree: bool = typer.Option(
+        False, "--keep-worktree", help="Don't delete worktree after completion"
+    ),
 ):
     """Run a workflow from a YAML file."""
     from agentic_core.workflow import WorkflowExecutor, WorkflowParser
@@ -409,7 +412,7 @@ def run_workflow(
 
     # Display result
     if result.status.value == "completed":
-        console.print(f"\n[green]Workflow completed successfully![/green]")
+        console.print("\n[green]Workflow completed successfully![/green]")
     else:
         console.print(f"\n[red]Workflow {result.status.value}[/red]")
         if result.error:
@@ -426,12 +429,16 @@ def one_shot(
     pr: bool = typer.Option(False, "--pr", help="Create a pull request"),
     worktree: bool = typer.Option(False, "--worktree", "-w", help="Run in isolated git worktree"),
     branch: Optional[str] = typer.Option(None, "--branch", "-b", help="Branch name for worktree"),
-    keep_worktree: bool = typer.Option(False, "--keep-worktree", help="Don't delete worktree after completion"),
-    provider: str = typer.Option("claude", "--provider", "-p", help="Provider to use (claude, cursor, mock)"),
+    keep_worktree: bool = typer.Option(
+        False, "--keep-worktree", help="Don't delete worktree after completion"
+    ),
+    provider: str = typer.Option(
+        "claude", "--provider", "-p", help="Provider (claude, cursor, mock)"
+    ),
     model: str = typer.Option("sonnet", "--model", "-m", help="Model to use"),
 ):
     """Run a quick one-shot task with full tool execution."""
-    from agentic_core.runner import run_claude, check_claude_available
+    from agentic_core.runner import check_claude_available, run_claude
 
     console.print(f"[bold]One-shot task:[/bold] {task}")
 
@@ -444,7 +451,9 @@ def one_shot(
     # Build enhanced prompt with git/pr instructions
     enhanced_prompt = task
     if git:
-        enhanced_prompt += "\n\nAfter completing the task, commit the changes with a descriptive message."
+        enhanced_prompt += (
+            "\n\nAfter completing the task, commit the changes with a descriptive message."
+        )
     if pr:
         enhanced_prompt += "\n\nCreate a pull request with the changes."
 
@@ -478,12 +487,12 @@ def one_shot(
         )
 
     if not result.success:
-        console.print(f"\n[red]Task failed[/red]")
+        console.print("\n[red]Task failed[/red]")
         if result.stderr:
             console.print(f"Error: {result.stderr}")
         raise typer.Exit(1)
 
-    console.print(f"\n[green]Task completed successfully![/green]")
+    console.print("\n[green]Task completed successfully![/green]")
 
 
 def _print_meeting_message(message) -> None:
@@ -510,9 +519,13 @@ def _print_meeting_message(message) -> None:
 @app.command("meeting")
 def meeting_cmd(
     topic: str = typer.Argument(..., help="Meeting topic"),
-    agents: str = typer.Option("architect,developer", "--agents", "-a", help="Comma-separated agent names"),
-    rounds: int = typer.Option(3, "--rounds", "-r", help="Number of discussion rounds"),
-    provider: str = typer.Option("claude", "--provider", "-p", help="Provider to use (claude, cursor, mock)"),
+    agents: str = typer.Option(
+        "architect,developer", "--agents", "-a", help="Comma-separated agent names"
+    ),
+    rounds: int = typer.Option(3, "--rounds", "-r", help="Discussion rounds"),
+    provider: str = typer.Option(
+        "claude", "--provider", "-p", help="Provider (claude, cursor, mock)"
+    ),
     interactive: bool = typer.Option(False, "--interactive", "-i", help="Enable human-in-the-loop"),
     output_dir: Optional[Path] = typer.Option(None, "--output", "-o", help="Output directory"),
     worktree: bool = typer.Option(False, "--worktree", "-w", help="Run in isolated git worktree"),
@@ -538,10 +551,12 @@ def meeting_cmd(
 
         kafka = get_kafka_client()
         if not kafka.health_check():
-            console.print("[yellow]Warning:[/yellow] Cannot connect to Kafka. Continuing without messaging.")
+            console.print(
+                "[yellow]Warning:[/yellow] Cannot connect to Kafka. Continuing without messaging."
+            )
             kafka = None
         else:
-            console.print(f"Kafka: [green]connected[/green]")
+            console.print("Kafka: [green]connected[/green]")
             kafka.ensure_topics()
 
     console.print()
@@ -559,9 +574,6 @@ def meeting_cmd(
     # Create orchestrator with streaming callback and Kafka
     orchestrator = MeetingOrchestrator(agent_pool=pool, kafka=kafka, on_message=on_message)
 
-    # Determine working directory
-    working_dir = Path.cwd()
-
     if worktree:
         from agentic_core.git.worktree import temporary_worktree
 
@@ -570,23 +582,26 @@ def meeting_cmd(
 
         with temporary_worktree(branch_name, cleanup=False) as wt:
             console.print(f"[dim]Working in: {wt.path}[/dim]")
-            working_dir = wt.path
 
-            state = run_async(orchestrator.run_meeting(
+            state = run_async(
+                orchestrator.run_meeting(
+                    topic=topic,
+                    agents=agent_list,
+                    max_rounds=rounds,
+                    interactive=interactive,
+                )
+            )
+
+            console.print(f"\n[green]Worktree at:[/green] {wt.path}")
+    else:
+        state = run_async(
+            orchestrator.run_meeting(
                 topic=topic,
                 agents=agent_list,
                 max_rounds=rounds,
                 interactive=interactive,
-            ))
-
-            console.print(f"\n[green]Worktree at:[/green] {wt.path}")
-    else:
-        state = run_async(orchestrator.run_meeting(
-            topic=topic,
-            agents=agent_list,
-            max_rounds=rounds,
-            interactive=interactive,
-        ))
+            )
+        )
 
     console.print()
     console.rule("[bold]Meeting Completed[/bold]", style="green")
@@ -652,7 +667,7 @@ def agents_list():
 def agents_test(
     agent_name: str = typer.Argument(..., help="Agent name"),
     prompt: str = typer.Option("Hello, please introduce yourself.", "--prompt", "-p"),
-    provider: str = typer.Option("claude", "--provider", help="Provider to use (claude, cursor, mock)"),
+    provider: str = typer.Option("claude", "--provider", help="Provider (claude, cursor, mock)"),
     model: str = typer.Option("sonnet", "--model", "-m", help="Model to use"),
 ):
     """Test an agent with a prompt."""
@@ -710,7 +725,9 @@ def memory_search(
 
 @memory_app.command("add")
 def memory_add(
-    category: str = typer.Argument(..., help="Category (lesson, pattern, error, decision, context)"),
+    category: str = typer.Argument(
+        ..., help="Category (lesson, pattern, error, decision, context)"
+    ),
     content: str = typer.Argument(..., help="Memory content"),
     source: Optional[str] = typer.Option(None, "--source", "-s", help="Source of the memory"),
 ):
@@ -735,7 +752,7 @@ def memory_add(
     metadata = {"source": source} if source else {}
     memory_id = run_async(manager.add(content, category=category, metadata=metadata))
 
-    console.print(f"[green]Memory added successfully![/green]")
+    console.print("[green]Memory added successfully![/green]")
     console.print(f"ID: {memory_id}")
     console.print(f"Category: {category}")
     console.print(f"Content: {content[:100]}...")

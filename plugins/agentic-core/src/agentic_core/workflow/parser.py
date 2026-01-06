@@ -105,28 +105,16 @@ class WorkflowParser:
         settings = self._parse_settings(data.get("settings", {}))
 
         # Agents
-        agents = [
-            self._parse_agent(a)
-            for a in data.get("agents", [])
-        ]
+        agents = [self._parse_agent(a) for a in data.get("agents", [])]
 
         # Inputs
-        inputs = [
-            self._parse_input(i)
-            for i in data.get("inputs", [])
-        ]
+        inputs = [self._parse_input(i) for i in data.get("inputs", [])]
 
         # Steps
-        steps = [
-            self._parse_step(s)
-            for s in data.get("steps", [])
-        ]
+        steps = [self._parse_step(s) for s in data.get("steps", [])]
 
         # Outputs
-        outputs = [
-            self._parse_output(o)
-            for o in data.get("outputs", [])
-        ]
+        outputs = [self._parse_output(o) for o in data.get("outputs", [])]
 
         # Meeting config
         meeting = None
@@ -158,9 +146,7 @@ class WorkflowParser:
             return WorkflowType(type_str)
         except ValueError:
             valid = [t.value for t in WorkflowType]
-            raise WorkflowParseError(
-                f"Invalid workflow type: {type_str}. Valid: {valid}"
-            )
+            raise WorkflowParseError(f"Invalid workflow type: {type_str}. Valid: {valid}")
 
     def _parse_settings(self, data: dict) -> WorkflowSettings:
         """Parse workflow settings."""
