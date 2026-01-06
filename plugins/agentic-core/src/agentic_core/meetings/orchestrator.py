@@ -289,10 +289,14 @@ class MeetingOrchestrator:
 2. Ensure all participants have a chance to contribute
 3. Summarize key points and identify decisions
 4. Track action items and their owners
+5. ENFORCE CONCISENESS - redirect verbose participants to focus on key points
 
 Participants in this meeting: {', '.join(config.agents)}
 
-Be concise and guide the discussion efficiently. When appropriate, use these control signals:
+CRITICAL: Keep all responses brief and focused. Aim for 200-400 words maximum per message.
+Encourage participants to be concise and avoid repetition.
+
+When appropriate, use these control signals:
 - [NEXT_SPEAKER: name] - Indicate who should speak next
 - [ROUND_COMPLETE] - End the current round
 - [AWAIT_USER] - Pause for human input

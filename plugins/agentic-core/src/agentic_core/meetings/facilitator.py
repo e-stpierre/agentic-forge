@@ -40,7 +40,9 @@ class FacilitatorStrategy:
 
 Participants: {', '.join(state.config.agents)}
 
-Please introduce the topic and invite the first participant to share their thoughts."""
+Please introduce the topic briefly and invite the first participant to share their thoughts.
+
+REMINDER: All participants should keep contributions concise (300-500 words max), focused on key points, and avoid repetition."""
 
         return FacilitatorAction(
             action_type="open",
@@ -74,7 +76,12 @@ Please introduce the topic and invite the first participant to share their thoug
 
 Please share your perspective on the topic: {state.config.topic}
 
-Focus on adding new insights or building on what others have said."""
+IMPORTANT GUIDELINES:
+- Keep your response CONCISE (aim for 300-500 words maximum)
+- Focus only on key points and actionable insights
+- Avoid repeating what others have already said
+- Use bullet points or structured formats for clarity
+- Build on previous contributions rather than restating them"""
 
                 return FacilitatorAction(
                     action_type="select_speaker",
@@ -121,10 +128,18 @@ Focus on adding new insights or building on what others have said."""
         """
         return FacilitatorAction(
             action_type="end_meeting",
-            prompt="""The meeting is concluding. Please provide:
-1. A brief summary of key points discussed
-2. Any decisions that were made
-3. Action items with assigned owners""",
+            prompt="""The meeting is concluding. Please provide a CONCISE summary with:
+
+## Decisions Made
+- List each decision as a bullet point
+
+## Action Items
+- List each action item with owner (format: "Task description (Owner: name)")
+
+## Key Points
+- Summarize the 3-5 most important points discussed
+
+Keep the summary brief and actionable. Use the exact headers above for proper parsing.""",
         )
 
     def parse_control_signal(self, content: str) -> Optional[FacilitatorAction]:
