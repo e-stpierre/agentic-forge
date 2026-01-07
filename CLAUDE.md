@@ -93,11 +93,12 @@ The README must also have a complete example section at the end, that covers all
 
 ### Prompt Template Convention
 
-All prompt files (commands, agents, skills) must follow the exact structure defined in the template files located in `docs/templates/`:
+All prompt files (commands, agents, skills) and plugin READMEs must follow the exact structure defined in the template files located in `docs/templates/`:
 
 - `docs/templates/command-template.md` - Structure for command prompts
 - `docs/templates/agent-template.md` - Structure for agent prompts
 - `docs/templates/skill-template.md` - Structure for skill prompts
+- `docs/templates/readme-template.md` - Structure for plugin README files
 
 **Placeholder Convention:**
 
