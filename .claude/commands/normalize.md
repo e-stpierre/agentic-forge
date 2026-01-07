@@ -58,12 +58,12 @@ Ensure all prompt files and plugin READMEs exactly match the structure, section 
 
    Determine the file type based on location and load the corresponding template:
 
-   | File Location | Type | Template to Read |
-   |---------------|------|------------------|
+   | File Location                     | Type    | Template to Read                     |
+   | --------------------------------- | ------- | ------------------------------------ |
    | `*/commands/**/*.md` (not README) | Command | `docs/templates/command-template.md` |
-   | `*/agents/**/*.md` (not README) | Agent | `docs/templates/agent-template.md` |
-   | `*/skills/**/*.md` (not README) | Skill | `docs/templates/skill-template.md` |
-   | `plugins/*/README.md` | README | `docs/templates/readme-template.md` |
+   | `*/agents/**/*.md` (not README)   | Agent   | `docs/templates/agent-template.md`   |
+   | `*/skills/**/*.md` (not README)   | Skill   | `docs/templates/skill-template.md`   |
+   | `plugins/*/README.md`             | README  | `docs/templates/readme-template.md`  |
 
    Skip files that cannot be classified (not in a recognized directory).
 
@@ -93,7 +93,7 @@ Ensure all prompt files and plugin READMEs exactly match the structure, section 
 5. **Validate Section Structure**
 
    Compare the file's sections against the template:
-   - Extract all `## ` level headings from the file
+   - Extract all `##` level headings from the file
    - Compare against required sections from template header comment
    - Check for:
      - Missing required sections
@@ -173,15 +173,18 @@ Ensure all prompt files and plugin READMEs exactly match the structure, section 
 Template: docs/templates/command-template.md
 
 **Frontmatter:**
+
 - [PASS] All required fields present
 - [PASS] name is kebab-case
 
 **Structure:**
+
 - [FAIL] Missing required section: "Output Guidance"
   Suggestion: Add section after "Instructions" section
 - [FAIL] Section name mismatch: "## arguments" should be "## Arguments"
 
 **Content:**
+
 - [PASS] Instructions section uses numbered list
 - [WARN] Description is 105 characters (recommended: under 100)
 
@@ -190,6 +193,7 @@ Template: docs/templates/command-template.md
 Template: docs/templates/readme-template.md
 
 **Structure:**
+
 - [PASS] All required sections present
 - [WARN] "Agents" section present but plugin has no agents/ directory
 

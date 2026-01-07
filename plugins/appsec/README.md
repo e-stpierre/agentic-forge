@@ -13,15 +13,15 @@ The AppSec plugin provides security analysis tools for identifying vulnerabiliti
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `/appsec:security-review` | Comprehensive security assessment using the AppSec Specialist agent |
-| `/appsec:scope-security` | Focused, rapid security analysis of a single file and direct dependencies |
+| Command                   | Description                                                               |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `/appsec:security-review` | Comprehensive security assessment using the AppSec Specialist agent       |
+| `/appsec:scope-security`  | Focused, rapid security analysis of a single file and direct dependencies |
 
 ## Agents
 
-| Agent | Description |
-|-------|-------------|
+| Agent                      | Description                                                             |
+| -------------------------- | ----------------------------------------------------------------------- |
 | `appsec:appsec-specialist` | Expert security analyst for vulnerability detection and risk assessment |
 
 ## Limitations
@@ -36,6 +36,7 @@ The AppSec plugin provides security analysis tools for identifying vulnerabiliti
 ### /appsec:security-review
 
 **Arguments:**
+
 - `[scope]` - Specific directories, files, or components to review (default: entire codebase)
 - `--dependencies` - Focus on dependency vulnerabilities
 - `--quick` - Rapid scan for critical issues only
@@ -62,6 +63,7 @@ The AppSec plugin provides security analysis tools for identifying vulnerabiliti
 ### /appsec:scope-security
 
 **Arguments:**
+
 - `<file-path>` - Path to the file to analyze (prompts if not provided)
 
 **Examples:**
@@ -90,6 +92,7 @@ The agent is invoked automatically by the commands above. It analyzes code for:
 - **Cryptography**: Weak algorithms, key management issues
 
 **Output includes:**
+
 - Severity ratings (Critical/High/Medium/Low) with CVSS scores
 - Exact file:line references for each finding
 - Remediation guidance with code examples

@@ -279,3 +279,4 @@ Always include:
 - Proof of concept or exploitation scenarios (where safe)
 - Prioritization matrix for remediation
 - Compliance considerations where applicable
+```

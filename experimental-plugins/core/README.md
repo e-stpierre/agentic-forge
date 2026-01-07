@@ -74,6 +74,7 @@ Set up structured JSON logging for workflow debugging.
 ### run_claude
 
 **Arguments:**
+
 - `prompt` - The prompt to send
 - `print_output` - Print output in real-time (default: False)
 - `cwd` - Working directory (default: current)
@@ -96,6 +97,7 @@ result = run_claude("Run tests", cwd="/path/to/project")
 ### run_claude_with_command
 
 **Arguments:**
+
 - `command` - Slash command name (without leading /)
 - `args` - Command arguments (optional)
 
@@ -117,6 +119,7 @@ run_claude_with_command("interactive-sdlc:plan-feature", args="Add OAuth")
 ### Orchestrator
 
 **Methods:**
+
 - `add_task(task)` - Add a task to the queue
 - `run_parallel()` - Execute all tasks in parallel
 - `run_sequential()` - Execute tasks one by one

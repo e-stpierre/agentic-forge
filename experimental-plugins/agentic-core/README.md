@@ -102,6 +102,7 @@ agentic agents test <agent> "prompt"
 ### agentic one-shot
 
 **Arguments:**
+
 - `<task>` - Task description
 - `--git` - Auto-commit changes
 - `--pr` - Create pull request
@@ -122,6 +123,7 @@ agentic one-shot "Update dependencies" --git
 ### agentic run
 
 **Arguments:**
+
 - `<workflow.yaml>` - Path to workflow file
 - `--var key=value` - Set workflow variables
 - `--dry-run` - Preview without executing
@@ -142,6 +144,7 @@ agentic run workflows/bugfix.yaml --var issue=123 --var priority=high
 ### agentic meeting
 
 **Arguments:**
+
 - `<topic>` - Meeting topic
 - `--agents <agent:provider>...` - Agents to include
 
@@ -161,6 +164,7 @@ agentic meeting "Security review" --agents security:claude developer:cursor
 ### agentic infra
 
 **Arguments:**
+
 - `<action>` - One of: up, down, status, logs
 
 **Examples:**

@@ -15,13 +15,13 @@ Agentic SDLC provides autonomous software development lifecycle commands that op
 
 ## Design Principles
 
-| Principle | Description |
-|-----------|-------------|
-| Autonomous | No user prompts, no AskUserQuestion |
-| JSON I/O | Structured input/output for automation |
-| CI/CD Ready | Designed for pipeline integration |
+| Principle          | Description                                 |
+| ------------------ | ------------------------------------------- |
+| Autonomous         | No user prompts, no AskUserQuestion         |
+| JSON I/O           | Structured input/output for automation      |
+| CI/CD Ready        | Designed for pipeline integration           |
 | Ambiguity Handling | Makes assumptions, documents them in output |
-| File-Based State | Plans and checkpoints in markdown files |
+| File-Based State   | Plans and checkpoints in markdown files     |
 
 ## Dependencies
 
@@ -60,27 +60,27 @@ All commands use `/agentic-sdlc:` namespace and accept JSON input.
 
 ### Planning Commands
 
-| Command | Input | Output |
-|---------|-------|--------|
-| `/agentic-sdlc:plan` | `{type, title, description}` | Auto-selects plan-feature/bug/chore |
-| `/agentic-sdlc:plan-feature` | Feature spec JSON | `{plan_file, plan_data, summary}` |
-| `/agentic-sdlc:plan-bug` | Bug spec JSON | `{plan_file, plan_data, summary}` |
-| `/agentic-sdlc:plan-chore` | Chore spec JSON | `{plan_file, plan_data, summary}` |
-| `/agentic-sdlc:design` | Design spec JSON | Technical design output |
-| `/agentic-sdlc:plan-build` | Spec JSON | All-in-one: plan -> build |
+| Command                      | Input                        | Output                              |
+| ---------------------------- | ---------------------------- | ----------------------------------- |
+| `/agentic-sdlc:plan`         | `{type, title, description}` | Auto-selects plan-feature/bug/chore |
+| `/agentic-sdlc:plan-feature` | Feature spec JSON            | `{plan_file, plan_data, summary}`   |
+| `/agentic-sdlc:plan-bug`     | Bug spec JSON                | `{plan_file, plan_data, summary}`   |
+| `/agentic-sdlc:plan-chore`   | Chore spec JSON              | `{plan_file, plan_data, summary}`   |
+| `/agentic-sdlc:design`       | Design spec JSON             | Technical design output             |
+| `/agentic-sdlc:plan-build`   | Spec JSON                    | All-in-one: plan -> build           |
 
 ### Implementation Commands
 
-| Command | Input | Output |
-|---------|-------|--------|
+| Command                   | Input                                            | Output                                             |
+| ------------------------- | ------------------------------------------------ | -------------------------------------------------- |
 | `/agentic-sdlc:implement` | `{plan_file, plan_data, checkpoint, git_commit}` | `{completed_tasks, changes, commits, ambiguities}` |
 
 ### Validation Commands
 
-| Command | Input | Output |
-|---------|-------|--------|
+| Command                | Input                | Output         |
+| ---------------------- | -------------------- | -------------- |
 | `/agentic-sdlc:review` | `{files, plan_file}` | Review results |
-| `/agentic-sdlc:test` | `{coverage}` | Test results |
+| `/agentic-sdlc:test`   | `{coverage}`         | Test results   |
 
 ## JSON Schemas
 
@@ -112,13 +112,17 @@ All commands use `/agentic-sdlc:` namespace and accept JSON input.
         "title": "Setup OAuth",
         "commit_message": "feat: add OAuth configuration",
         "tasks": [
-          {"id": "t1.1", "title": "Add dependencies", "files": ["package.json"]}
+          {
+            "id": "t1.1",
+            "title": "Add dependencies",
+            "files": ["package.json"]
+          }
         ]
       }
     ],
     "validation_criteria": ["All tests pass"]
   },
-  "summary": {"milestones": 4, "tasks": 12, "complexity": "medium"}
+  "summary": { "milestones": 4, "tasks": 12, "complexity": "medium" }
 }
 ```
 
@@ -129,11 +133,9 @@ All commands use `/agentic-sdlc:` namespace and accept JSON input.
   "success": true,
   "completed_tasks": ["t1.1", "t1.2", "t2.1"],
   "changes": [
-    {"file": "src/auth.ts", "action": "created", "lines_added": 150}
+    { "file": "src/auth.ts", "action": "created", "lines_added": 150 }
   ],
-  "commits": [
-    {"hash": "abc123", "message": "feat: add OAuth configuration"}
-  ],
+  "commits": [{ "hash": "abc123", "message": "feat: add OAuth configuration" }],
   "ambiguities": [
     {
       "task": "t2.1",
@@ -149,12 +151,12 @@ All commands use `/agentic-sdlc:` namespace and accept JSON input.
 
 ### Entry Points
 
-| Command | Description |
-|---------|-------------|
-| `agentic-sdlc` | Main CLI with subcommands |
-| `agentic-workflow` | Full end-to-end workflow |
-| `agentic-plan` | Planning agent invocation |
-| `agentic-build` | Build agent invocation |
+| Command            | Description                       |
+| ------------------ | --------------------------------- |
+| `agentic-sdlc`     | Main CLI with subcommands         |
+| `agentic-workflow` | Full end-to-end workflow          |
+| `agentic-plan`     | Planning agent invocation         |
+| `agentic-build`    | Build agent invocation            |
 | `agentic-validate` | Validation agents (review + test) |
 
 ### CLI Usage
@@ -174,16 +176,16 @@ echo '{"type":"feature","title":"Auth"}' | agentic-plan --type feature --json-st
 
 ### CLI Options
 
-| Flag | Description |
-|------|-------------|
-| `--type` | Task type: feature, bug, chore |
-| `--spec` / `--json-file` | JSON input file |
-| `--json-stdin` | Read from stdin |
-| `--plan-file` | Path to plan file |
-| `--checkpoint` | Resume from checkpoint |
-| `--auto-pr` | Create PR on completion |
-| `--cwd` | Working directory |
-| `--output` / `-o` | Output JSON file |
+| Flag                     | Description                    |
+| ------------------------ | ------------------------------ |
+| `--type`                 | Task type: feature, bug, chore |
+| `--spec` / `--json-file` | JSON input file                |
+| `--json-stdin`           | Read from stdin                |
+| `--plan-file`            | Path to plan file              |
+| `--checkpoint`           | Resume from checkpoint         |
+| `--auto-pr`              | Create PR on completion        |
+| `--cwd`                  | Working directory              |
+| `--output` / `-o`        | Output JSON file               |
 
 ## Python API
 
@@ -251,13 +253,13 @@ Create pull request with plan summary
 
 Default location: `/specs/<feature-name>/`
 
-| File | Purpose |
-|------|---------|
-| `plan.md` | Main implementation plan |
-| `checkpoint.md` | Task completion tracking |
+| File               | Purpose                      |
+| ------------------ | ---------------------------- |
+| `plan.md`          | Main implementation plan     |
+| `checkpoint.md`    | Task completion tracking     |
 | `orchestration.md` | Orchestrator monitoring plan |
-| `communication.md` | Agent-to-agent messages |
-| `logs.md` | Progress and error logs |
+| `communication.md` | Agent-to-agent messages      |
+| `logs.md`          | Progress and error logs      |
 
 ## Ambiguity Handling
 
@@ -294,13 +296,13 @@ uv tool install experimental-plugins/agentic-sdlc
 
 ## Technical Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| No User Interaction | Autonomous | CI/CD compatibility |
-| JSON I/O | Structured | Agent communication |
-| File-Based State | Markdown | Human-readable, git-trackable |
-| Milestone Commits | Conventional | Clean history |
-| Ambiguity Logging | Output JSON | Transparency without blocking |
+| Decision            | Choice       | Rationale                     |
+| ------------------- | ------------ | ----------------------------- |
+| No User Interaction | Autonomous   | CI/CD compatibility           |
+| JSON I/O            | Structured   | Agent communication           |
+| File-Based State    | Markdown     | Human-readable, git-trackable |
+| Milestone Commits   | Conventional | Clean history                 |
+| Ambiguity Logging   | Output JSON  | Transparency without blocking |
 
 ## Migration from SDLC
 
@@ -333,11 +335,11 @@ Renamed from `sdlc` to `agentic-sdlc` in v2.0.0:
 
 ## Comparison with Other Plugins
 
-| Feature | agentic-sdlc | interactive-sdlc | agentic-core |
-|---------|--------------|------------------|--------------|
-| User Interaction | None | Yes (AskUserQuestion) | Optional (human_in_loop) |
-| State Storage | Files | Files | PostgreSQL + Kafka |
-| Crash Recovery | Checkpoints | Manual | Automatic replay |
-| Parallel Execution | Via worktrees | Via worktrees | Built-in parallel steps |
-| CI/CD Ready | Yes | No | Configurable |
-| Provider Support | Claude only | Claude only | Multi-provider |
+| Feature            | agentic-sdlc  | interactive-sdlc      | agentic-core             |
+| ------------------ | ------------- | --------------------- | ------------------------ |
+| User Interaction   | None          | Yes (AskUserQuestion) | Optional (human_in_loop) |
+| State Storage      | Files         | Files                 | PostgreSQL + Kafka       |
+| Crash Recovery     | Checkpoints   | Manual                | Automatic replay         |
+| Parallel Execution | Via worktrees | Via worktrees         | Built-in parallel steps  |
+| CI/CD Ready        | Yes           | No                    | Configurable             |
+| Provider Support   | Claude only   | Claude only           | Multi-provider           |

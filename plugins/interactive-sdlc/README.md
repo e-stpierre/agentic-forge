@@ -194,6 +194,7 @@ Plans are static documentation of work to be done:
 ### /interactive-sdlc:plan-feature
 
 **Arguments:**
+
 - `--explore N` - Override default explore agent count (default: 3)
 - `--git` - Commit plan file after creation
 - `[context]` - Feature description
@@ -214,6 +215,7 @@ Plans are static documentation of work to be done:
 ### /interactive-sdlc:build
 
 **Arguments:**
+
 - `<plan-file>` - Required path to plan file
 - `--git` - Auto-commit at milestones
 - `--checkpoint "<text>"` - Resume from specific task/milestone
@@ -235,6 +237,7 @@ Plans are static documentation of work to be done:
 ### /interactive-sdlc:validate
 
 **Arguments:**
+
 - `--plan <plan-file>` - Plan file to verify compliance
 - `--skip-tests` - Skip test execution
 - `--skip-build` - Skip build verification
@@ -257,6 +260,7 @@ Plans are static documentation of work to be done:
 ### /interactive-sdlc:one-shot
 
 **Arguments:**
+
 - `--git` - Auto-commit when done
 - `--validate` - Run validation after implementation
 - `--explore N` - Override explore agent count (default: 0)
@@ -278,6 +282,7 @@ Plans are static documentation of work to be done:
 ### /interactive-sdlc:analyse-security
 
 **Arguments:**
+
 - `[context]` - Focus areas or directories to analyze
 
 **Examples:**
@@ -296,6 +301,7 @@ Plans are static documentation of work to be done:
 ### /interactive-sdlc:git-branch
 
 **Arguments:**
+
 - `[category]` - Branch type (default: feature)
 - `<branch-name>` - Short kebab-case description
 - `[issue-id]` - GitHub issue number

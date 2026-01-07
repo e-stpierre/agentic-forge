@@ -13,12 +13,12 @@ Core provides the foundational Python library `agentic-forge-core` for programma
 
 ## Design Principles
 
-| Principle | Description |
-|-----------|-------------|
-| Zero Dependencies | Uses only Python stdlib (3.10+) |
-| Simple API | Functions for single tasks, classes for complex orchestration |
-| Parallel-First | Built for concurrent multi-session workflows |
-| Worktree Integration | Native git worktree support for isolation |
+| Principle            | Description                                                   |
+| -------------------- | ------------------------------------------------------------- |
+| Zero Dependencies    | Uses only Python stdlib (3.10+)                               |
+| Simple API           | Functions for single tasks, classes for complex orchestration |
+| Parallel-First       | Built for concurrent multi-session workflows                  |
+| Worktree Integration | Native git worktree support for isolation                     |
 
 ## Package Structure
 
@@ -35,11 +35,11 @@ experimental-plugins/core/
 
 ## CLI Entry Points
 
-| Command | Description |
-|---------|-------------|
-| `claude-run` | Run single Claude prompt |
+| Command              | Description                        |
+| -------------------- | ---------------------------------- |
+| `claude-run`         | Run single Claude prompt           |
 | `claude-orchestrate` | Parallel/sequential task execution |
-| `claude-worktree` | Git worktree management |
+| `claude-worktree`    | Git worktree management            |
 
 ## Python API
 
@@ -221,14 +221,14 @@ uv tool install experimental-plugins/core
 
 ## Technical Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Dependencies | None (stdlib only) | Maximum portability, no conflicts |
-| Python Version | 3.10+ | Dataclasses, type hints, pathlib |
-| Shell Execution | subprocess with shell=True | Windows PATH resolution |
-| Prompt Passing | stdin | Avoid shell escaping issues |
-| Parallel Execution | ThreadPoolExecutor | Simple, built-in, sufficient for I/O-bound CLI calls |
-| Logging Format | JSON lines | Machine-parseable, appendable |
+| Decision           | Choice                     | Rationale                                            |
+| ------------------ | -------------------------- | ---------------------------------------------------- |
+| Dependencies       | None (stdlib only)         | Maximum portability, no conflicts                    |
+| Python Version     | 3.10+                      | Dataclasses, type hints, pathlib                     |
+| Shell Execution    | subprocess with shell=True | Windows PATH resolution                              |
+| Prompt Passing     | stdin                      | Avoid shell escaping issues                          |
+| Parallel Execution | ThreadPoolExecutor         | Simple, built-in, sufficient for I/O-bound CLI calls |
+| Logging Format     | JSON lines                 | Machine-parseable, appendable                        |
 
 ## Integration with Other Plugins
 

@@ -160,6 +160,7 @@ All commands accept structured JSON input and produce JSON output for agent-to-a
 ### /agentic-sdlc:plan-feature
 
 **Arguments:**
+
 - `--json-input <path>` - Path to JSON specification file
 - `--json-stdin` - Read specification from stdin
 
@@ -176,6 +177,7 @@ echo '{"type":"feature","title":"Auth","description":"Add OAuth"}' | /agentic-sd
 ### /agentic-sdlc:implement
 
 **Arguments:**
+
 - `--json-input <path>` - Path to JSON plan file
 - `--json-stdin` - Read plan from stdin
 
@@ -192,6 +194,7 @@ echo '{"type":"feature","title":"Auth","description":"Add OAuth"}' | /agentic-sd
 ### /agentic-sdlc:review
 
 **Arguments:**
+
 - `--json-input <path>` - Path to JSON review specification
 - `--json-stdin` - Read specification from stdin
 
@@ -208,6 +211,7 @@ echo '{"type":"feature","title":"Auth","description":"Add OAuth"}' | /agentic-sd
 ### agentic-workflow (Python CLI)
 
 **Options:**
+
 - `--type` - Task type: feature, bug, chore, epic
 - `--spec` - Path to specification file
 - `--level` - Workflow level: 1 (product), 2 (epic), 3 (story)
