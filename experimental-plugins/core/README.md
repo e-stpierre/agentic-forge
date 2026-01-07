@@ -51,13 +51,13 @@ configure_logging(log_file="workflow.log.json")
 
 ### API Reference
 
-| Function/Class | Description |
-|----------------|-------------|
-| `run_claude(prompt, ...)` | Execute a single Claude Code session with a prompt |
-| `run_claude_with_command(command, args=None, ...)` | Execute a slash command in Claude Code |
-| `Orchestrator` | Manage multiple Claude Code sessions for parallel or sequential execution |
-| `Task` | Represents a single task to be executed by the orchestrator |
-| `configure_logging(log_file=None)` | Set up structured JSON logging for workflow debugging |
+| Function/Class                                     | Description                                                               |
+| -------------------------------------------------- | ------------------------------------------------------------------------- |
+| `run_claude(prompt, ...)`                          | Execute a single Claude Code session with a prompt                        |
+| `run_claude_with_command(command, args=None, ...)` | Execute a slash command in Claude Code                                    |
+| `Orchestrator`                                     | Manage multiple Claude Code sessions for parallel or sequential execution |
+| `Task`                                             | Represents a single task to be executed by the orchestrator               |
+| `configure_logging(log_file=None)`                 | Set up structured JSON logging for workflow debugging                     |
 
 ## Complete Examples
 

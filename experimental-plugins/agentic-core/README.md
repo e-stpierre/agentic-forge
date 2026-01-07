@@ -27,41 +27,41 @@ uv tool install "~/.claude/plugins/marketplaces/agentic-forge/experimental-plugi
 
 ### CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `agentic infra up\|down\|status\|logs` | Manage infrastructure (Kafka, PostgreSQL) |
-| `agentic run <workflow.yaml>` | Execute a declarative workflow |
-| `agentic one-shot "<task>"` | Quick single-agent task |
-| `agentic feature "<description>"` | Run feature workflow |
-| `agentic meeting "<topic>"` | Start multi-agent discussion |
-| `agentic list` | List active workflows |
-| `agentic status <id>` | Check workflow status |
-| `agentic resume <id>` | Resume a paused workflow |
-| `agentic cancel <id>` | Cancel a workflow |
-| `agentic logs <id>` | View workflow logs |
-| `agentic memory search "<query>"` | Search long-term memory (requires memory extra) |
-| `agentic providers list` | List available providers |
-| `agentic agents list` | List available agents |
+| Command                                | Description                                     |
+| -------------------------------------- | ----------------------------------------------- |
+| `agentic infra up\|down\|status\|logs` | Manage infrastructure (Kafka, PostgreSQL)       |
+| `agentic run <workflow.yaml>`          | Execute a declarative workflow                  |
+| `agentic one-shot "<task>"`            | Quick single-agent task                         |
+| `agentic feature "<description>"`      | Run feature workflow                            |
+| `agentic meeting "<topic>"`            | Start multi-agent discussion                    |
+| `agentic list`                         | List active workflows                           |
+| `agentic status <id>`                  | Check workflow status                           |
+| `agentic resume <id>`                  | Resume a paused workflow                        |
+| `agentic cancel <id>`                  | Cancel a workflow                               |
+| `agentic logs <id>`                    | View workflow logs                              |
+| `agentic memory search "<query>"`      | Search long-term memory (requires memory extra) |
+| `agentic providers list`               | List available providers                        |
+| `agentic agents list`                  | List available agents                           |
 
 ### CLI Options
 
-| Flag | Description |
-|------|-------------|
-| `--git` | Auto-commit changes |
-| `--pr` | Create pull request |
-| `--var key=value` | Set workflow variables |
-| `--dry-run` | Preview without executing |
+| Flag                        | Description                 |
+| --------------------------- | --------------------------- |
+| `--git`                     | Auto-commit changes         |
+| `--pr`                      | Create pull request         |
+| `--var key=value`           | Set workflow variables      |
+| `--dry-run`                 | Preview without executing   |
 | `--agents <agent:provider>` | Specify agents for meetings |
 
 ### Workflow Types
 
-| Type | Description |
-|------|-------------|
-| `one-shot` | Quick single-agent tasks (~5 minutes) |
-| `feature` | Multi-step feature development (~30 minutes) |
-| `epic` | Multi-day projects with crash recovery |
-| `meeting` | Collaborative agent discussions |
-| `analysis` | Multi-agent analysis with diverse inputs |
+| Type       | Description                                  |
+| ---------- | -------------------------------------------- |
+| `one-shot` | Quick single-agent tasks (~5 minutes)        |
+| `feature`  | Multi-step feature development (~30 minutes) |
+| `epic`     | Multi-day projects with crash recovery       |
+| `meeting`  | Collaborative agent discussions              |
+| `analysis` | Multi-agent analysis with diverse inputs     |
 
 ## Configuration
 
