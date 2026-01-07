@@ -64,12 +64,12 @@ Python scripts for orchestrating multi-session Claude Code workflows with parall
 
 ```bash
 # Windows (PowerShell)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\core"
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\experimental-plugins\core"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\experimental-plugins\agentic-sdlc"
 
 # macOS/Linux
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/core
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/core
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/agentic-sdlc
 ```
 
 ### CLI Commands

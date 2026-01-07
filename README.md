@@ -91,7 +91,7 @@ This opens an interactive menu where you can:
 
 ### Python CLI
 
-Some plugins include Python CLI tools for workflow orchestration. Install them with uv:
+Some experimental plugins include Python CLI tools for workflow orchestration. Install them with uv:
 
 **Windows (PowerShell):**
 

@@ -37,7 +37,7 @@ Slash command definitions (`.md` files) that users can invoke directly in Claude
 
 #### `agents/`
 
-Sub-agent configurations for specialized, autonomous task execution. Agents should
+Sub-agent configurations for specialized, autonomous task execution. Agents should be self-contained and focused on a specific domain or task.
 
 #### `skills/`
 

@@ -261,7 +261,8 @@ password.{0,50}(length|size).{0,20}[<>=]{1,2}\s*[0-7]
    - Adopt security linting tools (ESLint security plugin)
    - Implement automated dependency scanning in CI/CD
    - Conduct regular security training for development team
-   - Establish security review process for all PRs \`\`\`
+   - Establish security review process for all PRs
+```
 
 ## Output Guidance
 
@@ -279,4 +280,3 @@ Always include:
 - Proof of concept or exploitation scenarios (where safe)
 - Prioritization matrix for remediation
 - Compliance considerations where applicable
-```
