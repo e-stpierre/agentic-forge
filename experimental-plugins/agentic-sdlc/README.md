@@ -1,10 +1,15 @@
 # Agentic SDLC Plugin
 
-Fully autonomous SDLC toolkit for zero-interaction workflows. Designed for CI/CD integration and Python-orchestrated development workflows with no developer interaction during execution.
+Fully autonomous SDLC toolkit for zero-interaction workflows. Designed for CI/CD integration and Python-orchestrated development workflows with no developer interaction during execution. All commands accept JSON input and produce JSON output for agent-to-agent communication.
 
-## Philosophy
+## Overview
 
-No developer interaction during execution. Suitable for CI/CD integration. Leverages Claude prompts (commands, agents, skills, hooks) and Python scripts for complete agentic workflows.
+The Agentic SDLC plugin provides autonomous planning, implementation, review, and testing workflows that run without user interaction. Ideal for CI/CD pipelines and Python-orchestrated multi-agent workflows.
+
+- `/agentic-sdlc:plan-feature --json-input spec.json` - Generate a feature implementation plan
+- `/agentic-sdlc:implement --json-input plan.json` - Implement changes from a plan
+- `/agentic-sdlc:review --json-input review.json` - Review code changes autonomously
+- `agentic-workflow --type feature --spec spec.md --auto-pr` - Full workflow via Python CLI
 
 ## Dependencies
 
@@ -144,17 +149,81 @@ All commands accept structured JSON input and produce JSON output for agent-to-a
 }
 ```
 
-## Migration from SDLC
-
-This plugin was renamed from `sdlc` to `agentic-sdlc` in v2.0.0. Key changes:
-
-- All commands now use `/agentic-sdlc:` namespace
-- Removed user interaction (AskUserQuestion)
-- All I/O is JSON-based for autonomous operation
-- For interactive workflows, use `interactive-sdlc` plugin instead
-
 ## Limitations
 
 - Fully autonomous - no user prompts during execution
 - Requires well-defined specifications for reliable results
 - Large codebases may slow agent exploration
+
+## Complete Examples
+
+### /agentic-sdlc:plan-feature
+
+**Arguments:**
+- `--json-input <path>` - Path to JSON specification file
+- `--json-stdin` - Read specification from stdin
+
+**Examples:**
+
+```bash
+# Plan from JSON file
+/agentic-sdlc:plan-feature --json-input /specs/input/auth-spec.json
+
+# Plan from stdin (Python orchestrator)
+echo '{"type":"feature","title":"Auth","description":"Add OAuth"}' | /agentic-sdlc:plan-feature --json-stdin
+```
+
+### /agentic-sdlc:implement
+
+**Arguments:**
+- `--json-input <path>` - Path to JSON plan file
+- `--json-stdin` - Read plan from stdin
+
+**Examples:**
+
+```bash
+# Implement from plan file
+/agentic-sdlc:implement --json-input /specs/build-input.json
+
+# With git commits enabled
+/agentic-sdlc:implement --json-input '{"plan_file":"/specs/feature-auth.md","git_commit":true}'
+```
+
+### /agentic-sdlc:review
+
+**Arguments:**
+- `--json-input <path>` - Path to JSON review specification
+- `--json-stdin` - Read specification from stdin
+
+**Examples:**
+
+```bash
+# Review specific files
+/agentic-sdlc:review --json-input /specs/review-input.json
+
+# Review with plan compliance
+/agentic-sdlc:review --json-input '{"files":["src/auth.ts"],"plan_file":"/specs/feature-auth.md"}'
+```
+
+### agentic-workflow (Python CLI)
+
+**Options:**
+- `--type` - Task type: feature, bug, chore, epic
+- `--spec` - Path to specification file
+- `--level` - Workflow level: 1 (product), 2 (epic), 3 (story)
+- `--auto-pr` - Automatically create PR on completion
+- `--worktree` - Use git worktree for isolation
+- `--timeout` - Timeout per step in seconds
+
+**Examples:**
+
+```bash
+# Autonomous bug fix with PR
+agentic-workflow --type bug --spec bug-spec.md --auto-pr
+
+# Epic-level feature in worktree
+agentic-workflow --type feature --spec epic-auth.md --level 2 --worktree
+
+# Single story with timeout
+agentic-workflow --type feature --spec feature-2fa.md --timeout 300
+```
