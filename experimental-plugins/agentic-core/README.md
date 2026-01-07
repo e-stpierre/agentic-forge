@@ -10,40 +10,58 @@ The Agentic Core plugin provides infrastructure for running AI agent workflows a
 - `agentic run workflows/feature.yaml --var feature="Add dark mode"` - Run declarative workflow
 - `agentic meeting "Sprint planning" --agents architect:claude developer:cursor` - Multi-agent discussion
 
-## Features
-
-- **Provider Agnostic**: Support for Claude, Cursor, Codex, and Copilot CLIs
-- **Workflow Flexibility**: Declarative YAML workflows from one-shot to multi-day epics
-- **Crash Recovery**: Full recovery via Kafka replay and PostgreSQL checkpoints
-- **Human-in-the-Loop**: Optional human approval at any checkpoint
-- **Long-term Memory**: Semantic search over past learnings (optional pgvector)
-- **Full Observability**: Every message, decision, and state change logged
-
 ## Installation
 
 ```bash
-# Install as uv tool
-uv tool install plugins/agentic-core
+# Windows (PowerShell)
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\experimental-plugins\agentic-core"
+
+# macOS/Linux
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/agentic-core
 
 # Or install with memory support
-uv tool install "plugins/agentic-core[memory]"
+uv tool install "~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/agentic-core[memory]"
 ```
 
-## Quick Start
+## Python CLI
 
-```bash
-# Start infrastructure (Kafka, PostgreSQL)
-agentic infra up
+### CLI Commands
 
-# Run a quick bugfix
-agentic one-shot "Fix the login bug" --git --pr
+| Command | Description |
+|---------|-------------|
+| `agentic infra up\|down\|status\|logs` | Manage infrastructure (Kafka, PostgreSQL) |
+| `agentic run <workflow.yaml>` | Execute a declarative workflow |
+| `agentic one-shot "<task>"` | Quick single-agent task |
+| `agentic feature "<description>"` | Run feature workflow |
+| `agentic meeting "<topic>"` | Start multi-agent discussion |
+| `agentic list` | List active workflows |
+| `agentic status <id>` | Check workflow status |
+| `agentic resume <id>` | Resume a paused workflow |
+| `agentic cancel <id>` | Cancel a workflow |
+| `agentic logs <id>` | View workflow logs |
+| `agentic memory search "<query>"` | Search long-term memory (requires memory extra) |
+| `agentic providers list` | List available providers |
+| `agentic agents list` | List available agents |
 
-# Run a feature workflow
-agentic run workflows/feature.yaml --var feature="Add dark mode"
+### CLI Options
 
-# Start a multi-agent meeting
-agentic meeting "Sprint planning" --agents architect:claude developer:cursor
-```
+| Flag | Description |
+|------|-------------|
+| `--git` | Auto-commit changes |
+| `--pr` | Create pull request |
+| `--var key=value` | Set workflow variables |
+| `--dry-run` | Preview without executing |
+| `--agents <agent:provider>` | Specify agents for meetings |
+
+### Workflow Types
+
+| Type | Description |
+|------|-------------|
+| `one-shot` | Quick single-agent tasks (~5 minutes) |
+| `feature` | Multi-step feature development (~30 minutes) |
+| `epic` | Multi-day projects with crash recovery |
+| `meeting` | Collaborative agent discussions |
+| `analysis` | Multi-agent analysis with diverse inputs |
 
 ## Configuration
 
@@ -55,47 +73,6 @@ AGENTIC_KAFKA_URL=localhost:9094
 AGENTIC_ENABLE_MEMORY=false
 AGENTIC_LOG_LEVEL=INFO
 ```
-
-## CLI Commands
-
-```bash
-# Infrastructure
-agentic infra up|down|status|logs
-
-# Workflow execution
-agentic run workflow.yaml [--var key=value] [--dry-run]
-agentic one-shot "task description"
-agentic feature "feature description"
-agentic meeting "topic" --agents agent1:provider agent2:provider
-
-# Workflow management
-agentic list
-agentic status <workflow-id>
-agentic resume <workflow-id>
-agentic cancel <workflow-id>
-agentic logs <workflow-id>
-
-# Memory (requires memory extra)
-agentic memory search "query"
-agentic memory list --category lesson
-agentic memory add lesson "content"
-
-# Providers
-agentic providers list
-agentic providers test <provider>
-
-# Agents
-agentic agents list
-agentic agents test <agent> "prompt"
-```
-
-## Workflow Types
-
-- **one-shot**: Quick single-agent tasks (~5 minutes)
-- **feature**: Multi-step feature development (~30 minutes)
-- **epic**: Multi-day projects with crash recovery
-- **meeting**: Collaborative agent discussions
-- **analysis**: Multi-agent analysis with diverse inputs
 
 ## Complete Examples
 

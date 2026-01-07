@@ -20,7 +20,9 @@ uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\exp
 uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/core
 ```
 
-## Library Usage
+## Python CLI
+
+### Library Usage
 
 ```python
 from claude_core import (
@@ -47,27 +49,15 @@ results = orchestrator.run_parallel()
 configure_logging(log_file="workflow.log.json")
 ```
 
-## API Reference
+### API Reference
 
-### run_claude(prompt, ...)
-
-Execute a single Claude Code session with a prompt.
-
-### run_claude_with_command(command, args=None, ...)
-
-Execute a slash command in Claude Code.
-
-### Orchestrator
-
-Manage multiple Claude Code sessions for parallel or sequential execution.
-
-### Task
-
-Represents a single task to be executed by the orchestrator.
-
-### configure_logging(log_file=None)
-
-Set up structured JSON logging for workflow debugging.
+| Function/Class | Description |
+|----------------|-------------|
+| `run_claude(prompt, ...)` | Execute a single Claude Code session with a prompt |
+| `run_claude_with_command(command, args=None, ...)` | Execute a slash command in Claude Code |
+| `Orchestrator` | Manage multiple Claude Code sessions for parallel or sequential execution |
+| `Task` | Represents a single task to be executed by the orchestrator |
+| `configure_logging(log_file=None)` | Set up structured JSON logging for workflow debugging |
 
 ## Complete Examples
 

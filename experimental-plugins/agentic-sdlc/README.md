@@ -2,6 +2,8 @@
 
 Fully autonomous SDLC toolkit for zero-interaction workflows. Designed for CI/CD integration and Python-orchestrated development workflows with no developer interaction during execution. All commands accept JSON input and produce JSON output for agent-to-agent communication.
 
+> **Note:** This is an experimental plugin. APIs and functionality may change.
+
 ## Overview
 
 The Agentic SDLC plugin provides autonomous planning, implementation, review, and testing workflows that run without user interaction. Ideal for CI/CD pipelines and Python-orchestrated multi-agent workflows.
@@ -10,10 +12,6 @@ The Agentic SDLC plugin provides autonomous planning, implementation, review, an
 - `/agentic-sdlc:implement --json-input plan.json` - Implement changes from a plan
 - `/agentic-sdlc:review --json-input review.json` - Review code changes autonomously
 - `agentic-workflow --type feature --spec spec.md --auto-pr` - Full workflow via Python CLI
-
-## Dependencies
-
-This plugin requires the `core` plugin to be installed first.
 
 ## Commands
 
@@ -44,23 +42,11 @@ All commands use the `/agentic-sdlc:` namespace prefix and accept JSON input for
 | `/agentic-sdlc:review` | Review code changes (JSON I/O)           |
 | `/agentic-sdlc:test`   | Run tests and analyze results (JSON I/O) |
 
-## Configuration
+## Dependencies
 
-Configure in `.claude/settings.json`:
+This plugin requires the `core` plugin to be installed first.
 
-```json
-{
-  "agentic-sdlc": {
-    "planDirectory": "/specs"
-  }
-}
-```
-
-## Python CLI
-
-Python scripts for orchestrating multi-session Claude Code workflows with parallel development support.
-
-### Installation
+## Installation
 
 ```bash
 # Windows (PowerShell)
@@ -72,6 +58,10 @@ uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugin
 uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/agentic-sdlc
 ```
 
+## Python CLI
+
+Python scripts for orchestrating multi-session Claude Code workflows with parallel development support.
+
 ### CLI Commands
 
 | Command            | Description                            |
@@ -80,19 +70,6 @@ uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugin
 | `agentic-plan`     | Invoke planning agents with JSON input |
 | `agentic-build`    | Invoke build agent with plan JSON      |
 | `agentic-validate` | Invoke validation agents               |
-
-### Examples
-
-```bash
-# Autonomous bug fix in CI/CD
-uv run agentic-workflow --type bug --spec bug-spec.md --auto-pr
-
-# Epic-level feature development
-uv run agentic-build --level epic --spec epic-user-management.md
-
-# Single story with autonomous execution
-uv run agentic-workflow --type feature --spec feature-2fa.md --worktree
-```
 
 ### CLI Options
 
@@ -119,12 +96,19 @@ run_claude("/agentic-sdlc:implement", json_input=plan_output)
 run_claude("/agentic-sdlc:review", json_input=changes)
 ```
 
-## Orchestrator Architecture
+## Configuration
 
-- **Python orchestrator**: Main loop (30s intervals) that monitors agent progress
-- **Orchestrator agent**: Claude agent triggered by main loop to validate progress
+Configure in `.claude/settings.json`:
 
-## Workflow Files
+```json
+{
+  "agentic-sdlc": {
+    "planDirectory": "/specs"
+  }
+}
+```
+
+### Workflow Files
 
 Default location: `/specs/<feature-name>/`
 
@@ -136,7 +120,7 @@ Default location: `/specs/<feature-name>/`
 | `communication.md` | Agent-to-agent messages                   |
 | `logs.md`          | Progress and error logs                   |
 
-## JSON Communication
+### JSON Communication
 
 All commands accept structured JSON input and produce JSON output for agent-to-agent communication:
 
@@ -148,6 +132,11 @@ All commands accept structured JSON input and produce JSON output for agent-to-a
   "explore_agents": 3
 }
 ```
+
+## Architecture
+
+- **Python orchestrator**: Main loop (30s intervals) that monitors agent progress
+- **Orchestrator agent**: Claude agent triggered by main loop to validate progress
 
 ## Limitations
 
