@@ -47,11 +47,11 @@ Ensure all prompt files and plugin READMEs exactly match the structure, section 
    - For each directory path: find all `.md` files within
 
    If no paths provided:
-   - Scan `plugins/*/commands/**/*.md` (excluding README.md)
-   - Scan `plugins/*/agents/**/*.md` (excluding README.md)
-   - Scan `plugins/*/skills/**/*.md` (excluding README.md)
-   - Scan `plugins/*/hooks/**/*.md` (excluding README.md)
-   - Scan `plugins/*/README.md` for plugin README validation
+   - Scan commands in `plugins/*/commands/**/*.md` and `experimental-plugins/*/commands/**/*.md`
+   - Scan agents in `plugins/*/agents/**/*.md` and `experimental-plugins/*/agents/**/*.md`
+   - Scan skills in `plugins/*/skills/**/*.md` and `experimental-plugins/*/skills/**/*.md`
+   - Scan hooks in `plugins/*/hooks/**/*.md` and `experimental-plugins/*/hooks/**/*.md`
+   - Scan READMEs in `plugins/*/README.md` and `experimental-plugins/*/README.md`
    - Also scan `.claude/commands/*.md` and `.claude/skills/*.md`
 
 2. **Classify Each File and Load Template**
