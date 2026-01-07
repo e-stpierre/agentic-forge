@@ -37,8 +37,8 @@
     {
       "name": "agentic-sdlc",
       "source": "./",
-      "description": "Fully autonomous SDLC workflow orchestrated via Python, with no user interaction",
-      "version": "2.0.0",
+      "description": "[Experimental] Fully autonomous SDLC workflow orchestrated via Python, with no user interaction",
+      "version": "0.0.1",
       "category": "sdlc",
       "author": {
         "name": "Étienne St-Pierre",
@@ -46,6 +46,7 @@
       },
       "license": "MIT",
       "keywords": [
+        "experimental",
         "sdlc",
         "autonomous",
         "agentic",
@@ -70,32 +71,10 @@
       ]
     },
     {
-      "name": "core",
-      "source": "./",
-      "description": "Python orchestration utilities for building Claude Code plugins and multi-session workflows",
-      "version": "2.0.0",
-      "category": "experimental",
-      "author": {
-        "name": "Étienne St-Pierre",
-        "email": "me@estpierre.dev"
-      },
-      "license": "MIT",
-      "keywords": [
-        "core",
-        "foundation",
-        "utilities",
-        "python",
-        "orchestration",
-        "library"
-      ],
-      "strict": false,
-      "commands": []
-    },
-    {
       "name": "interactive-sdlc",
       "source": "./",
       "description": "Interactive SDLC commands for guided development within Claude Code sessions",
-      "version": "1.2.0",
+      "version": "1.0.0",
       "category": "sdlc",
       "author": {
         "name": "Étienne St-Pierre",
