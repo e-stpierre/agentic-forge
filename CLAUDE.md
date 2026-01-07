@@ -21,7 +21,7 @@ This directory also contains template files for agent, command and skill. These 
 
 ### `/experimental-plugins/`
 
-Root directory containing all experimental plugins. These plugins are not yet officially released. These plugins should also never be documented in the repository root README.md.
+Root directory containing all experimental plugins. These plugins are not yet officially released. These plugins should also not be explicitely documented in the repository root README.md, but the directory can be mention and the plugins can be used in examples, such as uv tool installation.
 
 **Important**: Experimental plugins must NOT have a `CHANGELOG.md` file. The changelog is only added once the plugin becomes officially supported, moves to version 1.x.x+, and is relocated to the `/plugins/` directory.
 
