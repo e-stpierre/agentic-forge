@@ -8,9 +8,9 @@ argument-hint: <issue-number> [--comments]
 
 Reads a GitHub issue from the current repository and returns its content for use in workflows.
 
-## Parameters
+## Arguments
 
-- **`issue-number`** (required): The issue number to read (e.g., `123`)
+- **`<issue-number>`** (required): The issue number to read (e.g., `123`)
 - **`--comments`** (optional): Include issue comments in the output
 
 ## Objective

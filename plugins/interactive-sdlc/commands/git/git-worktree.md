@@ -8,10 +8,10 @@ argument-hint: <action> [branch-name] [--base <base-branch>]
 
 Create and manage git worktrees for parallel development workflows.
 
-## Parameters
+## Arguments
 
-- **`action`** (required): The worktree action to perform. One of: `create`, `list`, `remove`
-- **`branch-name`** (required for create/remove): Name of the branch for the worktree
+- **`<action>`** (required): The worktree action to perform. One of: `create`, `list`, `remove`
+- **`[branch-name]`** (required for create/remove): Name of the branch for the worktree
 - **`--base <base-branch>`** (optional): Base branch when creating a new worktree (defaults to main/master)
 
 ## Objective

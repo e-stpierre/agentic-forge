@@ -8,9 +8,9 @@ argument-hint: "<title>" [--body <body>] [--labels <labels>] [--milestone <miles
 
 Creates a GitHub issue in the current repository using the GitHub CLI.
 
-## Parameters
+## Arguments
 
-- **`title`** (required): The issue title (in quotes if it contains spaces)
+- **`"<title>"`** (required): The issue title (in quotes if it contains spaces)
 - **`--body <body>`** (optional): The issue body/description
 - **`--labels <labels>`** (optional): Comma-separated list of labels to apply
 - **`--milestone <milestone>`** (optional): Milestone to assign the issue to

@@ -8,9 +8,9 @@ argument-hint: <plan-file-path>
 
 Reads a plan file and executes the implementation steps described within it.
 
-## Parameters
+## Arguments
 
-- **`plan-file-path`** (required): Path to the markdown plan file
+- **`<plan-file-path>`** (required): Path to the markdown plan file
 
 ## Objective
 

@@ -8,9 +8,9 @@ argument-hint: [message]
 
 Commits staged changes with a structured message and pushes to the remote repository.
 
-## Parameters
+## Arguments
 
-- **`message`** (optional): Override commit title. If not provided, auto-generate from changes.
+- **`[message]`** (optional): Override commit title. If not provided, auto-generate from changes.
 
 ## Objective
 

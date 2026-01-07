@@ -8,11 +8,11 @@ argument-hint: [category] <branch-name> [issue-id]
 
 Creates a new git branch following the naming convention: `<category>/<issue-id>_<branch-name>` or `<category>/<branch-name>` when no issue ID is provided.
 
-## Parameters
+## Arguments
 
-- **`category`** (optional): Branch type. Common values: poc, feature, hotfix, chore, docs. Accepts any value. Defaults to `feature`
-- **`branch-name`** (required): Short kebab-case description of the work
-- **`issue-id`** (optional): GitHub issue number associated with this work
+- **`[category]`** (optional): Branch type. Common values: poc, feature, hotfix, chore, docs. Accepts any value. Defaults to `feature`
+- **`<branch-name>`** (required): Short kebab-case description of the work
+- **`[issue-id]`** (optional): GitHub issue number associated with this work
 
 ## Objective
 

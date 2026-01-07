@@ -8,9 +8,9 @@ argument-hint: <task-description | issue-number> [--interactive]
 
 All-in-one workflow that creates a branch, explores the codebase, builds an in-memory plan, implements changes, commits, pushes, and opens a PR.
 
-## Parameters
+## Arguments
 
-- **`task-description`** (required): Either a text description of the task OR a GitHub issue number (e.g., `123`)
+- **`<task-description | issue-number>`** (required): Either a text description of the task OR a GitHub issue number (e.g., `123`)
 - **`--interactive`** (optional): Ask clarifying questions before building the plan
 
 ## Objective

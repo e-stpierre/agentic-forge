@@ -8,9 +8,9 @@ argument-hint: <task-description> [--interactive]
 
 Meta-command that analyzes the task description and delegates to the appropriate planning command: `plan-feature`, `plan-bug`, or `plan-chore`.
 
-## Parameters
+## Arguments
 
-- **`task-description`** (required): Description of the task to plan
+- **`<task-description>`** (required): Description of the task to plan
 - **`--interactive`** (optional): Pass through to the selected planning command
 
 ## Objective

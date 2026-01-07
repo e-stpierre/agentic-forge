@@ -1,12 +1,32 @@
+---
+name: security-review
+description: Comprehensive security review of the codebase using the AppSec Specialist agent
+argument-hint: "[scope] [--dependencies] [--quick]"
+---
+
 # Security Review Command
 
 You are being invoked to perform a comprehensive security review of the current codebase. Your task is to launch the AppSec Specialist agent to conduct a thorough security assessment.
+
+## Arguments
+
+- **`[scope]`** (optional): Specific directories, files, or components to review. Defaults to entire codebase.
+- **`--dependencies`** (optional): Focus specifically on dependency vulnerabilities.
+- **`--quick`** (optional): Perform a rapid scan focusing on critical issues only.
 
 ## Objective
 
 Analyze the codebase for security vulnerabilities, risks, and dependency issues at an expert level, providing actionable remediation guidance.
 
-## Execution Steps
+## Core Principles
+
+- Be thorough - security reviews should be comprehensive, not superficial
+- Be practical - provide actionable advice, not just theoretical risks
+- Be clear - use plain language to explain security concepts
+- Be prioritized - help teams focus on what matters most
+- Be educational - help developers learn to write more secure code
+
+## Instructions
 
 ### 1. Understand the Scope
 
@@ -182,13 +202,23 @@ Would you like me to:
 - Create GitHub issues for tracking these items?
 ```
 
-## Notes
+## Output Guidance
 
-- **Be Thorough**: Security reviews should be comprehensive, not superficial
-- **Be Practical**: Provide actionable advice, not just theoretical risks
-- **Be Clear**: Use plain language to explain security concepts
-- **Be Prioritized**: Help teams focus on what matters most
-- **Be Educational**: Help developers learn to write more secure code
+Provide a comprehensive security report with:
+
+- **Summary**: Total vulnerabilities by severity (Critical, High, Medium, Low)
+- **Critical Findings**: Issues requiring immediate attention with CVSS scores
+- **Dependency Alerts**: Packages with known CVEs and update recommendations
+- **Quick Action Checklist**: Prioritized items to address
+- **Next Steps**: Offer to deep-dive, implement fixes, or create tracking issues
+
+## Important Notes
+
+- Security reviews should be comprehensive, not superficial
+- Provide actionable advice, not just theoretical risks
+- Use plain language to explain security concepts
+- Help teams focus on what matters most
+- Help developers learn to write more secure code
 
 ## References
 

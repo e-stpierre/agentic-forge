@@ -8,9 +8,9 @@ argument-hint: [base-branch]
 
 Creates a pull request using the GitHub CLI with a descriptive title and appropriately-sized description.
 
-## Parameters
+## Arguments
 
-- **`base-branch`** (optional): Target branch for the PR. Defaults to main/master.
+- **`[base-branch]`** (optional): Target branch for the PR. Defaults to main/master.
 
 ## Objective
 
