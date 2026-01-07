@@ -112,6 +112,7 @@ Real-world example implementations showing plugins in action. Examples should:
 - **CHANGELOGs should be brief**: Focus on what changed, not detailed explanations
 - **Link to root docs**: Reference the root README or `/docs/` for general information
 - **ASCII only**: Use only valid ASCII characters in all files to avoid encoding issues across platforms
+- **Workflow diagrams**: Use arrow notation (`->`) for workflow documentation instead of long multi-line ASCII boxes. Example: `Plan -> Implement -> Validate -> Output` is preferred over complex box diagrams
 
 ### File Formats
 
