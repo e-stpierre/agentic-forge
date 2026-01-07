@@ -1,12 +1,24 @@
 ---
 name: update-plugin
 description: Update plugin versions based on changes from main branch
-argument-hint:
+argument-hint: ""
 ---
 
 # Update Plugin Version Command
 
 Analyze changes in the current branch compared to main and update plugin versions accordingly.
+
+## Objective
+
+Detect changed plugins, analyze the nature of changes, and update version numbers appropriately following semantic versioning.
+
+## Core Principles
+
+- Follow semantic versioning (MAJOR.MINOR.PATCH)
+- MAJOR: Breaking changes, API changes, removed features
+- MINOR: New commands, new functions, new capabilities
+- PATCH: Bug fixes, documentation updates, minor improvements
+- Only update files that need changes
 
 ## Instructions
 
@@ -65,6 +77,23 @@ Analyze changes in the current branch compared to main and update plugin version
    - <plugin2>: A.B.C (patch)
    ```
 
-## Execution
+## Output Guidance
+
+Report the analysis and version changes:
+
+```
+## Plugin Version Updates
+
+### Changed Plugins Detected
+- plugin-name: [change type] (files changed: X)
+
+### Version Updates Applied
+| Plugin | Old Version | New Version | Change Type |
+|--------|-------------|-------------|-------------|
+| plugin | 1.2.3 | 1.3.0 | minor |
+
+### Commit
+[Commit message used]
+```
 
 Proceed with the analysis and updates now. Report your findings and the version changes made.

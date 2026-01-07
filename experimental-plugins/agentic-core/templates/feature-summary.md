@@ -1,0 +1,26 @@
+# Feature Summary: {{ feature }}
+
+## Overview
+
+{{ description }}
+
+## Implementation
+
+### Files Changed
+
+{% for file in files_changed %}
+
+- {{ file }}
+  {% endfor %}
+
+### Key Changes
+
+{{ changes }}
+
+## Testing
+
+{{ testing }}
+
+## Notes
+
+{{ notes }}

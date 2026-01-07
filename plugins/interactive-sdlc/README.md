@@ -1,49 +1,60 @@
 # Interactive SDLC Plugin
 
-Human-in-the-loop plugin for guided development within Claude Code sessions. Provides interactive planning, implementation, validation, and analysis workflows with smart context inference.
+Human-in-the-loop plugin for guided development within Claude Code sessions. Provides interactive planning, implementation, validation, and analysis workflows with smart context inference. All commands support optional context arguments to reduce prompts while maintaining the ability to ask clarifying questions.
 
-## Philosophy
+## Overview
 
-Interactive development with human guidance for accuracy through clarification and context-aware prompting. All commands support optional context arguments to reduce interactive prompts while maintaining the ability to ask clarifying questions when needed.
+The Interactive SDLC plugin provides guided workflows for planning, implementing, and validating development tasks. Commands ask clarifying questions when needed and support context arguments for automation.
+
+- `/interactive-sdlc:plan-feature Add OAuth login` - Plan a feature with milestones
+- `/interactive-sdlc:build /specs/feature-auth.md --git` - Implement a plan with auto-commits
+- `/interactive-sdlc:validate --plan /specs/feature-auth.md` - Validate implementation
+- `/interactive-sdlc:one-shot --git Fix login timeout` - Quick task without saved plan
 
 ## Commands
 
-All commands use the `/interactive-sdlc:` namespace prefix.
+All commands use the `/interactive-sdlc:` namespace prefix. Commands are organized into logical categories.
 
 ### Configuration
 
 - `/interactive-sdlc:configure` - Set up plugin configuration interactively
 
-### Planning
+### Planning (`commands/plan/`)
 
 - `/interactive-sdlc:plan-chore` - Plan a maintenance task
 - `/interactive-sdlc:plan-bug` - Plan a bug fix with root cause analysis
 - `/interactive-sdlc:plan-feature` - Plan a feature with milestones
 
-### Implementation
+### Development (`commands/dev/`)
 
 - `/interactive-sdlc:build` - Implement a plan file with checkpoint support
-
-### Validation
-
 - `/interactive-sdlc:validate` - Comprehensive validation (tests, code review, build, plan compliance)
+- `/interactive-sdlc:document` - Generate or update documentation with mermaid diagrams
 
-### Workflows
+### Workflows (`commands/workflows/`)
 
 - `/interactive-sdlc:one-shot` - Quick task without saved plan file
 - `/interactive-sdlc:plan-build-validate` - Full workflow from planning to validation
 
-### Documentation
-
-- `/interactive-sdlc:document` - Generate or update documentation with mermaid diagrams
-
-### Analysis
+### Analysis (`commands/analyse/`)
 
 - `/interactive-sdlc:analyse-bug` - Analyze codebase for bugs and logic errors
 - `/interactive-sdlc:analyse-doc` - Analyze documentation quality and accuracy
 - `/interactive-sdlc:analyse-debt` - Identify technical debt and refactoring opportunities
 - `/interactive-sdlc:analyse-style` - Check code style, consistency, and best practices
 - `/interactive-sdlc:analyse-security` - Scan for security vulnerabilities and unsafe patterns
+
+### Git (`commands/git/`)
+
+- `/interactive-sdlc:git-branch` - Create branches with standardized naming conventions
+- `/interactive-sdlc:git-commit` - Commit and push changes with structured messages
+- `/interactive-sdlc:git-pr` - Create pull requests with contextual descriptions
+- `/interactive-sdlc:git-worktree` - Manage git worktrees for parallel development
+
+### GitHub (`commands/github/`)
+
+- `/interactive-sdlc:create-gh-issue` - Create GitHub issues with title, body, and labels
+- `/interactive-sdlc:read-gh-issue` - Read GitHub issue content by number
 
 ## Configuration
 
@@ -177,3 +188,133 @@ Plans are static documentation of work to be done:
 - No time estimates, deadlines, or scheduling information
 - Content includes requirements, architecture, tasks, and validation criteria
 - Implementation commands read plans as reference, not as mutable state
+
+## Complete Examples
+
+### /interactive-sdlc:plan-feature
+
+**Arguments:**
+
+- `--explore N` - Override default explore agent count (default: 3)
+- `--git` - Commit plan file after creation
+- `[context]` - Feature description
+
+**Examples:**
+
+```bash
+# Plan with context
+/interactive-sdlc:plan-feature Add user authentication with OAuth for Google and GitHub
+
+# Plan with more exploration
+/interactive-sdlc:plan-feature --explore 5 Implement real-time notifications
+
+# Plan and commit
+/interactive-sdlc:plan-feature --git --explore 4 Add dark mode toggle
+```
+
+### /interactive-sdlc:build
+
+**Arguments:**
+
+- `<plan-file>` - Required path to plan file
+- `--git` - Auto-commit at milestones
+- `--checkpoint "<text>"` - Resume from specific task/milestone
+- `[context]` - Implementation guidance
+
+**Examples:**
+
+```bash
+# Basic build
+/interactive-sdlc:build /specs/feature-auth.md
+
+# Build with auto-commit
+/interactive-sdlc:build /specs/feature-auth.md --git
+
+# Resume from checkpoint
+/interactive-sdlc:build /specs/feature-auth.md --checkpoint "Milestone 2" --git
+```
+
+### /interactive-sdlc:validate
+
+**Arguments:**
+
+- `--plan <plan-file>` - Plan file to verify compliance
+- `--skip-tests` - Skip test execution
+- `--skip-build` - Skip build verification
+- `--skip-review` - Skip code review
+- `--autofix <levels>` - Auto-fix issues (e.g., "critical,major")
+
+**Examples:**
+
+```bash
+# Full validation
+/interactive-sdlc:validate --plan /specs/feature-auth.md
+
+# Skip tests, auto-fix critical
+/interactive-sdlc:validate --skip-tests --autofix critical
+
+# Quick validation
+/interactive-sdlc:validate --skip-tests --skip-build
+```
+
+### /interactive-sdlc:one-shot
+
+**Arguments:**
+
+- `--git` - Auto-commit when done
+- `--validate` - Run validation after implementation
+- `--explore N` - Override explore agent count (default: 0)
+- `[context]` - Task description
+
+**Examples:**
+
+```bash
+# Quick fix
+/interactive-sdlc:one-shot Fix typo in README
+
+# Fix with commit and validation
+/interactive-sdlc:one-shot --git --validate Fix login timeout on Safari
+
+# With exploration
+/interactive-sdlc:one-shot --explore 2 --git Refactor auth middleware
+```
+
+### /interactive-sdlc:analyse-security
+
+**Arguments:**
+
+- `[context]` - Focus areas or directories to analyze
+
+**Examples:**
+
+```bash
+# Full security analysis
+/interactive-sdlc:analyse-security
+
+# Focused analysis
+/interactive-sdlc:analyse-security Focus on authentication and session management
+
+# Directory-specific
+/interactive-sdlc:analyse-security src/api/ src/auth/
+```
+
+### /interactive-sdlc:git-branch
+
+**Arguments:**
+
+- `[category]` - Branch type (default: feature)
+- `<branch-name>` - Short kebab-case description
+- `[issue-id]` - GitHub issue number
+
+**Examples:**
+
+```bash
+# Simple branch
+/interactive-sdlc:git-branch add-dark-mode
+
+# With category
+/interactive-sdlc:git-branch hotfix login-timeout
+
+# With issue
+/interactive-sdlc:git-branch feature add-oauth 123
+```

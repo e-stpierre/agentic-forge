@@ -1,7 +1,16 @@
+---
+name: scope-security
+description: Focused security analysis of a single file and its direct dependencies
+argument-hint: <file-path>
+---
+
 # Scope Security Analysis Command
 
-You are being invoked to perform a focused, rapid security analysis of a single file and its direct dependencies. This command is designed for quick security reviews during development when you need fast feedback without a comprehensive
-codebase scan.
+You are being invoked to perform a focused, rapid security analysis of a single file and its direct dependencies. This command is designed for quick security reviews during development when you need fast feedback without a comprehensive codebase scan.
+
+## Arguments
+
+- **`<file-path>`** (optional): Path to the file to analyze. If not provided, prompts for the file.
 
 ## Objective
 
@@ -12,7 +21,15 @@ Analyze a specific file and its immediate dependencies for security vulnerabilit
 - Targeted analysis of security-critical components
 - Rapid feedback during active development
 
-## Execution Steps
+## Core Principles
+
+- Prioritize speed without sacrificing critical findings
+- Focus on the target file and direct dependencies only
+- Report only high-confidence, actionable issues
+- Use exact file:line references for all findings
+- Provide quick fixes, not lengthy explanations
+
+## Instructions
 
 ### 1. Determine Target File
 
@@ -272,13 +289,37 @@ I'll perform a focused security analysis of `src/auth/login.js` and its direct d
 - After major architectural changes
 - Compliance or audit requirements
 
-## Notes
+## Output Guidance
 
-- **Be Fast**: Prioritize speed without sacrificing critical findings
-- **Be Focused**: Don't scope creep beyond target file and direct deps
-- **Be Practical**: Only report high-confidence, actionable issues
-- **Be Clear**: Use exact file:line references for all findings
-- **Be Helpful**: Provide quick fixes, not lengthy explanations
+Report findings in a concise, actionable format:
+
+```
+## Focused Security Analysis Complete
+
+**Target**: [file path]
+**Dependencies Analyzed**: [count]
+**Analysis Time**: ~[time]
+
+### Summary
+- **Critical Issues**: [count]
+- **High Severity**: [count]
+- **Total Findings**: [count]
+
+### Critical Findings (if any):
+[List with file:line, severity, issue, fix]
+
+### Quick Action Checklist:
+- [ ] [Fix item with priority]
+```
+
+## Important Notes
+
+- Prioritize speed without sacrificing critical findings
+- Focus on target file and direct dependencies only
+- Report only high-confidence, actionable issues
+- Use exact file:line references for all findings
+- Provide quick fixes, not lengthy explanations
+- This is not a replacement for comprehensive security reviews
 
 ## Limitations
 

@@ -1,0 +1,25 @@
+## Summary
+
+{{ summary }}
+
+## Changes
+
+{% for change in changes %}
+
+- {{ change }}
+  {% endfor %}
+
+## Testing
+
+{{ testing }}
+
+## Related Issues
+
+{% if issues %}
+{% for issue in issues %}
+
+- Closes #{{ issue }}
+  {% endfor %}
+  {% else %}
+  None
+  {% endif %}

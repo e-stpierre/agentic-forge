@@ -1,0 +1,29 @@
+# Meeting Summary
+
+**Topic:** {{ topic }}
+**Date:** {{ date }}
+**Participants:** {{ participants | join(', ') }}
+
+## Key Points
+
+{% for point in key_points %}
+
+- {{ point }}
+  {% endfor %}
+
+## Decisions Made
+
+{% for decision in decisions %}
+{{ loop.index }}. {{ decision }}
+{% endfor %}
+
+## Action Items
+
+{% for action in action_items %}
+
+- [ ] {{ action.description }} (Owner: {{ action.owner }})
+      {% endfor %}
+
+## Discussion Highlights
+
+{{ highlights }}

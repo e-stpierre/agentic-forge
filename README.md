@@ -1,4 +1,4 @@
-# 🧠 agentic-forge
+# Agentic Forge
 
 [![Auto-Format Code](https://github.com/e-stpierre/agentic-forge/actions/workflows/auto-format.yml/badge.svg)](https://github.com/e-stpierre/agentic-forge/actions/workflows/auto-format.yml)
 
@@ -7,9 +7,9 @@ A modular collection of commands, sub-agents, skills, and hooks designed to exte
 This repository provides a plug-and-play framework to define reusable automation units — from lightweight code utilities to fully autonomous agent behaviors — that enhance Claude's coding workflow, environment integration, and project
 orchestration capabilities.
 
-## 🚀 Features
+## Features
 
-### 📦 Command Packs
+### Command
 
 Ready-to-use slash commands for automation, scripting, and file manipulation. Commands provide quick access to common development workflows and can be composed to build complex automation pipelines.
 
@@ -17,7 +17,7 @@ Ready-to-use slash commands for automation, scripting, and file manipulation. Co
 - **Composable**: Chain commands together for powerful workflows
 - **Context-Aware**: Commands can adapt based on project context
 
-### 🤖 Sub-Agents
+### Sub-Agents
 
 Specialized agent personalities and workflows for focused domains. Sub-agents bring domain expertise and autonomous task execution to specific problem areas.
 
@@ -25,7 +25,7 @@ Specialized agent personalities and workflows for focused domains. Sub-agents br
 - **Autonomous Workflows**: Let specialized agents handle complex multi-step tasks
 - **Customizable Behavior**: Configure agent personalities and capabilities
 
-### 🧩 Skill Modules
+### Skill
 
 Composable building blocks for logic, data processing, and system interaction. Skills are reusable components that agents and commands can leverage.
 
@@ -33,7 +33,7 @@ Composable building blocks for logic, data processing, and system interaction. S
 - **Extensible**: Build new skills on top of existing ones
 - **Interoperable**: Skills work seamlessly with all plugin types
 
-### 🔌 Hooks
+### Hooks
 
 Extend Claude Code's runtime behavior to inject context, monitor state, or adapt responses dynamically. Hooks enable event-driven customization of the development environment.
 
@@ -41,49 +41,29 @@ Extend Claude Code's runtime behavior to inject context, monitor state, or adapt
 - **State Monitoring**: Track and respond to changes in your development environment
 - **Dynamic Context**: Inject relevant information based on current state
 
-### ⚙️ Configuration Templates
-
-Easily register or override behaviors for project-specific use cases. Templates provide starting points for common development scenarios.
-
-- **Quick Setup**: Bootstrap new projects with pre-configured plugins
-- **Shareable**: Distribute configurations across teams
-- **Adaptable**: Override defaults for project-specific needs
-
-## 🎯 Goal
-
-Create a flexible ecosystem where developers can configure, share, and evolve Claude Code capabilities to suit diverse project needs — from local coding assistants to distributed AI agents.
-
-By providing a standardized way to package and distribute Claude Code extensions, this repository aims to:
-
-- **Lower the barrier** to customizing Claude Code for specific workflows
-- **Enable knowledge sharing** of best practices and automation patterns
-- **Foster a community** of Claude Code power users and plugin developers
-- **Accelerate development** by providing reusable, battle-tested components
-
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 agentic-forge/
-├── plugins/          # Root folder for all plugins
-│   └── <plugin-name>/
-│       ├── agents/   # Sub-agent configurations
-│       ├── commands/ # Slash command definitions
-│       ├── skills/   # Reusable skill modules
-│       ├── hooks/    # Runtime hooks and event handlers
-│       └── README.md # Plugin-specific documentation
-├── docs/             # Documentation and guides
-└── examples/         # Example implementations and use cases
+├── docs/                   # Documentation, guides and templates
+├── experimental-plugins/   # Experimental early-access plugins
+└── plugins/                # Root folder for all official plugins
+    └── <plugin-name>/
+        ├── agents/         # Sub-agent configurations
+        ├── commands/       # Slash command definitions
+        ├── skills/         # Reusable skill modules
+        ├── hooks/          # Runtime hooks and event handlers
+        └── README.md       # Plugin-specific documentation
 ```
 
 Each plugin is self-contained within its own directory under `plugins/`, allowing for modular installation and management.
 
-## 🚦 Getting Started
+## Getting Started
 
 ### Prerequisites
 
 - Claude Code CLI installed and configured
 - Basic familiarity with Claude Code concepts (commands, agents, hooks)
-- Git authentication configured for private repositories (if applicable)
 
 ### Installation
 
@@ -93,14 +73,12 @@ Add this repository as a plugin marketplace in Claude Code:
 /plugin marketplace add e-stpierre/agentic-forge
 ```
 
-**For private repositories**: Ensure you have proper Git authentication configured (SSH keys or GitHub personal access token).
-
 ### Browse & Install Plugins
 
-Once the marketplace is added, browse and install plugins using the plugin menu:
+Once the marketplace is added, browse and install plugins using the plugin menu in Claude Code:
 
 ```bash
-/plugin menu
+/plugin
 ```
 
 This opens an interactive menu where you can:
@@ -109,69 +87,23 @@ This opens an interactive menu where you can:
 - View plugin descriptions and capabilities
 - Install plugins directly to your project
 - Manage installed plugins
+- Update marketplace and plugins
 
-### Marketplace Versioning
+### Python CLI
 
-#### Latest Version
-
-Install the latest version of the marketplace:
-
-```bash
-/plugin marketplace add e-stpierre/agentic-forge
-```
-
-#### Specific Version
-
-Install a specific version using git tags:
-
-```bash
-/plugin marketplace add e-stpierre/agentic-forge#v1.1.0
-```
-
-#### Update Marketplace
-
-Update the marketplace to the latest version:
-
-```bash
-/plugin marketplace update agentic-forge
-```
-
-#### Update Python Tools
-
-Some plugins include Python CLI tools for workflow orchestration. Install them with uv:
+Some experimental plugins include Python CLI tools for workflow orchestration. Install them with uv:
 
 **Windows (PowerShell):**
 
 ```powershell
-# Core package (required for orchestration)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\core"
-
-# Agentic-SDLC autonomous workflows (depends on core)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\experimental-plugins\agentic-core"
 ```
 
 **macOS/Linux:**
 
 ```bash
-# Core package (required for orchestration)
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/core
-
-# Agentic-SDLC autonomous workflows (depends on core)
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/agentic-core
 ```
-
-**Available CLI commands after installation:**
-
-| Command            | Description                                              |
-| ------------------ | -------------------------------------------------------- |
-| `claude-sdlc`      | Legacy CLI with feature and bugfix subcommands           |
-| `claude-feature`   | Full feature workflow: plan -> implement -> review -> PR |
-| `claude-bugfix`    | Full bugfix workflow: diagnose -> fix -> test -> PR      |
-| `agentic-sdlc`     | Autonomous workflow CLI with JSON I/O                    |
-| `agentic-workflow` | Full end-to-end autonomous workflow                      |
-| `agentic-plan`     | Invoke planning agent with JSON input                    |
-| `agentic-build`    | Invoke build agent with plan JSON                        |
-| `agentic-validate` | Invoke validation agents (review + test)                 |
 
 ## SDLC Plugins
 
@@ -194,7 +126,7 @@ Interactive SDLC commands for guided development within Claude Code sessions wit
 - `/interactive-sdlc:document` - Generate documentation with mermaid diagrams
 - `/interactive-sdlc:analyse-*` - Analysis commands for bugs, docs, debt, style, security
 
-### Agentic-SDLC
+### [Experimental] Agentic-SDLC
 
 Fully autonomous SDLC workflow orchestrated via Python, with no user interaction.
 
@@ -221,24 +153,6 @@ agentic-build --plan-file /specs/feature-auth.md
 agentic-validate --plan-file /specs/feature-auth.md
 ```
 
-#### Remove Marketplace
-
-Remove the marketplace from your configuration:
-
-```bash
-/plugin marketplace remove agentic-forge
-```
-
-**⚠️ Warning**: Removing a marketplace will uninstall all plugins from that marketplace. This is useful when you need to install a previous version of the marketplace or its plugins.
-
-### Install Specific Plugins
-
-You can also install specific plugins directly by name:
-
-```bash
-/plugin install appsec
-```
-
 ### Usage
 
 After installation, plugins are immediately available in your Claude Code session:
@@ -250,31 +164,15 @@ After installation, plugins are immediately available in your Claude Code sessio
 
 Refer to individual plugin documentation for specific usage instructions and examples.
 
-## 🤝 Contributing
+## Local Setup
 
-Contributions are welcome! Whether you're adding new plugins, improving existing ones, or enhancing documentation, your input helps the community.
+### Automatic plugin installation
 
-### Local Setup
+The following script can be run to automatically re-install every plugin and CLI tools contained in this repository.
 
 ```
 uv run .claude/update-plugins.py
 ```
-
-### How to Contribute
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-plugin`)
-3. Commit your changes (`git commit -m 'Add amazing plugin'`)
-4. Push to the branch (`git push origin feature/amazing-plugin`)
-5. Open a Pull Request
-
-### Plugin Guidelines
-
-- Follow the directory structure conventions
-- Include clear documentation for each plugin
-- Provide example usage scenarios
-- Test plugins in multiple contexts before submitting
-- Use descriptive names and comments
 
 ### Code Style
 
@@ -282,29 +180,9 @@ Open the workspace file (`.vscode/agentic-forge.code-workspace`) and install rec
 
 CI automatically formats code on pull requests. To run locally: `pnpm check`
 
-## 📚 Documentation
-
-Detailed documentation for each plugin type can be found in the `docs/` directory:
-
-- [Command Development Guide](docs/commands.md)
-- [Agent Creation Guide](docs/agents.md)
-- [Skill Module Spec](docs/skills.md)
-- [Hook System Reference](docs/hooks.md)
-- [Template Authoring](docs/templates.md)
-
-## 🔗 Resources
-
-- [Claude Code Documentation](https://docs.claude.com/en/docs/claude-code)
-- [Claude Code GitHub](https://github.com/anthropics/claude-code)
-- [Community Discussions](https://github.com/e-stpierre/agentic-forge/discussions)
-
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🌟 Acknowledgments
-
-Built with and for the Claude Code community. Special thanks to all contributors who help make Claude Code more powerful and accessible.
 
 ---
 

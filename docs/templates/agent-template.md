@@ -50,6 +50,7 @@ Instructions:
 <!--
 Instructions:
 - Replace {{methodology}} with the approach and framework the agent follows
+- Sub-sections (### headings) are allowed for complex methodologies (e.g., "### Initial Assessment", "### Deep Analysis")
 - Suggested elements (include others as needed):
   - Analysis techniques and decision-making processes
   - How the agent breaks down complex problems
