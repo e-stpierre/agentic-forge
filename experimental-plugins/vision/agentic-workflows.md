@@ -6,43 +6,69 @@ The agentic workflows goal is to enable Claude Code to execute any type of task 
 
 ## Guiding Principles
 
-- Composed of highly flexible building blocks
-- YAML workflows are the top level entity in the framework, they support arguments:
-  - autofix: severity level for automatic fixes (none, minor, major, critical)
-  - max-retry: maximum retries for a single step, after which the workflow is stopped
-  - timeout-minutes: maximum timeout, the workflow stops if it reaches this time without completing (can also be configured at the step level)
-  - track-progress: if enabled, the Claude sessions will be instructed to track progress in the workflow progress document
-- Able to complete short and long-running tasks
-- Mainly used for software development tasks, but must not be limited to this
+### Core Philosophy
+
+- Composed of highly flexible, reusable building blocks
+- Able to complete short and long-running tasks with high success rate
+- Mainly used for software development tasks, but not limited to this domain
 - Support any task size: chore, bug, task, story, epic
-- Support retry on error and for requested loops to improve result quality
-- The workflow must be able to work in every scenario where agents can be used:
-  - feature development
-  - code analysis
-  - code improvement
-  - bug fixes
-  - brainstorming
-  - technical analysis
-  - financial analysis
-  - pentesting, security analysis
-  - QA
-  - Product management
-- Workflows are YAML files that consist of one or more steps
+- Use Jinja2 for all template resolution (YAML and output templates)
+
+### Workflow Execution
+
+- YAML workflows are the top-level entity, supporting arguments:
+  - `autofix`: severity level for automatic fixes (none, minor, major, critical)
+  - `max-retry`: maximum retries per step before workflow stops
+  - `timeout-minutes`: maximum timeout for workflow or individual steps
+  - `track-progress`: enable progress tracking in the workflow progress document
 - Steps can be executed in series, in parallel, and support conditional execution
 - Steps are always dependent on previous steps, except for parallel blocks
-- Workflows must support additional custom steps and commands that can be written by the user and not be part of the core package
-- Support an integrated checkpoint system to support stopping and continuing the workflow (on-demand via skill invocation)
-- Support full logging options, configurable by the user for specific levels (information, warning, error, critical). Every Claude session that runs must be able to add logs to this system (a .md file per workflow execution)
-- Support a global JSON configuration schema and a Claude /configure command that will guide the user in the creation of this configuration. The configuration is used by many steps in the framework: log levels, git main branch name (main, master, etc.), always use git, always create PRs, maximum retry count for failing steps, framework documents outputs location
-- Each workflow step starts a new Claude Code session (no session resume to keep implementation simple)
-- Support fully automated git workflows and GitHub interactions (issues, PR, etc.)
-- Support git worktree, that can be configured per step or globally for the workflow
-- Support permissions management, per step or for the whole workflow. If bypass-permission is configured, Claude will run with the --dangerously-skip-permissions flag
-- Use Jinja2 for template resolution (YAML and output templates)
-- Have a base output folder configured (/agentic) in the current directory. Every document produced by the framework will be added there
-- Have a basic self-learning and self-improving process. When a Claude instance faces an error, fails at a task, discovers something unexpected, or anything else similar, it should create a .md document in the /memory directory to note this. Eventually, these findings can be used to automatically update CLAUDE.md, create Skills, etc.
-- Include a CLAUDE.example.md file that provides sections a user can include in their CLAUDE.md to enhance the utility provided by the framework, for example sections about how and when to create Memory, how and when to create checkpoints, etc.
-- IMPORTANT: only add comments in the code of this plugin when necessary to identify something unusual. Do not use comments for normal code paths
+- Each workflow step starts a new Claude Code session (no session resume)
+- Support retry on error and recurring loops to improve result quality
+- Workflows can be used in any scenario: feature development, code analysis, bug fixes, brainstorming, technical analysis, pentesting, QA, product management, etc.
+
+### Terminal Monitoring
+
+- **IMPORTANT**: Users must be able to monitor workflow progress from the terminal
+- The terminal used to launch a workflow stays active and runs the main orchestrator loop
+- The orchestrator prints information based on the selected log granularity:
+  - **base**: Only important progress (step completion, step error, waiting for human input, workflow status changes)
+  - **all**: Include Claude session output streamed to terminal (sequential display, parallel output buffered)
+- Similar to the agentic-core meetings implementation where agent messages stream to the main terminal
+
+### State Management
+
+- Base output folder: `/agentic` in the current directory for all framework outputs
+- Support integrated checkpoint system (on-demand via skill invocation)
+- Support full logging at configurable levels (debug, info, warning, error, critical)
+- Every Claude session can add logs to the workflow's log file
+
+### Git Integration
+
+- Support fully automated git workflows and GitHub interactions (issues, PRs)
+- Git worktree support with two modes:
+  - **Root-level `worktree: true`**: Entire workflow runs in a dedicated worktree (create worktree first, then execute workflow inside it)
+  - **Parallel steps**: Always use git worktrees for isolation (mandatory)
+- Support permissions management per step or globally (`bypass-permissions` flag)
+
+### Extensibility
+
+- Workflows support custom steps and commands written by users
+- Support global JSON configuration with `/configure` command
+- Include CLAUDE.example.md with sections users can add to their CLAUDE.md
+
+### Self-Learning
+
+- Claude sessions can create memory documents in `/agentic/memory` when discovering patterns, errors, or learnings
+- Memory creation is controlled by:
+  - Explicit workflow prompt/command indication, OR
+  - User's CLAUDE.md section instructing Claude when to create/search memories
+- Memories can eventually be used to update CLAUDE.md or create Skills
+
+### Code Standards
+
+- IMPORTANT: Only add comments in code when necessary to identify something unusual
+- Do not use comments for normal code paths
 
 ## Workflow Execution Lifecycle
 
@@ -73,12 +99,12 @@ pending ──start──> running ──complete──> completed
 
 The framework categorizes errors to enable appropriate handling:
 
-| Error Type | Description | Action |
-|------------|-------------|--------|
-| **Transient** | Network timeout, rate limit, temporary failures | Retry with same prompt, new session |
-| **Recoverable** | Test failure, validation error, fixable issues | Fix and retry |
-| **Fatal** | Invalid workflow definition, missing dependencies | Abort workflow |
-| **Blocking** | Human input required, ambiguous decision | Pause workflow |
+| Error Type      | Description                                       | Action                              |
+| --------------- | ------------------------------------------------- | ----------------------------------- |
+| **Transient**   | Network timeout, rate limit, temporary failures   | Retry with same prompt, new session |
+| **Recoverable** | Test failure, validation error, fixable issues    | Fix and retry                       |
+| **Fatal**       | Invalid workflow definition, missing dependencies | Abort workflow                      |
+| **Blocking**    | Human input required, ambiguous decision          | Pause workflow                      |
 
 When max-retry is reached for a step, the error is promoted to fatal and the workflow stops.
 
@@ -95,9 +121,10 @@ settings:
   timeout-minutes: number         # Default: 60, workflow timeout
   track-progress: boolean         # Default: true
   autofix: string                 # "none" | "minor" | "major" | "critical"
+  terminal-output: string         # "base" | "all" - terminal log granularity
   git:
     enabled: boolean              # Enable git operations
-    worktree: boolean             # Use git worktrees for parallel
+    worktree: boolean             # If true, entire workflow runs in dedicated worktree
     auto-commit: boolean          # Commit after milestones
     auto-pr: boolean              # Create PR on completion
     branch-prefix: string         # e.g., "feature/"
@@ -112,7 +139,7 @@ variables:                        # Input variables
 
 steps:
   - name: string                  # Step identifier (required)
-    type: prompt | command | parallel | conditional | recurring
+    type: prompt | command | parallel | conditional | recurring | wait-for-human
 
     # For type: prompt
     prompt: string                # Jinja2 template with {{ variables }}
@@ -123,8 +150,9 @@ steps:
     args: object                  # Command arguments as key-value pairs
 
     # For type: parallel
-    steps: []                     # Nested steps to run in parallel (use worktrees)
+    steps: []                     # Nested steps to run in parallel
     merge-strategy: string        # How to combine results: "wait-all" | "first-success"
+    # NOTE: Parallel steps ALWAYS use git worktrees for isolation (mandatory)
 
     # For type: conditional
     condition: string             # Jinja2 expression evaluated by orchestrator
@@ -135,6 +163,11 @@ steps:
     max-iterations: number        # Maximum loop iterations
     until: string                 # Jinja2 expression for completion
     steps: []                     # Steps to repeat
+
+    # For type: wait-for-human
+    message: string               # Message to display to user (what input is needed)
+    # Workflow pauses until human provides input in progress.json for this step
+    # The orchestrator polls progress.json until human_input field is populated
 
     # Common options (all step types)
     timeout-minutes: number       # Override workflow timeout
@@ -271,11 +304,14 @@ Single CLI command installed via `uv tool install`:
 
 ```bash
 # Workflow execution
-agentic-workflow run <workflow.yaml> [--var key=value]... [--from-step step]
+agentic-workflow run <workflow.yaml> [--var key=value]... [--from-step step] [--terminal-output base|all]
 agentic-workflow resume <workflow-id>
 agentic-workflow status <workflow-id>
 agentic-workflow cancel <workflow-id>
 agentic-workflow list [--status running|completed|failed]
+
+# Human input (for wait-for-human steps)
+agentic-workflow input <workflow-id> "<response>"
 
 # One-shot convenience
 agentic-workflow one-shot "<prompt>" [--git] [--pr]
@@ -305,15 +341,16 @@ Global configuration stored in `/agentic/config.json`:
   "$schema": "http://json-schema.org/draft-07/schema#",
   "outputDirectory": "/agentic",
   "logging": {
-    "level": "info",
-    "format": "text"
+    "enabled": true,
+    "level": "error"
   },
   "git": {
     "mainBranch": "main",
-    "autoCommit": false,
-    "autoPr": false
+    "autoCommit": true,
+    "autoPr": true
   },
   "memory": {
+    "enabled": true,
     "directory": "/agentic/memory",
     "template": "default"
   },
@@ -328,24 +365,27 @@ Global configuration stored in `/agentic/config.json`:
 }
 ```
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `outputDirectory` | string | `/agentic` | Base directory for all outputs |
-| `logging.level` | enum | `info` | critical, error, warning, info, debug |
-| `logging.format` | enum | `text` | text or json |
-| `git.mainBranch` | string | `main` | Default branch name |
-| `git.autoCommit` | boolean | `false` | Auto-commit after milestones |
-| `git.autoPr` | boolean | `false` | Auto-create PR on completion |
-| `memory.directory` | string | `/agentic/memory` | Memory storage location |
-| `memory.template` | string | `default` | Default memory template |
-| `defaults.maxRetry` | number | `3` | Default max retries per step |
-| `defaults.timeoutMinutes` | number | `60` | Default workflow timeout |
+| Setting                   | Type    | Default           | Description                            |
+| ------------------------- | ------- | ----------------- | -------------------------------------- |
+| `outputDirectory`         | string  | `/agentic`        | Base directory for all outputs         |
+| `logging.enabled`         | boolean | `true`            | Enable workflow logging                |
+| `logging.level`           | enum    | `error`           | critical, error, warning, info, debug  |
+| `git.mainBranch`          | string  | `main`            | Default branch name                    |
+| `git.autoCommit`          | boolean | `true`            | Auto-commit after milestones           |
+| `git.autoPr`              | boolean | `true`            | Auto-create PR on completion           |
+| `memory.enabled`          | boolean | `true`            | Enable memory system                   |
+| `memory.directory`        | string  | `/agentic/memory` | Memory storage location                |
+| `memory.template`         | string  | `default`         | Default memory template                |
+| `defaults.maxRetry`       | number  | `3`               | Default max retries per step           |
+| `defaults.timeoutMinutes` | number  | `60`              | Default workflow timeout               |
+| `defaults.trackProgress`  | boolean | `true`            | Enable progress tracking by default    |
+| `defaults.terminalOutput` | enum    | `base`            | Terminal output granularity: base, all |
 
 ## Memory Document Format
 
 Memories are markdown files with YAML frontmatter for searchability:
 
-```markdown
+````markdown
 ---
 id: mem-2024-01-15-auth-pattern
 created: 2024-01-15T10:30:00Z
@@ -366,6 +406,7 @@ When implementing authentication in this codebase, discovered that the project u
 ## Learning
 
 The project uses a custom middleware chain pattern located in `src/middleware/chain.ts`. All auth-related middleware should:
+
 1. Extend the `BaseMiddleware` class
 2. Implement the `handle()` method
 3. Call `this.next()` to continue the chain
@@ -373,6 +414,7 @@ The project uses a custom middleware chain pattern located in `src/middleware/ch
 ## Application
 
 Use this pattern when:
+
 - Adding new authentication providers
 - Implementing authorization checks
 - Creating rate limiting middleware
@@ -391,21 +433,22 @@ export class AuthMiddleware extends BaseMiddleware {
   }
 }
 ```
-```
+````
 
 ### Memory Categories
 
-| Category | When to Use |
-|----------|-------------|
-| `pattern` | Discovered code patterns, conventions, architectures |
-| `lesson` | General learnings about the project or domain |
-| `error` | Errors encountered and their solutions |
-| `decision` | Decisions made during implementation with rationale |
-| `context` | Project-specific context (dependencies, configurations) |
+| Category   | When to Use                                             |
+| ---------- | ------------------------------------------------------- |
+| `pattern`  | Discovered code patterns, conventions, architectures    |
+| `lesson`   | General learnings about the project or domain           |
+| `error`    | Errors encountered and their solutions                  |
+| `decision` | Decisions made during implementation with rationale     |
+| `context`  | Project-specific context (dependencies, configurations) |
 
 ### Memory Search
 
 Memory search uses simple keyword matching in frontmatter fields:
+
 - Search by `category` (exact match)
 - Search by `tags` (any tag matches)
 - Search by content keywords (full-text search in title/content)
@@ -414,9 +457,19 @@ File glob patterns can also be used to find memories by naming convention.
 
 ## Self-Learning Process
 
+### Memory Creation Control
+
+Memory creation is **not automatic**. It is controlled by:
+
+1. **Explicit workflow indication**: Workflow prompts or commands can explicitly instruct Claude to create a memory for important learnings
+2. **User's CLAUDE.md section**: Users can add a section to their CLAUDE.md instructing Claude when to create and search memories
+
+The CLAUDE.example.md file provided by this plugin includes a recommended section for memory management that users can add to their project's CLAUDE.md.
+
 ### When to Create Memory
 
 Claude sessions should create memory when they:
+
 1. Discover an unexpected pattern in the codebase
 2. Find a workaround for a framework limitation
 3. Encounter an error and find the solution
@@ -425,8 +478,8 @@ Claude sessions should create memory when they:
 
 ### Memory Creation Flow
 
-1. At the end of each step, the orchestrator evaluates if learnings should be captured
-2. If yes, invoke the `/create-memory` skill with:
+1. Claude determines a learning is worth persisting (based on CLAUDE.md instructions or explicit prompt)
+2. Invoke the `/create-memory` skill with:
    - Category: pattern | lesson | error | decision | context
    - Tags: relevant keywords for searchability
    - Content: what was learned
@@ -434,16 +487,21 @@ Claude sessions should create memory when they:
 3. The skill validates the memory is not duplicated and is pertinent
 4. Memory is saved with proper frontmatter
 
-### Memory Application
+### When to Search Memory
 
-Before starting each step, the runner:
-1. Searches memory for relevant entries (by step name, workflow type, tags)
-2. Includes top 2-3 most relevant memories in the step's context
-3. Memories are appended to the prompt context
+Claude sessions should search memory when they:
+
+1. Face an error or unexpected behavior
+2. Are stuck on a problem
+3. Need to understand project conventions
+4. Are about to make architectural decisions
+
+This behavior is configured via the user's CLAUDE.md section.
 
 ### Memory Lifecycle
 
 Memories are **permanent** and accumulate over time. The goal is to increase the success rate of Claude's work in the repository. Developers can periodically review the `/agentic/memory` directory to:
+
 - Clean up outdated or incorrect memories
 - Consolidate related memories
 - Graduate high-value memories into CLAUDE.md updates or Skills
@@ -567,12 +625,13 @@ Templates use **Jinja2 syntax** with the following format:
 {{ content }}
 
 {# Instructions:
+
 - Replace {{ content }} with the actual content
 - Additional guidance for this section
 - Suggested elements (include others as needed):
   - Element 1
   - Element 2
-#}
+    #}
 ```
 
 **Key principles:**
@@ -605,11 +664,20 @@ Generated at the start of the workflow if the track-progress argument is enabled
       "output_summary": "Created plan with 3 milestones"
     }
   ],
+  "pending_steps": [
+    {
+      "name": "review-approval",
+      "type": "wait-for-human",
+      "message": "Please review the implementation and provide approval or feedback",
+      "human_input": null
+    }
+  ],
   "parallel_branches": [
     {
       "branch_id": "analyse-bug",
       "status": "running",
-      "worktree_path": "/.worktrees/analyse-bug"
+      "worktree_path": "/.worktrees/analyse-bug",
+      "progress_file": "/.worktrees/analyse-bug/.agentic/progress.json"
     }
   ],
   "errors": [],
@@ -619,36 +687,74 @@ Generated at the start of the workflow if the track-progress argument is enabled
 
 Sessions note their progress in this document. The orchestrator selects which step to trigger next based on the workflow progress. This document is also how the orchestrator knows if an error must cause the workflow to stop (e.g., a session reached max retry) or if the workflow is completed.
 
+**Human Input Handling:**
+
+For `wait-for-human` steps, the orchestrator:
+
+1. Displays the `message` to the terminal
+2. Polls `progress.json` until `human_input` field is populated for that step
+3. User provides input via CLI command: `agentic-workflow input <workflow-id> "<response>"`
+4. Orchestrator continues with the provided input available to subsequent steps
+
 #### Checkpoint
 
 A single **markdown document** per workflow (checkpoint.md) used to store checkpoints on-demand. Contains information about current progress, issues discovered, and data that should be communicated to another Claude session. The checkpoint acts as a notebook for sessions and enables basic communication between them.
 
-Checkpoints are created on-demand via skill invocation or when explicitly specified in a prompt. Each checkpoint entry must clearly identify:
-- The step from which the checkpoint was created
-- The datetime of creation
-- Any context or data to pass to future sessions
+Checkpoints are created on-demand via skill invocation or when explicitly specified in a prompt. Each checkpoint entry has a **YAML frontmatter header** for machine-parseable metadata, followed by human-readable markdown content:
 
 ```markdown
-## Checkpoint: build @ 2024-01-15T14:30:00Z
+---
+checkpoint_id: chk-001
+step: build
+created: 2024-01-15T14:30:00Z
+workflow_id: abc-123
+status: in_progress
+---
 
-### Context
+## Context
+
 Completed Milestone 1 and 2 of the implementation plan.
 
-### Progress
+## Progress
+
 - [x] Task 1.1: Setup OAuth configuration
 - [x] Task 1.2: Add dependencies
 - [x] Task 2.1: Create auth middleware
 - [ ] Task 2.2: Add route protection (in progress)
 
-### Notes for Next Session
+## Notes for Next Session
+
 The auth middleware uses the existing ErrorBoundary pattern.
 See src/middleware/auth.ts for the implementation.
 
-### Issues Discovered
+## Issues Discovered
+
 Rate limiting may need to be added - not in original plan.
 
 ---
+
+---
+
+checkpoint_id: chk-002
+step: validate
+created: 2024-01-15T15:45:00Z
+workflow_id: abc-123
+status: completed
+
+---
+
+## Context
+
+Validation phase completed with 2 minor issues found.
+
+...
 ```
+
+The YAML frontmatter enables:
+
+- Machine-parseable metadata (checkpoint_id, step, timestamp)
+- Easy querying by step or time
+- Human-readable content in markdown body
 
 #### Plans
 
@@ -741,6 +847,7 @@ The document mentions "80% context limit" for build steps in Plan Build Validate
    - Pass last N messages plus summary to next session
 
 **Suggested approach**: Have the orchestrator command include a flag indicating if the session should prepare for handoff. The session then creates a checkpoint with:
+
 - Current progress summary
 - Remaining tasks
 - Important context to preserve
@@ -828,6 +935,7 @@ Python Orchestrator (outer loop)
 ```
 
 **Rationale:**
+
 1. Python handles deterministic workflow parsing, file I/O, parallelism, timeouts
 2. Claude makes intelligent decisions about workflow state, error recovery, next steps
 3. The JSON contract between Python and Claude is fixed and predictable
@@ -854,6 +962,7 @@ Python Orchestrator (outer loop)
 Each workflow step starts a **new Claude Code session**. No session resume functionality is implemented to keep the architecture simple.
 
 **Rationale:**
+
 - Simplifies implementation (no session ID tracking)
 - Avoids issues with session garbage collection
 - Forces explicit context passing via checkpoints and progress documents
