@@ -110,7 +110,6 @@
         "./plugins/interactive-sdlc/commands/git/git-branch.md",
         "./plugins/interactive-sdlc/commands/git/git-commit.md",
         "./plugins/interactive-sdlc/commands/git/git-pr.md",
-        "./plugins/interactive-sdlc/commands/git/git-worktree.md",
         "./plugins/interactive-sdlc/commands/github/create-gh-issue.md",
         "./plugins/interactive-sdlc/commands/github/read-gh-issue.md"
       ]

@@ -51,7 +51,6 @@ When working in a workflow context, always:
 - `/git-branch` - Manage git branches
 - `/git-commit` - Create commits
 - `/git-pr` - Create pull requests
-- `/git-worktree` - Manage worktrees for parallel work
 
 ### Memory & State
 - `/create-memory` - Store learnings for future reference
