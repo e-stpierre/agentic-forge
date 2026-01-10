@@ -4,6 +4,8 @@
 
 - Support Codex, Cursor and Copilot
 - Support better human interaction, notifications and feedback requests
+- Research command
+- Research agent that can use efficiently Context7
 
 ## Interactive SDLC
 
