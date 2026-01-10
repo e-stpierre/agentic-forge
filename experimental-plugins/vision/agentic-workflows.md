@@ -51,7 +51,7 @@ The agentic workflows goal is to enable Claude Code to execute any type of task 
   - **Root-level `worktree: true`**: Entire workflow runs in a dedicated worktree (create worktree first, then execute workflow inside it)
   - **Parallel steps**: Always use git worktrees for isolation (mandatory)
 - Worktree naming convention:
-  - Path: `.worktrees/{workflow_name}-{step_name}-{random_6_char}`
+  - Path: `.worktrees/agentic-{workflow_name}-{step_name}-{random_6_char}` (inside repo, add to `.gitignore`)
   - Branch: `agentic/{workflow_name}-{step_name}-{random_6_char}`
   - Names truncated to 30 chars each to avoid Windows path length issues
 - Worktree lifecycle:
@@ -116,7 +116,7 @@ The framework categorizes errors to enable appropriate handling:
 | Error Type      | Description                                       | Action                                |
 | --------------- | ------------------------------------------------- | ------------------------------------- |
 | **Transient**   | Network timeout, rate limit, temporary failures   | Retry with same prompt, new session   |
-| **Recoverable** | Test failure, validation error, fixable issues    | New session with error context to fix |
+| **Recoverable** | Test failure, validation error, fixable issues    | New session with: original prompt + error message + affected files + fix instruction |
 | **Fatal**       | Invalid workflow definition, missing dependencies | Abort workflow                        |
 | **Blocking**    | Human input required, ambiguous decision          | Pause workflow                        |
 
@@ -150,6 +150,17 @@ variables:                        # Input variables
     required: boolean
     default: any
     description: string
+
+# Variables example:
+# variables:
+#   - name: feature_name
+#     type: string
+#     required: true
+#     description: Name of the feature to implement
+#   - name: priority
+#     type: string
+#     default: medium
+#     description: Task priority level
 
 steps:
   - name: string                  # Step identifier (required)
@@ -189,7 +200,16 @@ steps:
     # The orchestrator polls progress.json until human_input field is populated
     # Human input is a multi-line string that acts as a prompt (like answering a Claude question)
 
+    # Wait-for-human example:
+    # - name: review-plan
+    #   type: wait-for-human
+    #   message: "Please review the generated plan and provide feedback."
+    #   polling-interval: 15
+    #   timeout-minutes: 30
+    #   on-timeout: abort
+
     # Common options (all step types)
+    model: string                 # Model to use: "sonnet" (default) | "haiku" | "opus"
     timeout-minutes: number       # Override workflow timeout
     max-retry: number             # Override workflow max-retry
     on-error: retry | skip | fail # Error handling strategy
@@ -240,7 +260,7 @@ template_context = {
 
 Steps are executed sequentially and each step can access outputs from all previous steps via the `{{ outputs.step_name }}` variable. The Python orchestrator stores step outputs and provides them to subsequent steps.
 
-For parallel blocks, all nested steps execute concurrently in separate git worktrees. The parallel block completes when all nested steps complete (or based on merge-strategy).
+For parallel blocks, all nested steps execute concurrently in separate git worktrees. The orchestrator polls each parallel worktree's `progress.json` file until all report `completed` or `failed` status (polling interval: `execution.pollingIntervalSeconds`, default 5 seconds). The parallel block completes when all nested steps complete (or based on merge-strategy).
 
 ### Conditional Execution
 
@@ -283,6 +303,8 @@ agentic/
 ```
 
 ## Python Package Structure
+
+**Dependencies:** `pyyaml`, `jinja2`, `filelock` (for cross-platform file locking)
 
 ```
 experimental-plugins/agentic-workflows/
@@ -364,7 +386,9 @@ agentic-workflows is **both**:
 
 ### CLI Entry Point
 
-Single CLI command installed via `uv tool install`:
+Single CLI command installed via `uv tool install`.
+
+The `run` command validates the workflow YAML against `schemas/workflow.schema.json` before execution. Invalid workflows fail immediately with descriptive errors.
 
 ```bash
 # Workflow execution
@@ -396,7 +420,9 @@ Note: Checkpoints are only used for agents to track their progress or share deta
 
 ## Configuration Schema
 
-Global configuration stored in `agentic/config.json`:
+Global configuration stored in `agentic/config.json`.
+
+**Note:** JSON config uses camelCase keys (e.g., `maxRetry`); YAML workflows use kebab-case (e.g., `max-retry`).
 
 ```json
 {
@@ -423,6 +449,10 @@ Global configuration stored in `agentic/config.json`:
     "maxRetry": 3,
     "timeoutMinutes": 60,
     "trackProgress": true
+  },
+  "execution": {
+    "maxWorkers": 4,
+    "pollingIntervalSeconds": 5
   }
 }
 ```
@@ -442,6 +472,8 @@ Global configuration stored in `agentic/config.json`:
 | `defaults.timeoutMinutes` | number  | `60`             | Default workflow timeout              |
 | `defaults.trackProgress`  | boolean | `true`           | Enable progress tracking by default   |
 | `defaults.terminalOutput` | enum    | `base`           | Terminal output granularity           |
+| `execution.maxWorkers`    | number  | `4`              | Max concurrent parallel Claude sessions |
+| `execution.pollingIntervalSeconds` | number | `5`     | Polling interval for parallel completion |
 
 ## Memory Document Format
 
@@ -628,9 +660,13 @@ The following python scripts are what I envision as the base scripts to build, t
 
 #### Runner
 
-Base scripts to run Claude Code in a programatic way
+Base scripts to run Claude Code in a programmatic way. The runner accepts a `model` parameter to specify which Claude model to use:
 
-Can be build similar to:
+- `sonnet` (default): Balanced performance and cost
+- `haiku`: Faster and cheaper for simpler tasks
+- `opus`: Most capable for complex reasoning
+
+Can be built similar to:
 experimental-plugins\agentic-core\src\agentic_core\runner.py
 experimental-plugins\core\src\claude_core\runner.py
 
@@ -674,6 +710,8 @@ The following commands can be explicitly called in workflows. Additional command
 
 **Note:** agentic-workflows creates its own commands that produce JSON output only. These are adapted from interactive-sdlc commands for agentic use. The agentic-workflows plugin is **standalone** and does not depend on interactive-sdlc.
 
+All commands output JSON conforming to `schemas/step-output.schema.json`. Commands must not produce non-JSON output.
+
 #### Plan
 
 Base on the type of task or requested template, create a plan that will be used to accomplished the requested task
@@ -705,6 +743,8 @@ Same commands and interactive sdlc github commands, oriented for agentic use cas
 plugins\interactive-sdlc\commands\github
 
 ### Skills
+
+Skills are automatically available to all Claude sessions invoked by the workflow. They can also be used independently outside of workflows.
 
 Skills are the same as commands in this framework, the skills offered in this plugin are a good basis, claude session invoked by the workflow should be able to use them, but they can be extended by any skill installed by the user.
 
@@ -1058,6 +1098,20 @@ Python Orchestrator (outer loop)
 └── Generate final output/report
 ```
 
+**Responsibility Split:**
+
+| Responsibility            | Owner  | Rationale          |
+| ------------------------- | ------ | ------------------ |
+| Parse YAML workflow       | Python | Deterministic      |
+| Read/write progress.json  | Python | File I/O           |
+| Decide next step          | Claude | Requires judgment  |
+| Evaluate conditions       | Claude | May need context   |
+| Spawn Claude sessions     | Python | Process management |
+| Retry logic               | Python | Deterministic      |
+| Timeout enforcement       | Python | Process management |
+| Git worktree operations   | Python | Shell commands     |
+| Merge conflict resolution | Claude | Requires judgment  |
+
 **Rationale:**
 
 1. Python handles deterministic workflow parsing, file I/O, parallelism, timeouts
@@ -1107,7 +1161,7 @@ def start_workflow():
     # Clean any orphaned worktrees from previous runs
     subprocess.run(["git", "worktree", "prune"])
     for wt in list_worktrees():
-        if wt.startswith(".agentic-wt-") and is_stale(wt):
+        if wt.startswith(".worktrees/agentic-") and is_stale(wt):
             subprocess.run(["git", "worktree", "remove", "--force", wt])
 
 def resume_workflow(progress_file):
@@ -1178,6 +1232,8 @@ The Python orchestrator handles SIGINT/SIGTERM (Ctrl+C) by:
 4. Updating progress.json with final state
 5. Running `git worktree prune` to clean orphaned worktrees
 
+**Note:** On Windows, the orchestrator handles CTRL_C_EVENT and CTRL_BREAK_EVENT equivalently.
+
 ### Configuration Inheritance
 
 Configuration follows a hierarchical override pattern:
@@ -1205,7 +1261,7 @@ All templates (YAML, outputs, prompts) use **Jinja2 syntax** for consistency.
 
 ### Step Output Format
 
-Step outputs use **structured JSON** (max 10 KB for metadata):
+Step outputs use **structured JSON** (max 10 KB for metadata). This is the **internal orchestrator format** for storing step results. Claude sessions may return free-form output that the orchestrator wraps in this structure:
 
 ```json
 {
@@ -1222,15 +1278,11 @@ This output is stored in the workflow progress document and passed as input to t
 
 ## Related Frameworks
 
-**Inspiration:**
-- [BMAD](https://github.com/bmad-code-org/BMAD-METHOD): Great planning, but too much project management overhead
-- [GetShitDone](https://github.com/glittercowboy/get-shit-done): Excellent simplicity, prompts-only approach
-- [Ralph-Wiggum](https://github.com/anthropics/claude-code/blob/main/plugins/ralph-wiggum/README.md): Loop-until-complete pattern (inspiration for recurring steps)
-
-**Comparison:**
-
 | Framework       | Similarity                           | Key Difference                         |
 | --------------- | ------------------------------------ | -------------------------------------- |
+| BMAD            | Structured planning methodology      | Too much project management overhead   |
+| GetShitDone     | Prompts-only simplicity              | No workflow orchestration              |
+| Ralph-Wiggum    | Loop-until-complete pattern          | Single-step focus (inspired recurring) |
 | Composio        | Workflow orchestration for AI agents | API-focused, external service          |
 | LangGraph       | Graph-based agent workflows          | Python library, not CLI-focused        |
 | AutoGen         | Multi-agent conversation             | More chat-oriented, less task-oriented |

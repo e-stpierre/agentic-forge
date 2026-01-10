@@ -1,298 +1,226 @@
 # Agentic Workflows Requirements - Final Feedback
 
-This document contains the final round of clarifying questions, identified issues, missing details, and improvement suggestions for the agentic-workflows requirements document.
+This document contains the final round of feedback for the agentic-workflows requirements document. The focus is on quality improvements while maintaining document conciseness.
 
 ---
 
 ## Clarifying Questions
 
-### 1. Orchestrator Agent vs Orchestrator Command
+### 1. Worktree Base Path Location
 
-The document defines both:
+The document specifies worktree path as `.worktrees/{workflow_name}-{step_name}-{random_6_char}`, but the referenced `worktree.py:289-304` creates worktrees in `repo_root.parent / ".worktrees"` (outside the repository).
 
-- `agents/orchestrator.md` - "The main entity that manages whole workflows"
-- `commands/orchestrate.md` - "Evaluate state, return next action"
+**Question**: Should worktrees be inside the repository (`.worktrees/`) or outside (`../.worktrees/`)? Inside is easier for cleanup but pollutes the repo; outside avoids `.gitignore` but may have permission issues.
 
-**Question**: Are these the same thing with different naming, or are they distinct? The Python orchestrator calls "Claude Orchestrator Command" but agents and commands have different structures in Claude Code plugins.
+**Recommendation**: Use `.worktrees/` inside the repository (add to `.gitignore`). This is simpler for cleanup and aligns with the document's current wording.
 
-**Recommendation**: Clarify that `orchestrate.md` is the command that invokes Claude to make orchestration decisions. The agent file (`orchestrator.md`) could be removed or renamed to avoid confusion, since the command already defines the behavior.
+### 2. Logs File Extension
 
-**answer**: Remove the orchestrator agent and only keep the command
+The document specifies `logs.ndjson` but the Output Directory Structure shows `logs.md`.
 
-### 2. Output Directory Path: Absolute vs Relative
+**Question**: Is the log format NDJSON (as specified in Create Log skill) or markdown?
 
-The document states:
+**Recommendation**: Use NDJSON (`logs.ndjson`) as specified - it's machine-parseable and consistent with structured logging best practices.
 
-- "Base output folder: `/agentic` in the current directory"
-- Design decisions say: "Always use relative paths from repo root (not absolute paths like `/agentic`)"
+### 3. Step Output vs Orchestrator Response
 
-**Question**: Is the path `/agentic` or `agentic/` (relative)?
+The Step Output Format section defines a JSON structure, but it's unclear if this is:
 
-**Recommendation**: Use `agentic/` consistently (no leading slash) to make it clear this is relative to the repository root.
+- What Claude returns from a step
+- What the orchestrator stores internally
+- What's passed to the next step
 
-### 3. Search Memory Skill
-
-The document mentions `/search-memory` skill in the CLAUDE.example.md section but this skill is not listed in the package structure under `skills/`.
-
-**Recommendation**: Add `search-memory.md` to the skills directory list, or clarify that memory search uses native glob/grep tools instead of a dedicated skill.
-
-### 4. Retry Behavior for Transient vs Recoverable Errors
-
-The document states:
-
-- Transient errors: "Retry with same prompt, new session"
-- Recoverable errors: "Fix and retry"
-
-**Question**: For recoverable errors (e.g., test failures), does "fix and retry" mean the same Claude session attempts to fix, or does the Python orchestrator spawn a new session with fix instructions?
-
-**Recommendation**: Clarify that for recoverable errors, the Python orchestrator spawns a new session with context about what failed and instructions to fix before retrying the original task.
+**Recommendation**: Clarify that this is the **internal orchestrator format** for storing step results. Claude sessions may return free-form output that the orchestrator wraps in this structure.
 
 ---
 
 ## Inconsistencies
 
-### 1. Step State: "Aborted" Missing from State Diagram
+### 1. Default Terminal Output Setting
 
-The step states diagram shows:
+The settings table shows:
 
 ```
-failed --retry--> running (if retries left)
-       --abort--> aborted (if max retries reached)
+defaults.terminalOutput: enum, default: base
 ```
 
-But the `StepStatus` enum in the workflow schema section only lists: `pending | running | completed | failed | skipped`
-
-**Recommendation**: Add `aborted` to the step status enum, or clarify that steps reaching max-retry stay in `failed` state.
-
-### 2. Terminal Output Granularity Naming
-
-In settings:
+But the workflow YAML schema shows:
 
 ```yaml
 terminal-output: string # "base" | "all"
 ```
 
-But the referenced runner.py code uses `print_output: bool` (true/false).
+**Issue**: The config uses camelCase (`terminalOutput`) while YAML uses kebab-case (`terminal-output`). This is intentional per previous feedback, but it should be explicitly noted.
 
-**Recommendation**: This is fine since the requirements document defines the new interface. Just ensure the implementation maps `base` to limited output and `all` to full streaming.
+**Recommendation**: Add a note in the Configuration Schema section: "JSON config uses camelCase keys; YAML workflows use kebab-case."
 
-### 3. Worktree Naming Convention Incomplete
+### 2. Worktree Cleanup Location
 
-The document states: "Use workflow name, step name (in the parallel) and random 6 char identifier"
+The Worktree Lifecycle section says:
 
-But the worktree naming convention section says: `{workflow_name}-{step_name}-{random_6_char}`
+> "Worktrees are immediately cleaned up after workflow completes"
 
-**Recommendation**: Ensure branch names follow the same convention, documented as:
+But the Crash Recovery section references `.agentic-wt-` prefix:
 
-- Worktree path: `.worktrees/{workflow_name}-{step_name}-{random_6_char}`
-- Branch name: `agentic/{workflow_name}-{step_name}-{random_6_char}`
+```python
+if wt.startswith(".agentic-wt-") and is_stale(wt):
+```
+
+**Issue**: The naming convention uses `{workflow_name}-{step_name}-{random_6_char}` but crash recovery checks for `.agentic-wt-` prefix.
+
+**Recommendation**: Standardize to `.worktrees/agentic-{workflow_name}-{step_name}-{random_6_char}` and update the crash recovery code to match.
+
+### 3. Explorer Agent File Location
+
+The Package Structure shows `agents/explorer.md` but describes `orchestrator.md` which was removed per previous feedback.
+
+**Recommendation**: Update the agents/ directory listing to only show:
+
+- `explorer.md`
+- `reviewer.md`
 
 ---
 
 ## Missing Details
 
-### 1. JSON Schema for Orchestrator Response
+### 1. Recoverable Error New Session Context
 
-The Orchestrator JSON Response Schema shows the structure, but doesn't specify:
+The document states recoverable errors spawn "a new session with error context to fix" but doesn't specify the exact context format.
 
-- What values are valid for `next_action.type` (the document mentions `execute_step | retry_step | wait_for_human | complete | abort` but this should be in the schema)
-- Required vs optional fields
+**Recommendation**: Add to the Error Types table Action column for Recoverable:
 
-**Recommendation**: Add a formal JSON Schema file reference (`schemas/orchestrator-response.schema.json`) to the package structure, or include the complete schema inline.
-
-### 2. Progress.json Schema Details
-
-The progress.json example is helpful but lacks:
-
-- Schema version (addressed in feedback but should be in the example)
-- `running_steps` array for tracking currently executing parallel steps
-- Step retry count tracking
-
-**Recommendation**: Add to the progress.json example:
-
-```json
-{
-  "schema_version": "1.0",
-  "current_step": {
-    "name": "build",
-    "retry_count": 0,
-    "started_at": "..."
-  },
-  "running_steps": []
-}
+```
+New session with: original prompt + error message + affected files + fix instruction
 ```
 
-### 3. Logging File Format
+### 2. Parallel Block Completion Signal
 
-The Create Log skill mentions log levels but doesn't specify:
+For parallel steps, there's no specification of how the orchestrator knows when all parallel steps are complete.
 
-- Log file location per workflow (`agentic/workflows/{workflow-id}/logs.md` is shown in structure)
-- Log entry format (timestamp, level, message, step context?)
+**Recommendation**: Add to the parallel step section:
 
-**Recommendation**: Specify that logs use NDJSON format (one JSON object per line) matching the existing `claude_core/logging.py` pattern, with fields: `timestamp`, `level`, `step`, `message`, `context`.
+> "The orchestrator polls each parallel worktree's `progress.json` file until all report `completed` or `failed` status. Polling interval: 5 seconds."
 
-### 4. Memory Index File Structure
+### 3. Command JSON Output Schema Reference
 
-The document mentions `index.md` in the memory directory but doesn't specify its format.
+Commands are described as having "JSON-only output structure" but the exact schema isn't referenced.
 
-**Recommendation**: Add example structure:
+**Recommendation**: Add to the Commands section:
 
-```markdown
-# Memory Index
+> "All commands output JSON conforming to `schemas/step-output.schema.json`. Commands must not produce non-JSON output."
 
-Last updated: 2024-01-15T10:30:00Z
+### 4. Memory Skill Installation
 
-## Decisions
+The document mentions `/create-memory` and `/search-memory` skills but doesn't clarify that these are installed as part of the plugin.
 
-- [2024-01-09-auth-approach.md](decisions/2024-01-09-auth-approach.md) - OAuth vs JWT decision
+**Recommendation**: Add to the Skills section header:
 
-## Patterns
-
-- [error-handling-convention.md](patterns/error-handling-convention.md) - Error handling patterns
-```
-
-### 5. Wait-for-Human Step Processing
-
-The document explains that the human input is "a multi-line string that acts as a prompt" but doesn't specify what happens with this input.
-
-**Recommendation**: Add: "After receiving human input, the orchestrator spawns a Claude session with the step's original context plus the human input, allowing Claude to validate and act on the feedback before marking the step complete."
+> "Skills are automatically available to all Claude sessions invoked by the workflow. They can also be used independently outside of workflows."
 
 ---
 
 ## Design Suggestions
 
-### 1. Add Step ID to Distinguish Retries
+### 1. Clearer Separation of Orchestrator Responsibilities
 
-Currently, if a step is retried, it's unclear how to distinguish between attempts in logs/progress.
+The document could benefit from a clear table showing what Python does vs what Claude (Orchestrator Command) does:
 
-**Recommendation**: Add `attempt_id` or `execution_id` to step tracking:
+| Responsibility            | Owner  | Rationale          |
+| ------------------------- | ------ | ------------------ |
+| Parse YAML workflow       | Python | Deterministic      |
+| Read/write progress.json  | Python | File I/O           |
+| Decide next step          | Claude | Requires judgment  |
+| Evaluate conditions       | Claude | May need context   |
+| Spawn Claude sessions     | Python | Process management |
+| Retry logic               | Python | Deterministic      |
+| Timeout enforcement       | Python | Process management |
+| Git worktree operations   | Python | Shell commands     |
+| Merge conflict resolution | Claude | Requires judgment  |
 
-```json
-{
-  "name": "build",
-  "attempt": 2,
-  "execution_id": "exec-abc123"
-}
+### 2. Simplify Variables Section Syntax
+
+The variables section in the YAML schema could include a concrete example:
+
+```yaml
+variables:
+  - name: feature_name
+    type: string
+    required: true
+    description: Name of the feature to implement
+  - name: priority
+    type: string
+    default: medium
+    description: Task priority level
 ```
 
-### 2. Standardize Output JSON Structure
+### 3. Add Wait-for-Human Example
 
-The document mentions "structured JSON (max 10 KB for metadata)" but doesn't define a standard structure.
+The wait-for-human step type could benefit from a complete example:
 
-**Recommendation**: Define a standard step output schema:
-
-```json
-{
-  "success": true,
-  "output_type": "document",
-  "document_path": "agentic/plans/feature.md",
-  "summary": "Created feature plan with 3 milestones",
-  "metrics": {
-    "files_changed": 0,
-    "lines_added": 0
-  },
-  "next_step_context": "..."
-}
+```yaml
+- name: review-plan
+  type: wait-for-human
+  message: "Please review the generated plan in agentic/workflows/{workflow-id}/plan.md and provide feedback."
+  polling-interval: 15
+  timeout-minutes: 30
+  on-timeout: abort
 ```
-
-### 3. Explicit Merge Conflict Resolution Strategy
-
-The document mentions "spawn an agent to resolve conflicts" for the `merge` mode but doesn't specify:
-
-- Which agent handles conflict resolution
-- What happens if conflict resolution fails
-
-**Recommendation**: Add: "Conflict resolution uses a dedicated prompt instructing Claude to resolve git merge conflicts. If resolution fails after max-retry attempts, the parallel block fails and the workflow pauses for human intervention."
 
 ---
 
 ## Technical Concerns
 
-### 1. File Locking Implementation
+### 1. File Lock Library Specification
 
-The document mentions "file locking mechanism" for progress.json but doesn't specify the approach.
+The document mentions using `filelock` library for cross-platform file locking but this should be added to the Python package dependencies.
 
-**Recommendation**: Specify: "Use `fcntl.flock()` on Unix or `msvcrt.locking()` on Windows. Acquire exclusive lock before writing, release immediately after. For cross-platform support, use the `filelock` library."
+**Recommendation**: Add to the package structure section:
 
-### 2. Worktree Path Length on Windows
+> "Dependencies: `pyyaml`, `jinja2`, `filelock` (for cross-platform file locking)"
 
-Windows has a 260-character path limit by default. With naming like `.worktrees/{workflow_name}-{step_name}-{random_6_char}`, long workflow/step names could cause issues.
+### 2. YAML Workflow Validation
 
-**Recommendation**: Add: "Workflow and step names are truncated to 30 characters each when generating worktree paths. Use short, descriptive names to avoid path length issues on Windows."
+There's no mention of workflow YAML validation before execution.
 
-### 3. Parallel Step Count Limit
+**Recommendation**: Add a note in the CLI Entry Point section:
 
-The document doesn't specify a maximum number of parallel steps.
+> "The `run` command validates the workflow YAML against `schemas/workflow.schema.json` before execution. Invalid workflows fail immediately with descriptive errors."
 
-**Recommendation**: Add: "The orchestrator limits concurrent Claude sessions to `max_workers` (default: 4) to prevent resource exhaustion. Additional parallel steps queue until a slot is available."
+### 3. Concurrent Session Limit Not in Config
 
-### 4. Signal Handling for Graceful Shutdown
+The document mentions `max_workers` (default: 4) for parallel execution but this isn't in the config.json schema.
 
-The document doesn't address what happens if the user presses Ctrl+C during workflow execution.
+**Recommendation**: Add to Configuration Schema:
 
-**Recommendation**: Add: "The Python orchestrator handles SIGINT/SIGTERM by:
+```json
+"execution": {
+  "maxWorkers": 4,
+  "pollingIntervalSeconds": 5
+}
+```
 
-1. Setting workflow status to 'cancelled'
-2. Sending SIGTERM to running Claude processes
-3. Waiting up to 30 seconds for graceful cleanup
-4. Updating progress.json with final state
-5. Running `git worktree prune` to clean orphaned worktrees"
+### 4. Windows Signal Handling
+
+The Graceful Shutdown section mentions SIGINT/SIGTERM, but Windows doesn't support SIGTERM.
+
+**Recommendation**: Add: "On Windows, the orchestrator handles CTRL_C_EVENT and CTRL_BREAK_EVENT equivalently."
 
 ---
 
 ## Minor Corrections
 
-### 1. Duplicate "Existing Framework" Sections
+### 1. Duplicate Content in Related Frameworks
 
-The document has both "Existing Framework" and "Related Frameworks" sections near the end. The "Existing Framework" section lists BMAD, GetShitDone, and Ralph-Wiggum, while "Related Frameworks" has the comparison table.
+The "Inspiration" subsection lists BMAD, GetShitDone, and Ralph-Wiggum, and these are described again in the Comparison table.
 
-**Recommendation**: Merge these into a single "Related Frameworks and Inspiration" section.
+**Recommendation**: Remove the "Inspiration" bullet list and keep only the Comparison table, which is more informative.
 
-### 2. Config.json Logging Level Values
+### 2. Inconsistent Timestamp Format
 
-The config schema shows:
+Progress.json example uses `2024-01-15T10:30:00Z` but Checkpoint example uses `2024-01-15T14:30:00Z` without timezone.
 
-```json
-"level": "Error"
-```
+**Recommendation**: Standardize all timestamps to ISO 8601 with Z suffix: `2024-01-15T14:30:00Z`
 
-But the error types table uses "Critical, Error, Warning, Information" while the referenced logging.py uses "DEBUG, INFO, WARN, ERROR".
+### 3. Trailing Whitespace in Code Blocks
 
-**Recommendation**: Standardize on: `Critical | Error | Warning | Information` for config, mapping internally to standard Python logging levels.
-
-### 3. Memory Directory Path Inconsistency
-
-The document uses both:
-
-- `/agentic/memory/` (Output Directory Structure section)
-- `.agentic/memory/` (Self-Learning Process section)
-
-**Recommendation**: Use `agentic/memory/` consistently (no leading dot or slash).
-
----
-
-## Schema Completeness Checklist
-
-The following schemas are referenced but should be fully defined:
-
-| Schema File                         | Status                    | Recommendation                |
-| ----------------------------------- | ------------------------- | ----------------------------- |
-| `workflow.schema.json`              | Partially defined in YAML | Create complete JSON Schema   |
-| `config.schema.json`                | Example provided          | Create complete JSON Schema   |
-| `progress.schema.json`              | Example provided          | Create complete JSON Schema   |
-| `orchestrator-response.schema.json` | Not listed                | Add to package structure      |
-| `step-output.schema.json`           | Not defined               | Add standard output structure |
-
----
-
-## Summary
-
-The requirements document is comprehensive and well-structured. The main areas for improvement are:
-
-1. **Clarify orchestrator naming** - command vs agent distinction
-2. **Standardize paths** - use `agentic/` consistently without leading slash/dot
-3. **Complete schema definitions** - especially orchestrator response and step output
-4. **Add implementation details** - file locking, signal handling, parallel limits
-5. **Resolve minor inconsistencies** - log levels, memory paths, step states
-
-These are refinements rather than fundamental issues. The document provides a solid foundation for implementation.
+Several code blocks have inconsistent indentation. Not critical but affects readability.
