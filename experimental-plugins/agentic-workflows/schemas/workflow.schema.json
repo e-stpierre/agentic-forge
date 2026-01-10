@@ -74,6 +74,14 @@
           "type": "boolean",
           "default": false
         },
+        "required-tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Tools Claude is allowed to use without prompting"
+        },
         "git": {
           "type": "object",
           "properties": {

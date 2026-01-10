@@ -46,6 +46,7 @@ def run_claude(
     timeout: int | None = 300,
     print_output: bool = False,
     skip_permissions: bool = False,
+    allowed_tools: list[str] | None = None,
 ) -> ClaudeResult:
     """Run claude with the given prompt.
 
@@ -56,6 +57,7 @@ def run_claude(
         timeout: Timeout in seconds (default 5 minutes)
         print_output: Whether to stream output in real-time
         skip_permissions: Whether to skip permission prompts
+        allowed_tools: List of tools Claude is allowed to use without prompting
 
     Returns:
         ClaudeResult with captured output
@@ -67,6 +69,10 @@ def run_claude(
 
     if skip_permissions:
         cmd.append("--dangerously-skip-permissions")
+
+    if allowed_tools:
+        for tool in allowed_tools:
+            cmd.extend(["--allowedTools", tool])
 
     cwd_str = str(cwd) if cwd else None
 

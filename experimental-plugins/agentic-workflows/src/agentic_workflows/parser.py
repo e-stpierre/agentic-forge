@@ -53,6 +53,7 @@ class WorkflowSettings:
     autofix: str = "none"
     terminal_output: str = "base"
     bypass_permissions: bool = False
+    required_tools: list[str] = field(default_factory=list)
     git: GitSettings = field(default_factory=GitSettings)
 
 
@@ -189,6 +190,7 @@ class WorkflowParser:
             autofix=data.get("autofix", "none"),
             terminal_output=data.get("terminal-output", "base"),
             bypass_permissions=data.get("bypass-permissions", False),
+            required_tools=data.get("required-tools", []),
             git=git,
         )
 

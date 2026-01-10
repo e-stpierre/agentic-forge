@@ -229,6 +229,7 @@ class WorkflowExecutor:
         timeout = (step.step_timeout_minutes or 60) * 60
         max_retry = step.step_max_retry or self.config["defaults"]["maxRetry"]
         bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
+        allowed_tools = self.workflow_settings.required_tools if self.workflow_settings else None
 
         for attempt in range(max_retry + 1):
             result = run_claude(
@@ -238,6 +239,7 @@ class WorkflowExecutor:
                 timeout=timeout,
                 print_output=print_output,
                 skip_permissions=bypass_permissions,
+                allowed_tools=allowed_tools,
             )
 
             if result.success:
@@ -279,6 +281,7 @@ class WorkflowExecutor:
         timeout = (step.step_timeout_minutes or 60) * 60
         max_retry = step.step_max_retry or self.config["defaults"]["maxRetry"]
         bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
+        allowed_tools = self.workflow_settings.required_tools if self.workflow_settings else None
 
         for attempt in range(max_retry + 1):
             result = run_claude_with_command(
@@ -289,6 +292,7 @@ class WorkflowExecutor:
                 timeout=timeout,
                 print_output=print_output,
                 skip_permissions=bypass_permissions,
+                allowed_tools=allowed_tools,
             )
 
             if result.success:
@@ -343,6 +347,7 @@ class WorkflowExecutor:
 
         timeout = (step.step_timeout_minutes or 30) * 60
         bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
+        allowed_tools = self.workflow_settings.required_tools if self.workflow_settings else None
 
         _ralph_state = create_ralph_state(
             workflow_id=progress.workflow_id,
@@ -370,6 +375,7 @@ class WorkflowExecutor:
                 timeout=timeout,
                 print_output=print_output,
                 skip_permissions=bypass_permissions,
+                allowed_tools=allowed_tools,
             )
 
             if not result.success:
