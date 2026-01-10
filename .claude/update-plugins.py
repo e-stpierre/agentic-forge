@@ -314,7 +314,7 @@ def main():
         # Note: agentic-sdlc depends on core, so we need to:
         # 1. Build core first so it's available as a local package
         # 2. Install agentic-sdlc with --find-links pointing to core's dist directory
-        core_path = repo_root / "plugins" / "core"
+        core_path = repo_root / "experimental-plugins" / "core"
         agentic_sdlc_path = repo_root / "experimental-plugins" / "agentic-sdlc"
         agentic_core_path = repo_root / "experimental-plugins" / "agentic-core"
 
@@ -340,12 +340,12 @@ def main():
         if "core" in requested_python_tools:
             if core_path.exists():
                 run_command(
-                    ["uv", "tool", "uninstall", "claude-core"],
-                    "Uninstall claude-core CLI tools",
+                    ["uv", "tool", "uninstall", "agentic-forge-core"],
+                    "Uninstall agentic-forge-core CLI tools",
                 )
                 if run_command(
                     ["uv", "tool", "install", "--force", str(core_path)],
-                    "Install claude-core CLI tools",
+                    "Install agentic-forge-core CLI tools",
                 ):
                     success_count += 1
                 else:
@@ -360,8 +360,8 @@ def main():
                 print(f"\n  {color('Installing agentic-sdlc package...', Colors.CYAN)}")
 
                 run_command(
-                    ["uv", "tool", "uninstall", "agentic-sdlc"],
-                    "Uninstall agentic-sdlc CLI tools",
+                    ["uv", "tool", "uninstall", "agentic-forge-agentic-sdlc"],
+                    "Uninstall agentic-forge-agentic-sdlc CLI tools",
                 )
 
                 core_dist = core_path / "dist"

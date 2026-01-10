@@ -20,8 +20,7 @@ Create a well-structured commit with a concise title and optional bullet-point d
 
 - Title must be short (50 chars ideal, 72 max) and focus on the main task completed
 - Description is optional for small commits
-- Description uses 1-3 bullet points for larger commits highlighting important aspects
-- Never include AI attribution in commit messages
+- Description uses 1-5 bullet points for larger commits highlighting important aspects
 - Push immediately after commit unless on a protected branch
 
 ## Instructions
