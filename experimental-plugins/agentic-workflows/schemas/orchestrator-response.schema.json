@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrchestratorResponse",
+  "description": "Response from Claude orchestrator command",
+  "type": "object",
+  "required": ["workflow_status", "next_action", "reasoning"],
+  "properties": {
+    "workflow_status": {
+      "type": "string",
+      "enum": ["in_progress", "completed", "failed", "blocked"],
+      "description": "Current status of the workflow"
+    },
+    "next_action": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "execute_step",
+            "retry_step",
+            "wait_for_human",
+            "complete",
+            "abort"
+          ],
+          "description": "Type of action to take"
+        },
+        "step_name": {
+          "type": "string",
+          "description": "Name of step to execute (if applicable)"
+        },
+        "context_to_pass": {
+          "type": "string",
+          "description": "Context string to pass to the step"
+        },
+        "error_context": {
+          "type": "string",
+          "description": "Error details for retry (if retrying)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "Brief explanation of why this decision was made"
+    },
+    "progress_update": {
+      "type": "string",
+      "description": "What to record in progress document"
+    }
+  },
+  "additionalProperties": false
+}
