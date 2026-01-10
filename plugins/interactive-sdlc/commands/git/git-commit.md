@@ -1,12 +1,12 @@
 ---
 name: git-commit
-description: Commit and push changes with a structured message
+description: Commit changes with a structured message
 argument-hint: [message]
 ---
 
 # Git Commit Command
 
-Commits staged changes with a structured message and pushes to the remote repository.
+Commits staged changes with a structured message.
 
 ## Arguments
 
@@ -14,7 +14,7 @@ Commits staged changes with a structured message and pushes to the remote reposi
 
 ## Objective
 
-Create a well-structured commit with a concise title and optional bullet-point description, then push to remote.
+Create a well-structured commit with a concise title and optional bullet-point description.
 
 ## Core Principles
 
@@ -47,12 +47,10 @@ Create a well-structured commit with a concise title and optional bullet-point d
    )"
    ```
 
-6. Push to remote: `git push` (use `git push -u origin HEAD` if no upstream)
-7. Report success with commit hash
+6. Report success with commit hash
 
 ## Output Guidance
 
 - Show the commit title used
 - Show bullet points if description was included
-- Confirm push success
 - On error, report the specific failure
