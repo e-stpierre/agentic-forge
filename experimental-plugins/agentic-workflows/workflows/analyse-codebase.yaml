@@ -1,0 +1,80 @@
+name: analyse-codebase
+version: "1.0"
+description: Run comprehensive codebase analysis with optional autofix
+
+settings:
+  max-retry: 2
+  timeout-minutes: 120
+  track-progress: true
+  terminal-output: base
+
+variables:
+  - name: autofix
+    type: string
+    required: false
+    default: "none"
+    description: Severity level for automatic fixes (none, minor, major, critical)
+
+steps:
+  - name: analyse-all
+    type: parallel
+    merge-strategy: wait-all
+    merge-mode: independent
+    steps:
+      - name: analyse-bug
+        type: command
+        command: analyse
+        args:
+          type: bug
+
+      - name: analyse-debt
+        type: command
+        command: analyse
+        args:
+          type: debt
+
+      - name: analyse-doc
+        type: command
+        command: analyse
+        args:
+          type: doc
+
+      - name: analyse-security
+        type: command
+        command: analyse
+        args:
+          type: security
+
+      - name: analyse-style
+        type: command
+        command: analyse
+        args:
+          type: style
+
+  - name: check-autofix
+    type: conditional
+    condition: "variables.autofix != 'none'"
+    then:
+      - name: fix-issues
+        type: parallel
+        merge-mode: independent
+        steps:
+          - name: fix-bug
+            type: prompt
+            prompt: |
+              Review the bug analysis in agentic/analysis/bug.md.
+              Fix all issues with severity {{ variables.autofix }} or higher.
+              Commit fixes with clear messages.
+
+          - name: fix-security
+            type: prompt
+            prompt: |
+              Review the security analysis in agentic/analysis/security.md.
+              Fix all issues with severity {{ variables.autofix }} or higher.
+              Commit fixes with clear messages.
+
+outputs:
+  - name: analysis-summary
+    template: analysis-summary.md.j2
+    path: agentic/analysis/summary.md
+    when: completed

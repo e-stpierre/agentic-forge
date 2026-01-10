@@ -1,0 +1,92 @@
+name: plan-build-validate
+version: "1.0"
+description: Full SDLC workflow with planning, implementation, and validation
+
+settings:
+  max-retry: 3
+  timeout-minutes: 180
+  track-progress: true
+  git:
+    enabled: true
+    worktree: true
+    auto-commit: true
+    auto-pr: true
+    branch-prefix: "feature"
+
+variables:
+  - name: task
+    type: string
+    required: true
+    description: Feature/task description
+  - name: type
+    type: string
+    required: false
+    default: "auto"
+    description: Task type (feature, bug, chore, auto)
+  - name: fix_severity
+    type: string
+    required: false
+    default: "major"
+    description: Minimum severity for auto-fix
+
+steps:
+  - name: plan
+    type: command
+    command: plan
+    args:
+      type: "{{ variables.type }}"
+      context: "{{ variables.task }}"
+    checkpoint: true
+
+  - name: implement
+    type: recurring
+    max-iterations: 5
+    until: "outputs.implement_milestone.milestone_completed == outputs.plan.milestones | length"
+    steps:
+      - name: implement-milestone
+        type: command
+        command: build
+        args:
+          plan: "agentic/workflows/{{ workflow_id }}/plan.md"
+        checkpoint: true
+
+  - name: validate
+    type: command
+    command: validate
+    args:
+      plan: "agentic/workflows/{{ workflow_id }}/plan.md"
+      severity: minor
+
+  - name: fix-issues
+    type: conditional
+    condition: "outputs.validate.issues | selectattr('severity', 'ge', variables.fix_severity) | list | length > 0"
+    then:
+      - name: apply-fixes
+        type: prompt
+        prompt: |
+          Review the validation results and fix all issues with severity {{ variables.fix_severity }} or higher.
+
+          Validation output:
+          {{ outputs.validate | tojson }}
+
+          Make the necessary fixes and commit them.
+        agent: agents/reviewer.md
+
+      - name: revalidate
+        type: command
+        command: validate
+        args:
+          severity: "{{ variables.fix_severity }}"
+
+  - name: create-pr
+    type: command
+    command: git-pr
+    args:
+      title: "{{ outputs.plan.summary }}"
+      draft: false
+
+outputs:
+  - name: implementation-report
+    template: implementation-report.md.j2
+    path: agentic/workflows/{{ workflow_id }}/report.md
+    when: completed

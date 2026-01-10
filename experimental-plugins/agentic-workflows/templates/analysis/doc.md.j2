@@ -1,0 +1,45 @@
+# Documentation Analysis Report
+
+Generated: {{ generated }}
+Scope: {{ scope }}
+
+## Summary
+
+Found {{ summary.total }} documentation issues.
+
+| Priority | Count |
+|----------|-------|
+| High | {{ summary.high }} |
+| Medium | {{ summary.medium }} |
+| Low | {{ summary.low }} |
+
+## Findings
+
+{% for finding in findings %}
+### {{ finding.id }}: {{ finding.title }}
+
+**Priority**: {{ finding.priority }}
+**Category**: {{ finding.category }}
+**File**: {{ finding.file }}{% if finding.line %}:{{ finding.line }}{% endif %}
+
+{{ finding.description }}
+
+**Recommendation**: {{ finding.recommendation }}
+
+---
+
+{% endfor %}
+
+{% if not findings %}
+No documentation issues found.
+{% endif %}
+
+## Coverage Overview
+
+{% if coverage %}
+| Metric | Value |
+|--------|-------|
+| Files with docs | {{ coverage.files_documented }} / {{ coverage.files_total }} |
+| Functions documented | {{ coverage.functions_documented }} / {{ coverage.functions_total }} |
+| Classes documented | {{ coverage.classes_documented }} / {{ coverage.classes_total }} |
+{% endif %}
