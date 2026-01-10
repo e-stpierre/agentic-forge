@@ -336,8 +336,7 @@ experimental-plugins/agentic-workflows/
 │   └── git/
 │       ├── branch.md
 │       ├── commit.md
-│       ├── pr.md
-│       └── worktree.md
+│       └── pr.md
 ├── agents/                       # Agent definitions (markdown with frontmatter)
 │   ├── explorer.md               # Explores codebase efficiently, returns files/line numbers of interest
 │   └── reviewer.md               # Validates tests, reviews code quality, ensures correctness
@@ -986,7 +985,7 @@ Multiple steps, one Claude session per step:
 
 - The python orchestrator uses the Claude orchestrator command to create the progress document initially. Then, the python orchestrator loops, using the Claude orchestrator command to know which step to execute next.
 - Plan using the plan command and appropriate plan type.
-- Build: create a branch, implement the changes following the plan, commit the changes after every milestones. If the session implementing the changes reaches 80% of it's context limit, it updates the workflow progress document, optionaly create a checkpoint for anything additional that must be saved, and end.
+- Build: create a branch, implement the changes following the plan, commit the changes after every milestone. Each milestone starts a new Claude session to ensure fresh context. Sessions update the workflow progress document upon completion and optionally create checkpoints for additional context that must be preserved.
 - Validate the changes based on the plan and diff in the current branch
 - Fix issues identified by the validation (default major+, configurable with argument)
 - Create a PR
@@ -994,34 +993,6 @@ Multiple steps, one Claude session per step:
 ## Open Questions
 
 The following questions need to be validated or clarified during implementation:
-
-### Context Window Management
-
-The document mentions "80% context limit" for build steps in Plan Build Validate workflow. This requires clarification:
-
-1. **How does a session know its context usage?**
-   - Possible approaches:
-     - Claude Code may provide token count in output
-     - Estimate based on conversation length
-     - Use a fixed turn limit as proxy
-     - Rely on Claude to self-report when approaching limits
-
-2. **What triggers the handoff?**
-   - Session self-reports "approaching context limit"
-   - Python orchestrator tracks approximate tokens
-   - Fixed number of operations before forced handoff
-
-3. **How is context summarized for the next session?**
-   - Create a checkpoint with summary
-   - Use `/summarize-session` command before ending
-   - Pass last N messages plus summary to next session
-
-**Suggested approach**: Have the orchestrator command include a flag indicating if the session should prepare for handoff. The session then creates a checkpoint with:
-
-- Current progress summary
-- Remaining tasks
-- Important context to preserve
-- Any issues or blockers discovered
 
 ### Parallel Progress Document Sharing
 

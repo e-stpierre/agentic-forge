@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -159,6 +159,41 @@ class MemoryManager:
                 self._update_index()
                 return True
         return False
+
+    def prune(self, older_than_days: int = 30) -> list[str]:
+        """Prune memories older than a specified number of days.
+
+        Args:
+            older_than_days: Delete memories created more than this many days ago
+
+        Returns:
+            List of deleted memory IDs
+        """
+        if not self.memory_dir.exists():
+            return []
+
+        deleted_ids: list[str] = []
+        cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
+
+        for md_file in self.memory_dir.rglob("*.md"):
+            if md_file.name == "index.md":
+                continue
+            entry = self._parse_memory_file(md_file)
+            if not entry or not entry.created:
+                continue
+
+            try:
+                created_dt = datetime.fromisoformat(entry.created.replace("Z", "+00:00"))
+                if created_dt < cutoff:
+                    md_file.unlink()
+                    deleted_ids.append(entry.id)
+            except (ValueError, TypeError):
+                continue
+
+        if deleted_ids:
+            self._update_index()
+
+        return deleted_ids
 
     def _parse_memory_file(self, path: Path) -> MemoryEntry | None:
         """Parse a memory markdown file."""

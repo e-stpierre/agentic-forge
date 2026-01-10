@@ -73,6 +73,27 @@ steps:
               Fix all issues with severity {{ variables.autofix }} or higher.
               Commit fixes with clear messages.
 
+          - name: fix-debt
+            type: prompt
+            prompt: |
+              Review the technical debt analysis in agentic/analysis/debt.md.
+              Fix all issues with severity {{ variables.autofix }} or higher.
+              Commit fixes with clear messages.
+
+          - name: fix-doc
+            type: prompt
+            prompt: |
+              Review the documentation analysis in agentic/analysis/doc.md.
+              Fix all issues with severity {{ variables.autofix }} or higher.
+              Commit fixes with clear messages.
+
+          - name: fix-style
+            type: prompt
+            prompt: |
+              Review the style analysis in agentic/analysis/style.md.
+              Fix all issues with severity {{ variables.autofix }} or higher.
+              Commit fixes with clear messages.
+
 outputs:
   - name: analysis-summary
     template: analysis-summary.md.j2

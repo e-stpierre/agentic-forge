@@ -400,8 +400,29 @@ def cmd_memory(args: Namespace) -> None:
             print()
 
     elif args.memory_command == "prune":
-        print(f"Pruning memories older than {args.older_than}")
-        print("Note: Memory pruning not yet implemented")
+        manager = MemoryManager()
+        older_than_str = args.older_than
+        days = 30
+        if older_than_str.endswith("d"):
+            days = int(older_than_str[:-1])
+        elif older_than_str.endswith("w"):
+            days = int(older_than_str[:-1]) * 7
+        elif older_than_str.endswith("m"):
+            days = int(older_than_str[:-1]) * 30
+        else:
+            try:
+                days = int(older_than_str)
+            except ValueError:
+                print(f"Invalid format: {older_than_str}. Use format like 30d, 4w, or 2m.", file=sys.stderr)
+                sys.exit(1)
+
+        deleted = manager.prune(older_than_days=days)
+        if deleted:
+            print(f"Pruned {len(deleted)} memories older than {days} days:")
+            for mem_id in deleted:
+                print(f"  - {mem_id}")
+        else:
+            print(f"No memories older than {days} days found.")
 
     else:
         print("Usage: agentic-workflow memory list|search|prune", file=sys.stderr)
@@ -456,25 +477,25 @@ def cmd_analyse(args: Namespace) -> None:
     from agentic_workflows.executor import WorkflowExecutor
     from agentic_workflows.parser import WorkflowParser, WorkflowParseError
 
-    # Find the analyse-codebase workflow
     plugin_dir = Path(__file__).parent.parent
-    workflow_path = plugin_dir / "workflows" / "analyse-codebase.yaml"
+
+    if args.type != "all":
+        workflow_path = plugin_dir / "workflows" / "analyse-single.yaml"
+        variables = {
+            "analysis_type": args.type,
+            "autofix": args.autofix,
+        }
+        print(f"Running {args.type} analysis...")
+    else:
+        workflow_path = plugin_dir / "workflows" / "analyse-codebase.yaml"
+        variables = {
+            "autofix": args.autofix,
+        }
+        print("Running comprehensive analysis (all types)...")
 
     if not workflow_path.exists():
-        print(f"Error: analyse-codebase workflow not found at {workflow_path}", file=sys.stderr)
+        print(f"Error: workflow not found at {workflow_path}", file=sys.stderr)
         sys.exit(1)
-
-    # Build variables
-    variables = {
-        "autofix": args.autofix,
-    }
-
-    # If specific type, we'll need to modify which analysis runs
-    # For now, the workflow runs all by default
-    if args.type != "all":
-        print(f"Running {args.type} analysis...")
-        # Note: Single-type analysis would require a modified workflow
-        # For now, all runs all and we note the selected type
 
     try:
         parser = WorkflowParser()

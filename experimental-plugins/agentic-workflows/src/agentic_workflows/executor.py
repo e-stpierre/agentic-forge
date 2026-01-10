@@ -20,7 +20,11 @@ from agentic_workflows.progress import (
     update_step_started,
 )
 from agentic_workflows.runner import run_claude, run_claude_with_command
-from agentic_workflows.templates.renderer import TemplateRenderer
+from agentic_workflows.templates.renderer import (
+    TemplateRenderer,
+    build_template_context,
+    render_workflow_output,
+)
 
 
 class WorkflowExecutor:
@@ -101,8 +105,71 @@ class WorkflowExecutor:
         progress.completed_at = datetime.now(timezone.utc).isoformat()
         save_progress(progress, self.repo_root)
 
+        self._render_outputs(workflow, progress, variables, logger)
+
         logger.info("workflow", f"Workflow {progress.status}: {workflow.name}")
         return progress
+
+    def _render_outputs(
+        self,
+        workflow: WorkflowDefinition,
+        progress: WorkflowProgress,
+        variables: dict[str, Any],
+        logger: WorkflowLogger,
+    ) -> None:
+        """Render output templates at workflow completion."""
+        if not workflow.outputs:
+            return
+
+        step_outputs = {}
+        for step in progress.completed_steps:
+            step_outputs[step.name] = {
+                "status": step.status,
+                "started_at": step.started_at,
+                "completed_at": step.completed_at,
+                "output_summary": step.output_summary,
+                "error": step.error,
+            }
+            if step.name in progress.step_outputs:
+                step_outputs[step.name]["output"] = progress.step_outputs[step.name]
+
+        context = build_template_context(
+            workflow_name=workflow.name,
+            started_at=progress.started_at or "",
+            completed_at=progress.completed_at,
+            step_outputs=step_outputs,
+            files_changed=[],
+            branches=[],
+            pull_requests=[],
+            inputs=variables,
+        )
+
+        plugin_templates = Path(__file__).parent.parent.parent / "templates"
+        template_dirs = [plugin_templates, self.repo_root]
+
+        for output in workflow.outputs:
+            if output.when == "completed" and progress.status != WorkflowStatus.COMPLETED.value:
+                continue
+            if output.when == "failed" and progress.status != WorkflowStatus.FAILED.value:
+                continue
+
+            try:
+                output_path_str = output.path
+                if self.renderer.has_variables(output_path_str):
+                    output_path_str = self.renderer.render_string(
+                        output_path_str, {"workflow_id": progress.workflow_id, **variables}
+                    )
+                output_path = self.repo_root / output_path_str
+
+                render_workflow_output(
+                    template_path=Path(output.template),
+                    output_path=output_path,
+                    context=context,
+                    template_dirs=template_dirs,
+                )
+                logger.info("workflow", f"Generated output: {output_path}")
+            except Exception as e:
+                logger.error("workflow", f"Failed to render output '{output.name}': {e}")
 
     def _execute_step(
         self,
