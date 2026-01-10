@@ -28,7 +28,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 # Python CLI tools (installed via uv tool install)
-PYTHON_TOOLS = ["core", "agentic-sdlc", "agentic-core"]
+PYTHON_TOOLS = ["core", "agentic-sdlc", "agentic-core", "agentic-workflows"]
 
 # Patterns to exclude when creating staged copy
 STAGING_IGNORE_PATTERNS = [
@@ -427,6 +427,47 @@ def main():
                 print_warning(f"Python tool path not found: {agentic_core_path}")
                 warning_count += 1
 
+        # Install agentic-workflows
+        agentic_workflows_path = repo_root / "experimental-plugins" / "agentic-workflows"
+        if "agentic-workflows" in requested_python_tools:
+            if agentic_workflows_path.exists():
+                print(f"\n  {color('Installing agentic-workflows package...', Colors.CYAN)}")
+
+                # Clean and build agentic-workflows
+                dist_dir = agentic_workflows_path / "dist"
+                if dist_dir.exists():
+                    shutil.rmtree(dist_dir)
+                    print_info("Cleaned previous build artifacts")
+
+                run_command(
+                    ["uv", "build"],
+                    "Build agentic-workflows package",
+                    cwd=agentic_workflows_path,
+                )
+
+                run_command(
+                    ["uv", "tool", "uninstall", "agentic-workflows"],
+                    "Uninstall agentic-workflows CLI tools",
+                )
+
+                # Install from the freshly built wheel to bypass uv cache
+                wheel_files = list(dist_dir.glob("*.whl"))
+                if wheel_files:
+                    wheel_path = wheel_files[0]
+                    if run_command(
+                        ["uv", "tool", "install", "--force", "--reinstall", str(wheel_path)],
+                        "Install agentic-workflows CLI tools",
+                    ):
+                        success_count += 1
+                    else:
+                        warning_count += 1
+                else:
+                    print_warning("No wheel found after build")
+                    warning_count += 1
+            else:
+                print_warning(f"Python tool path not found: {agentic_workflows_path}")
+                warning_count += 1
+
     # Summary
     print(f"\n{color('=' * 60, Colors.BRIGHT_GREEN)}")
     if warning_count == 0:
@@ -444,6 +485,7 @@ def main():
     print(color("    1. Restart Claude Code to load updated plugins", Colors.DIM))
     print(color("    2. Run 'agentic-sdlc --help' to verify agentic-sdlc CLI", Colors.DIM))
     print(color("    3. Run 'agentic --help' to verify agentic-core CLI", Colors.DIM))
+    print(color("    4. Run 'agentic-workflow --help' to verify agentic-workflows CLI", Colors.DIM))
     print()
 
 

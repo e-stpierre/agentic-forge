@@ -113,6 +113,50 @@
         "./plugins/interactive-sdlc/commands/github/create-gh-issue.md",
         "./plugins/interactive-sdlc/commands/github/read-gh-issue.md"
       ]
+    },
+    {
+      "name": "agentic-workflows",
+      "source": "./",
+      "description": "[Experimental] YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory for complex multi-step tasks",
+      "version": "0.0.1",
+      "category": "sdlc",
+      "author": {
+        "name": "Étienne St-Pierre",
+        "email": "me@estpierre.dev"
+      },
+      "license": "MIT",
+      "keywords": [
+        "experimental",
+        "workflows",
+        "yaml",
+        "orchestration",
+        "parallel",
+        "autonomous",
+        "agentic",
+        "memory",
+        "python"
+      ],
+      "strict": false,
+      "commands": [
+        "./experimental-plugins/agentic-workflows/commands/analyse.md",
+        "./experimental-plugins/agentic-workflows/commands/build.md",
+        "./experimental-plugins/agentic-workflows/commands/orchestrate.md",
+        "./experimental-plugins/agentic-workflows/commands/plan.md",
+        "./experimental-plugins/agentic-workflows/commands/validate.md",
+        "./experimental-plugins/agentic-workflows/commands/git/branch.md",
+        "./experimental-plugins/agentic-workflows/commands/git/commit.md",
+        "./experimental-plugins/agentic-workflows/commands/git/pr.md"
+      ],
+      "agents": [
+        "./experimental-plugins/agentic-workflows/agents/explorer.md",
+        "./experimental-plugins/agentic-workflows/agents/reviewer.md"
+      ],
+      "skills": [
+        "./experimental-plugins/agentic-workflows/skills/create-checkpoint.md",
+        "./experimental-plugins/agentic-workflows/skills/create-log.md",
+        "./experimental-plugins/agentic-workflows/skills/create-memory.md",
+        "./experimental-plugins/agentic-workflows/skills/search-memory.md"
+      ]
     }
   ]
 }
