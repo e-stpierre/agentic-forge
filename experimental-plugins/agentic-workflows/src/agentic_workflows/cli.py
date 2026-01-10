@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 def get_bundled_workflows_dir() -> Path:
     """Get the directory containing bundled workflow templates."""
-    return Path(__file__).parent.parent / "workflows"
+    return Path(__file__).parent / "workflows"
 
 
 def resolve_workflow_path(workflow_arg: Path) -> tuple[Path, bool]:
@@ -543,8 +543,7 @@ def cmd_oneshot(args: Namespace) -> None:
     from agentic_workflows.parser import WorkflowParseError, WorkflowParser
 
     # Find the one-shot workflow
-    plugin_dir = Path(__file__).parent.parent
-    workflow_path = plugin_dir / "workflows" / "one-shot.yaml"
+    workflow_path = get_bundled_workflows_dir() / "one-shot.yaml"
 
     if not workflow_path.exists():
         print(f"Error: one-shot workflow not found at {workflow_path}", file=sys.stderr)
@@ -585,17 +584,17 @@ def cmd_analyse(args: Namespace) -> None:
     from agentic_workflows.executor import WorkflowExecutor
     from agentic_workflows.parser import WorkflowParseError, WorkflowParser
 
-    plugin_dir = Path(__file__).parent.parent
+    bundled_dir = get_bundled_workflows_dir()
 
     if args.type != "all":
-        workflow_path = plugin_dir / "workflows" / "analyse-single.yaml"
+        workflow_path = bundled_dir / "analyse-single.yaml"
         variables = {
             "analysis_type": args.type,
             "autofix": args.autofix,
         }
         print(f"Running {args.type} analysis...")
     else:
-        workflow_path = plugin_dir / "workflows" / "analyse-codebase.yaml"
+        workflow_path = bundled_dir / "analyse-codebase.yaml"
         variables = {
             "autofix": args.autofix,
         }
