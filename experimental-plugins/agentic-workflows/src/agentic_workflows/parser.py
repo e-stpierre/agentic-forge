@@ -72,7 +72,7 @@ class StepDefinition:
     condition: str | None = None
     then_steps: list[StepDefinition] = field(default_factory=list)
     else_steps: list[StepDefinition] = field(default_factory=list)
-    max_iterations: int = 5
+    max_iterations: int | str = 5
     completion_promise: str | None = None
     message: str | None = None
     polling_interval: int = 15

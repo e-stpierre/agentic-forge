@@ -45,7 +45,7 @@ def run_claude(
     model: str = "sonnet",
     timeout: int | None = 300,
     print_output: bool = False,
-    skip_permissions: bool = True,
+    skip_permissions: bool = False,
 ) -> ClaudeResult:
     """Run claude with the given prompt.
 

@@ -1,11 +1,12 @@
-name: ralph-loop-example
+name: ralph-loop
 version: "1.0"
-description: Example workflow demonstrating the Ralph Wiggum iterative loop pattern
+description: Workflow using the Ralph Wiggum iterative loop pattern
 
 settings:
   max-retry: 3
   timeout-minutes: 120
   track-progress: true
+  bypass-permissions: true
   git:
     enabled: true
     auto-commit: true
@@ -16,6 +17,11 @@ variables:
     type: string
     required: true
     description: Task to complete iteratively
+  - name: completion_promise
+    type: string
+    required: false
+    default: TASK_COMPLETE
+    description: Completion promise text that signals the loop should exit
   - name: max_iterations
     type: number
     required: false
@@ -39,13 +45,13 @@ steps:
       ## Completion
       When the task is FULLY complete and verified, output:
       ```json
-      {"ralph_complete": true, "promise": "TASK_COMPLETE"}
+      {"ralph_complete": true, "promise": "{{ variables.completion_promise }}"}
       ```
 
       IMPORTANT: Only output the completion JSON when everything is genuinely done.
       Do not output false promises to exit early.
     max-iterations: "{{ variables.max_iterations }}"
-    completion-promise: "TASK_COMPLETE"
+    completion-promise: "{{ variables.completion_promise }}"
     model: sonnet
     timeout-minutes: 30
 

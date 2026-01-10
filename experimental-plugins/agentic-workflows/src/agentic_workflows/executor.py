@@ -9,7 +9,7 @@ from typing import Any
 
 from agentic_workflows.config import load_config
 from agentic_workflows.logging.logger import WorkflowLogger
-from agentic_workflows.parser import StepDefinition, StepType, WorkflowDefinition
+from agentic_workflows.parser import StepDefinition, StepType, WorkflowDefinition, WorkflowSettings
 from agentic_workflows.progress import (
     WorkflowProgress,
     WorkflowStatus,
@@ -18,6 +18,13 @@ from agentic_workflows.progress import (
     update_step_completed,
     update_step_failed,
     update_step_started,
+)
+from agentic_workflows.ralph_loop import (
+    build_ralph_system_message,
+    create_ralph_state,
+    deactivate_ralph_state,
+    detect_completion_promise,
+    update_ralph_iteration,
 )
 from agentic_workflows.runner import run_claude, run_claude_with_command
 from agentic_workflows.templates.renderer import (
@@ -34,6 +41,7 @@ class WorkflowExecutor:
         self.repo_root = repo_root or Path.cwd()
         self.config = load_config(self.repo_root)
         self.renderer = TemplateRenderer()
+        self.workflow_settings: WorkflowSettings | None = None
 
     def run(
         self,
@@ -54,6 +62,7 @@ class WorkflowExecutor:
         """
         variables = variables or {}
         workflow_id = str(uuid.uuid4())[:8]
+        self.workflow_settings = workflow.settings
 
         for var in workflow.variables:
             if var.name not in variables:
@@ -192,6 +201,8 @@ class WorkflowExecutor:
             self._execute_prompt_step(step, progress, context, logger, print_output)
         elif step.type == StepType.COMMAND:
             self._execute_command_step(step, progress, context, logger, print_output)
+        elif step.type == StepType.RALPH_LOOP:
+            self._execute_ralph_loop_step(step, progress, context, logger, print_output)
         else:
             raise NotImplementedError(f"Step type not yet implemented: {step.type.value}")
 
@@ -217,6 +228,7 @@ class WorkflowExecutor:
 
         timeout = (step.step_timeout_minutes or 60) * 60
         max_retry = step.step_max_retry or self.config["defaults"]["maxRetry"]
+        bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
 
         for attempt in range(max_retry + 1):
             result = run_claude(
@@ -225,7 +237,7 @@ class WorkflowExecutor:
                 model=step.model,
                 timeout=timeout,
                 print_output=print_output,
-                skip_permissions=True,
+                skip_permissions=bypass_permissions,
             )
 
             if result.success:
@@ -266,6 +278,7 @@ class WorkflowExecutor:
 
         timeout = (step.step_timeout_minutes or 60) * 60
         max_retry = step.step_max_retry or self.config["defaults"]["maxRetry"]
+        bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
 
         for attempt in range(max_retry + 1):
             result = run_claude_with_command(
@@ -275,7 +288,7 @@ class WorkflowExecutor:
                 model=step.model,
                 timeout=timeout,
                 print_output=print_output,
-                skip_permissions=True,
+                skip_permissions=bypass_permissions,
             )
 
             if result.success:
@@ -297,3 +310,96 @@ class WorkflowExecutor:
                 update_step_failed(progress, step.name, error_msg)
                 progress.status = WorkflowStatus.FAILED.value
                 logger.error(step.name, f"Step failed after {max_retry + 1} attempts")
+
+    def _execute_ralph_loop_step(
+        self,
+        step: StepDefinition,
+        progress: WorkflowProgress,
+        context: dict[str, Any],
+        logger: WorkflowLogger,
+        print_output: bool,
+    ) -> None:
+        """Execute a Ralph Wiggum loop step.
+
+        The Ralph loop runs the same prompt iteratively until:
+        - Claude outputs a completion JSON with the expected promise
+        - Maximum iterations is reached
+        """
+        prompt = step.prompt or ""
+        completion_promise = step.completion_promise or "COMPLETE"
+
+        if self.renderer.has_variables(prompt):
+            prompt = self.renderer.render_string(prompt, context)
+
+        if self.renderer.has_variables(completion_promise):
+            completion_promise = self.renderer.render_string(completion_promise, context)
+
+        # Handle max_iterations which may be a template string or integer
+        max_iterations_raw = step.max_iterations
+        if isinstance(max_iterations_raw, str) and self.renderer.has_variables(max_iterations_raw):
+            max_iterations = int(self.renderer.render_string(max_iterations_raw, context))
+        else:
+            max_iterations = int(max_iterations_raw) if max_iterations_raw else 5
+
+        timeout = (step.step_timeout_minutes or 30) * 60
+        bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
+
+        _ralph_state = create_ralph_state(
+            workflow_id=progress.workflow_id,
+            step_name=step.name,
+            prompt=prompt,
+            max_iterations=max_iterations,
+            completion_promise=completion_promise,
+            repo_root=self.repo_root,
+        )
+
+        logger.info(step.name, f"Starting Ralph loop (max {max_iterations} iterations)")
+
+        all_outputs: list[str] = []
+
+        for iteration in range(1, max_iterations + 1):
+            logger.info(step.name, f"Ralph loop iteration {iteration}/{max_iterations}")
+
+            system_message = build_ralph_system_message(iteration, max_iterations, completion_promise)
+            full_prompt = f"{system_message}{prompt}"
+
+            result = run_claude(
+                prompt=full_prompt,
+                cwd=self.repo_root,
+                model=step.model,
+                timeout=timeout,
+                print_output=print_output,
+                skip_permissions=bypass_permissions,
+            )
+
+            if not result.success:
+                logger.warning(step.name, f"Iteration {iteration} failed: {result.stderr}")
+                if iteration < max_iterations:
+                    update_ralph_iteration(progress.workflow_id, step.name, self.repo_root)
+                    continue
+                else:
+                    deactivate_ralph_state(progress.workflow_id, step.name, self.repo_root)
+                    update_step_failed(progress, step.name, f"Ralph loop failed after {max_iterations} iterations")
+                    progress.status = WorkflowStatus.FAILED.value
+                    return
+
+            all_outputs.append(result.stdout)
+
+            completion_result = detect_completion_promise(result.stdout, completion_promise)
+
+            if completion_result.is_complete and completion_result.promise_matched:
+                logger.info(step.name, f"Ralph loop completed at iteration {iteration}")
+                deactivate_ralph_state(progress.workflow_id, step.name, self.repo_root)
+                combined_output = "\n\n---\n\n".join(all_outputs)
+                output_summary = f"Completed in {iteration} iterations"
+                update_step_completed(progress, step.name, output_summary, combined_output)
+                return
+
+            if iteration < max_iterations:
+                update_ralph_iteration(progress.workflow_id, step.name, self.repo_root)
+
+        logger.warning(step.name, f"Ralph loop reached max iterations ({max_iterations}) without completion")
+        deactivate_ralph_state(progress.workflow_id, step.name, self.repo_root)
+        combined_output = "\n\n---\n\n".join(all_outputs)
+        output_summary = f"Max iterations ({max_iterations}) reached without completion promise"
+        update_step_completed(progress, step.name, output_summary, combined_output)

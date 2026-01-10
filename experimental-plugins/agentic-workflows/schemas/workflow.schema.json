@@ -185,7 +185,7 @@
           }
         },
         "max-iterations": {
-          "type": "integer",
+          "oneOf": [{ "type": "integer" }, { "type": "string" }],
           "default": 5
         },
         "completion-promise": {
