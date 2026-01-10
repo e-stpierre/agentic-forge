@@ -69,6 +69,20 @@ def main() -> None:
     # configure command
     subparsers.add_parser("configure", help="Configure plugin settings")
 
+    # memory commands
+    memory_parser = subparsers.add_parser("memory", help="Memory management")
+    memory_subparsers = memory_parser.add_subparsers(dest="memory_command")
+    memory_list = memory_subparsers.add_parser("list", help="List memories")
+    memory_list.add_argument(
+        "--category",
+        choices=["pattern", "lesson", "error", "decision", "context"],
+        help="Filter by category",
+    )
+    memory_search = memory_subparsers.add_parser("search", help="Search memories")
+    memory_search.add_argument("query", help="Search query")
+    memory_prune = memory_subparsers.add_parser("prune", help="Prune old memories")
+    memory_prune.add_argument("--older-than", default="30d", help="Age threshold (e.g., 30d)")
+
     # config get/set commands
     config_parser = subparsers.add_parser("config", help="Get or set configuration")
     config_subparsers = config_parser.add_subparsers(dest="config_command")
@@ -96,6 +110,8 @@ def main() -> None:
         cmd_configure(args)
     elif args.command == "config":
         cmd_config(args)
+    elif args.command == "memory":
+        cmd_memory(args)
     else:
         parser.print_help()
         sys.exit(1)
@@ -150,22 +166,33 @@ def cmd_run(args: Namespace) -> None:
 
 def cmd_resume(args: Namespace) -> None:
     """Resume a paused or failed workflow."""
-    from agentic_workflows.progress import load_progress, WorkflowStatus
+    from agentic_workflows.progress import load_progress, save_progress, WorkflowStatus
 
     progress = load_progress(args.workflow_id)
     if progress is None:
         print(f"Error: Workflow not found: {args.workflow_id}", file=sys.stderr)
         sys.exit(1)
 
-    if progress.status not in [WorkflowStatus.PAUSED.value, WorkflowStatus.FAILED.value]:
+    if progress.status not in [
+        WorkflowStatus.PAUSED.value,
+        WorkflowStatus.FAILED.value,
+        WorkflowStatus.CANCELLED.value,
+    ]:
         print(
             f"Error: Cannot resume workflow in '{progress.status}' status",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    print(f"Resuming workflow: {args.workflow_id}")
-    print("Note: Full resume implementation in Plan 2")
+    progress.status = WorkflowStatus.RUNNING.value
+    if progress.current_step:
+        step_name = progress.current_step.get("name")
+        if step_name and step_name not in progress.pending_steps:
+            progress.pending_steps.insert(0, step_name)
+        progress.current_step = None
+
+    save_progress(progress)
+    print(f"Workflow {args.workflow_id} resumed. Run workflow again to continue.")
 
 
 def cmd_status(args: Namespace) -> None:
@@ -266,30 +293,12 @@ def cmd_list(args: Namespace) -> None:
 
 def cmd_input(args: Namespace) -> None:
     """Provide human input for a wait-for-human step."""
-    from agentic_workflows.progress import load_progress, save_progress
+    from agentic_workflows.orchestrator import process_human_input
 
-    progress = load_progress(args.workflow_id)
-    if progress is None:
-        print(f"Error: Workflow not found: {args.workflow_id}", file=sys.stderr)
-        sys.exit(1)
-
-    if not progress.current_step:
-        print("Error: No step waiting for input", file=sys.stderr)
-        sys.exit(1)
-
-    step_name = progress.current_step.get("name", "")
-    for step in progress.completed_steps:
-        if step.name == step_name:
-            step.human_input = args.response
-            break
+    if process_human_input(args.workflow_id, args.response):
+        print(f"Input recorded for workflow: {args.workflow_id}")
     else:
-        from agentic_workflows.progress import StepProgress
-
-        step = StepProgress(name=step_name, status="running", human_input=args.response)
-        progress.completed_steps.append(step)
-
-    save_progress(progress)
-    print(f"Input recorded for step: {step_name}")
+        sys.exit(1)
 
 
 def cmd_configure(args: Namespace) -> None:
@@ -323,6 +332,42 @@ def cmd_config(args: Namespace) -> None:
         print(f"Set {args.key} = {args.value}")
     else:
         print("Usage: agentic-workflow config get|set <key> [value]", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_memory(args: Namespace) -> None:
+    """Memory management commands."""
+    from agentic_workflows.memory import MemoryManager, search_memories
+
+    if args.memory_command == "list":
+        manager = MemoryManager()
+        memories = manager.list_memories(category=args.category, limit=20)
+        if not memories:
+            print("No memories found.")
+            return
+        print(f"{'ID':<35} {'Category':<12} {'Title':<30}")
+        print("-" * 80)
+        for mem in memories:
+            print(f"{mem.id:<35} {mem.category:<12} {mem.title[:30]:<30}")
+
+    elif args.memory_command == "search":
+        results = search_memories(args.query, limit=10)
+        if not results:
+            print(f"No memories found for: {args.query}")
+            return
+        print(f"Found {len(results)} memories:\n")
+        for mem in results:
+            print(f"[{mem.category}] {mem.title}")
+            print(f"  ID: {mem.id}")
+            print(f"  Tags: {', '.join(mem.tags)}")
+            print()
+
+    elif args.memory_command == "prune":
+        print(f"Pruning memories older than {args.older_than}")
+        print("Note: Memory pruning not yet implemented")
+
+    else:
+        print("Usage: agentic-workflow memory list|search|prune", file=sys.stderr)
         sys.exit(1)
 
 
