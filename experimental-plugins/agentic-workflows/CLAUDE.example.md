@@ -20,7 +20,6 @@ Create checkpoints using `/create-checkpoint` when:
 - Completing a milestone in implementation
 - About to hand off to another session
 - Encountering issues that need documentation
-- Reaching 80% of context capacity
 
 ## Workflow Integration
 

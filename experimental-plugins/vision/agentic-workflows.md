@@ -41,7 +41,7 @@ The agentic workflows goal is to enable Claude Code to execute any type of task 
 
 - Base output folder: `agentic/` (relative to repository root) for all framework outputs
 - Support integrated checkpoint system (on-demand via skill invocation)
-- Support full logging at configurable levels (debug, info, warning, error, critical)
+- Support full logging at configurable levels (info, warning, error, critical)
 - Every Claude session can add logs to the workflow's log file
 
 ### Git Integration
@@ -386,8 +386,6 @@ agentic-workflows is **both**:
 ### CLI Entry Point
 
 Single CLI command installed via `uv tool install`.
-
-The `run` command validates the workflow YAML against `schemas/workflow.schema.json` before execution. Invalid workflows fail immediately with descriptive errors.
 
 ```bash
 # Workflow execution

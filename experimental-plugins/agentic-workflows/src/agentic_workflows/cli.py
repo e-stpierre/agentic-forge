@@ -445,7 +445,7 @@ def cmd_oneshot(args: Namespace) -> None:
     # Build variables
     variables = {
         "task": args.prompt,
-        "create_pr": str(args.pr).lower(),
+        "create_pr": args.pr,
     }
 
     try:
