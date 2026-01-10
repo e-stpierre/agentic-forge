@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agentic-workflows/config.schema.json",
+  "title": "Agentic Workflows Configuration",
+  "description": "Schema for agentic/config.json",
+  "type": "object",
+  "properties": {
+    "outputDirectory": {
+      "type": "string",
+      "default": "agentic",
+      "description": "Base directory for all outputs"
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable workflow logging"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["Critical", "Error", "Warning", "Information"],
+          "default": "Error",
+          "description": "Minimum log level"
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "properties": {
+        "mainBranch": {
+          "type": "string",
+          "default": "main",
+          "description": "Default branch name"
+        },
+        "autoCommit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-commit after milestones"
+        },
+        "autoPr": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-create PR on completion"
+        }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable memory system"
+        },
+        "directory": {
+          "type": "string",
+          "default": "agentic/memory",
+          "description": "Memory storage location"
+        },
+        "template": {
+          "type": "string",
+          "default": "default",
+          "description": "Default memory template"
+        }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "properties": {
+        "directory": {
+          "type": "string",
+          "default": "agentic/workflows",
+          "description": "Checkpoint storage location"
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "maxRetry": {
+          "type": "integer",
+          "default": 3,
+          "minimum": 0,
+          "description": "Default max retries per step"
+        },
+        "timeoutMinutes": {
+          "type": "integer",
+          "default": 60,
+          "minimum": 1,
+          "description": "Default workflow timeout"
+        },
+        "trackProgress": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable progress tracking by default"
+        },
+        "terminalOutput": {
+          "type": "string",
+          "enum": ["base", "all"],
+          "default": "base",
+          "description": "Terminal output granularity"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "properties": {
+        "maxWorkers": {
+          "type": "integer",
+          "default": 4,
+          "minimum": 1,
+          "description": "Max concurrent parallel Claude sessions"
+        },
+        "pollingIntervalSeconds": {
+          "type": "integer",
+          "default": 5,
+          "minimum": 1,
+          "description": "Polling interval for parallel completion"
+        }
+      }
+    }
+  }
+}
