@@ -20,7 +20,14 @@
     },
     "status": {
       "type": "string",
-      "enum": ["pending", "running", "completed", "failed", "paused", "cancelled"],
+      "enum": [
+        "pending",
+        "running",
+        "completed",
+        "failed",
+        "paused",
+        "cancelled"
+      ],
       "description": "Current workflow status"
     },
     "started_at": {

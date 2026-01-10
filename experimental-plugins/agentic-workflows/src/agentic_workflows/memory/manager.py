@@ -121,10 +121,7 @@ class MemoryManager:
         if not self.memory_dir.exists():
             return entries
 
-        if category:
-            search_dirs = [self.memory_dir / f"{category}s"]
-        else:
-            search_dirs = [d for d in self.memory_dir.iterdir() if d.is_dir()]
+        search_dirs = [self.memory_dir / f"{category}s"] if category else [d for d in self.memory_dir.iterdir() if d.is_dir()]
 
         for dir_path in search_dirs:
             if not dir_path.exists():

@@ -40,6 +40,7 @@ Manage git branches for the workflow.
 ## Branch Naming
 
 For workflow-related branches, use the convention:
+
 - `agentic/{workflow-name}-{step-name}-{suffix}`
 
 ## Process

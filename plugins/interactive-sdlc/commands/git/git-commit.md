@@ -52,7 +52,7 @@ Only include this prefix if you are actively following a plan with numbered step
    - Identify which task/milestone these changes correspond to
    - Format the prefix accordingly (e.g., `[Task 3]`, `[Milestone 2]`, `[Task 1.2]`)
 5. Construct commit message:
-   - **Title**: `[Step Ref] ` prefix (if applicable) + imperative mood, capitalize first letter, no period
+   - **Title**: `[Step Ref]` prefix (if applicable) + imperative mood, capitalize first letter, no period
    - **Description**: Only if changes are substantial; 1-5 bullets on key aspects
 6. Execute commit using HEREDOC for proper formatting:
 

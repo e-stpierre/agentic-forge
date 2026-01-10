@@ -67,6 +67,7 @@ Analyze the codebase for specific types of issues. Returns a structured report w
 ## Analysis Guidelines
 
 ### Bug Analysis
+
 - Null/undefined access patterns
 - Off-by-one errors
 - Race conditions
@@ -74,6 +75,7 @@ Analyze the codebase for specific types of issues. Returns a structured report w
 - Exception handling issues
 
 ### Debt Analysis
+
 - Code duplication
 - High complexity functions
 - Long parameter lists
@@ -81,12 +83,14 @@ Analyze the codebase for specific types of issues. Returns a structured report w
 - Outdated patterns
 
 ### Documentation Analysis
+
 - Missing function/class documentation
 - Outdated README content
 - Missing API documentation
 - Incorrect/misleading comments
 
 ### Security Analysis
+
 - OWASP Top 10 vulnerabilities
 - Hardcoded credentials
 - Unsafe data handling
@@ -94,6 +98,7 @@ Analyze the codebase for specific types of issues. Returns a structured report w
 - Dependency vulnerabilities
 
 ### Style Analysis
+
 - Naming conventions
 - Code formatting
 - Import organization

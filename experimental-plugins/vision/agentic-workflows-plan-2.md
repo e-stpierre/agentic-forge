@@ -1544,7 +1544,7 @@ Return matching memories:
 ```
 ````
 
-## Example
+## Example 2
 
 ```
 /search-memory authentication middleware
@@ -1589,7 +1589,7 @@ Create checkpoints when:
 }
 ````
 
-## Example
+## Example 3
 
 ```
 /create-checkpoint

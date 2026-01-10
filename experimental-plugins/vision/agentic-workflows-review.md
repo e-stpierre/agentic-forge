@@ -324,32 +324,6 @@ The `create-memory.md` skill could include explicit deduplication instructions.
 
 ---
 
-## Recommendations Priority
-
-### High Priority (Should Fix)
-
-1. Create missing `analysis-summary.md.j2` template
-2. Implement workflow output template rendering
-3. Implement memory pruning functionality
-4. Complete analyse-codebase fix steps for all types
-5. Remove `commands/git/worktree.md` (dead code)
-
-### Medium Priority (Should Address)
-
-6. Add single-type analysis support to CLI
-7. Implement memory index.md generation
-8. Add JSON schema validation for workflows
-9. Create missing `implementation-report.md.j2` template
-
-### Low Priority (Nice to Have)
-
-10. Add DEBUG log level
-11. Add git-branch CLI command
-12. Enhanced dry-run validation
-13. Step output schema validation
-
----
-
 ## Conclusion
 
 The agentic-workflows plugin implementation is **substantially complete** with all major components in place. The core architecture follows the requirements and plans well. The main gaps are:

@@ -44,6 +44,7 @@ Create a git commit with staged changes.
 ## Commit Message Guidelines
 
 When auto-generating commit messages:
+
 - Use imperative mood ("Add feature" not "Added feature")
 - Keep first line under 72 characters
 - Reference plan step if applicable

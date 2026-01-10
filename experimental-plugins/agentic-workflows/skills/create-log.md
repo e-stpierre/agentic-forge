@@ -25,12 +25,12 @@ Create logs for:
 
 ## Log Levels
 
-| Level       | When to Use                                  |
-| ----------- | -------------------------------------------- |
-| Critical    | Fatal error causing workflow to stop         |
-| Error       | Any error that occurred                      |
-| Warning     | Unexpected issue that may need attention     |
-| Information | Regular progress logging                     |
+| Level       | When to Use                              |
+| ----------- | ---------------------------------------- |
+| Critical    | Fatal error causing workflow to stop     |
+| Error       | Any error that occurred                  |
+| Warning     | Unexpected issue that may need attention |
+| Information | Regular progress logging                 |
 
 ## Output Format
 

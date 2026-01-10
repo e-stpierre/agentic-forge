@@ -89,18 +89,21 @@ Implement code changes following a plan or direct instructions. This command exe
 ---
 
 {% if plan %}
+
 ## Plan
 
 {{ plan }}
 {% endif %}
 
 {% if milestone %}
+
 ## Target Milestone
 
 {{ milestone }}
 {% endif %}
 
 {% if context %}
+
 ## Additional Context
 
 {{ context }}

@@ -1,8 +1,8 @@
 """Structured logging for agentic workflows."""
 
 from agentic_workflows.logging.logger import (
-    LogLevel,
     LogEntry,
+    LogLevel,
     WorkflowLogger,
     read_logs,
 )

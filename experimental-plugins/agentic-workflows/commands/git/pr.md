@@ -49,12 +49,15 @@ When auto-generating PR body:
 
 ```markdown
 ## Summary
+
 [Brief description from commits]
 
 ## Changes
+
 - [List of changes from commits]
 
 ## Test Plan
+
 [Testing instructions if applicable]
 
 Generated with agentic-workflows

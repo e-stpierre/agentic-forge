@@ -12,7 +12,6 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -57,9 +56,7 @@ def create_ralph_state(
     return state
 
 
-def load_ralph_state(
-    workflow_id: str, step_name: str, repo_root: Path
-) -> RalphLoopState | None:
+def load_ralph_state(workflow_id: str, step_name: str, repo_root: Path) -> RalphLoopState | None:
     """Load ralph loop state from file."""
     state_path = get_ralph_state_path(workflow_id, step_name, repo_root)
     if not state_path.exists():
@@ -69,9 +66,7 @@ def load_ralph_state(
     return _parse_ralph_state(content)
 
 
-def update_ralph_iteration(
-    workflow_id: str, step_name: str, repo_root: Path
-) -> RalphLoopState | None:
+def update_ralph_iteration(workflow_id: str, step_name: str, repo_root: Path) -> RalphLoopState | None:
     """Increment iteration counter in ralph state."""
     state = load_ralph_state(workflow_id, step_name, repo_root)
     if not state:
@@ -82,9 +77,7 @@ def update_ralph_iteration(
     return state
 
 
-def deactivate_ralph_state(
-    workflow_id: str, step_name: str, repo_root: Path
-) -> None:
+def deactivate_ralph_state(workflow_id: str, step_name: str, repo_root: Path) -> None:
     """Mark ralph loop as inactive (completed or stopped)."""
     state = load_ralph_state(workflow_id, step_name, repo_root)
     if state:
@@ -99,9 +92,7 @@ def delete_ralph_state(workflow_id: str, step_name: str, repo_root: Path) -> Non
         state_path.unlink()
 
 
-def _save_ralph_state(
-    workflow_id: str, step_name: str, state: RalphLoopState, repo_root: Path
-) -> None:
+def _save_ralph_state(workflow_id: str, step_name: str, state: RalphLoopState, repo_root: Path) -> None:
     """Save ralph loop state to markdown file with YAML frontmatter."""
     state_path = get_ralph_state_path(workflow_id, step_name, repo_root)
     state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -141,11 +132,7 @@ def _parse_ralph_state(content: str) -> RalphLoopState | None:
         return None
 
     prompt_section = parts[2].strip()
-    prompt = ""
-    if "# Ralph Loop Prompt" in prompt_section:
-        prompt = prompt_section.split("# Ralph Loop Prompt", 1)[1].strip()
-    else:
-        prompt = prompt_section
+    prompt = prompt_section.split("# Ralph Loop Prompt", 1)[1].strip() if "# Ralph Loop Prompt" in prompt_section else prompt_section
 
     return RalphLoopState(
         active=frontmatter.get("active", False),
@@ -167,9 +154,7 @@ class CompletionResult:
     output: str
 
 
-def detect_completion_promise(
-    output: str, expected_promise: str
-) -> CompletionResult:
+def detect_completion_promise(output: str, expected_promise: str) -> CompletionResult:
     """Detect completion promise in Claude's JSON output.
 
     Claude should output a JSON block with the following structure:
@@ -207,10 +192,7 @@ def detect_completion_promise(
                     promise_value = data.get("promise", "")
 
                     if ralph_complete:
-                        promise_matched = (
-                            str(promise_value).strip().upper()
-                            == str(expected_promise).strip().upper()
-                        )
+                        promise_matched = str(promise_value).strip().upper() == str(expected_promise).strip().upper()
                         return CompletionResult(
                             is_complete=True,
                             promise_matched=promise_matched,
@@ -228,9 +210,7 @@ def detect_completion_promise(
     )
 
 
-def build_ralph_system_message(
-    iteration: int, max_iterations: int, completion_promise: str
-) -> str:
+def build_ralph_system_message(iteration: int, max_iterations: int, completion_promise: str) -> str:
     """Build system message for Ralph loop iteration.
 
     This message is prepended to the prompt to inform Claude about the loop context.

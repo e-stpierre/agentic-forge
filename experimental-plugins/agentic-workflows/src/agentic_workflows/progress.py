@@ -104,9 +104,8 @@ def save_progress(progress: WorkflowProgress, repo_root: Path | None = None) -> 
     lock_path = progress_path.with_suffix(".lock")
     lock = FileLock(str(lock_path))
 
-    with lock:
-        with open(progress_path, "w", encoding="utf-8") as f:
-            json.dump(_progress_to_dict(progress), f, indent=2)
+    with lock, open(progress_path, "w", encoding="utf-8") as f:
+        json.dump(_progress_to_dict(progress), f, indent=2)
 
 
 def create_progress(
@@ -218,27 +217,15 @@ def update_step_skipped(progress: WorkflowProgress, step_name: str) -> None:
 def _progress_to_dict(progress: WorkflowProgress) -> dict[str, Any]:
     """Convert progress to dictionary for JSON serialization."""
     data = asdict(progress)
-    data["completed_steps"] = [
-        asdict(s) if isinstance(s, StepProgress) else s
-        for s in progress.completed_steps
-    ]
-    data["parallel_branches"] = [
-        asdict(b) if isinstance(b, ParallelBranch) else b
-        for b in progress.parallel_branches
-    ]
+    data["completed_steps"] = [asdict(s) if isinstance(s, StepProgress) else s for s in progress.completed_steps]
+    data["parallel_branches"] = [asdict(b) if isinstance(b, ParallelBranch) else b for b in progress.parallel_branches]
     return data
 
 
 def _dict_to_progress(data: dict[str, Any]) -> WorkflowProgress:
     """Convert dictionary to WorkflowProgress."""
-    completed = [
-        StepProgress(**s) if isinstance(s, dict) else s
-        for s in data.get("completed_steps", [])
-    ]
-    branches = [
-        ParallelBranch(**b) if isinstance(b, dict) else b
-        for b in data.get("parallel_branches", [])
-    ]
+    completed = [StepProgress(**s) if isinstance(s, dict) else s for s in data.get("completed_steps", [])]
+    branches = [ParallelBranch(**b) if isinstance(b, dict) else b for b in data.get("parallel_branches", [])]
 
     return WorkflowProgress(
         schema_version=data.get("schema_version", "1.0"),

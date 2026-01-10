@@ -251,7 +251,7 @@ Implement code changes following a plan or direct instructions. This command exe
 }
 ````
 
-## Process
+## Process 1
 
 1. Load plan and identify work to do
 2. For each task:
@@ -262,7 +262,7 @@ Implement code changes following a plan or direct instructions. This command exe
 4. Update plan with progress
 5. Return JSON summary
 
-## Guidelines
+## Guidelines 1
 
 - Follow existing code patterns and conventions
 - Write tests for new functionality
@@ -392,7 +392,7 @@ Validate the implementation against the plan and quality standards. Runs tests, 
 }
 ````
 
-## Process
+## Process 2
 
 1. Load plan if provided
 2. Run test suite
@@ -487,7 +487,7 @@ Analyze the codebase for specific types of issues. Returns a structured report w
 }
 ````
 
-## Process
+## Process 3
 
 1. Determine analysis scope (path or full codebase)
 2. Run analysis using explorer agent
@@ -782,7 +782,7 @@ Return findings as structured data:
 }
 ````
 
-## Guidelines
+## Guidelines 2
 
 - Minimize file reads - use search tools first
 - Focus on finding the minimum set of files needed
@@ -878,7 +878,7 @@ You are a code review specialist. Your role is to validate code changes for corr
 - **Minor**: Nice to fix (code quality, minor improvements)
 - **Info**: Informational (suggestions, alternatives)
 
-## Guidelines
+## Guidelines 3
 
 - Be thorough but efficient
 - Focus on substance over style

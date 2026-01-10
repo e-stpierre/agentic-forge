@@ -7,10 +7,7 @@
   "completed_at": "2026-01-10T11:42:53.696922+00:00",
   "current_step": null,
   "completed_steps": [],
-  "pending_steps": [
-    "analyze",
-    "confirm"
-  ],
+  "pending_steps": ["analyze", "confirm"],
   "running_steps": [],
   "parallel_branches": [],
   "errors": [],

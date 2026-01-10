@@ -69,6 +69,7 @@ You are a code review specialist. Your role is to validate code changes for corr
 ## Review Checklist
 
 ### Security
+
 - [ ] No hardcoded secrets
 - [ ] Input validation present
 - [ ] Proper authentication/authorization
@@ -76,6 +77,7 @@ You are a code review specialist. Your role is to validate code changes for corr
 - [ ] Sensitive data handled properly
 
 ### Quality
+
 - [ ] No code duplication
 - [ ] Clear naming conventions
 - [ ] Proper error handling
@@ -83,12 +85,14 @@ You are a code review specialist. Your role is to validate code changes for corr
 - [ ] Reasonable complexity
 
 ### Testing
+
 - [ ] Tests exist for new code
 - [ ] Edge cases covered
 - [ ] Tests are meaningful (not just coverage)
 - [ ] Mocks used appropriately
 
 ### Conventions
+
 - [ ] Follows project style guide
 - [ ] Consistent with existing patterns
 - [ ] Proper imports organization

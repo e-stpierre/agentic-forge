@@ -132,7 +132,14 @@
         },
         "type": {
           "type": "string",
-          "enum": ["prompt", "command", "parallel", "conditional", "ralph-loop", "wait-for-human"]
+          "enum": [
+            "prompt",
+            "command",
+            "parallel",
+            "conditional",
+            "ralph-loop",
+            "wait-for-human"
+          ]
         },
         "prompt": {
           "type": "string"

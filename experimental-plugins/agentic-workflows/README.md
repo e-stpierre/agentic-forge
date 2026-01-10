@@ -7,6 +7,7 @@ Agentic Workflows enables Claude Code to execute complex, multi-step tasks with 
 Agentic Workflows provides a complete framework for automating software development tasks from simple one-shot operations to complex multi-step workflows. The plugin combines a Python CLI orchestrator with Claude Code commands, agents, and skills to enable fully autonomous task execution with built-in error recovery and progress tracking.
 
 Key capabilities:
+
 - YAML workflow definitions with variables, conditions, and parallel execution
 - Hybrid Python + Claude orchestration model for reliability
 - Git worktree isolation for parallel task execution
@@ -25,37 +26,37 @@ Quick examples:
 
 ### Core Commands
 
-| Command | Description |
-|---------|-------------|
-| `/plan` | Generate implementation plans for features, bugs, or chores |
-| `/build` | Implement changes following a plan file |
-| `/validate` | Run validation checks on implementation |
-| `/analyse` | Analyze codebase for issues (bug, debt, doc, security, style) |
-| `/orchestrate` | Evaluate workflow state and determine next action |
+| Command        | Description                                                   |
+| -------------- | ------------------------------------------------------------- |
+| `/plan`        | Generate implementation plans for features, bugs, or chores   |
+| `/build`       | Implement changes following a plan file                       |
+| `/validate`    | Run validation checks on implementation                       |
+| `/analyse`     | Analyze codebase for issues (bug, debt, doc, security, style) |
+| `/orchestrate` | Evaluate workflow state and determine next action             |
 
 ### Git Commands (`commands/git/`)
 
-| Command | Description |
-|---------|-------------|
-| `/git-branch` | Create and manage git branches |
-| `/git-commit` | Create commits with structured messages |
-| `/git-pr` | Create pull requests with generated descriptions |
+| Command       | Description                                      |
+| ------------- | ------------------------------------------------ |
+| `/git-branch` | Create and manage git branches                   |
+| `/git-commit` | Create commits with structured messages          |
+| `/git-pr`     | Create pull requests with generated descriptions |
 
 ## Agents
 
-| Agent | Description |
-|-------|-------------|
+| Agent      | Description                                                           |
+| ---------- | --------------------------------------------------------------------- |
 | `explorer` | Explores codebase efficiently to find relevant files and line numbers |
-| `reviewer` | Validates tests, reviews code quality, and ensures correctness |
+| `reviewer` | Validates tests, reviews code quality, and ensures correctness        |
 
 ## Skills
 
-| Skill | Description |
-|-------|-------------|
-| `/create-memory` | Create persistent memory documents for patterns and learnings |
-| `/search-memory` | Search existing memories by category, tags, or content |
-| `/create-checkpoint` | Create checkpoint entries in workflow checkpoint file |
-| `/create-log` | Add log entries to workflow log file |
+| Skill                | Description                                                   |
+| -------------------- | ------------------------------------------------------------- |
+| `/create-memory`     | Create persistent memory documents for patterns and learnings |
+| `/search-memory`     | Search existing memories by category, tags, or content        |
+| `/create-checkpoint` | Create checkpoint entries in workflow checkpoint file         |
+| `/create-log`        | Add log entries to workflow log file                          |
 
 ## Installation
 
@@ -71,31 +72,31 @@ uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugin
 
 ### CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `agentic-workflow run` | Execute a workflow from YAML file |
-| `agentic-workflow resume` | Resume a paused or failed workflow |
-| `agentic-workflow status` | Check workflow execution status |
-| `agentic-workflow cancel` | Cancel a running workflow |
-| `agentic-workflow list` | List workflow executions |
-| `agentic-workflow input` | Provide human input for wait-for-human steps |
-| `agentic-workflow one-shot` | Execute a single task end-to-end |
-| `agentic-workflow analyse` | Run codebase analysis |
-| `agentic-workflow configure` | Interactive configuration setup |
-| `agentic-workflow config` | Get or set configuration values |
-| `agentic-workflow memory` | Manage memory documents |
+| Command                      | Description                                  |
+| ---------------------------- | -------------------------------------------- |
+| `agentic-workflow run`       | Execute a workflow from YAML file            |
+| `agentic-workflow resume`    | Resume a paused or failed workflow           |
+| `agentic-workflow status`    | Check workflow execution status              |
+| `agentic-workflow cancel`    | Cancel a running workflow                    |
+| `agentic-workflow list`      | List workflow executions                     |
+| `agentic-workflow input`     | Provide human input for wait-for-human steps |
+| `agentic-workflow one-shot`  | Execute a single task end-to-end             |
+| `agentic-workflow analyse`   | Run codebase analysis                        |
+| `agentic-workflow configure` | Interactive configuration setup              |
+| `agentic-workflow config`    | Get or set configuration values              |
+| `agentic-workflow memory`    | Manage memory documents                      |
 
 ### CLI Options
 
-| Flag | Description |
-|------|-------------|
-| `--var key=value` | Pass variables to workflow |
-| `--from-step` | Resume from specific step |
-| `--terminal-output` | Output verbosity: `base` or `all` |
-| `--type` | Analysis type: bug, debt, doc, security, style |
-| `--autofix` | Auto-fix severity: none, minor, major, critical |
-| `--git` | Enable git operations |
-| `--pr` | Create pull request on completion |
+| Flag                | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `--var key=value`   | Pass variables to workflow                      |
+| `--from-step`       | Resume from specific step                       |
+| `--terminal-output` | Output verbosity: `base` or `all`               |
+| `--type`            | Analysis type: bug, debt, doc, security, style  |
+| `--autofix`         | Auto-fix severity: none, minor, major, critical |
+| `--git`             | Enable git operations                           |
+| `--pr`              | Create pull request on completion               |
 
 ## Configuration
 
@@ -151,14 +152,14 @@ Key architectural decisions:
 
 ### Workflow Step Types
 
-| Type | Description |
-|------|-------------|
-| `prompt` | Execute a prompt in a Claude session |
-| `command` | Execute a Claude command with arguments |
-| `parallel` | Execute nested steps concurrently in git worktrees |
-| `conditional` | Execute steps based on Jinja2 condition |
-| `ralph-loop` | Repeat a prompt until completion promise or max iterations (Ralph Wiggum pattern) |
-| `wait-for-human` | Pause workflow for human input |
+| Type             | Description                                                                       |
+| ---------------- | --------------------------------------------------------------------------------- |
+| `prompt`         | Execute a prompt in a Claude session                                              |
+| `command`        | Execute a Claude command with arguments                                           |
+| `parallel`       | Execute nested steps concurrently in git worktrees                                |
+| `conditional`    | Execute steps based on Jinja2 condition                                           |
+| `ralph-loop`     | Repeat a prompt until completion promise or max iterations (Ralph Wiggum pattern) |
+| `wait-for-human` | Pause workflow for human input                                                    |
 
 ### Output Directory Structure
 
@@ -193,6 +194,7 @@ agentic/
 ### agentic-workflow run
 
 **Arguments:**
+
 - `<workflow.yaml>` - Path to workflow YAML file (required)
 - `--var key=value` - Pass variable to workflow (repeatable)
 - `--from-step <step>` - Resume from specific step
@@ -217,6 +219,7 @@ agentic-workflow run workflow.yaml --terminal-output all
 ### agentic-workflow resume
 
 **Arguments:**
+
 - `<workflow-id>` - ID of workflow to resume (required)
 
 **Examples:**
@@ -232,6 +235,7 @@ agentic-workflow resume plan-build-validate-2024-01-15
 ### agentic-workflow status
 
 **Arguments:**
+
 - `<workflow-id>` - ID of workflow to check (required)
 
 **Examples:**
@@ -244,6 +248,7 @@ agentic-workflow status abc123
 ### agentic-workflow list
 
 **Arguments:**
+
 - `--status <status>` - Filter by status: running, completed, failed, paused
 
 **Examples:**
@@ -262,6 +267,7 @@ agentic-workflow list --status failed
 ### agentic-workflow cancel
 
 **Arguments:**
+
 - `<workflow-id>` - ID of workflow to cancel (required)
 
 **Examples:**
@@ -274,6 +280,7 @@ agentic-workflow cancel abc123
 ### agentic-workflow input
 
 **Arguments:**
+
 - `<workflow-id>` - ID of workflow waiting for input (required)
 - `<response>` - Human response text (required)
 
@@ -290,6 +297,7 @@ agentic-workflow input abc123 "Please also add input validation for the email fi
 ### agentic-workflow one-shot
 
 **Arguments:**
+
 - `<prompt>` - Task description (required)
 - `--git` - Enable git operations (branch, commit)
 - `--pr` - Create pull request on completion
@@ -310,6 +318,7 @@ agentic-workflow one-shot "Update the README with installation instructions"
 ### agentic-workflow analyse
 
 **Arguments:**
+
 - `--type <type>` - Analysis type: bug, debt, doc, security, style (default: all)
 - `--autofix <level>` - Auto-fix severity: none, minor, major, critical
 
@@ -340,6 +349,7 @@ agentic-workflow configure
 ### agentic-workflow config
 
 **Subcommands:**
+
 - `get <key>` - Get configuration value
 - `set <key> <value>` - Set configuration value
 
@@ -358,6 +368,7 @@ agentic-workflow config set logging.level Warning
 ### agentic-workflow memory
 
 **Subcommands:**
+
 - `list [--category <cat>]` - List memories, optionally filtered by category
 - `search <query>` - Search memories by keywords
 - `prune [--older-than <duration>]` - Remove old memories
@@ -382,6 +393,7 @@ agentic-workflow memory prune --older-than 30d
 ### /plan
 
 **Arguments:**
+
 - `--type <type>` - Plan type: feature, bug, chore (required)
 - `--spec <path>` - Path to specification file
 - `--output <path>` - Output file path
@@ -402,6 +414,7 @@ agentic-workflow memory prune --older-than 30d
 ### /build
 
 **Arguments:**
+
 - `--plan <path>` - Path to plan file (required)
 - `--milestone <n>` - Implement specific milestone only
 
@@ -418,6 +431,7 @@ agentic-workflow memory prune --older-than 30d
 ### /validate
 
 **Arguments:**
+
 - `--severity <level>` - Minimum severity to report: minor, major, critical
 
 **Examples:**
@@ -433,6 +447,7 @@ agentic-workflow memory prune --older-than 30d
 ### /analyse
 
 **Arguments:**
+
 - `--type <type>` - Analysis type: bug, debt, doc, security, style
 - `--template <path>` - Custom output template
 
@@ -452,6 +467,7 @@ agentic-workflow memory prune --older-than 30d
 ### /create-memory
 
 **Arguments:**
+
 - `--category <cat>` - Memory category: pattern, lesson, error, decision, context
 - `--tags <tags>` - Comma-separated tags for searchability
 
@@ -470,6 +486,7 @@ Database connection timeout solution: increase pool size
 ### /search-memory
 
 **Arguments:**
+
 - `--category <cat>` - Filter by category
 - `--tags <tags>` - Filter by tags
 - `<query>` - Search keywords
@@ -490,6 +507,7 @@ Database connection timeout solution: increase pool size
 ### /create-checkpoint
 
 **Arguments:**
+
 - `--step <name>` - Current step name
 - `--status <status>` - Checkpoint status: in_progress, completed
 
@@ -508,6 +526,7 @@ All validation checks passed.
 ### /create-log
 
 **Arguments:**
+
 - `--level <level>` - Log level: Critical, Error, Warning, Information
 - `--step <name>` - Step name for context
 
@@ -596,7 +615,7 @@ steps:
 
 **Ralph Loop (iterative prompt with completion detection):**
 
-```yaml
+````yaml
 steps:
   - name: implement-iteratively
     type: ralph-loop
@@ -611,6 +630,6 @@ steps:
     max-iterations: 10
     completion-promise: "COMPLETE"
     model: sonnet
-```
+````
 
 The Ralph Loop pattern creates a fresh Claude session for each iteration, repeating the same prompt until Claude outputs a JSON completion signal or max iterations is reached. State is tracked in `agentic/workflows/{id}/ralph-{step}.md`.

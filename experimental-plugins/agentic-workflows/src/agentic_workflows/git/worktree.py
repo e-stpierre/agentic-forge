@@ -164,16 +164,12 @@ def list_worktrees(repo_root: Path | None = None) -> list[Worktree]:
         elif line.startswith("branch "):
             current_branch = line.replace("branch refs/heads/", "")
         elif line == "" and current_path:
-            worktrees.append(
-                Worktree(path=current_path, branch=current_branch, base_branch="")
-            )
+            worktrees.append(Worktree(path=current_path, branch=current_branch, base_branch=""))
             current_path = None
             current_branch = ""
 
     if current_path:
-        worktrees.append(
-            Worktree(path=current_path, branch=current_branch, base_branch="")
-        )
+        worktrees.append(Worktree(path=current_path, branch=current_branch, base_branch=""))
 
     return worktrees
 

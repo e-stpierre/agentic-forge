@@ -96,6 +96,7 @@ Validate the implementation against the plan and quality standards. Runs tests, 
 ---
 
 {% if plan %}
+
 ## Plan Reference
 
 {{ plan }}

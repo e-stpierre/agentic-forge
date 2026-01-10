@@ -42,9 +42,7 @@ class TemplateRenderer:
         """Add a template directory to the search path."""
         if path.exists() and path not in self.template_dirs:
             self.template_dirs.append(path)
-            self.env.loader = FileSystemLoader(
-                [str(d) for d in self.template_dirs if d.exists()]
-            )
+            self.env.loader = FileSystemLoader([str(d) for d in self.template_dirs if d.exists()])
 
 
 def build_template_context(

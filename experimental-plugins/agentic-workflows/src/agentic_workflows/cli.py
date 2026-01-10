@@ -37,9 +37,7 @@ def main() -> None:
         default="base",
         help="Terminal output granularity",
     )
-    run_parser.add_argument(
-        "--dry-run", action="store_true", help="Validate without executing"
-    )
+    run_parser.add_argument("--dry-run", action="store_true", help="Validate without executing")
 
     # resume command
     resume_parser = subparsers.add_parser("resume", help="Resume a workflow")
@@ -157,7 +155,7 @@ def main() -> None:
 def cmd_run(args: Namespace) -> None:
     """Run a workflow."""
     from agentic_workflows.executor import WorkflowExecutor
-    from agentic_workflows.parser import WorkflowParser, WorkflowParseError
+    from agentic_workflows.parser import WorkflowParseError, WorkflowParser
 
     workflow_path = args.workflow.resolve()
     if not workflow_path.exists():
@@ -203,7 +201,7 @@ def cmd_run(args: Namespace) -> None:
 
 def cmd_resume(args: Namespace) -> None:
     """Resume a paused or failed workflow."""
-    from agentic_workflows.progress import load_progress, save_progress, WorkflowStatus
+    from agentic_workflows.progress import WorkflowStatus, load_progress, save_progress
 
     progress = load_progress(args.workflow_id)
     if progress is None:
@@ -271,8 +269,9 @@ def cmd_status(args: Namespace) -> None:
 
 def cmd_cancel(args: Namespace) -> None:
     """Cancel a running workflow."""
-    from agentic_workflows.progress import load_progress, save_progress, WorkflowStatus
     from datetime import datetime, timezone
+
+    from agentic_workflows.progress import WorkflowStatus, load_progress, save_progress
 
     progress = load_progress(args.workflow_id)
     if progress is None:
@@ -320,12 +319,7 @@ def cmd_list(args: Namespace) -> None:
     print("-" * 70)
     for wf in workflows:
         started = wf.get("started_at", "")[:19] if wf.get("started_at") else ""
-        print(
-            f"{wf.get('workflow_id', ''):<12} "
-            f"{wf.get('workflow_name', '')[:25]:<25} "
-            f"{wf.get('status', ''):<12} "
-            f"{started:<20}"
-        )
+        print(f"{wf.get('workflow_id', ''):<12} {wf.get('workflow_name', '')[:25]:<25} {wf.get('status', ''):<12} {started:<20}")
 
 
 def cmd_input(args: Namespace) -> None:
@@ -340,7 +334,7 @@ def cmd_input(args: Namespace) -> None:
 
 def cmd_configure(args: Namespace) -> None:
     """Interactive configuration wizard."""
-    from agentic_workflows.config import load_config, save_config
+    from agentic_workflows.config import load_config
 
     config = load_config()
     print("Agentic Workflows Configuration")
@@ -432,7 +426,7 @@ def cmd_memory(args: Namespace) -> None:
 def cmd_oneshot(args: Namespace) -> None:
     """Execute a single task end-to-end using the one-shot workflow."""
     from agentic_workflows.executor import WorkflowExecutor
-    from agentic_workflows.parser import WorkflowParser, WorkflowParseError
+    from agentic_workflows.parser import WorkflowParseError, WorkflowParser
 
     # Find the one-shot workflow
     plugin_dir = Path(__file__).parent.parent
@@ -475,7 +469,7 @@ def cmd_oneshot(args: Namespace) -> None:
 def cmd_analyse(args: Namespace) -> None:
     """Analyze codebase using the analyse-codebase workflow."""
     from agentic_workflows.executor import WorkflowExecutor
-    from agentic_workflows.parser import WorkflowParser, WorkflowParseError
+    from agentic_workflows.parser import WorkflowParseError, WorkflowParser
 
     plugin_dir = Path(__file__).parent.parent
 

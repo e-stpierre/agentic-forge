@@ -66,12 +66,12 @@ class StepDefinition:
     agent: str | None = None
     command: str | None = None
     args: dict[str, Any] = field(default_factory=dict)
-    steps: list["StepDefinition"] = field(default_factory=list)
+    steps: list[StepDefinition] = field(default_factory=list)
     merge_strategy: str = "wait-all"
     merge_mode: str = "independent"
     condition: str | None = None
-    then_steps: list["StepDefinition"] = field(default_factory=list)
-    else_steps: list["StepDefinition"] = field(default_factory=list)
+    then_steps: list[StepDefinition] = field(default_factory=list)
+    else_steps: list[StepDefinition] = field(default_factory=list)
     max_iterations: int = 5
     completion_promise: str | None = None
     message: str | None = None
@@ -211,9 +211,7 @@ class WorkflowParser:
             step_type = StepType(type_str)
         except ValueError:
             valid = [t.value for t in StepType]
-            raise WorkflowParseError(
-                f"Invalid step type: {type_str}. Valid types: {valid}"
-            ) from None
+            raise WorkflowParseError(f"Invalid step type: {type_str}. Valid types: {valid}") from None
 
         step = StepDefinition(name=name, type=step_type)
 

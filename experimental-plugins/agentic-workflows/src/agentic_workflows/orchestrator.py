@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import signal
 import sys
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -17,38 +16,35 @@ import yaml
 from agentic_workflows.config import load_config
 from agentic_workflows.executor import WorkflowExecutor
 from agentic_workflows.git.worktree import (
-    create_worktree,
-    remove_worktree,
-    prune_orphaned,
     Worktree,
+    create_worktree,
+    prune_orphaned,
+    remove_worktree,
 )
-from agentic_workflows.logging.logger import WorkflowLogger, LogLevel
+from agentic_workflows.logging.logger import WorkflowLogger
 from agentic_workflows.parser import (
-    WorkflowDefinition,
     StepDefinition,
     StepType,
-    WorkflowParser,
+    WorkflowDefinition,
 )
 from agentic_workflows.progress import (
+    ParallelBranch,
     WorkflowProgress,
     WorkflowStatus,
-    StepStatus,
+    _progress_to_dict,
+    create_progress,
     load_progress,
     save_progress,
-    create_progress,
-    update_step_started,
     update_step_completed,
     update_step_failed,
-    ParallelBranch,
-    _progress_to_dict,
+    update_step_started,
 )
 from agentic_workflows.ralph_loop import (
+    build_ralph_system_message,
     create_ralph_state,
-    load_ralph_state,
-    update_ralph_iteration,
     deactivate_ralph_state,
     detect_completion_promise,
-    build_ralph_system_message,
+    update_ralph_iteration,
 )
 from agentic_workflows.runner import run_claude
 from agentic_workflows.templates.renderer import TemplateRenderer
@@ -145,13 +141,9 @@ class WorkflowOrchestrator:
                 break
 
             if decision.action.type == "execute_step":
-                self._execute_step_action(
-                    workflow, progress, decision.action, logger, terminal_output
-                )
+                self._execute_step_action(workflow, progress, decision.action, logger, terminal_output)
             elif decision.action.type == "retry_step":
-                self._retry_step_action(
-                    workflow, progress, decision.action, logger, terminal_output
-                )
+                self._retry_step_action(workflow, progress, decision.action, logger, terminal_output)
             elif decision.action.type == "wait_for_human":
                 self._wait_for_human_action(progress, decision.action, logger)
                 break
@@ -247,10 +239,7 @@ class WorkflowOrchestrator:
         last_step_output = None
         if progress.completed_steps:
             last = progress.completed_steps[-1]
-            if isinstance(last, dict):
-                last_step_name = last.get("name")
-            else:
-                last_step_name = last.name
+            last_step_name = last.get("name") if isinstance(last, dict) else last.name
             last_step_output = progress.step_outputs.get(last_step_name, "")
 
         prompt = self.renderer.render_string(
@@ -264,7 +253,7 @@ class WorkflowOrchestrator:
         )
 
         max_retry = self.config["defaults"]["maxRetry"]
-        for attempt in range(max_retry):
+        for _attempt in range(max_retry):
             result = run_claude(
                 prompt=prompt,
                 cwd=self.repo_root,
@@ -274,9 +263,7 @@ class WorkflowOrchestrator:
             )
 
             if not result.success:
-                logger.warning(
-                    "orchestrator", f"Orchestrator call failed: {result.stderr}"
-                )
+                logger.warning("orchestrator", f"Orchestrator call failed: {result.stderr}")
                 continue
 
             try:
@@ -332,24 +319,16 @@ class WorkflowOrchestrator:
             return
 
         if step.type == StepType.PARALLEL:
-            self._execute_parallel_step(
-                workflow, step, progress, logger, terminal_output
-            )
+            self._execute_parallel_step(workflow, step, progress, logger, terminal_output)
         elif step.type == StepType.CONDITIONAL:
-            self._execute_conditional_step(
-                workflow, step, progress, logger, terminal_output
-            )
+            self._execute_conditional_step(workflow, step, progress, logger, terminal_output)
         elif step.type == StepType.RALPH_LOOP:
-            self._execute_ralph_loop_step(
-                workflow, step, progress, logger, terminal_output
-            )
+            self._execute_ralph_loop_step(workflow, step, progress, logger, terminal_output)
         elif step.type == StepType.WAIT_FOR_HUMAN:
             self._execute_wait_for_human_step(step, progress, logger)
         else:
             print_output = terminal_output == "all"
-            self.executor._execute_step(
-                step, progress, progress.variables, logger, print_output
-            )
+            self.executor._execute_step(step, progress, progress.variables, logger, print_output)
 
     def _execute_parallel_step(
         self,
@@ -360,9 +339,7 @@ class WorkflowOrchestrator:
         terminal_output: str,
     ) -> None:
         """Execute parallel steps in separate worktrees."""
-        logger.info(
-            step.name, f"Starting parallel execution with {len(step.steps)} branches"
-        )
+        logger.info(step.name, f"Starting parallel execution with {len(step.steps)} branches")
         update_step_started(progress, step.name)
 
         max_workers = self.config["execution"]["maxWorkers"]
@@ -381,13 +358,7 @@ class WorkflowOrchestrator:
                     branch_id=sub_step.name,
                     status="running",
                     worktree_path=str(wt.path),
-                    progress_file=str(
-                        wt.path
-                        / "agentic"
-                        / "workflows"
-                        / progress.workflow_id
-                        / "progress.json"
-                    ),
+                    progress_file=str(wt.path / "agentic" / "workflows" / progress.workflow_id / "progress.json"),
                 )
                 progress.parallel_branches.append(branch)
 
@@ -395,7 +366,7 @@ class WorkflowOrchestrator:
 
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {}
-                for wt, sub_step in zip(worktrees, step.steps):
+                for wt, sub_step in zip(worktrees, step.steps, strict=True):
                     future = executor.submit(
                         self._execute_in_worktree,
                         workflow,
@@ -420,14 +391,10 @@ class WorkflowOrchestrator:
                         logger.error(sub_step.name, f"Parallel branch error: {e}")
 
             if all_success:
-                update_step_completed(
-                    progress, step.name, "All parallel branches completed"
-                )
+                update_step_completed(progress, step.name, "All parallel branches completed")
                 logger.info(step.name, "Parallel execution completed successfully")
             else:
-                update_step_failed(
-                    progress, step.name, "One or more parallel branches failed"
-                )
+                update_step_failed(progress, step.name, "One or more parallel branches failed")
 
         finally:
             for wt in worktrees:
@@ -453,9 +420,7 @@ class WorkflowOrchestrator:
 
         try:
             print_output = terminal_output == "all"
-            wt_executor._execute_step(
-                step, parent_progress, parent_progress.variables, wt_logger, print_output
-            )
+            wt_executor._execute_step(step, parent_progress, parent_progress.variables, wt_logger, print_output)
             return True
         except Exception as e:
             logger.error(step.name, f"Worktree execution failed: {e}")
@@ -475,9 +440,7 @@ class WorkflowOrchestrator:
 
         context = {"outputs": progress.step_outputs, "variables": progress.variables}
         try:
-            condition_result = self.renderer.render_string(
-                "{{ " + (step.condition or "false") + " }}", context
-            )
+            condition_result = self.renderer.render_string("{{ " + (step.condition or "false") + " }}", context)
             is_true = condition_result.lower() in ("true", "1", "yes")
         except Exception as e:
             logger.error(step.name, f"Condition evaluation failed: {e}")
@@ -492,9 +455,7 @@ class WorkflowOrchestrator:
 
         print_output = terminal_output == "all"
         for sub_step in steps_to_run:
-            self.executor._execute_step(
-                sub_step, progress, progress.variables, logger, print_output
-            )
+            self.executor._execute_step(sub_step, progress, progress.variables, logger, print_output)
             if progress.status == WorkflowStatus.FAILED.value:
                 break
 
@@ -548,14 +509,10 @@ class WorkflowOrchestrator:
         completed = False
 
         while state.iteration <= max_iterations and not self._shutdown_requested:
-            logger.info(
-                step.name, f"Ralph iteration {state.iteration}/{max_iterations}"
-            )
+            logger.info(step.name, f"Ralph iteration {state.iteration}/{max_iterations}")
 
             # Build prompt with Ralph system message
-            ralph_message = build_ralph_system_message(
-                state.iteration, max_iterations, completion_promise
-            )
+            ralph_message = build_ralph_system_message(state.iteration, max_iterations, completion_promise)
             full_prompt = ralph_message + prompt
 
             # Execute fresh Claude session
@@ -575,17 +532,13 @@ class WorkflowOrchestrator:
                     f"Iteration {state.iteration} failed: {result.stderr}",
                 )
                 # Continue to next iteration on failure
-                state = update_ralph_iteration(
-                    progress.workflow_id, step.name, self.repo_root
-                )
+                state = update_ralph_iteration(progress.workflow_id, step.name, self.repo_root)
                 if not state:
                     break
                 continue
 
             # Check for completion promise in output
-            completion_result = detect_completion_promise(
-                result.stdout, completion_promise
-            )
+            completion_result = detect_completion_promise(result.stdout, completion_promise)
 
             if completion_result.is_complete and completion_result.promise_matched:
                 logger.info(
@@ -594,23 +547,17 @@ class WorkflowOrchestrator:
                 )
                 final_output = result.stdout
                 completed = True
-                deactivate_ralph_state(
-                    progress.workflow_id, step.name, self.repo_root
-                )
+                deactivate_ralph_state(progress.workflow_id, step.name, self.repo_root)
                 break
 
             if completion_result.is_complete and not completion_result.promise_matched:
                 logger.warning(
                     step.name,
-                    f"Completion signaled but promise mismatch: "
-                    f"got '{completion_result.promise_value}', "
-                    f"expected '{completion_promise}'",
+                    f"Completion signaled but promise mismatch: got '{completion_result.promise_value}', expected '{completion_promise}'",
                 )
 
             # Update state for next iteration
-            state = update_ralph_iteration(
-                progress.workflow_id, step.name, self.repo_root
-            )
+            state = update_ralph_iteration(progress.workflow_id, step.name, self.repo_root)
             if not state:
                 logger.error(step.name, "Failed to update Ralph state")
                 break
@@ -657,14 +604,12 @@ class WorkflowOrchestrator:
         }
         progress.status = WorkflowStatus.PAUSED.value
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("HUMAN INPUT REQUIRED")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"\n{step.message}\n")
-        print(
-            f"Provide input with: agentic-workflow input {progress.workflow_id} \"<your response>\""
-        )
-        print(f"{'='*60}\n")
+        print(f'Provide input with: agentic-workflow input {progress.workflow_id} "<your response>"')
+        print(f"{'=' * 60}\n")
 
     def _retry_step_action(
         self,
@@ -684,9 +629,7 @@ class WorkflowOrchestrator:
             step.prompt = f"{step.prompt}\n\nPrevious attempt failed:\n{action.error_context}"
 
         print_output = terminal_output == "all"
-        self.executor._execute_step(
-            step, progress, progress.variables, logger, print_output
-        )
+        self.executor._execute_step(step, progress, progress.variables, logger, print_output)
 
     def _wait_for_human_action(
         self,
@@ -698,9 +641,7 @@ class WorkflowOrchestrator:
         progress.status = WorkflowStatus.PAUSED.value
         logger.info("orchestrator", "Workflow paused waiting for human input")
 
-    def _find_step(
-        self, steps: list[StepDefinition], name: str | None
-    ) -> StepDefinition | None:
+    def _find_step(self, steps: list[StepDefinition], name: str | None) -> StepDefinition | None:
         """Find step by name recursively."""
         if not name:
             return None
@@ -740,9 +681,7 @@ class WorkflowOrchestrator:
         }
 
 
-def process_human_input(
-    workflow_id: str, response: str, repo_root: Path | None = None
-) -> bool:
+def process_human_input(workflow_id: str, response: str, repo_root: Path | None = None) -> bool:
     """Process human input for a paused workflow.
 
     Returns True if workflow can resume.

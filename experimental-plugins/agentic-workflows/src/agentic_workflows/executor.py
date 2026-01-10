@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from agentic_workflows.config import load_config
-from agentic_workflows.logging.logger import LogLevel, WorkflowLogger
+from agentic_workflows.logging.logger import WorkflowLogger
 from agentic_workflows.parser import StepDefinition, StepType, WorkflowDefinition
 from agentic_workflows.progress import (
     WorkflowProgress,
@@ -156,9 +156,7 @@ class WorkflowExecutor:
             try:
                 output_path_str = output.path
                 if self.renderer.has_variables(output_path_str):
-                    output_path_str = self.renderer.render_string(
-                        output_path_str, {"workflow_id": progress.workflow_id, **variables}
-                    )
+                    output_path_str = self.renderer.render_string(output_path_str, {"workflow_id": progress.workflow_id, **variables})
                 output_path = self.repo_root / output_path_str
 
                 render_workflow_output(

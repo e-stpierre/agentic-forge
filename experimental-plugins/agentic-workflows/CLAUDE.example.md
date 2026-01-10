@@ -39,19 +39,23 @@ When working in a workflow context, always:
 ## Available Commands
 
 ### Planning
+
 - `/plan` - Create implementation plans for tasks
 - `/build` - Implement changes following a plan
 - `/validate` - Run validation checks
 
 ### Analysis
+
 - `/analyse` - Analyze codebase for issues (bug, debt, doc, security, style)
 
 ### Git Operations
+
 - `/git-branch` - Manage git branches
 - `/git-commit` - Create commits
 - `/git-pr` - Create pull requests
 
 ### Memory & State
+
 - `/create-memory` - Store learnings for future reference
 - `/search-memory` - Find relevant context
 - `/create-checkpoint` - Record progress
