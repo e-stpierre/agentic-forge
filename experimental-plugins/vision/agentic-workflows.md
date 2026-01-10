@@ -113,12 +113,12 @@ pending ──start──> running ──complete──> completed
 
 The framework categorizes errors to enable appropriate handling:
 
-| Error Type      | Description                                       | Action                                |
-| --------------- | ------------------------------------------------- | ------------------------------------- |
-| **Transient**   | Network timeout, rate limit, temporary failures   | Retry with same prompt, new session   |
+| Error Type      | Description                                       | Action                                                                               |
+| --------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Transient**   | Network timeout, rate limit, temporary failures   | Retry with same prompt, new session                                                  |
 | **Recoverable** | Test failure, validation error, fixable issues    | New session with: original prompt + error message + affected files + fix instruction |
-| **Fatal**       | Invalid workflow definition, missing dependencies | Abort workflow                        |
-| **Blocking**    | Human input required, ambiguous decision          | Pause workflow                        |
+| **Fatal**       | Invalid workflow definition, missing dependencies | Abort workflow                                                                       |
+| **Blocking**    | Human input required, ambiguous decision          | Pause workflow                                                                       |
 
 When max-retry is reached for a step, the error is promoted to fatal and the workflow stops.
 
@@ -457,23 +457,23 @@ Global configuration stored in `agentic/config.json`.
 }
 ```
 
-| Setting                   | Type    | Default          | Description                           |
-| ------------------------- | ------- | ---------------- | ------------------------------------- |
-| `outputDirectory`         | string  | `agentic`        | Base directory for all outputs        |
-| `logging.enabled`         | boolean | `true`           | Enable workflow logging               |
-| `logging.level`           | enum    | `Error`          | Critical, Error, Warning, Information |
-| `git.mainBranch`          | string  | `main`           | Default branch name                   |
-| `git.autoCommit`          | boolean | `true`           | Auto-commit after milestones          |
-| `git.autoPr`              | boolean | `true`           | Auto-create PR on completion          |
-| `memory.enabled`          | boolean | `true`           | Enable memory system                  |
-| `memory.directory`        | string  | `agentic/memory` | Memory storage location               |
-| `memory.template`         | string  | `default`        | Default memory template               |
-| `defaults.maxRetry`       | number  | `3`              | Default max retries per step          |
-| `defaults.timeoutMinutes` | number  | `60`             | Default workflow timeout              |
-| `defaults.trackProgress`  | boolean | `true`           | Enable progress tracking by default   |
-| `defaults.terminalOutput` | enum    | `base`           | Terminal output granularity           |
-| `execution.maxWorkers`    | number  | `4`              | Max concurrent parallel Claude sessions |
-| `execution.pollingIntervalSeconds` | number | `5`     | Polling interval for parallel completion |
+| Setting                            | Type    | Default          | Description                              |
+| ---------------------------------- | ------- | ---------------- | ---------------------------------------- |
+| `outputDirectory`                  | string  | `agentic`        | Base directory for all outputs           |
+| `logging.enabled`                  | boolean | `true`           | Enable workflow logging                  |
+| `logging.level`                    | enum    | `Error`          | Critical, Error, Warning, Information    |
+| `git.mainBranch`                   | string  | `main`           | Default branch name                      |
+| `git.autoCommit`                   | boolean | `true`           | Auto-commit after milestones             |
+| `git.autoPr`                       | boolean | `true`           | Auto-create PR on completion             |
+| `memory.enabled`                   | boolean | `true`           | Enable memory system                     |
+| `memory.directory`                 | string  | `agentic/memory` | Memory storage location                  |
+| `memory.template`                  | string  | `default`        | Default memory template                  |
+| `defaults.maxRetry`                | number  | `3`              | Default max retries per step             |
+| `defaults.timeoutMinutes`          | number  | `60`             | Default workflow timeout                 |
+| `defaults.trackProgress`           | boolean | `true`           | Enable progress tracking by default      |
+| `defaults.terminalOutput`          | enum    | `base`           | Terminal output granularity              |
+| `execution.maxWorkers`             | number  | `4`              | Max concurrent parallel Claude sessions  |
+| `execution.pollingIntervalSeconds` | number  | `5`              | Polling interval for parallel completion |
 
 ## Memory Document Format
 
@@ -598,9 +598,11 @@ agentic/memory/
 Last updated: 2024-01-15T10:30:00Z
 
 ## Decisions
+
 - [2024-01-09-auth-approach.md](decisions/2024-01-09-auth-approach.md) - OAuth vs JWT
 
 ## Patterns
+
 - [error-handling-convention.md](patterns/error-handling-convention.md) - Error handling
 ```
 
@@ -772,6 +774,7 @@ Skill used to create a checkpoint, refers to the plugin json configuration for:
 Add log entries to the workflow's log file (`agentic/workflows/{workflow-id}/logs.ndjson`). Uses NDJSON format (one JSON object per line) with fields: `timestamp`, `level`, `step`, `message`, `context`.
 
 Log levels:
+
 - **Critical**: Fatal error causing workflow to stop (e.g., max retries reached)
 - **Error**: Any error that occurred
 - **Warning**: Unexpected issue that may need attention
@@ -1226,6 +1229,7 @@ The orchestrator limits concurrent Claude sessions to `max_workers` (default: 4)
 ### Graceful Shutdown
 
 The Python orchestrator handles SIGINT/SIGTERM (Ctrl+C) by:
+
 1. Setting workflow status to `cancelled`
 2. Sending SIGTERM to running Claude processes
 3. Waiting up to 30 seconds for graceful cleanup
