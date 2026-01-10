@@ -16,7 +16,8 @@ Key capabilities:
 
 Quick examples:
 
-- `agentic-workflow run workflow.yaml` - Execute a YAML workflow
+- `agentic-workflow run plan-build-validate.yaml` - Run bundled workflow (works immediately)
+- `agentic-workflow init` - Copy bundled workflows locally to customize
 - `agentic-workflow one-shot "Add user authentication"` - Complete a task end-to-end with PR
 - `agentic-workflow analyse --type security` - Run security analysis on codebase
 - `/plan --type feature` - Generate a feature implementation plan
@@ -75,6 +76,7 @@ uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugin
 | Command                      | Description                                  |
 | ---------------------------- | -------------------------------------------- |
 | `agentic-workflow run`       | Execute a workflow from YAML file            |
+| `agentic-workflow init`      | Copy bundled workflow templates locally      |
 | `agentic-workflow resume`    | Resume a paused or failed workflow           |
 | `agentic-workflow status`    | Check workflow execution status              |
 | `agentic-workflow cancel`    | Cancel a running workflow                    |
@@ -200,20 +202,53 @@ agentic/
 - `--from-step <step>` - Resume from specific step
 - `--terminal-output <level>` - Output verbosity: `base` (default) or `all`
 
+**Path Resolution:**
+
+The `run` command automatically resolves workflow paths in this order:
+
+1. Exact path (absolute or relative to current directory)
+2. `agentic/workflows/<name>` (local project workflows)
+3. Bundled plugin workflows (included with the plugin)
+
+This means bundled workflows work immediately without copying files locally.
+
 **Examples:**
 
 ```bash
-# Run a workflow with default settings
-agentic-workflow run workflows/plan-build-validate.yaml
+# Run a bundled workflow directly (no setup needed)
+agentic-workflow run plan-build-validate.yaml
 
 # Run with variables
-agentic-workflow run workflow.yaml --var "task=Add login feature" --var "priority=high"
+agentic-workflow run one-shot.yaml --var "task=Add login feature"
+
+# Run a local workflow
+agentic-workflow run agentic/workflows/my-custom-workflow.yaml
 
 # Resume from a specific step
 agentic-workflow run workflow.yaml --from-step validate
 
 # Show all Claude output
 agentic-workflow run workflow.yaml --terminal-output all
+```
+
+### agentic-workflow init
+
+**Arguments:**
+
+- `--list` - List available bundled workflows without copying
+- `--force` - Overwrite existing workflow files
+
+**Examples:**
+
+```bash
+# List available bundled workflows
+agentic-workflow init --list
+
+# Copy all bundled workflows to agentic/workflows/
+agentic-workflow init
+
+# Overwrite existing local workflows with bundled versions
+agentic-workflow init --force
 ```
 
 ### agentic-workflow resume

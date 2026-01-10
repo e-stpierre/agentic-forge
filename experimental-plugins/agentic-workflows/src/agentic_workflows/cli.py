@@ -12,6 +12,39 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 
+def get_bundled_workflows_dir() -> Path:
+    """Get the directory containing bundled workflow templates."""
+    return Path(__file__).parent.parent / "workflows"
+
+
+def resolve_workflow_path(workflow_arg: Path) -> tuple[Path, bool]:
+    """Resolve workflow path, checking local then bundled locations.
+
+    Returns:
+        Tuple of (resolved_path, is_bundled)
+    """
+    # First check if it's an absolute path or exists locally
+    if workflow_arg.is_absolute():
+        return workflow_arg, False
+
+    local_path = Path.cwd() / workflow_arg
+    if local_path.exists():
+        return local_path.resolve(), False
+
+    # Check in agentic/workflows/ directory
+    agentic_path = Path.cwd() / "agentic" / "workflows" / workflow_arg.name
+    if agentic_path.exists():
+        return agentic_path.resolve(), False
+
+    # Check bundled workflows
+    bundled_path = get_bundled_workflows_dir() / workflow_arg.name
+    if bundled_path.exists():
+        return bundled_path.resolve(), True
+
+    # Return original path (will fail with appropriate error)
+    return workflow_arg.resolve(), False
+
+
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(
@@ -66,6 +99,22 @@ def main() -> None:
 
     # configure command
     subparsers.add_parser("configure", help="Configure plugin settings")
+
+    # init command
+    init_parser = subparsers.add_parser(
+        "init", help="Copy bundled workflow templates to local project"
+    )
+    init_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing workflow files",
+    )
+    init_parser.add_argument(
+        "--list",
+        action="store_true",
+        dest="list_only",
+        help="List available bundled workflows without copying",
+    )
 
     # memory commands
     memory_parser = subparsers.add_parser("memory", help="Memory management")
@@ -139,6 +188,8 @@ def main() -> None:
         cmd_input(args)
     elif args.command == "configure":
         cmd_configure(args)
+    elif args.command == "init":
+        cmd_init(args)
     elif args.command == "config":
         cmd_config(args)
     elif args.command == "memory":
@@ -157,10 +208,19 @@ def cmd_run(args: Namespace) -> None:
     from agentic_workflows.executor import WorkflowExecutor
     from agentic_workflows.parser import WorkflowParseError, WorkflowParser
 
-    workflow_path = args.workflow.resolve()
+    workflow_path, is_bundled = resolve_workflow_path(args.workflow)
     if not workflow_path.exists():
-        print(f"Error: Workflow file not found: {workflow_path}", file=sys.stderr)
+        print(f"Error: Workflow file not found: {args.workflow}", file=sys.stderr)
+        print("\nAvailable bundled workflows:", file=sys.stderr)
+        bundled_dir = get_bundled_workflows_dir()
+        if bundled_dir.exists():
+            for wf in sorted(bundled_dir.glob("*.yaml")):
+                print(f"  - {wf.name}", file=sys.stderr)
+        print("\nUse 'agentic-workflow init' to copy them locally.", file=sys.stderr)
         sys.exit(1)
+
+    if is_bundled:
+        print(f"Using bundled workflow: {workflow_path.name}")
 
     # Parse variables
     variables: dict[str, str] = {}
@@ -343,6 +403,60 @@ def cmd_configure(args: Namespace) -> None:
     print(json.dumps(config, indent=2))
     print("\nUse 'agentic-workflow config set <key> <value>' to modify settings.")
     print("Example: agentic-workflow config set defaults.maxRetry 5")
+
+
+def cmd_init(args: Namespace) -> None:
+    """Copy bundled workflow templates to local project."""
+    import shutil
+
+    bundled_dir = get_bundled_workflows_dir()
+    if not bundled_dir.exists():
+        print("Error: Bundled workflows directory not found.", file=sys.stderr)
+        sys.exit(1)
+
+    bundled_workflows = sorted(bundled_dir.glob("*.yaml"))
+    if not bundled_workflows:
+        print("No bundled workflows found.", file=sys.stderr)
+        sys.exit(1)
+
+    # List only mode
+    if args.list_only:
+        print("Available bundled workflows:")
+        print()
+        for wf in bundled_workflows:
+            print(f"  {wf.name}")
+        print()
+        print("Use 'agentic-workflow init' to copy these to agentic/workflows/")
+        return
+
+    # Copy workflows to local directory
+    target_dir = Path.cwd() / "agentic" / "workflows"
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    copied = []
+    skipped = []
+    for wf in bundled_workflows:
+        target_path = target_dir / wf.name
+        if target_path.exists() and not args.force:
+            skipped.append(wf.name)
+        else:
+            shutil.copy2(wf, target_path)
+            copied.append(wf.name)
+
+    if copied:
+        print(f"Copied {len(copied)} workflow(s) to {target_dir}/")
+        for name in copied:
+            print(f"  + {name}")
+
+    if skipped:
+        print(f"\nSkipped {len(skipped)} existing workflow(s):")
+        for name in skipped:
+            print(f"  - {name}")
+        print("\nUse --force to overwrite existing files.")
+
+    if copied:
+        print("\nYou can now run workflows with:")
+        print(f"  agentic-workflow run agentic/workflows/<workflow>.yaml")
 
 
 def cmd_config(args: Namespace) -> None:
