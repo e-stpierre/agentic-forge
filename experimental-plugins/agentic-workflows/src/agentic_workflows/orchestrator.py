@@ -42,6 +42,14 @@ from agentic_workflows.progress import (
     ParallelBranch,
     _progress_to_dict,
 )
+from agentic_workflows.ralph_loop import (
+    create_ralph_state,
+    load_ralph_state,
+    update_ralph_iteration,
+    deactivate_ralph_state,
+    detect_completion_promise,
+    build_ralph_system_message,
+)
 from agentic_workflows.runner import run_claude
 from agentic_workflows.templates.renderer import TemplateRenderer
 
@@ -331,8 +339,8 @@ class WorkflowOrchestrator:
             self._execute_conditional_step(
                 workflow, step, progress, logger, terminal_output
             )
-        elif step.type == StepType.RECURRING:
-            self._execute_recurring_step(
+        elif step.type == StepType.RALPH_LOOP:
+            self._execute_ralph_loop_step(
                 workflow, step, progress, logger, terminal_output
             )
         elif step.type == StepType.WAIT_FOR_HUMAN:
@@ -493,7 +501,7 @@ class WorkflowOrchestrator:
         if progress.status != WorkflowStatus.FAILED.value:
             update_step_completed(progress, step.name, f"Condition: {is_true}")
 
-    def _execute_recurring_step(
+    def _execute_ralph_loop_step(
         self,
         workflow: WorkflowDefinition,
         step: StepDefinition,
@@ -501,47 +509,133 @@ class WorkflowOrchestrator:
         logger: WorkflowLogger,
         terminal_output: str,
     ) -> None:
-        """Execute recurring step until condition met or max iterations."""
+        """Execute Ralph Wiggum loop: repeat prompt until completion or max iterations.
+
+        Each iteration creates a fresh Claude session with the same prompt.
+        Completion is detected via structured JSON output from Claude.
+        """
+        completion_promise = step.completion_promise or "COMPLETE"
+        max_iterations = step.max_iterations
+
         logger.info(
-            step.name, f"Starting recurring step (max {step.max_iterations} iterations)"
+            step.name,
+            f"Starting Ralph loop (max {max_iterations} iterations, promise: {completion_promise})",
         )
         update_step_started(progress, step.name)
 
-        print_output = terminal_output == "all"
-        iteration = 0
+        # Render the prompt template
+        context = {
+            "variables": progress.variables,
+            "outputs": progress.step_outputs,
+            **progress.variables,
+        }
+        prompt = step.prompt or ""
+        if self.renderer.has_variables(prompt):
+            prompt = self.renderer.render_string(prompt, context)
 
-        while iteration < step.max_iterations:
-            iteration += 1
-            logger.info(step.name, f"Iteration {iteration}/{step.max_iterations}")
-
-            for sub_step in step.steps:
-                self.executor._execute_step(
-                    sub_step, progress, progress.variables, logger, print_output
-                )
-                if progress.status == WorkflowStatus.FAILED.value:
-                    return
-
-            if step.until:
-                context = {
-                    "outputs": progress.step_outputs,
-                    "variables": progress.variables,
-                }
-                try:
-                    result = self.renderer.render_string(
-                        "{{ " + step.until + " }}", context
-                    )
-                    if result.lower() in ("true", "1", "yes"):
-                        logger.info(
-                            step.name,
-                            f"Until condition met after {iteration} iterations",
-                        )
-                        break
-                except Exception as e:
-                    logger.warning(step.name, f"Until condition error: {e}")
-
-        update_step_completed(
-            progress, step.name, f"Completed after {iteration} iterations"
+        # Create state file for tracking/resuming
+        state = create_ralph_state(
+            workflow_id=progress.workflow_id,
+            step_name=step.name,
+            prompt=prompt,
+            max_iterations=max_iterations,
+            completion_promise=completion_promise,
+            repo_root=self.repo_root,
         )
+
+        print_output = terminal_output == "all"
+        final_output = ""
+        completed = False
+
+        while state.iteration <= max_iterations and not self._shutdown_requested:
+            logger.info(
+                step.name, f"Ralph iteration {state.iteration}/{max_iterations}"
+            )
+
+            # Build prompt with Ralph system message
+            ralph_message = build_ralph_system_message(
+                state.iteration, max_iterations, completion_promise
+            )
+            full_prompt = ralph_message + prompt
+
+            # Execute fresh Claude session
+            timeout = (step.step_timeout_minutes or 60) * 60
+            result = run_claude(
+                prompt=full_prompt,
+                cwd=self.repo_root,
+                model=step.model,
+                timeout=timeout,
+                print_output=print_output,
+                skip_permissions=True,
+            )
+
+            if not result.success:
+                logger.warning(
+                    step.name,
+                    f"Iteration {state.iteration} failed: {result.stderr}",
+                )
+                # Continue to next iteration on failure
+                state = update_ralph_iteration(
+                    progress.workflow_id, step.name, self.repo_root
+                )
+                if not state:
+                    break
+                continue
+
+            # Check for completion promise in output
+            completion_result = detect_completion_promise(
+                result.stdout, completion_promise
+            )
+
+            if completion_result.is_complete and completion_result.promise_matched:
+                logger.info(
+                    step.name,
+                    f"Completion promise matched after {state.iteration} iterations",
+                )
+                final_output = result.stdout
+                completed = True
+                deactivate_ralph_state(
+                    progress.workflow_id, step.name, self.repo_root
+                )
+                break
+
+            if completion_result.is_complete and not completion_result.promise_matched:
+                logger.warning(
+                    step.name,
+                    f"Completion signaled but promise mismatch: "
+                    f"got '{completion_result.promise_value}', "
+                    f"expected '{completion_promise}'",
+                )
+
+            # Update state for next iteration
+            state = update_ralph_iteration(
+                progress.workflow_id, step.name, self.repo_root
+            )
+            if not state:
+                logger.error(step.name, "Failed to update Ralph state")
+                break
+
+        if completed:
+            update_step_completed(
+                progress,
+                step.name,
+                f"Completed after {state.iteration} iterations",
+                final_output,
+            )
+        elif self._shutdown_requested:
+            logger.info(step.name, "Ralph loop interrupted by shutdown")
+            update_step_failed(progress, step.name, "Interrupted by shutdown")
+        else:
+            logger.warning(
+                step.name,
+                f"Max iterations ({max_iterations}) reached without completion",
+            )
+            deactivate_ralph_state(progress.workflow_id, step.name, self.repo_root)
+            update_step_failed(
+                progress,
+                step.name,
+                f"Max iterations ({max_iterations}) reached without completion promise",
+            )
 
     def _execute_wait_for_human_step(
         self,

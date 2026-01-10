@@ -17,7 +17,7 @@ class StepType(Enum):
     COMMAND = "command"
     PARALLEL = "parallel"
     CONDITIONAL = "conditional"
-    RECURRING = "recurring"
+    RALPH_LOOP = "ralph-loop"
     WAIT_FOR_HUMAN = "wait-for-human"
 
 
@@ -72,8 +72,8 @@ class StepDefinition:
     condition: str | None = None
     then_steps: list["StepDefinition"] = field(default_factory=list)
     else_steps: list["StepDefinition"] = field(default_factory=list)
-    max_iterations: int = 3
-    until: str | None = None
+    max_iterations: int = 5
+    completion_promise: str | None = None
     message: str | None = None
     polling_interval: int = 15
     on_timeout: str = "abort"
@@ -231,10 +231,10 @@ class WorkflowParser:
             step.condition = data.get("condition")
             step.then_steps = [self._parse_step(s) for s in data.get("then", [])]
             step.else_steps = [self._parse_step(s) for s in data.get("else", [])]
-        elif step_type == StepType.RECURRING:
-            step.max_iterations = data.get("max-iterations", 3)
-            step.until = data.get("until")
-            step.steps = [self._parse_step(s) for s in data.get("steps", [])]
+        elif step_type == StepType.RALPH_LOOP:
+            step.prompt = data.get("prompt")
+            step.max_iterations = data.get("max-iterations", 5)
+            step.completion_promise = data.get("completion-promise")
         elif step_type == StepType.WAIT_FOR_HUMAN:
             step.message = data.get("message")
             step.polling_interval = data.get("polling-interval", 15)

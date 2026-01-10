@@ -132,7 +132,7 @@
         },
         "type": {
           "type": "string",
-          "enum": ["prompt", "command", "parallel", "conditional", "recurring", "wait-for-human"]
+          "enum": ["prompt", "command", "parallel", "conditional", "ralph-loop", "wait-for-human"]
         },
         "prompt": {
           "type": "string"
@@ -179,10 +179,11 @@
         },
         "max-iterations": {
           "type": "integer",
-          "default": 3
+          "default": 5
         },
-        "until": {
-          "type": "string"
+        "completion-promise": {
+          "type": "string",
+          "description": "JSON completion promise text that signals the loop should exit"
         },
         "message": {
           "type": "string"

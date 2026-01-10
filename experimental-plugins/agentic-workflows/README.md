@@ -157,7 +157,7 @@ Key architectural decisions:
 | `command` | Execute a Claude command with arguments |
 | `parallel` | Execute nested steps concurrently in git worktrees |
 | `conditional` | Execute steps based on Jinja2 condition |
-| `recurring` | Repeat steps until condition met or max iterations |
+| `ralph-loop` | Repeat a prompt until completion promise or max iterations (Ralph Wiggum pattern) |
 | `wait-for-human` | Pause workflow for human input |
 
 ### Output Directory Structure
@@ -594,19 +594,23 @@ steps:
           plan: fix-plan.md
 ```
 
-**Recurring steps:**
+**Ralph Loop (iterative prompt with completion detection):**
 
 ```yaml
 steps:
-  - name: improve-quality
-    type: recurring
-    max-iterations: 3
-    until: "{{ outputs.validate['issues_count'] == 0 }}"
-    steps:
-      - name: validate
-        type: command
-        command: validate
-      - name: fix
-        type: command
-        command: build
+  - name: implement-iteratively
+    type: ralph-loop
+    prompt: |
+      Follow the plan in agentic/plan.md and implement the next incomplete task.
+      After implementing, mark it complete in the plan.
+
+      When ALL tasks are complete, output:
+      ```json
+      {"ralph_complete": true, "promise": "COMPLETE"}
+      ```
+    max-iterations: 10
+    completion-promise: "COMPLETE"
+    model: sonnet
 ```
+
+The Ralph Loop pattern creates a fresh Claude session for each iteration, repeating the same prompt until Claude outputs a JSON completion signal or max iterations is reached. State is tracked in `agentic/workflows/{id}/ralph-{step}.md`.

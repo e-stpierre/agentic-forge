@@ -1,0 +1,45 @@
+# Ralph Wiggum Loop Report
+
+Generated: {{ workflow.completed_at }}
+Workflow: {{ workflow.name }}
+ID: {{ workflow.id | default(workflow.workflow_id, true) }}
+
+## Summary
+
+**Status**: {{ workflow.status | default('completed') }}
+**Started**: {{ workflow.started_at }}
+**Completed**: {{ workflow.completed_at }}
+
+## Task
+
+{% if inputs.task %}
+{{ inputs.task }}
+{% else %}
+_No task description provided_
+{% endif %}
+
+## Loop Execution
+
+| Step | Status | Iterations | Summary |
+|------|--------|------------|---------|
+{% for step_name, step in steps.items() %}
+| {{ step_name }} | {{ step.status }} | {{ step.output_summary | default('-') | truncate(80) }} |
+{% endfor %}
+
+## Final Output
+
+{% for step_name, step in steps.items() %}
+{% if step.output %}
+### {{ step_name }}
+
+{{ step.output }}
+{% endif %}
+{% endfor %}
+
+{% if files_changed %}
+## Files Changed
+
+{% for file in files_changed %}
+- `{{ file }}`
+{% endfor %}
+{% endif %}

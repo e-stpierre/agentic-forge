@@ -39,16 +39,26 @@ steps:
     checkpoint: true
 
   - name: implement
-    type: recurring
-    max-iterations: 5
-    until: "outputs.implement_milestone.milestone_completed == outputs.plan.milestones | length"
-    steps:
-      - name: implement-milestone
-        type: command
-        command: build
-        args:
-          plan: "agentic/workflows/{{ workflow_id }}/plan.md"
-        checkpoint: true
+    type: ralph-loop
+    prompt: |
+      Read the plan at agentic/workflows/{{ workflow_id }}/plan.md and implement the next incomplete milestone.
+
+      For each milestone:
+      1. Implement all tasks in the milestone
+      2. Run tests to verify your changes
+      3. Commit your changes with a descriptive message
+      4. Mark the milestone as complete in the plan file
+
+      When ALL milestones are marked complete in the plan, output:
+      ```json
+      {"ralph_complete": true, "promise": "ALL_MILESTONES_COMPLETE"}
+      ```
+
+      Do NOT output the completion JSON until every milestone is genuinely finished.
+    max-iterations: 10
+    completion-promise: "ALL_MILESTONES_COMPLETE"
+    model: sonnet
+    checkpoint: true
 
   - name: validate
     type: command
