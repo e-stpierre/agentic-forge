@@ -33,8 +33,9 @@ The agentic workflows goal is to enable Claude Code to execute any type of task 
 - The terminal used to launch a workflow stays active and runs the main orchestrator loop
 - The orchestrator prints information based on the selected log granularity:
   - **base**: Only important progress (step completion, step error, waiting for human input, workflow status changes)
-  - **all**: Include Claude session output streamed to terminal (sequential display, parallel output buffered)
-- Similar to the agentic-core meetings implementation where agent messages stream to the main terminal
+  - **all**: Include Claude session output streamed to terminal (sequential display, parallel output with prefixes for interleaving)
+- Python orchestrator captures Claude's stdout in real-time using `subprocess.Popen()` with line-by-line iteration and `flush=True` for immediate display
+- Silent capture mode (without streaming) uses `subprocess.run()` with `capture_output=True` for structured JSON parsing in workflow steps
 
 ### State Management
 
@@ -49,6 +50,14 @@ The agentic workflows goal is to enable Claude Code to execute any type of task 
 - Git worktree support with two modes:
   - **Root-level `worktree: true`**: Entire workflow runs in a dedicated worktree (create worktree first, then execute workflow inside it)
   - **Parallel steps**: Always use git worktrees for isolation (mandatory)
+- Worktree naming convention: `{workflow_name}-{step_name}-{random_6_char}`
+- Worktree lifecycle:
+  - Worktrees are immediately cleaned up after workflow completes (once branch and PR are ready)
+  - Failed parallel step worktrees are also cleaned up (not preserved for debugging)
+  - Orphaned worktrees from crashed workflows are cleaned up at next workflow start using `git worktree prune`
+- Parallel execution merge modes:
+  - **independent**: Each parallel branch creates its own PR; user merges and resolves conflicts manually in preferred order
+  - **merge**: Sequential merge with auto-resolve; branches merged one-by-one; if conflicts occur, spawn an agent to resolve them before continuing
 - Support permissions management per step or globally (`bypass-permissions` flag)
 
 ### Extensibility
@@ -151,8 +160,10 @@ steps:
 
     # For type: parallel
     steps: []                     # Nested steps to run in parallel
-    merge-strategy: string        # How to combine results: "wait-all" | "first-success"
+    merge-strategy: string        # How to combine results: "wait-all" (Phase 1 only)
+    merge-mode: string            # "independent" | "merge" - how to handle branches
     # NOTE: Parallel steps ALWAYS use git worktrees for isolation (mandatory)
+    # Nested steps can have depends-on: step_name to wait for another step within the parallel block
 
     # For type: conditional
     condition: string             # Jinja2 expression evaluated by orchestrator
@@ -166,19 +177,57 @@ steps:
 
     # For type: wait-for-human
     message: string               # Message to display to user (what input is needed)
+    polling-interval: number      # Polling interval in seconds (default: 15)
+    timeout-minutes: number       # Timeout for human input (default: 5)
+    on-timeout: continue | abort  # Action if human never responds (default: abort)
     # Workflow pauses until human provides input in progress.json for this step
     # The orchestrator polls progress.json until human_input field is populated
+    # Human input is a multi-line string that acts as a prompt (like answering a Claude question)
 
     # Common options (all step types)
     timeout-minutes: number       # Override workflow timeout
     max-retry: number             # Override workflow max-retry
     on-error: retry | skip | fail # Error handling strategy
     checkpoint: boolean           # Create checkpoint after this step
+    depends-on: string            # Step name to wait for (within parallel blocks)
 
 outputs:
   - name: string                  # Output identifier
     template: string              # Template file path (Jinja2)
     path: string                  # Output file path
+    when: completed | failed      # When to generate (default: completed)
+```
+
+### Output Template Resolution
+
+Output templates are rendered by **Python (Jinja2)** at **workflow completion** (not incrementally). This ensures:
+- Deterministic output (same context produces same result)
+- No token cost for template rendering
+- Templates can access final aggregated data
+
+**Template context object:**
+
+```python
+template_context = {
+    # Workflow metadata
+    "workflow": {
+        "name": "feature-implementation",
+        "started_at": "2024-01-09T10:00:00Z",
+        "completed_at": "2024-01-09T10:45:00Z",
+    },
+    # Step results (keyed by step id)
+    "steps": {
+        "plan": {"status": "completed", "output": "...", "files_changed": [...]},
+        "implement": {"status": "completed", "output": "...", "files_changed": [...]},
+        "test": {"status": "completed", "test_results": {"passed": 12, "failed": 0}},
+    },
+    # Aggregated data
+    "files_changed": ["src/auth.ts", "src/auth.test.ts"],
+    "branches": ["feature/auth-impl"],
+    "pull_requests": [{"number": 42, "url": "..."}],
+    # User inputs
+    "inputs": {"feature_name": "authentication", "priority": "high"},
+}
 ```
 
 ### Step Dependency
@@ -194,11 +243,13 @@ The `condition` key at the step level is a Jinja2 expression evaluated by the Cl
 ```yaml
 - name: fix-issues
   type: command
-  condition: "{{ outputs.validate.issues_count > 0 }}"
+  condition: "{{ outputs.validate['issues_count'] > 0 }}"
   command: fix
   args:
     severity: major
 ```
+
+Note: Conditions use standard Jinja2 syntax. For nested property access, use bracket notation: `outputs.step_name['property']`.
 
 ## Output Directory Structure
 
@@ -260,11 +311,9 @@ experimental-plugins/agentic-workflows/
 │       ├── pr.md
 │       └── worktree.md
 ├── agents/                       # Agent definitions (markdown with frontmatter)
-│   ├── orchestrator.md
-│   ├── explorer.md
-│   ├── reviewer.md
-│   ├── fixer.md
-│   └── documenter.md
+│   ├── orchestrator.md           # Main entity that manages whole workflows
+│   ├── explorer.md               # Explores codebase efficiently, returns files/line numbers of interest
+│   └── reviewer.md               # Validates tests, reviews code quality, ensures correctness
 ├── skills/                       # Skills for Claude sessions
 │   ├── create-memory.md
 │   ├── create-checkpoint.md
@@ -298,6 +347,12 @@ experimental-plugins/agentic-workflows/
         └── renderer.py           # Jinja2 template rendering
 ```
 
+### Installation
+
+agentic-workflows is **both**:
+- A **Claude Code plugin** (commands installed via marketplace)
+- A **standalone CLI tool** (installed via `uv tool install`)
+
 ### CLI Entry Point
 
 Single CLI command installed via `uv tool install`:
@@ -326,11 +381,9 @@ agentic-workflow config set <key> <value>
 agentic-workflow memory list [--category pattern|lesson|error]
 agentic-workflow memory search "<query>"
 agentic-workflow memory prune [--older-than 30d]
-
-# Checkpoint management
-agentic-workflow checkpoint list <workflow-id>
-agentic-workflow checkpoint restore <checkpoint-id>
 ```
+
+Note: Checkpoints are only used for agents to track their progress or share details with other agents. They are not used to resume workflows - use `agentic-workflow resume` for that.
 
 ## Configuration Schema
 
@@ -342,7 +395,7 @@ Global configuration stored in `/agentic/config.json`:
   "outputDirectory": "/agentic",
   "logging": {
     "enabled": true,
-    "level": "error"
+    "level": "Error"
   },
   "git": {
     "mainBranch": "main",
@@ -369,7 +422,7 @@ Global configuration stored in `/agentic/config.json`:
 | ------------------------- | ------- | ----------------- | -------------------------------------- |
 | `outputDirectory`         | string  | `/agentic`        | Base directory for all outputs         |
 | `logging.enabled`         | boolean | `true`            | Enable workflow logging                |
-| `logging.level`           | enum    | `error`           | critical, error, warning, info, debug  |
+| `logging.level`           | enum    | `Error`           | Critical, Error, Warning, Information  |
 | `git.mainBranch`          | string  | `main`            | Default branch name                    |
 | `git.autoCommit`          | boolean | `true`            | Auto-commit after milestones           |
 | `git.autoPr`              | boolean | `true`            | Auto-create PR on completion           |
@@ -462,9 +515,45 @@ File glob patterns can also be used to find memories by naming convention.
 Memory creation is **not automatic**. It is controlled by:
 
 1. **Explicit workflow indication**: Workflow prompts or commands can explicitly instruct Claude to create a memory for important learnings
-2. **User's CLAUDE.md section**: Users can add a section to their CLAUDE.md instructing Claude when to create and search memories
+2. **User's CLAUDE.md section**: Users add a `## Memory Management` section to their CLAUDE.md with heuristics for when to create/search memories
 
-The CLAUDE.example.md file provided by this plugin includes a recommended section for memory management that users can add to their project's CLAUDE.md.
+The CLAUDE.example.md file provided by this plugin includes a recommended section:
+
+```markdown
+## Memory Management
+
+Create memories using `/create-memory` when you encounter:
+- Architectural decisions and their rationale
+- User preferences expressed during sessions
+- Patterns/conventions discovered in the codebase
+- Errors encountered and their solutions
+
+Before starting complex tasks, use `/search-memory` or check
+`.agentic/memory/index.md` for relevant context.
+```
+
+### Memory Directory Structure
+
+The memory system uses a well-structured directory that makes glob/grep effective:
+
+```
+.agentic/memory/
+├── decisions/
+│   ├── 2024-01-09-auth-approach.md
+│   └── 2024-01-08-database-choice.md
+├── patterns/
+│   └── error-handling-convention.md
+├── context/
+│   └── project-architecture.md
+└── index.md  # Summary/TOC Claude reads first
+```
+
+**How Claude searches memories:**
+1. Reads `index.md` to understand what's available
+2. Uses grep for specific keywords
+3. Reads relevant files
+
+The `/create-memory` and `/search-memory` skills handle structured file creation, automatic `index.md` updates, and proper directory organization.
 
 ### When to Create Memory
 
@@ -545,11 +634,21 @@ experimental-plugins\agentic-core\src\agentic_core\workflow
 
 ### Agents
 
-Workflow steps can be assigned to an agent. The plugin offers base agents, but a user can install and refer his own agents when creating new yaml workflows. Here's the list
+Workflow steps can be assigned to an agent. The plugin offers base agents, but a user can install and refer their own agents when creating new YAML workflows.
+
+**Built-in agents:**
+
+- **orchestrator.md**: The main entity that manages a whole workflow. Evaluates workflow state, decides next actions, and returns JSON responses for the Python orchestrator to execute.
+- **explorer.md**: Responsible for exploring the codebase efficiently to find files for a specific task. Returns file paths and line numbers of interest to the main agent.
+- **reviewer.md**: Ensures validity of tests, reviews code quality, checks for issues, and validates correctness of implementations.
+
+Agent files use markdown with YAML frontmatter defining persona, capabilities, and instructions.
 
 ### Commands
 
-The following commands are commands that can be explicitely calls in workflows. Additional commands, that don't come front this plugin, can also be used, if a user refer the command in a workflow step. So the commands listed here are really just the basics of the plugin, and the offering can be extended. Commands will always be executed in an agentic workflows, without interactions with the developer, it's important that they proceed to completion and that they have clear and fix arguments and output structure (json).
+The following commands can be explicitly called in workflows. Additional commands from other plugins can also be used if referenced in a workflow step. Commands are executed in agentic workflows without interaction with the developer - they must proceed to completion and have clear, fixed arguments and **JSON-only output structure**.
+
+**Note:** agentic-workflows creates its own commands that produce JSON output only. These are adapted from interactive-sdlc commands for agentic use. The agentic-workflows plugin is **standalone** and does not depend on interactive-sdlc.
 
 #### Plan
 
@@ -650,6 +749,7 @@ Generated at the start of the workflow if the track-progress argument is enabled
 
 ```json
 {
+  "schema_version": "1.0",
   "workflow_id": "uuid",
   "workflow_name": "plan-build-validate",
   "status": "running",
@@ -686,6 +786,8 @@ Generated at the start of the workflow if the track-progress argument is enabled
 ```
 
 Sessions note their progress in this document. The orchestrator selects which step to trigger next based on the workflow progress. This document is also how the orchestrator knows if an error must cause the workflow to stop (e.g., a session reached max retry) or if the workflow is completed.
+
+**Concurrency:** A file locking mechanism is used to prevent race conditions when multiple parallel Claude sessions write to progress.json.
 
 **Human Input Handling:**
 
@@ -868,8 +970,13 @@ The following elements are ideas for future development that must not be include
 - Memory embeddings for semantic search (optional pgvector integration)
 - Web dashboard for workflow monitoring
 - Distributed workflow execution across multiple machines
+- Nested workflows: A step that runs a full existing workflow, enabling workflows within workflows
+- Progress webhooks for CI/CD integration (on-step-complete, on-error notifications)
+- `first-success` merge strategy for parallel steps (Phase 1 only implements `wait-all`)
 
 ## References
+
+> **IMPORTANT**: The reference files listed below are used as examples only. Some code patterns can be reused, but they will NOT be used as-is and will NOT be referenced in the final plugin. This plugin (agentic-workflows) will be standalone and use YAML frontmatter with file glob patterns for memory search - NOT PostgreSQL, semantic search, or sentence-transformers.
 
 ### Existing Agentic Plugins
 
@@ -895,7 +1002,7 @@ experimental-plugins\agentic-sdlc
 experimental-plugins\vision\core.md
 experimental-plugins\core
 
-Legacy plugin, only kept because it's script can be use as example to implement the bse python scriptsÈ
+Legacy plugin, only kept because its scripts can be used as examples to implement the base python scripts.
 
 - logging.py
 - orchestrator.py
@@ -957,6 +1064,8 @@ Python Orchestrator (outer loop)
 }
 ```
 
+**Invalid response handling:** If Claude returns malformed JSON or an invalid `next_action.type`, the Python orchestrator retries up to the configured `max-retry` count, then fails the workflow.
+
 ### Session Management: New Session Per Step
 
 Each workflow step starts a **new Claude Code session**. No session resume functionality is implemented to keep the architecture simple.
@@ -967,6 +1076,49 @@ Each workflow step starts a **new Claude Code session**. No session resume funct
 - Avoids issues with session garbage collection
 - Forces explicit context passing via checkpoints and progress documents
 - Each step is self-contained and restartable
+
+### Crash Recovery
+
+If the Python orchestrator crashes mid-workflow:
+
+1. **Orphaned worktrees**: Cleaned up at next workflow start using `git worktree prune` plus prefix-based cleanup for stale worktrees
+2. **Resume from progress document**: The workflow progress document tracks state; on restart, `in_progress` steps are reset to `pending` and retried
+3. **In-flight Claude sessions**: Die with the parent process; treated as failed steps and retried on resume
+
+```python
+def start_workflow():
+    # Clean any orphaned worktrees from previous runs
+    subprocess.run(["git", "worktree", "prune"])
+    for wt in list_worktrees():
+        if wt.startswith(".agentic-wt-") and is_stale(wt):
+            subprocess.run(["git", "worktree", "remove", "--force", wt])
+
+def resume_workflow(progress_file):
+    progress = load_progress(progress_file)
+    for step in progress.steps:
+        if step.status == "completed":
+            continue
+        if step.status == "in_progress":
+            step.status = "pending"  # Retry from scratch
+        execute_step(step)
+```
+
+### Session Timeout
+
+Claude session timeouts are enforced via Python-side process timeout using `subprocess` timeout parameters. If a session hangs without returning, it is killed and treated as a failed step.
+
+### Context Management for Large Features
+
+For large feature builds, context is managed through milestone-based decomposition:
+
+1. **Plan produces discrete, independent milestones**: Each milestone should be completable without knowledge of other milestones' implementation details
+2. **Orchestrator is the source of truth**: Tracks completed milestones, file changes, test results externally
+3. **Each Claude invocation is a worker**: Gets task description + relevant file content, nothing more
+4. **Context = task prompt + target files**: Not accumulated history
+
+This mirrors how real teams work: developers don't need to know every line their teammates wrote, just the interfaces and their specific assignment.
+
+Plan results include a first section with a short list of every milestone and task used to track progress. When an implementation session ends, it updates the plan with the progress made.
 
 ### Progress Document Format: JSON
 
@@ -984,17 +1136,51 @@ Memory uses **simple keyword matching** in YAML frontmatter or file glob pattern
 
 When a step fails and max-retry allows, the retry uses the **same prompt in a new session**. No exponential backoff between retries.
 
+**Retry error context:** When retrying a failed step, the Python orchestrator captures and passes error context to the new session:
+
+```
+Previous attempt failed with error: {error_message}
+Error type: {error_type}
+Last checkpoint: {checkpoint_summary}
+```
+
+For **Recoverable** errors (test failures, validation errors), Claude auto-fixes the issues without external guidance.
+
 ### Parallel Execution: Git Worktrees
 
 Parallel steps use **git worktrees** for isolation. Each parallel branch has its own progress file, merged by the Python orchestrator when the parallel block completes.
 
-### Configuration: Global Only
+### Configuration Inheritance
 
-A single **global configuration** stored in `/agentic/config.json`. Per-workflow configuration overrides via workflow YAML settings.
+Configuration follows a hierarchical override pattern:
+
+**Precedence order (highest to lowest):**
+1. Step-level settings (in workflow YAML)
+2. Workflow-level settings (in workflow YAML `settings:` block)
+3. Global configuration (`/agentic/config.json`)
+
+A single **global configuration** stored in `/agentic/config.json`. Per-workflow and per-step configuration overrides via workflow YAML settings.
 
 ### Template Engine: Jinja2
 
 All templates (YAML, outputs, prompts) use **Jinja2 syntax** for consistency.
+
+**Security:** Dangerous Jinja2 features (exec, import) are disabled. Templates cannot access the filesystem or environment variables.
+
+### Path Handling (Cross-Platform)
+
+1. **Always use relative paths from repo root** (not absolute paths like `/agentic`)
+2. **In YAML/JSON**: Always use forward slashes (`agentic/memory/`)
+3. **In Python**: Use `pathlib.Path` consistently, never string concatenation
+4. **When writing paths to YAML/JSON**: Use `Path.as_posix()` for forward slashes
+
+### Step Output Format
+
+Step outputs use **structured JSON** (max 10 KB for metadata). Most cases produce a `.md` document, with JSON output containing:
+- Document path
+- Additional context
+
+This output is stored in the workflow progress document and passed as input to the next workflow step.
 
 ## Related Frameworks
 
