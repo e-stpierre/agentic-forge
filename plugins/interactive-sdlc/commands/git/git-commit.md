@@ -21,7 +21,7 @@ Create a well-structured commit with a concise title and optional bullet-point d
 - Title must be short (50 chars ideal, 72 max) and focus on the main task completed
 - Description is optional for small commits
 - Description uses 1-5 bullet points for larger commits highlighting important aspects
-- Push immediately after commit unless on a protected branch
+- Always include AI attribution with your model name: `Co-Authored-By: Claude <model> <noreply@anthropic.com>`
 
 ## Instructions
 
@@ -32,11 +32,19 @@ Create a well-structured commit with a concise title and optional bullet-point d
    - Impact and scope (small fix vs. larger feature)
 4. Construct commit message:
    - **Title**: Imperative mood, capitalize first letter, no period (e.g., "Add user authentication")
-   - **Description**: Only if changes are substantial; 1-3 bullets on key aspects
-5. Execute commit:
+   - **Description**: Only if changes are substantial; 1-5 bullets on key aspects
+5. Execute commit using HEREDOC for proper formatting:
 
-   ```
-   git commit -m "<title>" [-m "- bullet 1" -m "- bullet 2"]
+   ```bash
+   git commit -m "$(cat <<'EOF'
+   <title>
+
+   - bullet 1 (optional)
+   - bullet 2 (optional)
+
+   Co-Authored-By: Claude <model> <noreply@anthropic.com>
+   EOF
+   )"
    ```
 
 6. Push to remote: `git push` (use `git push -u origin HEAD` if no upstream)

@@ -158,6 +158,10 @@ CI automatically formats code on pull requests. To run locally: `pnpm check`
 - **Running scripts**: Use `uv run` for executing Python scripts
 - This ensures consistent Python environments across different systems and avoids Python PATH issues
 
+## Git Operations
+
+Always use `/git-branch`, `/git-commit` and `/git-pr` commands for commits, pull requests, and branch management. These commands ensure consistent structure and formatting.
+
 ## Breaking Changes
 
 This repository is in active development. Breaking changes are acceptable in any plugin at any time without backward compatibility considerations or migration documentation. When a breaking change is needed, simply make the change.
