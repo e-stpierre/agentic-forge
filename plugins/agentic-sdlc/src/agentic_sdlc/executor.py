@@ -46,6 +46,15 @@ class WorkflowExecutor:
         self.renderer = TemplateRenderer()
         self.workflow_settings: WorkflowSettings | None = None
 
+    def _resolve_model(self, step_model: str | None) -> str:
+        """Resolve the model to use for a step.
+
+        Priority: step.model > config.defaults.model > "sonnet"
+        """
+        if step_model:
+            return step_model
+        return self.config["defaults"].get("model", "sonnet")
+
     def run(
         self,
         workflow: WorkflowDefinition,
@@ -260,7 +269,7 @@ class WorkflowExecutor:
             result = run_claude(
                 prompt=prompt,
                 cwd=cwd,
-                model=step.model,
+                model=self._resolve_model(step.model),
                 timeout=timeout,
                 print_output=print_output,
                 skip_permissions=bypass_permissions,
@@ -323,7 +332,7 @@ class WorkflowExecutor:
                 command=command,
                 args=args,
                 cwd=cwd,
-                model=step.model,
+                model=self._resolve_model(step.model),
                 timeout=timeout,
                 print_output=print_output,
                 skip_permissions=bypass_permissions,
@@ -415,7 +424,7 @@ class WorkflowExecutor:
             result = run_claude(
                 prompt=full_prompt,
                 cwd=self.repo_root,
-                model=step.model,
+                model=self._resolve_model(step.model),
                 timeout=timeout,
                 print_output=print_output,
                 skip_permissions=bypass_permissions,

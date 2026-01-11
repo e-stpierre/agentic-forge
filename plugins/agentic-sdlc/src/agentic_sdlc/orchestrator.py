@@ -98,6 +98,15 @@ class WorkflowOrchestrator:
         self._shutdown_requested = True
         print("\nShutdown requested, cleaning up...")
 
+    def _resolve_model(self, step_model: str | None) -> str:
+        """Resolve the model to use for a step.
+
+        Priority: step.model > config.defaults.model > "sonnet"
+        """
+        if step_model:
+            return step_model
+        return self.config["defaults"].get("model", "sonnet")
+
     def run(
         self,
         workflow: WorkflowDefinition,
@@ -539,7 +548,7 @@ class WorkflowOrchestrator:
             result = run_claude(
                 prompt=full_prompt,
                 cwd=self.repo_root,
-                model=step.model,
+                model=self._resolve_model(step.model),
                 timeout=timeout,
                 print_output=print_output,
                 skip_permissions=True,

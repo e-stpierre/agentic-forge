@@ -69,6 +69,12 @@
     "defaults": {
       "type": "object",
       "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["sonnet", "haiku", "opus"],
+          "default": "sonnet",
+          "description": "Default model for workflow steps"
+        },
         "maxRetry": {
           "type": "integer",
           "default": 3,

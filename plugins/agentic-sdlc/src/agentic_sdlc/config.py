@@ -23,6 +23,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "template": "default",
     },
     "defaults": {
+        "model": "sonnet",
         "maxRetry": 3,
         "timeoutMinutes": 60,
         "trackProgress": True,

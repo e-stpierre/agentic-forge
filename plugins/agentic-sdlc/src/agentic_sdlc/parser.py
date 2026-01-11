@@ -88,7 +88,7 @@ class StepDefinition:
     message: str | None = None
     polling_interval: int = 15
     on_timeout: str = "abort"
-    model: str = "sonnet"
+    model: str | None = None
     step_timeout_minutes: int | None = None
     step_max_retry: int | None = None
     on_error: str = "retry"
@@ -264,7 +264,7 @@ class WorkflowParser:
             step.on_timeout = data.get("on-timeout", "abort")
             step.step_timeout_minutes = data.get("timeout-minutes", 5)
 
-        step.model = data.get("model", "sonnet")
+        step.model = data.get("model")
         step.step_timeout_minutes = data.get("timeout-minutes", step.step_timeout_minutes)
         step.step_max_retry = data.get("max-retry")
         step.on_error = data.get("on-error", "retry")

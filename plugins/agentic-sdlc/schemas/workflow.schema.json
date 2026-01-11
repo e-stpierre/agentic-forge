@@ -216,7 +216,7 @@
         "model": {
           "type": "string",
           "enum": ["sonnet", "haiku", "opus"],
-          "default": "sonnet"
+          "description": "Model to use for this step. If not specified, uses defaults.model from config"
         },
         "timeout-minutes": {
           "type": "integer"
