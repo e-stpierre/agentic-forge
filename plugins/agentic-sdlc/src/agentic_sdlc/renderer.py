@@ -13,7 +13,7 @@ class TemplateRenderer:
 
     def __init__(self, template_dirs: list[Path] | None = None):
         if template_dirs is None:
-            default_templates = Path(__file__).parent.parent.parent.parent / "templates"
+            default_templates = Path(__file__).parent / "templates"
             template_dirs = [default_templates]
 
         self.template_dirs = template_dirs

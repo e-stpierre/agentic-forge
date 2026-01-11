@@ -49,7 +49,7 @@ from agentic_sdlc.ralph_loop import (
     update_ralph_iteration,
 )
 from agentic_sdlc.runner import run_claude
-from agentic_sdlc.templates.renderer import TemplateRenderer
+from agentic_sdlc.renderer import TemplateRenderer
 
 if TYPE_CHECKING:
     from typing import Any

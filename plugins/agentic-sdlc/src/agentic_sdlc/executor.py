@@ -30,7 +30,7 @@ from agentic_sdlc.ralph_loop import (
     update_ralph_iteration,
 )
 from agentic_sdlc.runner import run_claude, run_claude_with_command
-from agentic_sdlc.templates.renderer import (
+from agentic_sdlc.renderer import (
     TemplateRenderer,
     build_template_context,
     render_workflow_output,
@@ -175,7 +175,7 @@ class WorkflowExecutor:
             inputs=variables,
         )
 
-        plugin_templates = Path(__file__).parent.parent.parent / "templates"
+        plugin_templates = Path(__file__).parent / "templates"
         template_dirs = [plugin_templates, self.repo_root]
 
         for output in workflow.outputs:
