@@ -4,22 +4,21 @@
   "version": "1.0.0",
   "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
   "owner": {
-    "name": "Étienne St-Pierre",
-    "email": "me@estpierre.dev"
+    "name": "Étienne St-Pierre"
   },
   "plugins": [
     {
       "name": "interactive-sdlc",
       "source": "./",
-      "description": "Interactive SDLC commands for guided development within Claude Code sessions",
-      "version": "1.0.0",
+      "description": "[Beta] Interactive SDLC commands for guided development within Claude Code sessions",
+      "version": "0.1.0",
       "category": "sdlc",
       "author": {
-        "name": "Étienne St-Pierre",
-        "email": "me@estpierre.dev"
+        "name": "Étienne St-Pierre"
       },
       "license": "MIT",
       "keywords": [
+        "beta",
         "sdlc",
         "interactive",
         "planning",
@@ -55,15 +54,15 @@
     {
       "name": "agentic-sdlc",
       "source": "./",
-      "description": "YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory for complex multi-step tasks",
-      "version": "1.0.0",
+      "description": "[Beta] YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory for complex multi-step tasks",
+      "version": "0.1.0",
       "category": "sdlc",
       "author": {
-        "name": "Étienne St-Pierre",
-        "email": "me@estpierre.dev"
+        "name": "Étienne St-Pierre"
       },
       "license": "MIT",
       "keywords": [
+        "beta",
         "workflows",
         "yaml",
         "orchestration",
