@@ -191,6 +191,7 @@ Practical usage examples.
 ## Related
 
 Links to related documentation.
+
 ```
 
 ## Important Notes
@@ -200,3 +201,4 @@ Links to related documentation.
 - Include practical examples in all documentation
 - Follow existing documentation conventions in the project
 - Keep diagrams as simple as possible while conveying the necessary information
+```
