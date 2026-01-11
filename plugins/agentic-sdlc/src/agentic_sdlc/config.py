@@ -22,9 +22,6 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "directory": "agentic/memory",
         "template": "default",
     },
-    "checkpoint": {
-        "directory": "agentic/outputs",
-    },
     "defaults": {
         "maxRetry": 3,
         "timeoutMinutes": 60,

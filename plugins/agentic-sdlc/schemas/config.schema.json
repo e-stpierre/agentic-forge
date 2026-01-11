@@ -66,16 +66,6 @@
         }
       }
     },
-    "checkpoint": {
-      "type": "object",
-      "properties": {
-        "directory": {
-          "type": "string",
-          "default": "agentic/outputs",
-          "description": "Checkpoint storage location"
-        }
-      }
-    },
     "defaults": {
       "type": "object",
       "properties": {

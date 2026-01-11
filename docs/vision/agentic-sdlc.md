@@ -284,8 +284,10 @@ All framework outputs are stored under the `agentic/` directory (relative to rep
 ```
 agentic/
 ├── config.json                   # Global plugin configuration
-├── workflows/                    # Workflow executions
-│   └── {workflow-id}/            # One directory per execution
+├── workflows/                    # Workflow YAML templates (user-created)
+│   └── my-custom-workflow.yaml
+├── outputs/                      # Workflow execution outputs
+│   └── {datetime}-{workflow-name}/  # One directory per execution (e.g., 20260111-143052-plan-build-validate)
 │       ├── progress.json         # Workflow progress (machine-readable)
 │       ├── checkpoint.md         # Checkpoints (on-demand)
 │       ├── logs.ndjson           # Workflow logs (NDJSON format)
@@ -439,13 +441,11 @@ Global configuration stored in `agentic/config.json`.
     "directory": "agentic/memory",
     "template": "default"
   },
-  "checkpoint": {
-    "directory": "agentic/workflows"
-  },
   "defaults": {
     "maxRetry": 3,
     "timeoutMinutes": 60,
-    "trackProgress": true
+    "trackProgress": true,
+    "terminalOutput": "base"
   },
   "execution": {
     "maxWorkers": 4,
@@ -754,11 +754,7 @@ Put emphasis on creating a clear frontmatter for the memory, that respect the re
 
 #### Create Checkpoint
 
-Checkpoints are scoped per workflow, the checkpoint file name must contain the workflow execution name
-Skill used to create a checkpoint, refers to the plugin json configuration for:
-
-- directory to persist checkpoint in
-- memory template to use
+Checkpoints are stored in the workflow output directory as a single file: `agentic/outputs/{workflow-id}/checkpoint.md`. Each checkpoint entry is appended to this file with YAML frontmatter for metadata.
 
 #### Create Log
 
