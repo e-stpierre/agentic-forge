@@ -63,10 +63,10 @@ Quick examples:
 
 ```bash
 # Windows (PowerShell)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlcs"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
 
 # macOS/Linux
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlcs
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
 ```
 
 ## Python CLI
