@@ -1,28 +1,39 @@
-name: analyse-codebase
+name: analyse-codebase-merge
 version: "1.0"
-description: Run comprehensive codebase analysis with optional autofix in parallel worktrees
+description: Run comprehensive codebase analysis with autofix, merge branches, validate, and create PR
 
 settings:
   max-retry: 2
-  timeout-minutes: 120
+  timeout-minutes: 180
   track-progress: true
   terminal-output: base
+  git:
+    enabled: true
+    worktree: true
+    auto-commit: true
+    auto-pr: false
+    branch-prefix: "agentic/analysis"
 
 variables:
   - name: autofix
     type: string
     required: false
-    default: "none"
+    default: "major"
     description: Severity level for automatic fixes (none, minor, major, critical)
+  - name: fix_severity
+    type: string
+    required: false
+    default: "major"
+    description: Minimum severity for validation auto-fix
 
 steps:
   - name: analyse-and-fix-all
     type: parallel
     merge-strategy: wait-all
-    merge-mode: independent
+    merge-mode: merge
     git:
       worktree: true
-      auto-pr: true
+      auto-pr: false
       branch-prefix: "agentic/analysis"
     steps:
       - name: bug-analysis
@@ -124,6 +135,43 @@ steps:
                   Review the style analysis in agentic/analysis/style.md.
                   Fix all issues with severity {{ variables.autofix }} or higher.
                   Commit fixes with clear messages.
+
+  - name: validate-merged-changes
+    type: command
+    command: validate
+    args:
+      severity: "{{ variables.fix_severity }}"
+
+  - name: fix-validation-issues
+    type: conditional
+    condition: "variables.fix_severity != 'none'"
+    then:
+      - name: apply-validation-fixes
+        type: prompt
+        prompt: |
+          Review the validation results and fix all issues with severity {{ variables.fix_severity }} or higher.
+
+          Run the following checks and fix any failures:
+          1. Run the test suite and fix failing tests
+          2. Run the build and fix any build errors
+          3. Run linting and fix style issues
+          4. Verify all changes follow project conventions
+
+          Commit all fixes with clear messages describing what was fixed.
+        model: sonnet
+
+      - name: revalidate
+        type: command
+        command: validate
+        args:
+          severity: "{{ variables.fix_severity }}"
+
+  - name: create-pr
+    type: command
+    command: git-pr
+    args:
+      title: "[Analysis] Codebase analysis and fixes"
+      draft: false
 
 outputs:
   - name: analysis-summary

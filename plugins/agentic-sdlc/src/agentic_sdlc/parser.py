@@ -45,6 +45,15 @@ class GitSettings:
 
 
 @dataclass
+class StepGitSettings:
+    """Git configuration for a parallel step."""
+
+    worktree: bool = False
+    auto_pr: bool = False
+    branch_prefix: str = "agentic"
+
+
+@dataclass
 class WorkflowSettings:
     """Workflow-level settings."""
 
@@ -85,6 +94,7 @@ class StepDefinition:
     on_error: str = "retry"
     checkpoint: bool = False
     depends_on: str | None = None
+    git: StepGitSettings | None = None
 
 
 @dataclass
@@ -231,6 +241,13 @@ class WorkflowParser:
             step.steps = [self._parse_step(s, parent_is_parallel=True) for s in data.get("steps", [])]
             step.merge_strategy = data.get("merge-strategy", "wait-all")
             step.merge_mode = data.get("merge-mode", "independent")
+            git_data = data.get("git", {})
+            if git_data:
+                step.git = StepGitSettings(
+                    worktree=git_data.get("worktree", False),
+                    auto_pr=git_data.get("auto-pr", False),
+                    branch_prefix=git_data.get("branch-prefix", "agentic"),
+                )
         elif step_type == StepType.SERIAL:
             step.steps = [self._parse_step(s) for s in data.get("steps", [])]
         elif step_type == StepType.CONDITIONAL:

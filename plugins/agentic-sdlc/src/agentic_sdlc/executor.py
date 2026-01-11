@@ -10,6 +10,7 @@ from typing import Any
 
 from agentic_sdlc.config import load_config
 from agentic_sdlc.console import ConsoleOutput, OutputLevel, extract_summary
+from agentic_sdlc.git.worktree import Worktree, create_worktree, remove_worktree
 from agentic_sdlc.logging.logger import WorkflowLogger
 from agentic_sdlc.parser import StepDefinition, StepType, WorkflowDefinition, WorkflowSettings
 from agentic_sdlc.progress import (
@@ -232,12 +233,15 @@ class WorkflowExecutor:
         context: dict[str, Any],
         logger: WorkflowLogger,
         console: ConsoleOutput,
+        cwd_override: Path | None = None,
     ) -> None:
         """Execute a prompt step."""
         prompt = step.prompt or ""
 
         if self.renderer.has_variables(prompt):
             prompt = self.renderer.render_string(prompt, context)
+
+        cwd = cwd_override or self.repo_root
 
         if step.agent:
             agent_path = self.repo_root / step.agent
@@ -255,7 +259,7 @@ class WorkflowExecutor:
         for attempt in range(max_retry + 1):
             result = run_claude(
                 prompt=prompt,
-                cwd=self.repo_root,
+                cwd=cwd,
                 model=step.model,
                 timeout=timeout,
                 print_output=print_output,
@@ -296,6 +300,7 @@ class WorkflowExecutor:
         context: dict[str, Any],
         logger: WorkflowLogger,
         console: ConsoleOutput,
+        cwd_override: Path | None = None,
     ) -> None:
         """Execute a command step."""
         command = step.command or ""
@@ -305,6 +310,7 @@ class WorkflowExecutor:
             if isinstance(value, str) and self.renderer.has_variables(value):
                 args[key] = self.renderer.render_string(value, context)
 
+        cwd = cwd_override or self.repo_root
         timeout = (step.step_timeout_minutes or 60) * 60
         max_retry = step.step_max_retry or self.config["defaults"]["maxRetry"]
         bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
@@ -316,7 +322,7 @@ class WorkflowExecutor:
             result = run_claude_with_command(
                 command=command,
                 args=args,
-                cwd=self.repo_root,
+                cwd=cwd,
                 model=step.model,
                 timeout=timeout,
                 print_output=print_output,
@@ -470,6 +476,10 @@ class WorkflowExecutor:
 
         Each step in the parallel block runs concurrently. Results are collected
         based on the merge strategy.
+
+        When git.worktree is enabled, each branch runs in its own git worktree.
+        When git.auto_pr is enabled with merge_mode=independent, each branch
+        creates a PR on completion.
         """
         if not step.steps:
             logger.warning(step.name, "Parallel step has no sub-steps")
@@ -477,24 +487,50 @@ class WorkflowExecutor:
             console.step_complete(step.name, "No sub-steps to execute")
             return
 
+        use_worktree = step.git and step.git.worktree
+        auto_pr = step.git and step.git.auto_pr
+
         logger.info(step.name, f"Starting parallel execution of {len(step.steps)} branches")
-        console.info(f"Parallel: starting {len(step.steps)} branches")
+        if use_worktree:
+            console.info(f"Parallel: starting {len(step.steps)} branches (worktree isolation)")
+        else:
+            console.info(f"Parallel: starting {len(step.steps)} branches")
 
         branch_results: dict[str, dict[str, Any]] = {}
         failed_branches: list[str] = []
+        worktrees: dict[str, Worktree] = {}
 
-        def execute_branch(branch_step: StepDefinition) -> tuple[str, bool, str]:
-            """Execute a single branch and return (name, success, output_summary)."""
+        def execute_branch(branch_step: StepDefinition) -> tuple[str, bool, str, Worktree | None]:
+            """Execute a single branch and return (name, success, output_summary, worktree)."""
             branch_context = context.copy()
+            worktree: Worktree | None = None
 
             try:
+                if use_worktree:
+                    worktree = create_worktree(
+                        workflow_name=progress.workflow_name,
+                        step_name=branch_step.name,
+                        repo_root=self.repo_root,
+                    )
+                    logger.info(branch_step.name, f"Created worktree: {worktree.path}")
+                    console.info(f"  Branch '{branch_step.name}' worktree: {worktree.branch}")
+                    branch_context["worktree"] = worktree
+                    branch_context["branch_cwd"] = worktree.path
+
                 self._execute_branch_step(
-                    branch_step, progress, branch_context, logger, console
+                    branch_step, progress, branch_context, logger, console,
+                    cwd_override=worktree.path if worktree else None
                 )
-                return (branch_step.name, True, "completed")
+
+                if auto_pr and worktree and step.merge_mode == "independent":
+                    self._create_branch_pr(
+                        branch_step.name, worktree, logger, console
+                    )
+
+                return (branch_step.name, True, "completed", worktree)
             except Exception as e:
                 logger.error(branch_step.name, f"Branch failed: {e}")
-                return (branch_step.name, False, str(e))
+                return (branch_step.name, False, str(e), worktree)
 
         with ThreadPoolExecutor(max_workers=len(step.steps)) as executor:
             futures = {
@@ -505,8 +541,10 @@ class WorkflowExecutor:
             for future in as_completed(futures):
                 branch_step = futures[future]
                 try:
-                    name, success, output = future.result()
+                    name, success, output, worktree = future.result()
                     branch_results[name] = {"success": success, "output": output}
+                    if worktree:
+                        worktrees[name] = worktree
                     if success:
                         console.info(f"  Branch '{name}' completed")
                     else:
@@ -516,6 +554,14 @@ class WorkflowExecutor:
                     branch_results[branch_step.name] = {"success": False, "output": str(e)}
                     failed_branches.append(branch_step.name)
                     console.error(f"  Branch '{branch_step.name}' exception: {e}")
+
+        if step.merge_mode == "merge" and worktrees:
+            self._merge_worktree_branches(step, worktrees, failed_branches, logger, console)
+
+        if step.merge_mode == "independent" and worktrees:
+            for name, worktree in worktrees.items():
+                remove_worktree(worktree, self.repo_root, delete_branch=False)
+                logger.info(name, f"Worktree removed, branch preserved: {worktree.branch}")
 
         if step.merge_strategy == "wait-all":
             if failed_branches and step.merge_mode != "independent":
@@ -532,6 +578,65 @@ class WorkflowExecutor:
                 console.step_complete(step.name, output_summary)
                 logger.info(step.name, output_summary)
 
+    def _create_branch_pr(
+        self,
+        branch_name: str,
+        worktree: Worktree,
+        logger: WorkflowLogger,
+        console: ConsoleOutput,
+    ) -> None:
+        """Create a PR for a parallel branch."""
+        try:
+            result = run_claude_with_command(
+                command="git-pr",
+                args={"title": f"[Parallel] {branch_name}", "draft": "false"},
+                cwd=worktree.path,
+                model="haiku",
+                timeout=120,
+                print_output=False,
+            )
+            if result.success:
+                console.info(f"  Branch '{branch_name}' PR created")
+                logger.info(branch_name, "PR created successfully")
+            else:
+                logger.warning(branch_name, f"PR creation failed: {result.stderr}")
+        except Exception as e:
+            logger.warning(branch_name, f"PR creation failed: {e}")
+
+    def _merge_worktree_branches(
+        self,
+        step: StepDefinition,
+        worktrees: dict[str, Worktree],
+        failed_branches: list[str],
+        logger: WorkflowLogger,
+        console: ConsoleOutput,
+    ) -> None:
+        """Merge successful worktree branches back to base branch."""
+        from agentic_sdlc.git.worktree import _run_git
+
+        console.info("Merging parallel branches...")
+
+        for name, worktree in worktrees.items():
+            if name in failed_branches:
+                remove_worktree(worktree, self.repo_root, delete_branch=True)
+                logger.info(name, "Failed branch worktree removed")
+                continue
+
+            try:
+                _run_git(["checkout", worktree.base_branch], cwd=self.repo_root)
+                _run_git(
+                    ["merge", "--no-ff", "-m", f"Merge parallel branch: {name}", worktree.branch],
+                    cwd=self.repo_root,
+                )
+                logger.info(name, f"Merged branch {worktree.branch} into {worktree.base_branch}")
+                console.info(f"  Merged '{name}'")
+            except Exception as e:
+                logger.error(name, f"Merge failed: {e}")
+                console.error(f"  Merge failed for '{name}': {e}")
+
+            remove_worktree(worktree, self.repo_root, delete_branch=True)
+            logger.info(name, "Worktree and branch cleaned up")
+
     def _execute_branch_step(
         self,
         step: StepDefinition,
@@ -539,22 +644,28 @@ class WorkflowExecutor:
         context: dict[str, Any],
         logger: WorkflowLogger,
         console: ConsoleOutput,
+        cwd_override: Path | None = None,
     ) -> None:
         """Execute a single step within a parallel or serial block.
 
         This is similar to _execute_step but doesn't update the main step progress,
         as the parent step handles progress tracking.
+
+        Args:
+            cwd_override: Optional working directory override (used for worktree execution)
         """
         logger.info(step.name, f"Starting branch step: {step.name}")
 
+        cwd = cwd_override or context.get("branch_cwd") or self.repo_root
+
         if step.type == StepType.PROMPT:
-            self._execute_prompt_step(step, progress, context, logger, console)
+            self._execute_prompt_step(step, progress, context, logger, console, cwd_override=cwd)
         elif step.type == StepType.COMMAND:
-            self._execute_command_step(step, progress, context, logger, console)
+            self._execute_command_step(step, progress, context, logger, console, cwd_override=cwd)
         elif step.type == StepType.SERIAL:
-            self._execute_serial_step(step, progress, context, logger, console)
+            self._execute_serial_step(step, progress, context, logger, console, cwd_override=cwd)
         elif step.type == StepType.CONDITIONAL:
-            self._execute_conditional_step(step, progress, context, logger, console)
+            self._execute_conditional_step(step, progress, context, logger, console, cwd_override=cwd)
         elif step.type == StepType.RALPH_LOOP:
             self._execute_ralph_loop_step(step, progress, context, logger, console)
         else:
@@ -567,6 +678,7 @@ class WorkflowExecutor:
         context: dict[str, Any],
         logger: WorkflowLogger,
         console: ConsoleOutput,
+        cwd_override: Path | None = None,
     ) -> None:
         """Execute steps sequentially within a serial block.
 
@@ -585,7 +697,7 @@ class WorkflowExecutor:
 
         for sub_step in step.steps:
             try:
-                self._execute_branch_step(sub_step, progress, context, logger, console)
+                self._execute_branch_step(sub_step, progress, context, logger, console, cwd_override=cwd_override)
                 completed_count += 1
 
                 if progress.status == WorkflowStatus.FAILED.value:
@@ -612,6 +724,7 @@ class WorkflowExecutor:
         context: dict[str, Any],
         logger: WorkflowLogger,
         console: ConsoleOutput,
+        cwd_override: Path | None = None,
     ) -> None:
         """Execute a conditional step based on condition evaluation.
 
@@ -644,7 +757,7 @@ class WorkflowExecutor:
 
         for sub_step in steps_to_run:
             try:
-                self._execute_branch_step(sub_step, progress, context, logger, console)
+                self._execute_branch_step(sub_step, progress, context, logger, console, cwd_override=cwd_override)
 
                 if progress.status == WorkflowStatus.FAILED.value:
                     logger.warning(step.name, f"Conditional '{branch_name}' branch stopped due to failure")
