@@ -1,44 +1,45 @@
 ---
 name: create-memory
 description: Create a memory document for future reference
-output: json
+argument-hint: "--category <category> --tags <tags> <content>"
 ---
 
 # Create Memory
 
-Use this skill to persist a learning, pattern, or discovery that should be remembered for future sessions.
+## Definition
 
-## When to Use
+Persist a learning, pattern, or discovery that should be remembered for future sessions. Use this skill when you discover unexpected patterns, workarounds, solutions, conventions, or architectural decisions.
 
-Create memories when you:
+## Arguments
 
-- Discover an unexpected pattern in the codebase
-- Find a workaround for a framework limitation
-- Encounter an error and find the solution
-- Learn something about the project's conventions
-- Make an architectural decision with rationale
+- **`--category`** (required): Memory category - pattern | lesson | error | decision | context
+- **`--tags`** (required): Comma-separated list of searchable keywords
+- **`<content>`** (required): The learning content in markdown format
 
-## How to Use
+## Objective
 
-Invoke this skill with the following information:
+Create a persistent memory document that can be searched and referenced in future sessions.
 
-1. **Category** (required): pattern | lesson | error | decision | context
-2. **Title** (required): Brief descriptive title
-3. **Tags** (required): List of searchable keywords
-4. **Content** (required): The learning in markdown format
+## Core Principles
 
-## Guidelines
+- Check if similar memory exists before creating (use `/search-memory`)
+- Content must be specific and actionable
+- Include code examples when relevant
+- Keep content concise but complete
+- Single responsibility - each memory covers one learning
 
-Before creating a memory:
+## Instructions
 
 1. Check if a similar memory already exists using `/search-memory`
-2. Ensure the content is specific and actionable
-3. Include code examples when relevant
-4. Keep content concise but complete
+2. Validate the category is one of: pattern, lesson, error, decision, context
+3. Parse the tags into a list of keywords
+4. Create the memory document with frontmatter and content
+5. Save to `agentic/memory/{category}/{slug}.md`
+6. Return confirmation with memory ID and path
 
-## Output Format
+## Output Guidance
 
-After creating the memory, respond with:
+Return JSON confirmation:
 
 ```json
 {
@@ -48,28 +49,10 @@ After creating the memory, respond with:
 }
 ```
 
-## Example
+### Example
 
 ```
-/create-memory
-Category: pattern
-Title: Error Handling Convention
-Tags: error, exception, typescript, middleware
-Content:
+/create-memory --category pattern --tags "error,exception,typescript,middleware"
 This codebase uses a centralized error handling pattern where all errors
 extend BaseError and are caught by the global error middleware.
-
-## Pattern
-- Define error classes in src/errors/
-- Extend BaseError with appropriate status code
-- Throw errors, let middleware handle response
-
-## Code Example
-\`\`\`typescript
-class ValidationError extends BaseError {
-  constructor(message: string) {
-    super(message, 400);
-  }
-}
-\`\`\`
 ```

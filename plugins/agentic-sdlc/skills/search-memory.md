@@ -1,35 +1,43 @@
 ---
 name: search-memory
 description: Search memories for relevant context
-output: json
+argument-hint: "[--category <category>] [--tags <tags>] <query>"
 ---
 
 # Search Memory
 
-Search the memory system for relevant learnings, patterns, and context.
+## Definition
 
-## When to Use
+Search the memory system for relevant learnings, patterns, and context. Use this skill when starting complex tasks, encountering errors, understanding conventions, or making architectural decisions.
 
-Search memories when you:
+## Arguments
 
-- Start working on a complex task
-- Encounter an error or unexpected behavior
-- Need to understand project conventions
-- Are about to make architectural decisions
+- **`<query>`** (required): Keywords to search for
+- **`--category`** (optional): Filter by category - pattern | lesson | error | decision | context
+- **`--tags`** (optional): Comma-separated list of tags to filter by
 
-## How to Use
+## Objective
 
-Provide a search query and optionally filter by category or tags.
+Find and return relevant memories that can inform the current task or decision.
 
-## Parameters
+## Core Principles
 
-- **query** (required): Keywords to search for
-- **category** (optional): pattern | lesson | error | decision | context
-- **tags** (optional): List of tags to filter by
+- Search is keyword-based (no semantic/vector search)
+- Return most relevant results first
+- Include enough context to assess relevance
+- Support filtering by category and tags
 
-## Output Format
+## Instructions
 
-Return matching memories:
+1. Parse the search query and optional filters
+2. Search memory files in `agentic/memory/` directory
+3. Match against title, tags, and content
+4. Rank results by relevance (keyword matches)
+5. Return structured results with summaries
+
+## Output Guidance
+
+Return matching memories as JSON:
 
 ```json
 {
@@ -46,13 +54,7 @@ Return matching memories:
 }
 ```
 
-## Example
-
-```
-/search-memory authentication middleware
-```
-
-## Alternative: Direct Lookup
+### Alternative: Direct Lookup
 
 You can also read the memory index directly:
 

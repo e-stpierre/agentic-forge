@@ -1,29 +1,33 @@
 ---
 name: create-log
 description: Add a log entry to the workflow log
-output: json
+argument-hint: "--level <level> --step <name> <message>"
 ---
 
 # Create Log
 
-Add a structured log entry to the workflow's NDJSON log file.
+## Definition
 
-## When to Use
+Add a structured log entry to the workflow's NDJSON log file. Use this skill for progress milestones, errors, warnings, decisions, and context that should be recorded.
 
-Create logs for:
+## Arguments
 
-- Important progress milestones
-- Errors or warnings encountered
-- Decisions made during execution
-- Context that should be recorded
+- **`--level`** (required): Log level - Critical | Error | Warning | Information
+- **`--step`** (required): Step name for context (e.g., build, validate)
+- **`<message>`** (required): Log message
 
-## Parameters
+## Objective
 
-- **level** (required): Critical | Error | Warning | Information
-- **message** (required): Log message
-- **context** (optional): Additional context as key-value pairs
+Create a structured log entry in the workflow's log file for tracking and debugging.
 
-## Log Levels
+## Core Principles
+
+- Use appropriate log levels for severity
+- Include step context for traceability
+- Messages should be concise but informative
+- Logs are append-only
+
+### Log Levels
 
 | Level       | When to Use                              |
 | ----------- | ---------------------------------------- |
@@ -32,7 +36,18 @@ Create logs for:
 | Warning     | Unexpected issue that may need attention |
 | Information | Regular progress logging                 |
 
-## Output Format
+## Instructions
+
+1. Identify the current workflow ID from context
+2. Parse the level, step, and message
+3. Generate timestamp in ISO 8601 format
+4. Create NDJSON log entry
+5. Append to `agentic/outputs/{workflow-id}/logs.ndjson`
+6. Return confirmation with entry details
+
+## Output Guidance
+
+Return JSON confirmation:
 
 ```json
 {
@@ -46,20 +61,9 @@ Create logs for:
 }
 ```
 
-## Example
+### Log File Format
 
-```
-/create-log
-Level: Information
-Message: Successfully implemented authentication middleware
-Context:
-  files_changed: 3
-  tests_added: 5
-```
-
-## Log File Format
-
-Logs are stored in `agentic/outputs/{workflow-id}/logs.ndjson` as NDJSON (one JSON object per line):
+Logs are stored in `agentic/outputs/{workflow-id}/logs.ndjson` as NDJSON:
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","level":"Information","step":"implement","message":"Started implementation","context":null}

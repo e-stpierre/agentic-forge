@@ -1,30 +1,48 @@
 ---
 name: create-checkpoint
 description: Create a checkpoint to track progress and share context
-output: json
+argument-hint: "--step <name> --status <status> <context>"
 ---
 
 # Create Checkpoint
 
-Create a checkpoint to record your progress and provide context for future sessions or other agents.
+## Definition
 
-## When to Use
+Record progress and provide context for future sessions or other agents. Use this skill when completing milestones, handing off work, encountering issues, or reaching natural pause points.
 
-Create checkpoints when:
+## Arguments
 
-- Completing a milestone in the implementation
-- About to hand off to another session
-- Encountering issues that need documentation
-- Reaching a natural pause point
+- **`--step`** (required): Current step name (e.g., build, validate)
+- **`--status`** (required): Checkpoint status - in_progress | completed
+- **`<context>`** (required): Summary of current situation and progress
 
-## Parameters
+## Objective
 
-- **context** (required): Summary of current situation
-- **progress** (required): What has been completed (markdown checklist)
-- **notes** (optional): Important information for next session
-- **issues** (optional): Problems discovered that need attention
+Create a checkpoint entry that captures the current workflow state for resumption or handoff.
 
-## Output Format
+## Core Principles
+
+- Checkpoints are append-only within a workflow
+- Include enough context for seamless resumption
+- Note any blockers or issues discovered
+- Track progress with markdown checklists
+
+## Instructions
+
+1. Identify the current workflow ID from context
+2. Parse the step name and status
+3. Generate checkpoint ID (chk-NNN)
+4. Create checkpoint entry with:
+   - Context summary
+   - Progress checklist
+   - Notes for next session
+   - Issues discovered
+5. Save to `agentic/outputs/{workflow-id}/checkpoint.md`
+6. Return confirmation with checkpoint ID
+
+## Output Guidance
+
+Return JSON confirmation:
 
 ```json
 {
@@ -34,23 +52,9 @@ Create checkpoints when:
 }
 ```
 
-## Example
+### Checkpoint File Format
 
-```
-/create-checkpoint
-Context: Completed OAuth implementation, starting on session management.
-Progress:
-- [x] OAuth provider configuration
-- [x] Callback endpoint implementation
-- [x] Token storage in database
-- [ ] Session creation from OAuth token
-Notes: The existing session middleware in src/middleware/session.ts needs to be extended.
-Issues: Rate limiting may conflict with OAuth flow - needs investigation.
-```
-
-## Checkpoint Format
-
-Checkpoints are stored in `agentic/outputs/{workflow-id}/checkpoint.md` with this structure:
+Checkpoints are stored in `agentic/outputs/{workflow-id}/checkpoint.md`:
 
 ```markdown
 ---
