@@ -6,7 +6,7 @@ This script:
 1. Creates a staged copy of the repo (excluding node_modules, .git, etc.)
 2. Updates the marketplace from the staged copy
 3. Reinstalls all plugins defined in marketplace.json
-4. Force reinstalls the Python tools (core, agentic-sdlc, agentic-core)
+4. Force reinstalls the Python tools (agentic-core, agentic-sdlc)
 
 Usage:
     uv run .claude/update-plugins.py
@@ -15,11 +15,12 @@ Usage:
     uv run path/to/update-plugins.py
 
     Reinstall specific plugins only:
-    uv run .claude/update-plugins.py core agentic-sdlc
-    uv run .claude/update-plugins.py pr-review-toolkit commit-commands
+    uv run .claude/update-plugins.py agentic-sdlc
+    uv run .claude/update-plugins.py interactive-sdlc agentic-sdlc
 """
 
 import argparse
+import io
 import json
 import shutil
 import subprocess
@@ -27,8 +28,13 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 
+# Enable UTF-8 mode for Windows console output
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 # Python CLI tools (installed via uv tool install)
-PYTHON_TOOLS = ["core", "agentic-sdlc", "agentic-core"]
+PYTHON_TOOLS = ["agentic-sdlc"]
 
 # Patterns to exclude when creating staged copy
 STAGING_IGNORE_PATTERNS = [
@@ -50,6 +56,7 @@ class Colors:
     RESET = "\033[0m"
     BOLD = "\033[1m"
     DIM = "\033[2m"
+    CLEAR_LINE = "\r\033[K"
 
     # Foreground colors
     RED = "\033[31m"
@@ -68,10 +75,11 @@ class Colors:
     BRIGHT_MAGENTA = "\033[95m"
     BRIGHT_CYAN = "\033[96m"
 
-    # Background colors
-    BG_RED = "\033[41m"
-    BG_GREEN = "\033[42m"
-    BG_BLUE = "\033[44m"
+
+# Status indicators
+SPINNER = "\u25cb"  # ○ (hollow circle for "in progress")
+CHECK = "\u2713"  # ✓
+CROSS = "\u2717"  # ✗
 
 
 def color(text: str, *codes: str) -> str:
@@ -79,52 +87,65 @@ def color(text: str, *codes: str) -> str:
     return f"{''.join(codes)}{text}{Colors.RESET}"
 
 
-def print_header(text: str) -> None:
-    """Print a section header."""
-    print(f"\n{color('=' * 60, Colors.CYAN)}")
-    print(color(f"  {text}", Colors.BOLD, Colors.BRIGHT_CYAN))
-    print(color("=" * 60, Colors.CYAN))
-
-
 def print_step(step_num: int, total: int, text: str) -> None:
-    """Print a step indicator."""
+    """Print a step/section header."""
     print(f"\n{color(f'[{step_num}/{total}]', Colors.BOLD, Colors.BLUE)} {color(text, Colors.BOLD)}")
 
 
-def print_success(text: str) -> None:
-    """Print a success message."""
-    print(color(f"  [OK] {text}", Colors.GREEN))
+def print_task_start(description: str) -> None:
+    """Print task start with spinner indicator (no newline)."""
+    print(f"  {color(SPINNER, Colors.YELLOW)} {description}", end="", flush=True)
 
 
-def print_warning(text: str) -> None:
-    """Print a warning message."""
-    print(color(f"  [WARN] {text}", Colors.YELLOW))
+def print_task_success(description: str) -> None:
+    """Overwrite current line with success indicator."""
+    print(f"{Colors.CLEAR_LINE}  {color(CHECK, Colors.GREEN)} {description}")
 
 
-def print_error(text: str) -> None:
-    """Print an error message."""
-    print(color(f"  [ERROR] {text}", Colors.BRIGHT_RED))
+def print_task_error(description: str, error: str | None = None) -> None:
+    """Overwrite current line with error indicator and optional details."""
+    print(f"{Colors.CLEAR_LINE}  {color(CROSS, Colors.BRIGHT_RED)} {description}")
+    if error:
+        # Indent error details
+        for line in error.strip().split("\n"):
+            print(f"    {color(line, Colors.DIM)}")
 
 
-def print_info(text: str) -> None:
-    """Print an info message."""
-    print(color(f"  {text}", Colors.DIM))
+def run_command(
+    cmd: list[str],
+    description: str,
+    cwd: Path | None = None,
+    silent: bool = True,
+    allow_failure: bool = False,
+) -> tuple[bool, str]:
+    """
+    Run a command and return (success, error_output).
 
+    Args:
+        cmd: Command to run
+        description: Human-readable description for display
+        cwd: Working directory
+        silent: If True, capture output; if False, let it stream
+        allow_failure: If True, show success even if command fails (useful for uninstall)
 
-def run_command(cmd: list[str], description: str, cwd: Path | None = None) -> bool:
-    """Run a command and return success status."""
-    print(f"\n{color('>>>', Colors.MAGENTA)} {color(description, Colors.BOLD)}")
-    print(color(f"   $ {' '.join(cmd)}", Colors.DIM))
-    if cwd:
-        print(color(f"   @ {cwd}", Colors.DIM))
+    Returns:
+        Tuple of (success: bool, error_output: str)
+    """
+    print_task_start(description)
 
-    result = subprocess.run(cmd, cwd=cwd, shell=True)
+    capture = subprocess.PIPE if silent else None
+    result = subprocess.run(cmd, cwd=cwd, shell=True, stdout=capture, stderr=subprocess.STDOUT, text=True)
 
     if result.returncode != 0:
-        print_warning(f"{description} returned exit code: {result.returncode}")
-        return False
-    print_success(description)
-    return True
+        if allow_failure:
+            print_task_success(description)
+            return True, ""
+        error_msg = result.stdout if silent and result.stdout else f"Exit code: {result.returncode}"
+        print_task_error(description, error_msg)
+        return False, error_msg
+
+    print_task_success(description)
+    return True, ""
 
 
 @contextmanager
@@ -140,13 +161,10 @@ def staged_marketplace(repo_root: Path, marketplace_name: str):
 
     # Clean up any leftover staging directory
     if staging_dir.exists():
-        print_info("Cleaning up previous staging directory...")
         shutil.rmtree(staging_dir)
 
     try:
-        print_info("Creating staged copy of repository...")
-        print_info(f"Excluding: {', '.join(STAGING_IGNORE_PATTERNS)}")
-
+        print_task_start("Create staged copy")
         shutil.copytree(
             repo_root,
             staging_dir,
@@ -154,41 +172,36 @@ def staged_marketplace(repo_root: Path, marketplace_name: str):
             symlinks=False,
             dirs_exist_ok=False,
         )
-
-        print_success(f"Staged copy created at {staging_dir}")
+        print_task_success("Create staged copy")
 
         # Remove existing marketplace and add staging directory as source
-        # Note: Claude CLI requires relative paths starting with "./"
-        print_info("Re-registering marketplace from staging directory...")
         run_command(
             ["claude", "plugin", "marketplace", "remove", marketplace_name],
-            f"Remove existing {marketplace_name} marketplace",
+            "Remove existing marketplace",
         )
-        if not run_command(
+        success, error = run_command(
             ["claude", "plugin", "marketplace", "add", "./.staging"],
-            f"Add staging directory as {marketplace_name} marketplace",
+            "Register staged marketplace",
             cwd=repo_root,
-        ):
-            print_error("Failed to register staging marketplace")
-            raise RuntimeError("Failed to register staging marketplace")
+        )
+        if not success:
+            raise RuntimeError(f"Failed to register staging marketplace: {error}")
 
         yield staging_dir
 
     finally:
         # Restore original marketplace
-        print_info("Restoring original marketplace registration...")
         run_command(
             ["claude", "plugin", "marketplace", "remove", marketplace_name],
-            f"Remove staging {marketplace_name} marketplace",
+            "Remove staged marketplace",
         )
         run_command(
             ["claude", "plugin", "marketplace", "add", "./"],
-            f"Re-add original {marketplace_name} marketplace",
+            "Restore original marketplace",
             cwd=repo_root,
         )
 
         if staging_dir.exists():
-            print_info("Cleaning up staging directory...")
             shutil.rmtree(staging_dir)
 
 
@@ -206,8 +219,8 @@ Supported plugins:
 
 Examples:
   %(prog)s                           # Reinstall everything
-  %(prog)s core agentic-sdlc         # Reinstall only core and agentic-sdlc
-  %(prog)s pr-review-toolkit         # Reinstall only pr-review-toolkit
+  %(prog)s agentic-core              # Reinstall only agentic-core
+  %(prog)s agentic-sdlc         # Reinstall only agentic-sdlc
 """,
     )
     parser.add_argument(
@@ -236,7 +249,7 @@ def main():
 
     # Load marketplace.json to get plugin names
     if not marketplace_path.exists():
-        print_error(f"marketplace.json not found at {marketplace_path}")
+        print(f"{color(CROSS, Colors.BRIGHT_RED)} marketplace.json not found at {marketplace_path}")
         sys.exit(1)
 
     with open(marketplace_path) as f:
@@ -255,21 +268,12 @@ def main():
         requested_claude_plugins = all_plugins
         requested_python_tools = PYTHON_TOOLS
 
-    # Print banner
-    print(color("\n" + "=" * 60, Colors.BRIGHT_MAGENTA))
-    print(color("      Claude Plugins Updater", Colors.BOLD, Colors.BRIGHT_MAGENTA))
-    print(color("=" * 60, Colors.BRIGHT_MAGENTA))
-
-    print_info(f"Repository: {repo_root}")
-    print_info(f"Marketplace: {marketplace_path}")
-
-    if args.plugins:
-        print(f"\n{color('Requested plugins:', Colors.BOLD)} {color(', '.join(args.plugins), Colors.BRIGHT_YELLOW)}")
-    else:
-        print(f"\n{color('All plugins:', Colors.BOLD)} {color(', '.join(all_plugins + PYTHON_TOOLS), Colors.BRIGHT_YELLOW)}")
+    # Print minimal header
+    plugins_str = ", ".join(args.plugins) if args.plugins else "all"
+    print(f"\n{color('Claude Plugins Updater', Colors.BOLD)} [{plugins_str}]")
 
     success_count = 0
-    warning_count = 0
+    error_count = 0
     marketplace_name = "agentic-forge"
 
     # Calculate total steps based on what we're installing
@@ -287,164 +291,77 @@ def main():
             # Reinstall each plugin from the staged marketplace
             current_step += 1
             print_step(current_step, total_steps, "Reinstall Claude Code Plugins")
-            print_info(f"Reinstalling {len(requested_claude_plugins)} plugins from staged marketplace...")
 
-            for i, plugin in enumerate(requested_claude_plugins, 1):
-                print(f"\n  {color(f'[{i}/{len(requested_claude_plugins)}]', Colors.CYAN)} {color(plugin, Colors.BRIGHT_BLUE)}")
-
-                # Uninstall first (ignore errors if not installed)
+            for plugin in requested_claude_plugins:
+                # Uninstall first (allow failure if not installed)
                 run_command(
                     ["claude", "plugin", "uninstall", plugin],
                     f"Uninstall {plugin}",
+                    allow_failure=True,
                 )
                 # Install from staged marketplace
-                if run_command(
+                success, _ = run_command(
                     ["claude", "plugin", "install", plugin],
                     f"Install {plugin}",
-                ):
+                )
+                if success:
                     success_count += 1
                 else:
-                    warning_count += 1
+                    error_count += 1
 
     # Step 3: Force reinstall Python tools (from original repo, not staged)
     if has_python_tools:
         current_step += 1
         print_step(current_step, total_steps, "Install Python CLI Tools")
 
-        # Note: agentic-sdlc depends on core, so we need to:
-        # 1. Build core first so it's available as a local package
-        # 2. Install agentic-sdlc with --find-links pointing to core's dist directory
-        core_path = repo_root / "plugins" / "core"
-        agentic_sdlc_path = repo_root / "experimental-plugins" / "agentic-sdlc"
-        agentic_core_path = repo_root / "experimental-plugins" / "agentic-core"
-
-        # Build core package first if core or agentic-sdlc is requested
-        # (agentic-sdlc depends on core)
-        needs_core_build = "core" in requested_python_tools or "agentic-sdlc" in requested_python_tools
-        if needs_core_build and core_path.exists():
-            print(f"\n  {color('Building core package...', Colors.CYAN)}")
-
-            # Clean and build core
-            dist_dir = core_path / "dist"
-            if dist_dir.exists():
-                shutil.rmtree(dist_dir)
-                print_info("Cleaned previous build artifacts")
-
-            run_command(
-                ["uv", "build"],
-                "Build core package",
-                cwd=core_path,
-            )
-
-        # Install core tool
-        if "core" in requested_python_tools:
-            if core_path.exists():
-                run_command(
-                    ["uv", "tool", "uninstall", "claude-core"],
-                    "Uninstall claude-core CLI tools",
-                )
-                if run_command(
-                    ["uv", "tool", "install", "--force", str(core_path)],
-                    "Install claude-core CLI tools",
-                ):
-                    success_count += 1
-                else:
-                    warning_count += 1
-            else:
-                print_warning(f"Python tool path not found: {core_path}")
-                warning_count += 1
-
-        # Install agentic-sdlc with --find-links to locate core dependency
+        # Install agentic-sdlc
+        agentic_sdlc_path = repo_root / "plugins" / "agentic-sdlc"
         if "agentic-sdlc" in requested_python_tools:
             if agentic_sdlc_path.exists():
-                print(f"\n  {color('Installing agentic-sdlc package...', Colors.CYAN)}")
-
-                run_command(
-                    ["uv", "tool", "uninstall", "agentic-sdlc"],
-                    "Uninstall agentic-sdlc CLI tools",
-                )
-
-                core_dist = core_path / "dist"
-                if core_dist.exists():
-                    if run_command(
-                        ["uv", "tool", "install", "--force", "--find-links", str(core_dist), str(agentic_sdlc_path)],
-                        "Install agentic-sdlc CLI tools (with local core)",
-                    ):
-                        success_count += 1
-                    else:
-                        warning_count += 1
-                else:
-                    # Fallback: try installing without find-links (may fail if core not in registry)
-                    print_warning("Core dist not found, trying without --find-links")
-                    if run_command(
-                        ["uv", "tool", "install", "--force", str(agentic_sdlc_path)],
-                        "Install agentic-sdlc CLI tools",
-                    ):
-                        success_count += 1
-                    else:
-                        warning_count += 1
-            else:
-                print_warning(f"Python tool path not found: {agentic_sdlc_path}")
-                warning_count += 1
-
-        # Install agentic-core
-        if "agentic-core" in requested_python_tools:
-            if agentic_core_path.exists():
-                print(f"\n  {color('Installing agentic-core package...', Colors.CYAN)}")
-
-                # Clean and build agentic-core to ensure fresh wheel with latest docker files
-                dist_dir = agentic_core_path / "dist"
+                # Clean and build agentic-sdlc
+                dist_dir = agentic_sdlc_path / "dist"
                 if dist_dir.exists():
                     shutil.rmtree(dist_dir)
-                    print_info("Cleaned previous build artifacts")
 
                 run_command(
                     ["uv", "build"],
-                    "Build agentic-core package",
-                    cwd=agentic_core_path,
+                    "Build agentic-sdlc",
+                    cwd=agentic_sdlc_path,
                 )
 
                 run_command(
-                    ["uv", "tool", "uninstall", "agentic-core"],
-                    "Uninstall agentic-core CLI tools",
+                    ["uv", "tool", "uninstall", "agentic-sdlc"],
+                    "Uninstall agentic-sdlc",
+                    allow_failure=True,
                 )
 
                 # Install from the freshly built wheel to bypass uv cache
                 wheel_files = list(dist_dir.glob("*.whl"))
                 if wheel_files:
                     wheel_path = wheel_files[0]
-                    if run_command(
+                    success, _ = run_command(
                         ["uv", "tool", "install", "--force", "--reinstall", str(wheel_path)],
-                        "Install agentic-core CLI tools",
-                    ):
+                        "Install agentic-sdlc",
+                    )
+                    if success:
                         success_count += 1
                     else:
-                        warning_count += 1
+                        error_count += 1
                 else:
-                    print_warning("No wheel found after build")
-                    warning_count += 1
+                    print_task_error("Install agentic-sdlc", "No wheel found after build")
+                    error_count += 1
             else:
-                print_warning(f"Python tool path not found: {agentic_core_path}")
-                warning_count += 1
+                print_task_error("Install agentic-sdlc", f"Path not found: {agentic_sdlc_path}")
+                error_count += 1
 
-    # Summary
-    print(f"\n{color('=' * 60, Colors.BRIGHT_GREEN)}")
-    if warning_count == 0:
-        print(color("  Plugin Update Complete!", Colors.BOLD, Colors.BRIGHT_GREEN))
+    # Summary line
+    if error_count == 0:
+        print(f"\n{color(CHECK, Colors.GREEN)} {color('Done!', Colors.BOLD)} {success_count} successful")
     else:
-        print(color("  Plugin Update Complete (with warnings)", Colors.BOLD, Colors.YELLOW))
-    print(color("=" * 60, Colors.BRIGHT_GREEN))
-
-    print(f"\n  {color('Summary:', Colors.BOLD)}")
-    print(f"    {color('Successful:', Colors.GREEN)} {success_count}")
-    if warning_count > 0:
-        print(f"    {color('Warnings:', Colors.YELLOW)} {warning_count}")
-
-    print(f"\n  {color('Next steps:', Colors.BOLD)}")
-    print(color("    1. Restart Claude Code to load updated plugins", Colors.DIM))
-    print(color("    2. Run 'agentic-sdlc --help' to verify agentic-sdlc CLI", Colors.DIM))
-    print(color("    3. Run 'agentic --help' to verify agentic-core CLI", Colors.DIM))
-    print()
+        print(
+            f"\n{color(CROSS, Colors.BRIGHT_RED)} {color('Done with errors', Colors.BOLD)} {success_count} successful, {error_count} failed"
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

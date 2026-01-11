@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agentic-sdlc/workflow.schema.json",
+  "title": "Workflow Definition",
+  "description": "Schema for agentic workflow YAML files",
+  "type": "object",
+  "required": ["name", "steps"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Workflow identifier"
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "default": "1.0"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description"
+    },
+    "settings": {
+      "$ref": "#/definitions/settings"
+    },
+    "variables": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/variable"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/step"
+      },
+      "minItems": 1
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/output"
+      }
+    }
+  },
+  "definitions": {
+    "settings": {
+      "type": "object",
+      "properties": {
+        "max-retry": {
+          "type": "integer",
+          "default": 3,
+          "minimum": 0
+        },
+        "timeout-minutes": {
+          "type": "integer",
+          "default": 60,
+          "minimum": 1
+        },
+        "track-progress": {
+          "type": "boolean",
+          "default": true
+        },
+        "autofix": {
+          "type": "string",
+          "enum": ["none", "minor", "major", "critical"],
+          "default": "none"
+        },
+        "terminal-output": {
+          "type": "string",
+          "enum": ["base", "all"],
+          "default": "base"
+        },
+        "bypass-permissions": {
+          "type": "boolean",
+          "default": false
+        },
+        "required-tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Tools Claude is allowed to use without prompting"
+        },
+        "git": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "worktree": {
+              "type": "boolean",
+              "default": false
+            },
+            "auto-commit": {
+              "type": "boolean",
+              "default": true
+            },
+            "auto-pr": {
+              "type": "boolean",
+              "default": true
+            },
+            "branch-prefix": {
+              "type": "string",
+              "default": "agentic"
+            }
+          }
+        }
+      }
+    },
+    "variable": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean"],
+          "default": "string"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "default": {},
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "prompt",
+            "command",
+            "parallel",
+            "serial",
+            "conditional",
+            "ralph-loop",
+            "wait-for-human"
+          ]
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "agent": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "args": {
+          "type": "object"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          }
+        },
+        "merge-strategy": {
+          "type": "string",
+          "enum": ["wait-all"],
+          "default": "wait-all"
+        },
+        "merge-mode": {
+          "type": "string",
+          "enum": ["independent", "merge"],
+          "default": "independent"
+        },
+        "condition": {
+          "type": "string"
+        },
+        "then": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          }
+        },
+        "else": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/step"
+          }
+        },
+        "max-iterations": {
+          "oneOf": [{ "type": "integer" }, { "type": "string" }],
+          "default": 5
+        },
+        "completion-promise": {
+          "type": "string",
+          "description": "JSON completion promise text that signals the loop should exit"
+        },
+        "message": {
+          "type": "string"
+        },
+        "polling-interval": {
+          "type": "integer",
+          "default": 15
+        },
+        "on-timeout": {
+          "type": "string",
+          "enum": ["continue", "abort"],
+          "default": "abort"
+        },
+        "model": {
+          "type": "string",
+          "enum": ["sonnet", "haiku", "opus"],
+          "description": "Model to use for this step. If not specified, uses defaults.model from config"
+        },
+        "timeout-minutes": {
+          "type": "integer"
+        },
+        "max-retry": {
+          "type": "integer"
+        },
+        "on-error": {
+          "type": "string",
+          "enum": ["retry", "skip", "fail"],
+          "default": "retry"
+        },
+        "checkpoint": {
+          "type": "boolean",
+          "default": false
+        },
+        "depends-on": {
+          "type": "string"
+        },
+        "git": {
+          "$ref": "#/definitions/step-git",
+          "description": "Git settings for parallel step branches (worktree isolation, auto-pr)"
+        }
+      }
+    },
+    "step-git": {
+      "type": "object",
+      "description": "Git settings for parallel step branches",
+      "properties": {
+        "worktree": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run each parallel branch in a dedicated worktree"
+        },
+        "auto-pr": {
+          "type": "boolean",
+          "default": false,
+          "description": "Create a PR for each parallel branch on completion"
+        },
+        "branch-prefix": {
+          "type": "string",
+          "default": "agentic",
+          "description": "Prefix for branch names"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["name", "template", "path"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "template": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string",
+          "enum": ["completed", "failed"],
+          "default": "completed"
+        }
+      }
+    }
+  }
+}

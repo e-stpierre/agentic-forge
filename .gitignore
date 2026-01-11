@@ -12,3 +12,12 @@ package-lock.json
 # Claude
 .claude/**/*.local.json
 .staging/
+
+# Git worktrees
+.worktrees/
+
+# Agentic-SDLC outputs
+agentic/outputs/
+agentic/*.log
+agentic/temp/
+!agentic/workflows/

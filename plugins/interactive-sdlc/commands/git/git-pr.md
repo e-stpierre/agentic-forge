@@ -22,7 +22,7 @@ Create a pull request with a title and description sized appropriately to the sc
 - Title should clearly convey the primary change
 - Description focuses on WHY and context, not WHAT (diff shows the what)
 - Use `gh pr create` for PR creation
-- Never include AI attribution in PR descriptions
+- Always include AI attribution at the end of the body
 
 ## Instructions
 
@@ -36,19 +36,15 @@ Create a pull request with a title and description sized appropriately to the sc
    - **Large**: >200 lines, major feature or refactor
 5. Construct PR content based on size:
 
-   **Trivial**: One-line description
+   **Trivial/Small**: Brief description with attribution
 
    ```
-   gh pr create --title "Fix typo in README" --body "Corrects spelling error"
+   gh pr create --title "Fix typo in README" --body "Corrects spelling error
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)"
    ```
 
-   **Small**: Brief summary (1-2 sentences)
-
-   ```
-   gh pr create --title "Add input validation" --body "Adds validation to prevent empty submissions"
-   ```
-
-   **Medium/Large**: Structured description
+   **Medium/Large**: Structured description with attribution
 
    ```
    gh pr create --title "<title>" --body "## Summary
@@ -56,7 +52,9 @@ Create a pull request with a title and description sized appropriately to the sc
 
    ## Details
    - <Key change 1 with context>
-   - <Key change 2 with context>"
+   - <Key change 2 with context>
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)"
    ```
 
 6. Execute `gh pr create` with constructed content

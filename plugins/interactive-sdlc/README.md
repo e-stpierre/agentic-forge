@@ -49,7 +49,6 @@ All commands use the `/interactive-sdlc:` namespace prefix. Commands are organiz
 - `/interactive-sdlc:git-branch` - Create branches with standardized naming conventions
 - `/interactive-sdlc:git-commit` - Commit and push changes with structured messages
 - `/interactive-sdlc:git-pr` - Create pull requests with contextual descriptions
-- `/interactive-sdlc:git-worktree` - Manage git worktrees for parallel development
 
 ### GitHub (`commands/github/`)
 

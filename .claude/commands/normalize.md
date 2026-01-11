@@ -46,26 +46,37 @@ Ensure all prompt files and plugin READMEs exactly match the structure, section 
    - For each file path: validate that file directly
    - For each directory path: find all `.md` files within
 
-   If no paths provided:
-   - Scan commands in `plugins/*/commands/**/*.md` and `experimental-plugins/*/commands/**/*.md`
-   - Scan agents in `plugins/*/agents/**/*.md` and `experimental-plugins/*/agents/**/*.md`
-   - Scan skills in `plugins/*/skills/**/*.md` and `experimental-plugins/*/skills/**/*.md`
-   - Scan hooks in `plugins/*/hooks/**/*.md` and `experimental-plugins/*/hooks/**/*.md`
-   - Scan READMEs in `plugins/*/README.md` and `experimental-plugins/*/README.md`
-   - Also scan `.claude/commands/*.md` and `.claude/skills/*.md`
+   If no paths provided, use a two-pass discovery approach for reliability:
+
+   **Pass 1: Gather all markdown files using broad patterns**
+   - `plugins/**/*.md` - All markdown files in plugins
+   - `experimental-plugins/**/*.md` - All markdown files in experimental plugins
+   - `.claude/commands/*.md` - Repository-level commands
+   - `.claude/skills/*.md` - Repository-level skills
+
+   **Pass 2: Filter and classify discovered files**
+   - Exclude non-prompt files: `CHANGELOG.md`, `CLAUDE.example.md`, and similar
+   - Classify remaining files based on path patterns (see step 2)
+
+   **Verification**: After discovery, report the total count of files found. If zero files are found when no arguments provided, warn that something may be wrong with the search.
 
 2. **Classify Each File and Load Template**
 
-   Determine the file type based on location and load the corresponding template:
+   Determine the file type by checking if the file path contains these directory patterns:
 
-   | File Location                     | Type    | Template to Read                     |
-   | --------------------------------- | ------- | ------------------------------------ |
-   | `*/commands/**/*.md` (not README) | Command | `docs/templates/command-template.md` |
-   | `*/agents/**/*.md` (not README)   | Agent   | `docs/templates/agent-template.md`   |
-   | `*/skills/**/*.md` (not README)   | Skill   | `docs/templates/skill-template.md`   |
-   | `plugins/*/README.md`             | README  | `docs/templates/readme-template.md`  |
+   | Path Contains              | Type    | Template to Read                     |
+   | -------------------------- | ------- | ------------------------------------ |
+   | `/commands/` or `commands` | Command | `docs/templates/command-template.md` |
+   | `/agents/` or `agents`     | Agent   | `docs/templates/agent-template.md`   |
+   | `/skills/` or `skills`     | Skill   | `docs/templates/skill-template.md`   |
+   | `/hooks/` or `hooks`       | Hook    | (no template - skip validation)      |
+   | Filename is `README.md`    | README  | `docs/templates/readme-template.md`  |
 
-   Skip files that cannot be classified (not in a recognized directory).
+   **Classification rules:**
+   - Check path segments, not substrings (e.g., `/commands/` not just `command`)
+   - README.md files in plugin roots are validated; README.md in subdirectories are skipped
+   - Files like CHANGELOG.md, CLAUDE.example.md are skipped (not prompts)
+   - If a file cannot be classified, skip it and note in the report
 
 3. **Parse Template Structure**
 
@@ -168,6 +179,15 @@ Ensure all prompt files and plugin READMEs exactly match the structure, section 
 ```markdown
 ## Validation Results
 
+### File Discovery
+
+- Files found: 35
+- Commands: 27
+- Agents: 2
+- Skills: 4
+- READMEs: 2
+- Skipped (non-prompt): 3 (CHANGELOG.md, CLAUDE.example.md, etc.)
+
 ### path/to/file.md (Command)
 
 Template: docs/templates/command-template.md
@@ -199,8 +219,8 @@ Template: docs/templates/readme-template.md
 
 ## Summary
 
-- Files checked: 10
-- Passing: 7
+- Files checked: 32
+- Passing: 29
 - With issues: 3
 ```
 
@@ -208,6 +228,12 @@ Template: docs/templates/readme-template.md
 
 ```markdown
 ## Autofix Results
+
+### File Discovery
+
+- Files found: 35
+- Commands: 27, Agents: 2, Skills: 4, READMEs: 2
+- Skipped: 3
 
 ### path/to/file.md (Command)
 
@@ -219,10 +245,10 @@ Template: docs/templates/command-template.md
 
 ## Summary
 
-- Files checked: 10
+- Files checked: 32
 - Files modified: 2
 - Issues auto-fixed: 4
-- Files now passing: 9
+- Files now passing: 31
 ```
 
 If all files pass validation:
@@ -230,8 +256,11 @@ If all files pass validation:
 ```markdown
 ## Validation Results
 
-All files pass validation!
+### File Discovery
 
-- Files checked: 10
-- All files are 100% compliant with their templates
+- Files found: 35
+- Commands: 27, Agents: 2, Skills: 4, READMEs: 2
+- Skipped: 3
+
+All 32 files pass validation - 100% compliant with templates.
 ```

@@ -1,0 +1,42 @@
+# Bug Fix Plan: {{ title }}
+
+Created: {{ created }}
+Status: {{ status }}
+Workflow: {{ workflow_id }}
+
+## Bug Summary
+
+{{ summary }}
+
+## Root Cause Analysis
+
+{{ root_cause }}
+
+## Progress Tracker
+
+{% for milestone in milestones %}
+### Milestone {{ milestone.id }}: {{ milestone.title }}
+
+{% for task in milestone.tasks %}
+- [{% if task.completed %}x{% else %} {% endif %}] {{ task.id }}: {{ task.description }}
+{% endfor %}
+
+{% endfor %}
+
+## Affected Files
+
+{% for file in affected_files %}
+- {{ file }}
+{% endfor %}
+
+## Test Plan
+
+{% for test in test_plan %}
+- {{ test }}
+{% endfor %}
+
+## Verification Steps
+
+{% for step in verification_steps %}
+1. {{ step }}
+{% endfor %}

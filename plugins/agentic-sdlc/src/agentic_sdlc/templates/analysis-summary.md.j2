@@ -1,0 +1,67 @@
+# Analysis Summary
+
+Generated: {{ workflow.completed_at }}
+Workflow: {{ workflow.name }}
+
+## Overview
+
+This report summarizes the results of running {{ steps | length }} analysis types on the codebase.
+
+| Analysis | Status | Issues Found |
+|----------|--------|--------------|
+{% for step_name, step in steps.items() %}
+{% if step_name.startswith('analyse-') %}
+| {{ step_name | replace('analyse-', '') | title }} | {{ step.status }} | {{ step.summary | default('-') }} |
+{% endif %}
+{% endfor %}
+
+## Analysis Details
+
+{% for step_name, step in steps.items() %}
+{% if step_name.startswith('analyse-') %}
+### {{ step_name | replace('analyse-', '') | title }} Analysis
+
+**Status**: {{ step.status }}
+{% if step.output_summary %}
+**Summary**: {{ step.output_summary }}
+{% endif %}
+
+Output: `agentic/analysis/{{ step_name | replace('analyse-', '') }}.md`
+
+---
+
+{% endif %}
+{% endfor %}
+
+{% if inputs.autofix and inputs.autofix != 'none' %}
+## Autofix Summary
+
+Autofix was enabled at severity level: **{{ inputs.autofix }}**
+
+| Type | Fix Status |
+|------|------------|
+{% for step_name, step in steps.items() %}
+{% if step_name.startswith('fix-') %}
+| {{ step_name | replace('fix-', '') | title }} | {{ step.status }} |
+{% endif %}
+{% endfor %}
+
+{% endif %}
+
+## Files Changed
+
+{% if files_changed %}
+{% for file in files_changed %}
+- `{{ file }}`
+{% endfor %}
+{% else %}
+No files were changed during this analysis.
+{% endif %}
+
+{% if pull_requests %}
+## Pull Requests
+
+{% for pr in pull_requests %}
+- [#{{ pr.number }}]({{ pr.url }})
+{% endfor %}
+{% endif %}

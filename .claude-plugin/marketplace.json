@@ -4,84 +4,21 @@
   "version": "1.0.0",
   "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
   "owner": {
-    "name": "Étienne St-Pierre",
-    "email": "me@estpierre.dev"
+    "name": "Étienne St-Pierre"
   },
   "plugins": [
     {
-      "name": "appsec",
-      "source": "./",
-      "description": "Comprehensive application security toolkit for identifying vulnerabilities, analyzing risks, and validating dependencies at an expert level",
-      "version": "1.0.0",
-      "category": "security",
-      "author": {
-        "name": "Étienne St-Pierre",
-        "email": "me@estpierre.dev"
-      },
-      "license": "MIT",
-      "keywords": [
-        "security",
-        "appsec",
-        "vulnerability",
-        "risk-analysis",
-        "dependencies",
-        "audit"
-      ],
-      "strict": false,
-      "commands": [
-        "./plugins/appsec/commands/security-review.md",
-        "./plugins/appsec/commands/scope-security.md"
-      ],
-      "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
-    },
-    {
-      "name": "agentic-sdlc",
-      "source": "./",
-      "description": "[Experimental] Fully autonomous SDLC workflow orchestrated via Python, with no user interaction",
-      "version": "0.0.1",
-      "category": "sdlc",
-      "author": {
-        "name": "Étienne St-Pierre",
-        "email": "me@estpierre.dev"
-      },
-      "license": "MIT",
-      "keywords": [
-        "experimental",
-        "sdlc",
-        "autonomous",
-        "agentic",
-        "python",
-        "orchestration",
-        "ci-cd",
-        "workflows"
-      ],
-      "strict": false,
-      "commands": [
-        "./experimental-plugins/agentic-sdlc/commands/configure.md",
-        "./experimental-plugins/agentic-sdlc/commands/design.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan-feature.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan-bug.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan-chore.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan-build.md",
-        "./experimental-plugins/agentic-sdlc/commands/implement.md",
-        "./experimental-plugins/agentic-sdlc/commands/implement-from-plan.md",
-        "./experimental-plugins/agentic-sdlc/commands/review.md",
-        "./experimental-plugins/agentic-sdlc/commands/test.md"
-      ]
-    },
-    {
       "name": "interactive-sdlc",
       "source": "./",
-      "description": "Interactive SDLC commands for guided development within Claude Code sessions",
-      "version": "1.0.0",
+      "description": "[Beta] Interactive SDLC commands for guided development within Claude Code sessions",
+      "version": "0.1.0",
       "category": "sdlc",
       "author": {
-        "name": "Étienne St-Pierre",
-        "email": "me@estpierre.dev"
+        "name": "Étienne St-Pierre"
       },
       "license": "MIT",
       "keywords": [
+        "beta",
         "sdlc",
         "interactive",
         "planning",
@@ -110,9 +47,51 @@
         "./plugins/interactive-sdlc/commands/git/git-branch.md",
         "./plugins/interactive-sdlc/commands/git/git-commit.md",
         "./plugins/interactive-sdlc/commands/git/git-pr.md",
-        "./plugins/interactive-sdlc/commands/git/git-worktree.md",
         "./plugins/interactive-sdlc/commands/github/create-gh-issue.md",
         "./plugins/interactive-sdlc/commands/github/read-gh-issue.md"
+      ]
+    },
+    {
+      "name": "agentic-sdlc",
+      "source": "./",
+      "description": "[Beta] YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory for complex multi-step tasks",
+      "version": "0.1.0",
+      "category": "sdlc",
+      "author": {
+        "name": "Étienne St-Pierre"
+      },
+      "license": "MIT",
+      "keywords": [
+        "beta",
+        "workflows",
+        "yaml",
+        "orchestration",
+        "parallel",
+        "autonomous",
+        "agentic",
+        "memory",
+        "python"
+      ],
+      "strict": false,
+      "commands": [
+        "./plugins/agentic-sdlc/commands/analyse.md",
+        "./plugins/agentic-sdlc/commands/build.md",
+        "./plugins/agentic-sdlc/commands/orchestrate.md",
+        "./plugins/agentic-sdlc/commands/plan.md",
+        "./plugins/agentic-sdlc/commands/validate.md",
+        "./plugins/agentic-sdlc/commands/git/branch.md",
+        "./plugins/agentic-sdlc/commands/git/commit.md",
+        "./plugins/agentic-sdlc/commands/git/pr.md"
+      ],
+      "agents": [
+        "./plugins/agentic-sdlc/agents/explorer.md",
+        "./plugins/agentic-sdlc/agents/reviewer.md"
+      ],
+      "skills": [
+        "./plugins/agentic-sdlc/skills/create-checkpoint.md",
+        "./plugins/agentic-sdlc/skills/create-log.md",
+        "./plugins/agentic-sdlc/skills/create-memory.md",
+        "./plugins/agentic-sdlc/skills/search-memory.md"
       ]
     }
   ]

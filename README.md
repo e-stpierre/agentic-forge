@@ -91,23 +91,21 @@ This opens an interactive menu where you can:
 
 ### Python CLI
 
-Some experimental plugins include Python CLI tools for workflow orchestration. Install them with uv:
+Some plugins include Python CLI tools for workflow orchestration. Install them with uv:
 
 **Windows (PowerShell):**
 
 ```powershell
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\experimental-plugins\agentic-core"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
 ```
 
 **macOS/Linux:**
 
 ```bash
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/agentic-core
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
 ```
 
 ## SDLC Plugins
-
-This repository provides two SDLC plugins for different use cases:
 
 ### Interactive-SDLC
 
@@ -126,38 +124,31 @@ Interactive SDLC commands for guided development within Claude Code sessions wit
 - `/interactive-sdlc:document` - Generate documentation with mermaid diagrams
 - `/interactive-sdlc:analyse-*` - Analysis commands for bugs, docs, debt, style, security
 
-### [Experimental] Agentic-SDLC
+### Agentic SDLC
 
-Fully autonomous SDLC workflow orchestrated via Python, with no user interaction.
+YAML-based workflow orchestration for fully autonomous task execution with parallel execution, conditional logic, retry mechanisms, and persistent memory.
 
-**Best for**: CI/CD integration, automated workflows, batch processing.
+**Best for**: Autonomous development where you want Claude to work independently.
 
-**Key commands** (JSON I/O):
+**Key commands**:
 
-- `/agentic-sdlc:plan-feature` - Generate feature plan (JSON I/O)
-- `/agentic-sdlc:plan-bug` - Generate bug fix plan (JSON I/O)
-- `/agentic-sdlc:plan-chore` - Generate chore plan (JSON I/O)
-- `/agentic-sdlc:implement` - Implement from plan (JSON I/O)
-- `/agentic-sdlc:review` - Review code changes (JSON I/O)
-- `/agentic-sdlc:test` - Run tests and analyze results (JSON I/O)
+- `/agentic-sdlc:plan` - Generate implementation plans
+- `/agentic-sdlc:build` - Implement changes following a plan
+- `/agentic-sdlc:validate` - Validate implementation quality
+- `/agentic-sdlc:analyse` - Run codebase analysis
+- `/agentic-sdlc:orchestrate` - Evaluate workflow state and determine next action
 
 **Python CLI**:
 
-```bash
-# Full autonomous workflow
-agentic-workflow --type feature --spec spec.json
-
-# Individual steps
-agentic-plan --type feature --json-file spec.json
-agentic-build --plan-file /specs/feature-auth.md
-agentic-validate --plan-file /specs/feature-auth.md
-```
+- `agentic-sdlc run <workflow.yaml>` - Execute a YAML workflow
+- `agentic-sdlc one-shot "task"` - Complete a task end-to-end with PR
+- `agentic-sdlc analyse --type security` - Run security analysis
 
 ### Usage
 
 After installation, plugins are immediately available in your Claude Code session:
 
-- **Commands**: Available via `/command-name` (e.g., `/security-review`)
+- **Commands**: Available via `/command-name` (e.g., `/interactive-sdlc:plan-feature`)
 - **Agents**: Invoked automatically via commands or Task tool
 - **Skills**: Activated via `Skill` tool or skill name
 - **Hooks**: Execute automatically on configured events
