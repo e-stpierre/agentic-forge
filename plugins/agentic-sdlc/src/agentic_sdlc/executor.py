@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -213,6 +214,12 @@ class WorkflowExecutor:
             self._execute_prompt_step(step, progress, context, logger, console)
         elif step.type == StepType.COMMAND:
             self._execute_command_step(step, progress, context, logger, console)
+        elif step.type == StepType.PARALLEL:
+            self._execute_parallel_step(step, progress, context, logger, console)
+        elif step.type == StepType.SERIAL:
+            self._execute_serial_step(step, progress, context, logger, console)
+        elif step.type == StepType.CONDITIONAL:
+            self._execute_conditional_step(step, progress, context, logger, console)
         elif step.type == StepType.RALPH_LOOP:
             self._execute_ralph_loop_step(step, progress, context, logger, console)
         else:
@@ -450,3 +457,255 @@ class WorkflowExecutor:
         output_summary = f"Max iterations ({max_iterations}) reached without completion promise"
         update_step_completed(progress, step.name, output_summary, combined_output)
         console.ralph_max_iterations(step.name, max_iterations)
+
+    def _execute_parallel_step(
+        self,
+        step: StepDefinition,
+        progress: WorkflowProgress,
+        context: dict[str, Any],
+        logger: WorkflowLogger,
+        console: ConsoleOutput,
+    ) -> None:
+        """Execute steps in parallel.
+
+        Each step in the parallel block runs concurrently. Results are collected
+        based on the merge strategy.
+        """
+        if not step.steps:
+            logger.warning(step.name, "Parallel step has no sub-steps")
+            update_step_completed(progress, step.name, "No sub-steps to execute")
+            console.step_complete(step.name, "No sub-steps to execute")
+            return
+
+        logger.info(step.name, f"Starting parallel execution of {len(step.steps)} branches")
+        console.info(f"Parallel: starting {len(step.steps)} branches")
+
+        branch_results: dict[str, dict[str, Any]] = {}
+        failed_branches: list[str] = []
+
+        def execute_branch(branch_step: StepDefinition) -> tuple[str, bool, str]:
+            """Execute a single branch and return (name, success, output_summary)."""
+            branch_context = context.copy()
+
+            try:
+                self._execute_branch_step(
+                    branch_step, progress, branch_context, logger, console
+                )
+                return (branch_step.name, True, "completed")
+            except Exception as e:
+                logger.error(branch_step.name, f"Branch failed: {e}")
+                return (branch_step.name, False, str(e))
+
+        with ThreadPoolExecutor(max_workers=len(step.steps)) as executor:
+            futures = {
+                executor.submit(execute_branch, branch_step): branch_step
+                for branch_step in step.steps
+            }
+
+            for future in as_completed(futures):
+                branch_step = futures[future]
+                try:
+                    name, success, output = future.result()
+                    branch_results[name] = {"success": success, "output": output}
+                    if success:
+                        console.info(f"  Branch '{name}' completed")
+                    else:
+                        console.error(f"  Branch '{name}' failed: {output}")
+                        failed_branches.append(name)
+                except Exception as e:
+                    branch_results[branch_step.name] = {"success": False, "output": str(e)}
+                    failed_branches.append(branch_step.name)
+                    console.error(f"  Branch '{branch_step.name}' exception: {e}")
+
+        if step.merge_strategy == "wait-all":
+            if failed_branches and step.merge_mode != "independent":
+                error_msg = f"Parallel branches failed: {', '.join(failed_branches)}"
+                update_step_failed(progress, step.name, error_msg)
+                console.step_failed(step.name, error_msg)
+                progress.status = WorkflowStatus.FAILED.value
+            else:
+                completed = len(step.steps) - len(failed_branches)
+                output_summary = f"Completed {completed}/{len(step.steps)} branches"
+                if failed_branches:
+                    output_summary += f" (failed: {', '.join(failed_branches)})"
+                update_step_completed(progress, step.name, output_summary)
+                console.step_complete(step.name, output_summary)
+                logger.info(step.name, output_summary)
+
+    def _execute_branch_step(
+        self,
+        step: StepDefinition,
+        progress: WorkflowProgress,
+        context: dict[str, Any],
+        logger: WorkflowLogger,
+        console: ConsoleOutput,
+    ) -> None:
+        """Execute a single step within a parallel or serial block.
+
+        This is similar to _execute_step but doesn't update the main step progress,
+        as the parent step handles progress tracking.
+        """
+        logger.info(step.name, f"Starting branch step: {step.name}")
+
+        if step.type == StepType.PROMPT:
+            self._execute_prompt_step(step, progress, context, logger, console)
+        elif step.type == StepType.COMMAND:
+            self._execute_command_step(step, progress, context, logger, console)
+        elif step.type == StepType.SERIAL:
+            self._execute_serial_step(step, progress, context, logger, console)
+        elif step.type == StepType.CONDITIONAL:
+            self._execute_conditional_step(step, progress, context, logger, console)
+        elif step.type == StepType.RALPH_LOOP:
+            self._execute_ralph_loop_step(step, progress, context, logger, console)
+        else:
+            raise NotImplementedError(f"Step type not supported in branches: {step.type.value}")
+
+    def _execute_serial_step(
+        self,
+        step: StepDefinition,
+        progress: WorkflowProgress,
+        context: dict[str, Any],
+        logger: WorkflowLogger,
+        console: ConsoleOutput,
+    ) -> None:
+        """Execute steps sequentially within a serial block.
+
+        Each step runs one after another. If any step fails, subsequent steps are skipped.
+        """
+        if not step.steps:
+            logger.warning(step.name, "Serial step has no sub-steps")
+            update_step_completed(progress, step.name, "No sub-steps to execute")
+            console.step_complete(step.name, "No sub-steps to execute")
+            return
+
+        logger.info(step.name, f"Starting serial execution of {len(step.steps)} steps")
+        console.info(f"Serial: executing {len(step.steps)} steps in sequence")
+
+        completed_count = 0
+
+        for sub_step in step.steps:
+            try:
+                self._execute_branch_step(sub_step, progress, context, logger, console)
+                completed_count += 1
+
+                if progress.status == WorkflowStatus.FAILED.value:
+                    logger.warning(step.name, f"Serial block stopped at step '{sub_step.name}' due to failure")
+                    break
+
+            except Exception as e:
+                logger.error(sub_step.name, f"Step failed in serial block: {e}")
+                update_step_failed(progress, step.name, f"Step '{sub_step.name}' failed: {e}")
+                console.step_failed(step.name, f"Step '{sub_step.name}' failed")
+                progress.status = WorkflowStatus.FAILED.value
+                return
+
+        if progress.status != WorkflowStatus.FAILED.value:
+            output_summary = f"Completed {completed_count}/{len(step.steps)} steps"
+            update_step_completed(progress, step.name, output_summary)
+            console.step_complete(step.name, output_summary)
+            logger.info(step.name, output_summary)
+
+    def _execute_conditional_step(
+        self,
+        step: StepDefinition,
+        progress: WorkflowProgress,
+        context: dict[str, Any],
+        logger: WorkflowLogger,
+        console: ConsoleOutput,
+    ) -> None:
+        """Execute a conditional step based on condition evaluation.
+
+        Evaluates the condition expression and executes either the 'then' or 'else' branch.
+        """
+        condition = step.condition or "false"
+        logger.info(step.name, f"Evaluating condition: {condition}")
+
+        if self.renderer.has_variables(condition):
+            condition = self.renderer.render_string(condition, context)
+
+        condition_result = self._evaluate_condition(condition, context)
+        logger.info(step.name, f"Condition evaluated to: {condition_result}")
+        console.info(f"Conditional '{step.name}': {condition} = {condition_result}")
+
+        if condition_result:
+            steps_to_run = step.then_steps
+            branch_name = "then"
+        else:
+            steps_to_run = step.else_steps
+            branch_name = "else"
+
+        if not steps_to_run:
+            output_summary = f"Condition {condition_result}, no '{branch_name}' branch to execute"
+            update_step_completed(progress, step.name, output_summary)
+            console.step_complete(step.name, output_summary)
+            return
+
+        logger.info(step.name, f"Executing '{branch_name}' branch with {len(steps_to_run)} steps")
+
+        for sub_step in steps_to_run:
+            try:
+                self._execute_branch_step(sub_step, progress, context, logger, console)
+
+                if progress.status == WorkflowStatus.FAILED.value:
+                    logger.warning(step.name, f"Conditional '{branch_name}' branch stopped due to failure")
+                    break
+
+            except Exception as e:
+                logger.error(sub_step.name, f"Step failed in conditional branch: {e}")
+                update_step_failed(progress, step.name, f"Step '{sub_step.name}' failed: {e}")
+                console.step_failed(step.name, f"Step '{sub_step.name}' failed")
+                progress.status = WorkflowStatus.FAILED.value
+                return
+
+        if progress.status != WorkflowStatus.FAILED.value:
+            output_summary = f"Executed '{branch_name}' branch ({len(steps_to_run)} steps)"
+            update_step_completed(progress, step.name, output_summary)
+            console.step_complete(step.name, output_summary)
+            logger.info(step.name, output_summary)
+
+    def _evaluate_condition(self, condition: str, context: dict[str, Any]) -> bool:
+        """Evaluate a condition expression.
+
+        Supports simple comparisons and variable access:
+        - variables.name == 'value'
+        - variables.name != 'value'
+        - variables.flag (truthy check)
+        """
+        condition = condition.strip()
+
+        if condition.lower() in ("true", "1", "yes"):
+            return True
+        if condition.lower() in ("false", "0", "no", "none", ""):
+            return False
+
+        if "!=" in condition:
+            left, right = condition.split("!=", 1)
+            left_val = self._resolve_value(left.strip(), context)
+            right_val = self._resolve_value(right.strip(), context)
+            return left_val != right_val
+
+        if "==" in condition:
+            left, right = condition.split("==", 1)
+            left_val = self._resolve_value(left.strip(), context)
+            right_val = self._resolve_value(right.strip(), context)
+            return left_val == right_val
+
+        value = self._resolve_value(condition, context)
+        return bool(value) and value not in ("none", "None", "null", "")
+
+    def _resolve_value(self, expr: str, context: dict[str, Any]) -> Any:
+        """Resolve a value expression from context or as a literal."""
+        expr = expr.strip()
+
+        if (expr.startswith("'") and expr.endswith("'")) or (expr.startswith('"') and expr.endswith('"')):
+            return expr[1:-1]
+
+        if expr.startswith("variables."):
+            var_name = expr[10:]
+            return context.get("variables", {}).get(var_name)
+
+        if expr.startswith("outputs."):
+            output_name = expr[8:]
+            return context.get("outputs", {}).get(output_name)
+
+        return context.get(expr, expr)

@@ -16,6 +16,7 @@ class StepType(Enum):
     PROMPT = "prompt"
     COMMAND = "command"
     PARALLEL = "parallel"
+    SERIAL = "serial"
     CONDITIONAL = "conditional"
     RALPH_LOOP = "ralph-loop"
     WAIT_FOR_HUMAN = "wait-for-human"
@@ -204,7 +205,7 @@ class WorkflowParser:
             description=data.get("description", ""),
         )
 
-    def _parse_step(self, data: dict[str, Any]) -> StepDefinition:
+    def _parse_step(self, data: dict[str, Any], parent_is_parallel: bool = False) -> StepDefinition:
         """Parse a step definition."""
         name = self._required(data, "name")
         type_str = self._required(data, "type")
@@ -215,6 +216,9 @@ class WorkflowParser:
             valid = [t.value for t in StepType]
             raise WorkflowParseError(f"Invalid step type: {type_str}. Valid types: {valid}") from None
 
+        if parent_is_parallel and step_type == StepType.PARALLEL:
+            raise WorkflowParseError(f"Nested parallel steps are not allowed: '{name}' is a parallel step inside another parallel step")
+
         step = StepDefinition(name=name, type=step_type)
 
         if step_type == StepType.PROMPT:
@@ -224,9 +228,11 @@ class WorkflowParser:
             step.command = data.get("command")
             step.args = data.get("args", {})
         elif step_type == StepType.PARALLEL:
-            step.steps = [self._parse_step(s) for s in data.get("steps", [])]
+            step.steps = [self._parse_step(s, parent_is_parallel=True) for s in data.get("steps", [])]
             step.merge_strategy = data.get("merge-strategy", "wait-all")
             step.merge_mode = data.get("merge-mode", "independent")
+        elif step_type == StepType.SERIAL:
+            step.steps = [self._parse_step(s) for s in data.get("steps", [])]
         elif step_type == StepType.CONDITIONAL:
             step.condition = data.get("condition")
             step.then_steps = [self._parse_step(s) for s in data.get("then", [])]

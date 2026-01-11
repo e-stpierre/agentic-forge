@@ -456,7 +456,7 @@ def cmd_init(args: Namespace) -> None:
 
     if copied:
         print("\nYou can now run workflows with:")
-        print(f"  agentic-sdlc run agentic/workflows/<workflow>.yaml")
+        print("  agentic-sdlc run agentic/workflows/<workflow>.yaml")
 
 
 def cmd_config(args: Namespace) -> None:
