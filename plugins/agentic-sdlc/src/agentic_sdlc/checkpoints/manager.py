@@ -16,7 +16,7 @@ def get_checkpoint_path(workflow_id: str, repo_root: Path | None = None) -> Path
     """Get path to checkpoint file for a workflow."""
     if repo_root is None:
         repo_root = Path.cwd()
-    return repo_root / "agentic" / "workflows" / workflow_id / "checkpoint.md"
+    return repo_root / "agentic" / "outputs" / workflow_id / "checkpoint.md"
 
 
 def create_checkpoint(

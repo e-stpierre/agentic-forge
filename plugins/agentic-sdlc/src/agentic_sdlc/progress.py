@@ -77,11 +77,28 @@ class WorkflowProgress:
     step_outputs: dict[str, Any] = field(default_factory=dict)
 
 
+def generate_workflow_id(workflow_name: str) -> str:
+    """Generate a workflow ID in the format {datetime}-{workflow_name}.
+
+    Args:
+        workflow_name: Name of the workflow from the YAML definition.
+
+    Returns:
+        Workflow ID like "20260111-143052-plan-build-validate"
+    """
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    # Sanitize workflow name for filesystem safety
+    safe_name = workflow_name.lower().replace(" ", "-").replace("_", "-")
+    # Remove any characters that aren't alphanumeric or hyphens
+    safe_name = "".join(c for c in safe_name if c.isalnum() or c == "-")
+    return f"{timestamp}-{safe_name}"
+
+
 def get_progress_path(workflow_id: str, repo_root: Path | None = None) -> Path:
     """Get path to progress file for a workflow."""
     if repo_root is None:
         repo_root = Path.cwd()
-    return repo_root / "agentic" / "workflows" / workflow_id / "progress.json"
+    return repo_root / "agentic" / "outputs" / workflow_id / "progress.json"
 
 
 def load_progress(workflow_id: str, repo_root: Path | None = None) -> WorkflowProgress | None:

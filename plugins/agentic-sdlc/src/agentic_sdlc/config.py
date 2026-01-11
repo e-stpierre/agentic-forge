@@ -23,7 +23,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "template": "default",
     },
     "checkpoint": {
-        "directory": "agentic/workflows",
+        "directory": "agentic/outputs",
     },
     "defaults": {
         "maxRetry": 3,

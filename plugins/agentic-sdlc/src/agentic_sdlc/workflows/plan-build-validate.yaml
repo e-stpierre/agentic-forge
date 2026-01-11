@@ -41,7 +41,7 @@ steps:
   - name: implement
     type: ralph-loop
     prompt: |
-      Read the plan at agentic/workflows/{{ workflow_id }}/plan.md and implement the next incomplete milestone.
+      Read the plan at agentic/outputs/{{ workflow_id }}/plan.md and implement the next incomplete milestone.
 
       For each milestone:
       1. Implement all tasks in the milestone
@@ -64,7 +64,7 @@ steps:
     type: command
     command: validate
     args:
-      plan: "agentic/workflows/{{ workflow_id }}/plan.md"
+      plan: "agentic/outputs/{{ workflow_id }}/plan.md"
       severity: minor
 
   - name: fix-issues
@@ -98,5 +98,5 @@ steps:
 outputs:
   - name: implementation-report
     template: implementation-report.md.j2
-    path: agentic/workflows/{{ workflow_id }}/report.md
+    path: agentic/outputs/{{ workflow_id }}/report.md
     when: completed

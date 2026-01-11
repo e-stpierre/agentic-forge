@@ -31,7 +31,7 @@ class RalphLoopState:
 def get_ralph_state_path(workflow_id: str, step_name: str, repo_root: Path) -> Path:
     """Get path to ralph loop state file."""
     safe_name = re.sub(r"[^\w\-]", "_", step_name)
-    return repo_root / "agentic" / "workflows" / workflow_id / f"ralph-{safe_name}.md"
+    return repo_root / "agentic" / "outputs" / workflow_id / f"ralph-{safe_name}.md"
 
 
 def create_ralph_state(

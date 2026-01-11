@@ -25,7 +25,8 @@ Create checkpoints using `/create-checkpoint` when:
 
 This repository uses agentic-sdlc for automated development. Key directories:
 
-- `agentic/workflows/` - Workflow execution state and logs
+- `agentic/outputs/` - Workflow execution state and logs
+- `agentic/workflows/` - Workflow YAML templates
 - `agentic/memory/` - Persistent learnings and patterns
 - `agentic/analysis/` - Code analysis reports
 

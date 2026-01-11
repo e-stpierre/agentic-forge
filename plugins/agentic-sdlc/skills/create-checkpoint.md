@@ -50,7 +50,7 @@ Issues: Rate limiting may conflict with OAuth flow - needs investigation.
 
 ## Checkpoint Format
 
-Checkpoints are stored in `agentic/workflows/{workflow-id}/checkpoint.md` with this structure:
+Checkpoints are stored in `agentic/outputs/{workflow-id}/checkpoint.md` with this structure:
 
 ```markdown
 ---

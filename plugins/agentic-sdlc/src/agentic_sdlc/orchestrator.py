@@ -34,6 +34,7 @@ from agentic_sdlc.progress import (
     WorkflowStatus,
     _progress_to_dict,
     create_progress,
+    generate_workflow_id,
     load_progress,
     save_progress,
     update_step_completed,
@@ -177,9 +178,7 @@ class WorkflowOrchestrator:
         from_step: str | None,
     ) -> WorkflowProgress:
         """Initialize or resume progress document."""
-        import uuid
-
-        workflow_id = str(uuid.uuid4())[:8]
+        workflow_id = generate_workflow_id(workflow.name)
         step_names = self._collect_step_names(workflow.steps)
 
         for var in workflow.variables:
@@ -368,7 +367,7 @@ class WorkflowOrchestrator:
                     branch_id=sub_step.name,
                     status="running",
                     worktree_path=str(wt.path),
-                    progress_file=str(wt.path / "agentic" / "workflows" / progress.workflow_id / "progress.json"),
+                    progress_file=str(wt.path / "agentic" / "outputs" / progress.workflow_id / "progress.json"),
                 )
                 progress.parallel_branches.append(branch)
 

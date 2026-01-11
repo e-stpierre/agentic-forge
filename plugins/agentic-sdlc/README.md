@@ -457,7 +457,7 @@ agentic-sdlc memory prune --older-than 30d
 
 ```bash
 # Implement all milestones from a plan
-/build --plan agentic/workflows/abc123/plan.md
+/build --plan agentic/outputs/abc123/plan.md
 
 # Implement specific milestone
 /build --plan plan.md --milestone 2
@@ -667,4 +667,4 @@ steps:
     model: sonnet
 ````
 
-The Ralph Loop pattern creates a fresh Claude session for each iteration, repeating the same prompt until Claude outputs a JSON completion signal or max iterations is reached. State is tracked in `agentic/workflows/{id}/ralph-{step}.md`.
+The Ralph Loop pattern creates a fresh Claude session for each iteration, repeating the same prompt until Claude outputs a JSON completion signal or max iterations is reached. State is tracked in `agentic/outputs/{id}/ralph-{step}.md`.

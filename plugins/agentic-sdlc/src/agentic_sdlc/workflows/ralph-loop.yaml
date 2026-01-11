@@ -58,5 +58,5 @@ steps:
 outputs:
   - name: ralph-report
     template: ralph-report.md.j2
-    path: agentic/workflows/{{ workflow_id }}/ralph-report.md
+    path: agentic/outputs/{{ workflow_id }}/ralph-report.md
     when: completed

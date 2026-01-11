@@ -71,7 +71,7 @@
       "properties": {
         "directory": {
           "type": "string",
-          "default": "agentic/workflows",
+          "default": "agentic/outputs",
           "description": "Checkpoint storage location"
         }
       }

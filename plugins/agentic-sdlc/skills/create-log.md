@@ -59,7 +59,7 @@ Context:
 
 ## Log File Format
 
-Logs are stored in `agentic/workflows/{workflow-id}/logs.ndjson` as NDJSON (one JSON object per line):
+Logs are stored in `agentic/outputs/{workflow-id}/logs.ndjson` as NDJSON (one JSON object per line):
 
 ```json
 {"timestamp":"2024-01-15T10:30:00Z","level":"Information","step":"implement","message":"Started implementation","context":null}

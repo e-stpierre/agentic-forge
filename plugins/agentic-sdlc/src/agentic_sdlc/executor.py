@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +16,7 @@ from agentic_sdlc.progress import (
     WorkflowProgress,
     WorkflowStatus,
     create_progress,
+    generate_workflow_id,
     save_progress,
     update_step_completed,
     update_step_failed,
@@ -64,7 +64,7 @@ class WorkflowExecutor:
             dry_run: Validate without executing
         """
         variables = variables or {}
-        workflow_id = str(uuid.uuid4())[:8]
+        workflow_id = generate_workflow_id(workflow.name)
         self.workflow_settings = workflow.settings
 
         # Create console output handler

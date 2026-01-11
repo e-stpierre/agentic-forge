@@ -64,7 +64,7 @@ Create a structured implementation plan for the given task. This command analyze
   "affected_files": ["src/path/file.ts"],
   "dependencies": ["package-name"],
   "risks": ["Potential risk or consideration"],
-  "document_path": "agentic/workflows/{id}/plan.md"
+  "document_path": "agentic/outputs/{id}/plan.md"
 }
 ```
 

@@ -37,7 +37,7 @@ class WorkflowLogger:
         self.workflow_id = workflow_id
         if repo_root is None:
             repo_root = Path.cwd()
-        self.log_path = repo_root / "agentic" / "workflows" / workflow_id / "logs.ndjson"
+        self.log_path = repo_root / "agentic" / "outputs" / workflow_id / "logs.ndjson"
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
     def log(
@@ -80,7 +80,7 @@ def read_logs(workflow_id: str, repo_root: Path | None = None) -> list[LogEntry]
     """Read all log entries for a workflow."""
     if repo_root is None:
         repo_root = Path.cwd()
-    log_path = repo_root / "agentic" / "workflows" / workflow_id / "logs.ndjson"
+    log_path = repo_root / "agentic" / "outputs" / workflow_id / "logs.ndjson"
 
     if not log_path.exists():
         return []
@@ -99,4 +99,4 @@ def get_log_path(workflow_id: str, repo_root: Path | None = None) -> Path:
     """Get the path to the log file for a workflow."""
     if repo_root is None:
         repo_root = Path.cwd()
-    return repo_root / "agentic" / "workflows" / workflow_id / "logs.ndjson"
+    return repo_root / "agentic" / "outputs" / workflow_id / "logs.ndjson"

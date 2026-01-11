@@ -762,7 +762,7 @@ Skill used to create a checkpoint, refers to the plugin json configuration for:
 
 #### Create Log
 
-Add log entries to the workflow's log file (`agentic/workflows/{workflow-id}/logs.ndjson`). Uses NDJSON format (one JSON object per line) with fields: `timestamp`, `level`, `step`, `message`, `context`.
+Add log entries to the workflow's log file (`agentic/outputs/{workflow-id}/logs.ndjson`). Uses NDJSON format (one JSON object per line) with fields: `timestamp`, `level`, `step`, `message`, `context`.
 
 Log levels:
 
