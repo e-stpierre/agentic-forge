@@ -9,32 +9,6 @@
   },
   "plugins": [
     {
-      "name": "appsec",
-      "source": "./",
-      "description": "Comprehensive application security toolkit for identifying vulnerabilities, analyzing risks, and validating dependencies at an expert level",
-      "version": "1.0.0",
-      "category": "security",
-      "author": {
-        "name": "Étienne St-Pierre",
-        "email": "me@estpierre.dev"
-      },
-      "license": "MIT",
-      "keywords": [
-        "security",
-        "appsec",
-        "vulnerability",
-        "risk-analysis",
-        "dependencies",
-        "audit"
-      ],
-      "strict": false,
-      "commands": [
-        "./plugins/appsec/commands/security-review.md",
-        "./plugins/appsec/commands/scope-security.md"
-      ],
-      "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
-    },
-    {
       "name": "interactive-sdlc",
       "source": "./",
       "description": "Interactive SDLC commands for guided development within Claude Code sessions",
@@ -81,8 +55,8 @@
     {
       "name": "agentic-workflows",
       "source": "./",
-      "description": "[Experimental] YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory for complex multi-step tasks",
-      "version": "0.0.1",
+      "description": "YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory for complex multi-step tasks",
+      "version": "1.0.0",
       "category": "sdlc",
       "author": {
         "name": "Étienne St-Pierre",
@@ -90,7 +64,6 @@
       },
       "license": "MIT",
       "keywords": [
-        "experimental",
         "workflows",
         "yaml",
         "orchestration",
@@ -102,24 +75,24 @@
       ],
       "strict": false,
       "commands": [
-        "./experimental-plugins/agentic-workflows/commands/analyse.md",
-        "./experimental-plugins/agentic-workflows/commands/build.md",
-        "./experimental-plugins/agentic-workflows/commands/orchestrate.md",
-        "./experimental-plugins/agentic-workflows/commands/plan.md",
-        "./experimental-plugins/agentic-workflows/commands/validate.md",
-        "./experimental-plugins/agentic-workflows/commands/git/branch.md",
-        "./experimental-plugins/agentic-workflows/commands/git/commit.md",
-        "./experimental-plugins/agentic-workflows/commands/git/pr.md"
+        "./plugins/agentic-workflows/commands/analyse.md",
+        "./plugins/agentic-workflows/commands/build.md",
+        "./plugins/agentic-workflows/commands/orchestrate.md",
+        "./plugins/agentic-workflows/commands/plan.md",
+        "./plugins/agentic-workflows/commands/validate.md",
+        "./plugins/agentic-workflows/commands/git/branch.md",
+        "./plugins/agentic-workflows/commands/git/commit.md",
+        "./plugins/agentic-workflows/commands/git/pr.md"
       ],
       "agents": [
-        "./experimental-plugins/agentic-workflows/agents/explorer.md",
-        "./experimental-plugins/agentic-workflows/agents/reviewer.md"
+        "./plugins/agentic-workflows/agents/explorer.md",
+        "./plugins/agentic-workflows/agents/reviewer.md"
       ],
       "skills": [
-        "./experimental-plugins/agentic-workflows/skills/create-checkpoint.md",
-        "./experimental-plugins/agentic-workflows/skills/create-log.md",
-        "./experimental-plugins/agentic-workflows/skills/create-memory.md",
-        "./experimental-plugins/agentic-workflows/skills/search-memory.md"
+        "./plugins/agentic-workflows/skills/create-checkpoint.md",
+        "./plugins/agentic-workflows/skills/create-log.md",
+        "./plugins/agentic-workflows/skills/create-memory.md",
+        "./plugins/agentic-workflows/skills/search-memory.md"
       ]
     }
   ]

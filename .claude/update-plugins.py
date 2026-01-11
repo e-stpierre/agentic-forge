@@ -15,8 +15,8 @@ Usage:
     uv run path/to/update-plugins.py
 
     Reinstall specific plugins only:
-    uv run .claude/update-plugins.py agentic-core agentic-workflows
-    uv run .claude/update-plugins.py appsec interactive-sdlc
+    uv run .claude/update-plugins.py agentic-workflows
+    uv run .claude/update-plugins.py interactive-sdlc agentic-workflows
 """
 
 import argparse
@@ -28,7 +28,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 # Python CLI tools (installed via uv tool install)
-PYTHON_TOOLS = ["agentic-core", "agentic-workflows"]
+PYTHON_TOOLS = ["agentic-workflows"]
 
 # Patterns to exclude when creating staged copy
 STAGING_IGNORE_PATTERNS = [
@@ -311,50 +311,8 @@ def main():
         current_step += 1
         print_step(current_step, total_steps, "Install Python CLI Tools")
 
-        agentic_core_path = repo_root / "experimental-plugins" / "agentic-core"
-
-        # Install agentic-core
-        if "agentic-core" in requested_python_tools:
-            if agentic_core_path.exists():
-                print(f"\n  {color('Installing agentic-core package...', Colors.CYAN)}")
-
-                # Clean and build agentic-core to ensure fresh wheel with latest docker files
-                dist_dir = agentic_core_path / "dist"
-                if dist_dir.exists():
-                    shutil.rmtree(dist_dir)
-                    print_info("Cleaned previous build artifacts")
-
-                run_command(
-                    ["uv", "build"],
-                    "Build agentic-core package",
-                    cwd=agentic_core_path,
-                )
-
-                run_command(
-                    ["uv", "tool", "uninstall", "agentic-core"],
-                    "Uninstall agentic-core CLI tools",
-                )
-
-                # Install from the freshly built wheel to bypass uv cache
-                wheel_files = list(dist_dir.glob("*.whl"))
-                if wheel_files:
-                    wheel_path = wheel_files[0]
-                    if run_command(
-                        ["uv", "tool", "install", "--force", "--reinstall", str(wheel_path)],
-                        "Install agentic-core CLI tools",
-                    ):
-                        success_count += 1
-                    else:
-                        warning_count += 1
-                else:
-                    print_warning("No wheel found after build")
-                    warning_count += 1
-            else:
-                print_warning(f"Python tool path not found: {agentic_core_path}")
-                warning_count += 1
-
         # Install agentic-workflows
-        agentic_workflows_path = repo_root / "experimental-plugins" / "agentic-workflows"
+        agentic_workflows_path = repo_root / "plugins" / "agentic-workflows"
         if "agentic-workflows" in requested_python_tools:
             if agentic_workflows_path.exists():
                 print(f"\n  {color('Installing agentic-workflows package...', Colors.CYAN)}")
@@ -409,8 +367,7 @@ def main():
 
     print(f"\n  {color('Next steps:', Colors.BOLD)}")
     print(color("    1. Restart Claude Code to load updated plugins", Colors.DIM))
-    print(color("    2. Run 'agentic --help' to verify agentic-core CLI", Colors.DIM))
-    print(color("    3. Run 'agentic-workflow --help' to verify agentic-workflows CLI", Colors.DIM))
+    print(color("    2. Run 'agentic-workflow --help' to verify agentic-workflows CLI", Colors.DIM))
     print()
 
 

@@ -89,23 +89,21 @@ Agents specify their provider in configuration, enabling scenarios like:
 
 ## Plugin Dependencies
 
-- **Agentic Core**: Foundation framework for multi-agent meetings. Provides Kafka messaging, PostgreSQL storage, and CLI provider abstraction.
+- **Agentic Core**: Foundation framework for multi-agent meetings. Provides Kafka messaging, PostgreSQL storage, and CLI provider abstraction. (Experimental - see docs/vision/agentic-core.md)
 - **Agentic Workflows**: YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory. Standalone plugin with no external dependencies.
 - **Interactive SDLC**: Human-in-the-loop workflows. Standalone plugin.
-- **AppSec**: Security analysis plugin. Standalone plugin.
-- **Multi-Agent Meetings**: Depends on Agentic Core. Collaborative agent discussions.
+- **Multi-Agent Meetings**: Depends on Agentic Core. Collaborative agent discussions. (Experimental)
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │  Agentic Core   │     │Agentic Workflows│     │ Interactive SDLC│
-│  (Kafka, PG,    │     │  (YAML-based,   │     │  (Human-in-loop)│
-│   Meetings)     │     │   Standalone)   │     │                 │
+│  (Experimental) │     │   (Official)    │     │   (Official)    │
 └────────┬────────┘     └─────────────────┘     └─────────────────┘
          │
          ▼
 ┌─────────────────┐
 │ Multi-Agent     │
-│ Meetings        │
+│ Meetings (Exp.) │
 └─────────────────┘
 ```
 
@@ -142,10 +140,6 @@ agentic one-shot "Fix bug"    # Quick one-shot task
 agentic meeting "Topic"       # Start agent meeting
 agentic resume <workflow-id>  # Resume from checkpoint
 ```
-
-### AppSec
-
-Security-focused plugin for vulnerability scanning, threat modeling, and security best practices enforcement. Integrates OWASP guidelines and automated security checks into the development workflow.
 
 ### Interactive SDLC
 

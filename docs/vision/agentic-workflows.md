@@ -307,7 +307,7 @@ agentic/
 **Dependencies:** `pyyaml`, `jinja2`, `filelock` (for cross-platform file locking)
 
 ```
-experimental-plugins/agentic-workflows/
+plugins/agentic-workflows/
 ├── pyproject.toml                # Python 3.10+, uv tool installable
 ├── CLAUDE.example.md             # Example CLAUDE.md sections for users
 ├── workflows/                    # Built-in workflow definitions
@@ -1011,10 +1011,9 @@ The following elements are ideas for future development that must not be include
 
 #### agentic-core
 
-experimental-plugins\vision\agentic-core.md
-experimental-plugins\agentic-core
+docs/vision/agentic-core.md
 
-This plugin is kept for multi-agent meeting functionality using Kafka and PostgreSQL. While some patterns can be referenced, agentic-workflows is standalone and does not depend on it. Key differences:
+This plugin is planned for multi-agent meeting functionality using Kafka and PostgreSQL. While some patterns can be referenced, agentic-workflows is standalone and does not depend on it. Key differences:
 
 - agentic-core uses Kafka for agent communication; agentic-workflows uses file-based state
 - agentic-core uses PostgreSQL + pgvector for memory; agentic-workflows uses YAML frontmatter with file glob patterns

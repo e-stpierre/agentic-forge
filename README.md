@@ -91,21 +91,21 @@ This opens an interactive menu where you can:
 
 ### Python CLI
 
-Some experimental plugins include Python CLI tools for workflow orchestration. Install them with uv:
+Some plugins include Python CLI tools for workflow orchestration. Install them with uv:
 
 **Windows (PowerShell):**
 
 ```powershell
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\experimental-plugins\agentic-core"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-workflows"
 ```
 
 **macOS/Linux:**
 
 ```bash
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/agentic-core
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-workflows
 ```
 
-## SDLC Plugin
+## SDLC Plugins
 
 ### Interactive-SDLC
 
@@ -124,11 +124,31 @@ Interactive SDLC commands for guided development within Claude Code sessions wit
 - `/interactive-sdlc:document` - Generate documentation with mermaid diagrams
 - `/interactive-sdlc:analyse-*` - Analysis commands for bugs, docs, debt, style, security
 
+### Agentic Workflows
+
+YAML-based workflow orchestration for fully autonomous task execution with parallel execution, conditional logic, retry mechanisms, and persistent memory.
+
+**Best for**: Autonomous development where you want Claude to work independently.
+
+**Key commands**:
+
+- `/agentic-workflows:plan` - Generate implementation plans
+- `/agentic-workflows:build` - Implement changes following a plan
+- `/agentic-workflows:validate` - Validate implementation quality
+- `/agentic-workflows:analyse` - Run codebase analysis
+- `/agentic-workflows:orchestrate` - Evaluate workflow state and determine next action
+
+**Python CLI**:
+
+- `agentic-workflow run <workflow.yaml>` - Execute a YAML workflow
+- `agentic-workflow one-shot "task"` - Complete a task end-to-end with PR
+- `agentic-workflow analyse --type security` - Run security analysis
+
 ### Usage
 
 After installation, plugins are immediately available in your Claude Code session:
 
-- **Commands**: Available via `/command-name` (e.g., `/security-review`)
+- **Commands**: Available via `/command-name` (e.g., `/interactive-sdlc:plan-feature`)
 - **Agents**: Invoked automatically via commands or Task tool
 - **Skills**: Activated via `Skill` tool or skill name
 - **Hooks**: Execute automatically on configured events

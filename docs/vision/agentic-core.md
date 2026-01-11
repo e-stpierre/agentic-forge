@@ -215,7 +215,7 @@ Categories: lesson, pattern, error, decision, context
 ## Package Structure
 
 ```
-experimental-plugins/agentic-core/
+plugins/agentic-core/
   pyproject.toml          # Python 3.12+, typer, asyncpg, confluent-kafka, pydantic
   docker/
     docker-compose.yml
@@ -244,10 +244,10 @@ experimental-plugins/agentic-core/
 
 ```bash
 # Install as uv tool
-uv tool install experimental-plugins/agentic-core
+uv tool install plugins/agentic-core
 
 # With memory support
-uv tool install "experimental-plugins/agentic-core[memory]"
+uv tool install "plugins/agentic-core[memory]"
 ```
 
 ## Technical Decisions
