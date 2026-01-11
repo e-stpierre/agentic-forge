@@ -47,9 +47,7 @@ def _supports_color() -> bool:
     """Check if the terminal supports color output."""
     if not hasattr(sys.stdout, "isatty"):
         return False
-    if not sys.stdout.isatty():
-        return False
-    return True
+    return sys.stdout.isatty()
 
 
 def _colorize(text: str, *colors: Color) -> str:
@@ -139,9 +137,7 @@ class ConsoleOutput:
 
     # Ralph loop messages
 
-    def ralph_iteration(
-        self, step_name: str, iteration: int, max_iterations: int, summary: str | None = None
-    ) -> None:
+    def ralph_iteration(self, step_name: str, iteration: int, max_iterations: int, summary: str | None = None) -> None:
         """Print Ralph loop iteration progress."""
         progress = _colorize(f"[{iteration}/{max_iterations}]", Color.CYAN)
         name = _colorize(step_name, Color.CYAN)
@@ -233,7 +229,7 @@ def extract_summary(output: str, max_lines: int = 5, max_chars: int = 500) -> st
                 return "\n".join(result_lines).strip()[:max_chars]
 
     # If no markers, take the last meaningful lines
-    lines = [l for l in output.split("\n") if l.strip()]
+    lines = [line for line in output.split("\n") if line.strip()]
     if not lines:
         return ""
 

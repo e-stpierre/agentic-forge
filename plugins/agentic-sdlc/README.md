@@ -73,8 +73,8 @@ uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdl
 
 ### CLI Commands
 
-| Command                      | Description                                  |
-| ---------------------------- | -------------------------------------------- |
+| Command                  | Description                                  |
+| ------------------------ | -------------------------------------------- |
 | `agentic-sdlc run`       | Execute a workflow from YAML file            |
 | `agentic-sdlc init`      | Copy bundled workflow templates locally      |
 | `agentic-sdlc resume`    | Resume a paused or failed workflow           |

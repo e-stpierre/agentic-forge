@@ -29,12 +29,12 @@ from agentic_sdlc.ralph_loop import (
     detect_completion_promise,
     update_ralph_iteration,
 )
-from agentic_sdlc.runner import run_claude, run_claude_with_command
 from agentic_sdlc.renderer import (
     TemplateRenderer,
     build_template_context,
     render_workflow_output,
 )
+from agentic_sdlc.runner import run_claude, run_claude_with_command
 
 
 class WorkflowExecutor:
@@ -527,14 +527,11 @@ class WorkflowExecutor:
                     branch_context["branch_cwd"] = worktree.path
 
                 self._execute_branch_step(
-                    branch_step, progress, branch_context, logger, console,
-                    cwd_override=worktree.path if worktree else None
+                    branch_step, progress, branch_context, logger, console, cwd_override=worktree.path if worktree else None
                 )
 
                 if auto_pr and worktree and step.merge_mode == "independent":
-                    self._create_branch_pr(
-                        branch_step.name, worktree, logger, console
-                    )
+                    self._create_branch_pr(branch_step.name, worktree, logger, console)
 
                 return (branch_step.name, True, "completed", worktree)
             except Exception as e:
@@ -542,10 +539,7 @@ class WorkflowExecutor:
                 return (branch_step.name, False, str(e), worktree)
 
         with ThreadPoolExecutor(max_workers=len(step.steps)) as executor:
-            futures = {
-                executor.submit(execute_branch, branch_step): branch_step
-                for branch_step in step.steps
-            }
+            futures = {executor.submit(execute_branch, branch_step): branch_step for branch_step in step.steps}
 
             for future in as_completed(futures):
                 branch_step = futures[future]

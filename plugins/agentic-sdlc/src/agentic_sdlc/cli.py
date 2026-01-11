@@ -101,9 +101,7 @@ def main() -> None:
     subparsers.add_parser("configure", help="Configure plugin settings")
 
     # init command
-    init_parser = subparsers.add_parser(
-        "init", help="Copy bundled workflow templates to local project"
-    )
+    init_parser = subparsers.add_parser("init", help="Copy bundled workflow templates to local project")
     init_parser.add_argument(
         "--force",
         action="store_true",

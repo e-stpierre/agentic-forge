@@ -48,8 +48,8 @@ from agentic_sdlc.ralph_loop import (
     detect_completion_promise,
     update_ralph_iteration,
 )
-from agentic_sdlc.runner import run_claude
 from agentic_sdlc.renderer import TemplateRenderer
+from agentic_sdlc.runner import run_claude
 
 if TYPE_CHECKING:
     from typing import Any

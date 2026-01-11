@@ -134,9 +134,7 @@ def run_command(
     print_task_start(description)
 
     capture = subprocess.PIPE if silent else None
-    result = subprocess.run(
-        cmd, cwd=cwd, shell=True, stdout=capture, stderr=subprocess.STDOUT, text=True
-    )
+    result = subprocess.run(cmd, cwd=cwd, shell=True, stdout=capture, stderr=subprocess.STDOUT, text=True)
 
     if result.returncode != 0:
         if allow_failure:
@@ -353,9 +351,7 @@ def main():
                     print_task_error("Install agentic-sdlc", "No wheel found after build")
                     error_count += 1
             else:
-                print_task_error(
-                    "Install agentic-sdlc", f"Path not found: {agentic_sdlc_path}"
-                )
+                print_task_error("Install agentic-sdlc", f"Path not found: {agentic_sdlc_path}")
                 error_count += 1
 
     # Summary line
@@ -363,8 +359,7 @@ def main():
         print(f"\n{color(CHECK, Colors.GREEN)} {color('Done!', Colors.BOLD)} {success_count} successful")
     else:
         print(
-            f"\n{color(CROSS, Colors.BRIGHT_RED)} {color('Done with errors', Colors.BOLD)} "
-            f"{success_count} successful, {error_count} failed"
+            f"\n{color(CROSS, Colors.BRIGHT_RED)} {color('Done with errors', Colors.BOLD)} {success_count} successful, {error_count} failed"
         )
         sys.exit(1)
 
