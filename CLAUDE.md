@@ -17,7 +17,9 @@ The agentic-forge repository aims to:
 ### `/docs/`
 
 Comprehensive documentation for plugin development and usage.
-This directory also contains template files for agent, command and skill. These template must be respected when creating a new prompt.
+This directory also contains template files for agent, command and skill. These templates must be respected when creating a new prompt.
+
+The `/docs/vision/` subdirectory contains vision documents for planned plugins and features.
 
 ### `/experimental-plugins/`
 
@@ -51,7 +53,7 @@ Runtime hooks that execute on specific events (session start, tool calls, etc.).
 
 #### `src/`
 
-Python source code for CLI tools and orchestration utilities (optional). Used by plugins like `core` and `sdlc` that provide command-line workflows.
+Python source code for CLI tools and orchestration utilities (optional). Used by plugins like `agentic-workflows` that provide command-line workflows.
 
 #### `CHANGELOG.md`
 
