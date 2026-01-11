@@ -20,7 +20,7 @@
       "Bash(tail:*)",
       "Bash(wc:*)",
       "Bash(gh:*)",
-      "Skill(agentic-workflows:*)",
+      "Skill(agentic-sdlc:*)",
       "Skill(interactive-sdlc:*)"
     ]
   }

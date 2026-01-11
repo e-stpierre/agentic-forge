@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agentic-sdlc/step-output.schema.json",
+  "title": "Step Output",
+  "description": "Schema for step output format",
+  "type": "object",
+  "required": ["success"],
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "Whether the step completed successfully"
+    },
+    "output_type": {
+      "type": "string",
+      "enum": ["document", "code", "analysis", "data"],
+      "description": "Type of output produced"
+    },
+    "document_path": {
+      "type": "string",
+      "description": "Path to generated document if applicable"
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Brief summary of what was done"
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "files_changed": {
+          "type": "integer",
+          "default": 0
+        },
+        "lines_added": {
+          "type": "integer",
+          "default": 0
+        },
+        "lines_removed": {
+          "type": "integer",
+          "default": 0
+        },
+        "tests_passed": {
+          "type": "integer"
+        },
+        "tests_failed": {
+          "type": "integer"
+        }
+      }
+    },
+    "next_step_context": {
+      "type": "string",
+      "description": "Optional context to pass to the next step"
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["transient", "recoverable", "fatal", "blocking"]
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        }
+      }
+    },
+    "files_changed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of files that were modified"
+    },
+    "issues_found": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["minor", "major", "critical"]
+          },
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

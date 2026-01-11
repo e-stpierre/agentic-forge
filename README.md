@@ -96,13 +96,13 @@ Some plugins include Python CLI tools for workflow orchestration. Install them w
 **Windows (PowerShell):**
 
 ```powershell
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-workflows"
+uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
 ```
 
 **macOS/Linux:**
 
 ```bash
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-workflows
+uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
 ```
 
 ## SDLC Plugins
@@ -124,7 +124,7 @@ Interactive SDLC commands for guided development within Claude Code sessions wit
 - `/interactive-sdlc:document` - Generate documentation with mermaid diagrams
 - `/interactive-sdlc:analyse-*` - Analysis commands for bugs, docs, debt, style, security
 
-### Agentic Workflows
+### Agentic SDLC
 
 YAML-based workflow orchestration for fully autonomous task execution with parallel execution, conditional logic, retry mechanisms, and persistent memory.
 
@@ -132,17 +132,17 @@ YAML-based workflow orchestration for fully autonomous task execution with paral
 
 **Key commands**:
 
-- `/agentic-workflows:plan` - Generate implementation plans
-- `/agentic-workflows:build` - Implement changes following a plan
-- `/agentic-workflows:validate` - Validate implementation quality
-- `/agentic-workflows:analyse` - Run codebase analysis
-- `/agentic-workflows:orchestrate` - Evaluate workflow state and determine next action
+- `/agentic-sdlc:plan` - Generate implementation plans
+- `/agentic-sdlc:build` - Implement changes following a plan
+- `/agentic-sdlc:validate` - Validate implementation quality
+- `/agentic-sdlc:analyse` - Run codebase analysis
+- `/agentic-sdlc:orchestrate` - Evaluate workflow state and determine next action
 
 **Python CLI**:
 
-- `agentic-workflow run <workflow.yaml>` - Execute a YAML workflow
-- `agentic-workflow one-shot "task"` - Complete a task end-to-end with PR
-- `agentic-workflow analyse --type security` - Run security analysis
+- `agentic-sdlc run <workflow.yaml>` - Execute a YAML workflow
+- `agentic-sdlc one-shot "task"` - Complete a task end-to-end with PR
+- `agentic-sdlc analyse --type security` - Run security analysis
 
 ### Usage
 

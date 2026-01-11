@@ -53,7 +53,7 @@
       ]
     },
     {
-      "name": "agentic-workflows",
+      "name": "agentic-sdlc",
       "source": "./",
       "description": "YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory for complex multi-step tasks",
       "version": "1.0.0",
@@ -75,24 +75,24 @@
       ],
       "strict": false,
       "commands": [
-        "./plugins/agentic-workflows/commands/analyse.md",
-        "./plugins/agentic-workflows/commands/build.md",
-        "./plugins/agentic-workflows/commands/orchestrate.md",
-        "./plugins/agentic-workflows/commands/plan.md",
-        "./plugins/agentic-workflows/commands/validate.md",
-        "./plugins/agentic-workflows/commands/git/branch.md",
-        "./plugins/agentic-workflows/commands/git/commit.md",
-        "./plugins/agentic-workflows/commands/git/pr.md"
+        "./plugins/agentic-sdlc/commands/analyse.md",
+        "./plugins/agentic-sdlc/commands/build.md",
+        "./plugins/agentic-sdlc/commands/orchestrate.md",
+        "./plugins/agentic-sdlc/commands/plan.md",
+        "./plugins/agentic-sdlc/commands/validate.md",
+        "./plugins/agentic-sdlc/commands/git/branch.md",
+        "./plugins/agentic-sdlc/commands/git/commit.md",
+        "./plugins/agentic-sdlc/commands/git/pr.md"
       ],
       "agents": [
-        "./plugins/agentic-workflows/agents/explorer.md",
-        "./plugins/agentic-workflows/agents/reviewer.md"
+        "./plugins/agentic-sdlc/agents/explorer.md",
+        "./plugins/agentic-sdlc/agents/reviewer.md"
       ],
       "skills": [
-        "./plugins/agentic-workflows/skills/create-checkpoint.md",
-        "./plugins/agentic-workflows/skills/create-log.md",
-        "./plugins/agentic-workflows/skills/create-memory.md",
-        "./plugins/agentic-workflows/skills/search-memory.md"
+        "./plugins/agentic-sdlc/skills/create-checkpoint.md",
+        "./plugins/agentic-sdlc/skills/create-log.md",
+        "./plugins/agentic-sdlc/skills/create-memory.md",
+        "./plugins/agentic-sdlc/skills/search-memory.md"
       ]
     }
   ]

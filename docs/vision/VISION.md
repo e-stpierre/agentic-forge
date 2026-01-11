@@ -44,7 +44,7 @@ All commands use the `/<plugin>:<command>` format. Always use full namespace in 
 ```bash
 # Correct
 /interactive-sdlc:plan-feature
-/agentic-workflows:build
+/agentic-sdlc:build
 
 # Incorrect
 /plan-feature
@@ -165,7 +165,7 @@ Human-in-the-loop plugin for guided development within Claude Code sessions.
 - Checkpoint system: Resume long-running builds from specific milestones or tasks
 - Configuration via `.claude/settings.json`: Customize plan directories, analysis directories, and explore agent counts
 
-### Agentic Workflows
+### Agentic SDLC (Workflows)
 
 YAML-based workflow orchestration plugin for fully autonomous execution. Standalone plugin with no external dependencies.
 
@@ -191,10 +191,10 @@ YAML-based workflow orchestration plugin for fully autonomous execution. Standal
 **CLI Commands**:
 
 ```bash
-agentic-workflow run <workflow.yaml>      # Run workflow
-agentic-workflow resume <workflow-id>     # Resume from checkpoint
-agentic-workflow one-shot "<prompt>"      # Quick one-shot task
-agentic-workflow analyse --type security  # Run analysis
+agentic-sdlc run <workflow.yaml>      # Run workflow
+agentic-sdlc resume <workflow-id>     # Resume from checkpoint
+agentic-sdlc one-shot "<prompt>"      # Quick one-shot task
+agentic-sdlc analyse --type security  # Run analysis
 ```
 
 **Built-in Workflows**:
@@ -232,7 +232,7 @@ Collaborative discussion system for complex decision-making, brainstorming, and 
 **Integration**: Meeting outputs (decisions, action items) can feed into SDLC workflows:
 
 - Decision records become input for `plan-feature`
-- Action items become specs for `agentic-workflow run`
+- Action items become specs for `agentic-sdlc run`
 - Meeting transcripts provide context for implementation
 
 ## Examples
@@ -263,24 +263,24 @@ Collaborative discussion system for complex decision-making, brainstorming, and 
 /interactive-sdlc:analyse-security Focus on authentication and session management
 ```
 
-### Agentic Workflows Examples
+### Agentic SDLC (Workflows) Examples
 
 **Autonomous bug fix in CI/CD**:
 
 ```bash
-agentic-workflow run plan-build-validate.yaml --var type=bug --var spec=bug-spec.md
+agentic-sdlc run plan-build-validate.yaml --var type=bug --var spec=bug-spec.md
 ```
 
 **One-shot task with git workflow**:
 
 ```bash
-agentic-workflow one-shot "Fix login timeout on Safari" --git --pr
+agentic-sdlc one-shot "Fix login timeout on Safari" --git --pr
 ```
 
 **Full codebase analysis**:
 
 ```bash
-agentic-workflow run analyse-codebase.yaml --var autofix=major
+agentic-sdlc run analyse-codebase.yaml --var autofix=major
 ```
 
 ### Cross-Domain Use Case Examples
@@ -288,7 +288,7 @@ agentic-workflow run analyse-codebase.yaml --var autofix=major
 **Kubernetes cluster hardening** (Agentic Workflows):
 
 ```bash
-agentic-workflow run plan-build-validate.yaml --var type=chore --var spec=k8s-security-audit.md
+agentic-sdlc run plan-build-validate.yaml --var type=chore --var spec=k8s-security-audit.md
 # Autonomous scan, planning, and remediation of security issues
 ```
 
@@ -302,7 +302,7 @@ agentic-workflow run plan-build-validate.yaml --var type=chore --var spec=k8s-se
 **Pentest report automation** (Agentic Workflows):
 
 ```bash
-agentic-workflow one-shot "Generate pentest report from scan results" --git --pr
+agentic-sdlc one-shot "Generate pentest report from scan results" --git --pr
 # Autonomous implementation of report generation
 ```
 

@@ -6,7 +6,7 @@ This script:
 1. Creates a staged copy of the repo (excluding node_modules, .git, etc.)
 2. Updates the marketplace from the staged copy
 3. Reinstalls all plugins defined in marketplace.json
-4. Force reinstalls the Python tools (agentic-core, agentic-workflows)
+4. Force reinstalls the Python tools (agentic-core, agentic-sdlc)
 
 Usage:
     uv run .claude/update-plugins.py
@@ -15,8 +15,8 @@ Usage:
     uv run path/to/update-plugins.py
 
     Reinstall specific plugins only:
-    uv run .claude/update-plugins.py agentic-workflows
-    uv run .claude/update-plugins.py interactive-sdlc agentic-workflows
+    uv run .claude/update-plugins.py agentic-sdlc
+    uv run .claude/update-plugins.py interactive-sdlc agentic-sdlc
 """
 
 import argparse
@@ -34,7 +34,7 @@ if sys.platform == "win32":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # Python CLI tools (installed via uv tool install)
-PYTHON_TOOLS = ["agentic-workflows"]
+PYTHON_TOOLS = ["agentic-sdlc"]
 
 # Patterns to exclude when creating staged copy
 STAGING_IGNORE_PATTERNS = [
@@ -214,7 +214,7 @@ Supported plugins:
 Examples:
   %(prog)s                           # Reinstall everything
   %(prog)s agentic-core              # Reinstall only agentic-core
-  %(prog)s agentic-workflows         # Reinstall only agentic-workflows
+  %(prog)s agentic-sdlc         # Reinstall only agentic-sdlc
 """,
     )
     parser.add_argument(
@@ -307,24 +307,24 @@ def main():
         current_step += 1
         print_step(current_step, total_steps, "Install Python CLI Tools")
 
-        # Install agentic-workflows
-        agentic_workflows_path = repo_root / "plugins" / "agentic-workflows"
-        if "agentic-workflows" in requested_python_tools:
-            if agentic_workflows_path.exists():
-                # Clean and build agentic-workflows
-                dist_dir = agentic_workflows_path / "dist"
+        # Install agentic-sdlc
+        agentic_sdlc_path = repo_root / "plugins" / "agentic-sdlc"
+        if "agentic-sdlc" in requested_python_tools:
+            if agentic_sdlc_path.exists():
+                # Clean and build agentic-sdlc
+                dist_dir = agentic_sdlc_path / "dist"
                 if dist_dir.exists():
                     shutil.rmtree(dist_dir)
 
                 run_command(
                     ["uv", "build"],
-                    "Build agentic-workflows",
-                    cwd=agentic_workflows_path,
+                    "Build agentic-sdlc",
+                    cwd=agentic_sdlc_path,
                 )
 
                 run_command(
-                    ["uv", "tool", "uninstall", "agentic-workflows"],
-                    "Uninstall agentic-workflows",
+                    ["uv", "tool", "uninstall", "agentic-sdlc"],
+                    "Uninstall agentic-sdlc",
                 )
 
                 # Install from the freshly built wheel to bypass uv cache
@@ -333,18 +333,18 @@ def main():
                     wheel_path = wheel_files[0]
                     success, _ = run_command(
                         ["uv", "tool", "install", "--force", "--reinstall", str(wheel_path)],
-                        "Install agentic-workflows",
+                        "Install agentic-sdlc",
                     )
                     if success:
                         success_count += 1
                     else:
                         error_count += 1
                 else:
-                    print_task_error("Install agentic-workflows", "No wheel found after build")
+                    print_task_error("Install agentic-sdlc", "No wheel found after build")
                     error_count += 1
             else:
                 print_task_error(
-                    "Install agentic-workflows", f"Path not found: {agentic_workflows_path}"
+                    "Install agentic-sdlc", f"Path not found: {agentic_sdlc_path}"
                 )
                 error_count += 1
 

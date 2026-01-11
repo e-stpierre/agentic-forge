@@ -53,7 +53,7 @@ Runtime hooks that execute on specific events (session start, tool calls, etc.).
 
 #### `src/`
 
-Python source code for CLI tools and orchestration utilities (optional). Used by plugins like `agentic-workflows` that provide command-line workflows.
+Python source code for CLI tools and orchestration utilities (optional). Used by plugins like `agentic-sdlc` that provide command-line workflows.
 
 #### `CHANGELOG.md`
 
