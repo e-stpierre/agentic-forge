@@ -105,9 +105,7 @@ uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\exp
 uv tool install ~/.claude/plugins/marketplaces/agentic-forge/experimental-plugins/agentic-core
 ```
 
-## SDLC Plugins
-
-This repository provides two SDLC plugins for different use cases:
+## SDLC Plugin
 
 ### Interactive-SDLC
 
@@ -125,33 +123,6 @@ Interactive SDLC commands for guided development within Claude Code sessions wit
 - `/interactive-sdlc:one-shot` - Quick task without saved plan
 - `/interactive-sdlc:document` - Generate documentation with mermaid diagrams
 - `/interactive-sdlc:analyse-*` - Analysis commands for bugs, docs, debt, style, security
-
-### [Experimental] Agentic-SDLC
-
-Fully autonomous SDLC workflow orchestrated via Python, with no user interaction.
-
-**Best for**: CI/CD integration, automated workflows, batch processing.
-
-**Key commands** (JSON I/O):
-
-- `/agentic-sdlc:plan-feature` - Generate feature plan (JSON I/O)
-- `/agentic-sdlc:plan-bug` - Generate bug fix plan (JSON I/O)
-- `/agentic-sdlc:plan-chore` - Generate chore plan (JSON I/O)
-- `/agentic-sdlc:implement` - Implement from plan (JSON I/O)
-- `/agentic-sdlc:review` - Review code changes (JSON I/O)
-- `/agentic-sdlc:test` - Run tests and analyze results (JSON I/O)
-
-**Python CLI**:
-
-```bash
-# Full autonomous workflow
-agentic-workflow --type feature --spec spec.json
-
-# Individual steps
-agentic-plan --type feature --json-file spec.json
-agentic-build --plan-file /specs/feature-auth.md
-agentic-validate --plan-file /specs/feature-auth.md
-```
 
 ### Usage
 

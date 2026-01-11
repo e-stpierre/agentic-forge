@@ -35,42 +35,6 @@
       "agents": ["./plugins/appsec/agents/appsec-specialist.md"]
     },
     {
-      "name": "agentic-sdlc",
-      "source": "./",
-      "description": "[Experimental] Fully autonomous SDLC workflow orchestrated via Python, with no user interaction",
-      "version": "0.0.1",
-      "category": "sdlc",
-      "author": {
-        "name": "Étienne St-Pierre",
-        "email": "me@estpierre.dev"
-      },
-      "license": "MIT",
-      "keywords": [
-        "experimental",
-        "sdlc",
-        "autonomous",
-        "agentic",
-        "python",
-        "orchestration",
-        "ci-cd",
-        "workflows"
-      ],
-      "strict": false,
-      "commands": [
-        "./experimental-plugins/agentic-sdlc/commands/configure.md",
-        "./experimental-plugins/agentic-sdlc/commands/design.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan-feature.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan-bug.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan-chore.md",
-        "./experimental-plugins/agentic-sdlc/commands/plan-build.md",
-        "./experimental-plugins/agentic-sdlc/commands/implement.md",
-        "./experimental-plugins/agentic-sdlc/commands/implement-from-plan.md",
-        "./experimental-plugins/agentic-sdlc/commands/review.md",
-        "./experimental-plugins/agentic-sdlc/commands/test.md"
-      ]
-    },
-    {
       "name": "interactive-sdlc",
       "source": "./",
       "description": "Interactive SDLC commands for guided development within Claude Code sessions",

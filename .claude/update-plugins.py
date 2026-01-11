@@ -6,7 +6,7 @@ This script:
 1. Creates a staged copy of the repo (excluding node_modules, .git, etc.)
 2. Updates the marketplace from the staged copy
 3. Reinstalls all plugins defined in marketplace.json
-4. Force reinstalls the Python tools (core, agentic-sdlc, agentic-core)
+4. Force reinstalls the Python tools (agentic-core, agentic-workflows)
 
 Usage:
     uv run .claude/update-plugins.py
@@ -15,8 +15,8 @@ Usage:
     uv run path/to/update-plugins.py
 
     Reinstall specific plugins only:
-    uv run .claude/update-plugins.py core agentic-sdlc
-    uv run .claude/update-plugins.py pr-review-toolkit commit-commands
+    uv run .claude/update-plugins.py agentic-core agentic-workflows
+    uv run .claude/update-plugins.py appsec interactive-sdlc
 """
 
 import argparse
@@ -28,7 +28,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 # Python CLI tools (installed via uv tool install)
-PYTHON_TOOLS = ["core", "agentic-sdlc", "agentic-core", "agentic-workflows"]
+PYTHON_TOOLS = ["agentic-core", "agentic-workflows"]
 
 # Patterns to exclude when creating staged copy
 STAGING_IGNORE_PATTERNS = [
@@ -206,8 +206,8 @@ Supported plugins:
 
 Examples:
   %(prog)s                           # Reinstall everything
-  %(prog)s core agentic-sdlc         # Reinstall only core and agentic-sdlc
-  %(prog)s pr-review-toolkit         # Reinstall only pr-review-toolkit
+  %(prog)s agentic-core              # Reinstall only agentic-core
+  %(prog)s agentic-workflows         # Reinstall only agentic-workflows
 """,
     )
     parser.add_argument(
@@ -311,81 +311,7 @@ def main():
         current_step += 1
         print_step(current_step, total_steps, "Install Python CLI Tools")
 
-        # Note: agentic-sdlc depends on core, so we need to:
-        # 1. Build core first so it's available as a local package
-        # 2. Install agentic-sdlc with --find-links pointing to core's dist directory
-        core_path = repo_root / "experimental-plugins" / "core"
-        agentic_sdlc_path = repo_root / "experimental-plugins" / "agentic-sdlc"
         agentic_core_path = repo_root / "experimental-plugins" / "agentic-core"
-
-        # Build core package first if core or agentic-sdlc is requested
-        # (agentic-sdlc depends on core)
-        needs_core_build = "core" in requested_python_tools or "agentic-sdlc" in requested_python_tools
-        if needs_core_build and core_path.exists():
-            print(f"\n  {color('Building core package...', Colors.CYAN)}")
-
-            # Clean and build core
-            dist_dir = core_path / "dist"
-            if dist_dir.exists():
-                shutil.rmtree(dist_dir)
-                print_info("Cleaned previous build artifacts")
-
-            run_command(
-                ["uv", "build"],
-                "Build core package",
-                cwd=core_path,
-            )
-
-        # Install core tool
-        if "core" in requested_python_tools:
-            if core_path.exists():
-                run_command(
-                    ["uv", "tool", "uninstall", "agentic-forge-core"],
-                    "Uninstall agentic-forge-core CLI tools",
-                )
-                if run_command(
-                    ["uv", "tool", "install", "--force", str(core_path)],
-                    "Install agentic-forge-core CLI tools",
-                ):
-                    success_count += 1
-                else:
-                    warning_count += 1
-            else:
-                print_warning(f"Python tool path not found: {core_path}")
-                warning_count += 1
-
-        # Install agentic-sdlc with --find-links to locate core dependency
-        if "agentic-sdlc" in requested_python_tools:
-            if agentic_sdlc_path.exists():
-                print(f"\n  {color('Installing agentic-sdlc package...', Colors.CYAN)}")
-
-                run_command(
-                    ["uv", "tool", "uninstall", "agentic-forge-agentic-sdlc"],
-                    "Uninstall agentic-forge-agentic-sdlc CLI tools",
-                )
-
-                core_dist = core_path / "dist"
-                if core_dist.exists():
-                    if run_command(
-                        ["uv", "tool", "install", "--force", "--find-links", str(core_dist), str(agentic_sdlc_path)],
-                        "Install agentic-sdlc CLI tools (with local core)",
-                    ):
-                        success_count += 1
-                    else:
-                        warning_count += 1
-                else:
-                    # Fallback: try installing without find-links (may fail if core not in registry)
-                    print_warning("Core dist not found, trying without --find-links")
-                    if run_command(
-                        ["uv", "tool", "install", "--force", str(agentic_sdlc_path)],
-                        "Install agentic-sdlc CLI tools",
-                    ):
-                        success_count += 1
-                    else:
-                        warning_count += 1
-            else:
-                print_warning(f"Python tool path not found: {agentic_sdlc_path}")
-                warning_count += 1
 
         # Install agentic-core
         if "agentic-core" in requested_python_tools:
@@ -483,9 +409,8 @@ def main():
 
     print(f"\n  {color('Next steps:', Colors.BOLD)}")
     print(color("    1. Restart Claude Code to load updated plugins", Colors.DIM))
-    print(color("    2. Run 'agentic-sdlc --help' to verify agentic-sdlc CLI", Colors.DIM))
-    print(color("    3. Run 'agentic --help' to verify agentic-core CLI", Colors.DIM))
-    print(color("    4. Run 'agentic-workflow --help' to verify agentic-workflows CLI", Colors.DIM))
+    print(color("    2. Run 'agentic --help' to verify agentic-core CLI", Colors.DIM))
+    print(color("    3. Run 'agentic-workflow --help' to verify agentic-workflows CLI", Colors.DIM))
     print()
 
 

@@ -44,7 +44,7 @@ All commands use the `/<plugin>:<command>` format. Always use full namespace in 
 ```bash
 # Correct
 /interactive-sdlc:plan-feature
-/agentic-sdlc:build
+/agentic-workflows:build
 
 # Incorrect
 /plan-feature
@@ -89,42 +89,27 @@ Agents specify their provider in configuration, enabling scenarios like:
 
 ## Plugin Dependencies
 
-- **Agentic Core**: Foundation framework for all agent orchestration. Provides Kafka messaging, PostgreSQL storage, CLI provider abstraction, and workflow engine.
-- **Core**: Utility plugin for common git workflows, code quality tools, and helper commands. No dependencies.
-- **Interactive SDLC**: Depends on Core. Human-in-the-loop workflows.
-- **Agentic SDLC**: Depends on Agentic Core. Fully autonomous workflows.
-- **AppSec**: Integrates with both SDLC plugins.
+- **Agentic Core**: Foundation framework for multi-agent meetings. Provides Kafka messaging, PostgreSQL storage, and CLI provider abstraction.
+- **Agentic Workflows**: YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory. Standalone plugin with no external dependencies.
+- **Interactive SDLC**: Human-in-the-loop workflows. Standalone plugin.
+- **AppSec**: Security analysis plugin. Standalone plugin.
 - **Multi-Agent Meetings**: Depends on Agentic Core. Collaborative agent discussions.
 
 ```
-                    ┌─────────────────┐
-                    │  Agentic Core   │
-                    │  (Kafka, PG,    │
-                    │   Providers)    │
-                    └────────┬────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         │                   │                   │
-         ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│  Agentic SDLC   │ │ Multi-Agent     │ │    Future       │
-│  (Autonomous)   │ │ Meetings        │ │   Plugins       │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Agentic Core   │     │Agentic Workflows│     │ Interactive SDLC│
+│  (Kafka, PG,    │     │  (YAML-based,   │     │  (Human-in-loop)│
+│   Meetings)     │     │   Standalone)   │     │                 │
+└────────┬────────┘     └─────────────────┘     └─────────────────┘
          │
          ▼
 ┌─────────────────┐
-│     Core        │
-│  (Git, Utils)   │
-└─────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Interactive SDLC│
-│  (Human-in-loop)│
+│ Multi-Agent     │
+│ Meetings        │
 └─────────────────┘
 ```
 
-**Note**: Interactive SDLC and Agentic SDLC are independent and cannot be used together. They represent different approaches to AI-assisted development - one interactive with human guidance, the other fully autonomous.
+**Note**: Interactive SDLC and Agentic Workflows are independent and can be used separately or together. They represent different approaches to AI-assisted development - Interactive SDLC for guided development with human feedback, Agentic Workflows for fully autonomous YAML-driven execution.
 
 ## Plugins
 
@@ -162,10 +147,6 @@ agentic resume <workflow-id>  # Resume from checkpoint
 
 Security-focused plugin for vulnerability scanning, threat modeling, and security best practices enforcement. Integrates OWASP guidelines and automated security checks into the development workflow.
 
-### Core
-
-Foundational utilities and shared components used across other plugins. Includes common git workflows, code quality tools, and helper commands.
-
 ### Interactive SDLC
 
 Human-in-the-loop plugin for guided development within Claude Code sessions.
@@ -190,61 +171,43 @@ Human-in-the-loop plugin for guided development within Claude Code sessions.
 - Checkpoint system: Resume long-running builds from specific milestones or tasks
 - Configuration via `.claude/settings.json`: Customize plan directories, analysis directories, and explore agent counts
 
-### Agentic SDLC
+### Agentic Workflows
 
-Fully autonomous plugin for zero-interaction workflows. **Depends on Agentic Core** for infrastructure (Kafka, PostgreSQL, CLI providers).
+YAML-based workflow orchestration plugin for fully autonomous execution. Standalone plugin with no external dependencies.
 
-**Philosophy**: No developer interaction during execution; suitable for CI/CD integration. Uses Agentic Core's workflow engine with YAML-defined workflows and SDLC-specific agent personas.
+**Philosophy**: Declarative YAML workflows with high resilience, persistent memory, and support for any task size from quick one-shots to multi-day epics.
 
-**Infrastructure** (provided by Agentic Core):
+**Key Features**:
 
-- **Kafka**: Agent communication and event sourcing
-- **PostgreSQL + pgvector**: State, checkpoints, long-term memory
-- **Python orchestrator**: Workflow execution with crash recovery
+- **YAML Workflows**: Declarative workflow definitions with parallel steps, conditional execution, and retry mechanisms
+- **Python Orchestrator**: Hybrid architecture where Python handles deterministic operations and Claude makes intelligent decisions
+- **Persistent Memory**: File-based memory system with YAML frontmatter for searchability (no database required)
+- **Git Integration**: Full support for git worktrees, automated commits, and PR creation
+- **Crash Recovery**: Resume workflows from last checkpoint after crashes
 
-**Agents** (extensible):
+**Workflow Types**:
 
-| Development | AppSec            | Architecture | Specialist            | Product | Leadership |
-| ----------- | ----------------- | ------------ | --------------------- | ------- | ---------- |
-| Developer   | Pentester         | Architect    | Supabase Specialist   | PM      | Manager    |
-| UX Designer | Security Champion |              | PostgreSQL Specialist | Analyst |            |
-| Tech Writer |                   |              | NextJS Specialist     |         |            |
-|             |                   |              | React Specialist      |         |            |
-|             |                   |              | Kubernetes Specialist |         |            |
-|             |                   |              | .NET Specialist       |         |            |
+- `prompt`: Run Claude with a specific prompt
+- `command`: Execute a plugin command with arguments
+- `parallel`: Execute nested steps concurrently in git worktrees
+- `conditional`: Execute steps based on Jinja2 expressions
+- `recurring`: Loop steps until completion criteria met
+- `wait-for-human`: Pause for human input when needed
 
-**Building Blocks**:
+**CLI Commands**:
 
-- Requirement analysis
-- Brainstorm
-- Architecture
-- Product requirement decision
-- Epic planning
-- Story planning
-- Build
-- Validate
-- Analysis
-- Git
-- One-shot: Execute a single task in a git worktree; handles full workflow from branch creation, in-memory planning, implementation, commits, push, and pull request creation
+```bash
+agentic-workflow run <workflow.yaml>      # Run workflow
+agentic-workflow resume <workflow-id>     # Resume from checkpoint
+agentic-workflow one-shot "<prompt>"      # Quick one-shot task
+agentic-workflow analyse --type security  # Run analysis
+```
 
-**Workflows**:
+**Built-in Workflows**:
 
-All workflows are Python CLI tools invoked in the terminal. The Python scripts create Claude instances with specific requests. Agents communicate using JSON format, and each Claude session is a fresh instance.
-
-**Main Command**: `build` triggers sub-workflows based on task complexity:
-
-- Level 1: Product (full product scope)
-- Level 2: Epic (feature set)
-- Level 3: Chore, bug, feature (single items)
-
-**Files** (default: `/specs/<feature-name>/`):
-
-- `orchestration.md`: Main orchestrator plan, kept up to date to monitor progress and determine when the flow is complete
-- `plan.md`: Main plan built during planning phase; not updated to track progress (checkpoint.md handles that)
-- `checkpoint.md`: Initial section lists all tasks to complete; updated as tasks finish; agents write notes in the journal section for detailed progress
-- `communication.md`: Agent-to-agent messages; orchestrator reads regularly and dispatches between agents; resolved conversations move to archive
-- `communication-archive.md`: Resolved communication messages
-- `logs.md` / `agent-<name>-logs.md`: Progress and error logs; agents write to base file or their specific log based on instructions
+- `analyse-codebase.yaml`: Parallel analysis for bugs, debt, docs, security, style
+- `one-shot.yaml`: Single task with git workflow
+- `plan-build-validate.yaml`: Full SDLC workflow with planning, implementation, and validation
 
 ### Multi-Agent Meetings
 
@@ -275,7 +238,7 @@ Collaborative discussion system for complex decision-making, brainstorming, and 
 **Integration**: Meeting outputs (decisions, action items) can feed into SDLC workflows:
 
 - Decision records become input for `plan-feature`
-- Action items become specs for `agentic-build`
+- Action items become specs for `agentic-workflow run`
 - Meeting transcripts provide context for implementation
 
 ## Examples
@@ -306,32 +269,32 @@ Collaborative discussion system for complex decision-making, brainstorming, and 
 /interactive-sdlc:analyse-security Focus on authentication and session management
 ```
 
-### Agentic SDLC Workflow Examples
+### Agentic Workflows Examples
 
 **Autonomous bug fix in CI/CD**:
 
 ```bash
-uv run agentic-workflow --type bug --spec bug-spec.md --auto-pr
+agentic-workflow run plan-build-validate.yaml --var type=bug --var spec=bug-spec.md
 ```
 
-**Epic-level feature development**:
+**One-shot task with git workflow**:
 
 ```bash
-uv run agentic-build --level epic --spec epic-user-management.md
+agentic-workflow one-shot "Fix login timeout on Safari" --git --pr
 ```
 
-**Single story with autonomous execution**:
+**Full codebase analysis**:
 
 ```bash
-uv run agentic-workflow --type feature --spec feature-2fa.md --worktree
+agentic-workflow run analyse-codebase.yaml --var autofix=major
 ```
 
 ### Cross-Domain Use Case Examples
 
-**Kubernetes cluster hardening** (Agentic SDLC):
+**Kubernetes cluster hardening** (Agentic Workflows):
 
 ```bash
-uv run agentic-workflow --type chore --spec k8s-security-audit.md
+agentic-workflow run plan-build-validate.yaml --var type=chore --var spec=k8s-security-audit.md
 # Autonomous scan, planning, and remediation of security issues
 ```
 
@@ -342,11 +305,11 @@ uv run agentic-workflow --type chore --spec k8s-security-audit.md
 /interactive-sdlc:build /specs/chore-terraform-refactor.md --git
 ```
 
-**Pentest report automation** (Agentic SDLC):
+**Pentest report automation** (Agentic Workflows):
 
 ```bash
-uv run agentic-workflow --type feature --spec pentest-report-generator.md
-# Autonomous implementation of report generation from scan results
+agentic-workflow one-shot "Generate pentest report from scan results" --git --pr
+# Autonomous implementation of report generation
 ```
 
 ### Multi-Agent Meeting Examples

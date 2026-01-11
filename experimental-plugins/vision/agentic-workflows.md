@@ -665,32 +665,26 @@ Base scripts to run Claude Code in a programmatic way. The runner accepts a `mod
 - `haiku`: Faster and cheaper for simpler tasks
 - `opus`: Most capable for complex reasoning
 
-Can be built similar to:
-experimental-plugins\agentic-core\src\agentic_core\runner.py
-experimental-plugins\core\src\claude_core\runner.py
+**Implementation**: Uses `subprocess.Popen()` for real-time output streaming or `subprocess.run()` with `capture_output=True` for structured JSON parsing. Supports timeout enforcement and process management.
 
 #### Orchestrator
 
-Run Claude instances in parallel
+Run Claude instances in parallel with process management and result aggregation.
 
-Can be inspired from:
-experimental-plugins\agentic-sdlc\src\claude_sdlc\orchestrator.py
-experimental-plugins\core\src\claude_core\orchestrator.py
+**Implementation**: Async orchestration using Python's `asyncio` with worker pool limiting (default: 4 concurrent sessions). Handles SIGINT/SIGTERM for graceful shutdown.
 
 #### Memory
 
 Use to create the memory about a specific topics that can be re-used later. Use clear fontmatter to help navigate and search in these .md files for a specific topic.
 They are always stored as .md files
 
-Can be inspired from
-experimental-plugins\agentic-core\src\agentic_core\memory
+**Implementation**: File-based storage in `agentic/memory/` with YAML frontmatter for metadata (category, tags, relevance). Simple keyword matching for search.
 
 #### Workflows
 
 Scripts responsible of parsing and running the workflows
 
-Can be strongly inspired from:
-experimental-plugins\agentic-core\src\agentic_core\workflow
+**Implementation**: YAML parsing with PyYAML, Jinja2 template rendering for variables, step execution engine with state tracking in `progress.json`.
 
 ### Agents
 
@@ -1013,8 +1007,6 @@ The following elements are ideas for future development that must not be include
 
 ## References
 
-> **IMPORTANT**: The reference files listed below are used as examples only. Some code patterns can be reused, but they will NOT be used as-is and will NOT be referenced in the final plugin. This plugin (agentic-workflows) will be standalone and use YAML frontmatter with file glob patterns for memory search - NOT PostgreSQL, semantic search, or sentence-transformers.
-
 ### Existing Agentic Plugins
 
 #### agentic-core
@@ -1022,29 +1014,11 @@ The following elements are ideas for future development that must not be include
 experimental-plugins\vision\agentic-core.md
 experimental-plugins\agentic-core
 
-This is the latest version of the agentic plugin and this contains the best examples of code that can be re-used to build this plugin. It's important to note that it has downside and everything should not be used as-is, it must respect the current plugin requirements.
+This plugin is kept for multi-agent meeting functionality using Kafka and PostgreSQL. While some patterns can be referenced, agentic-workflows is standalone and does not depend on it. Key differences:
 
-Full agentic plugin that is fully implemented but has not been fully validated. It's a bit too complex for the needs of this project, for example the use of kafka and postgresql, the meetings orchestration, etc.
-
-- Uses the concept of yaml workflows, which can be re-used partially
-- Use template for expected output of steps, which can be re-used
-
-#### agentic-sdlc
-
-experimental-plugins\vision\agentic-sdlc.md
-experimental-plugins\agentic-sdlc
-
-#### core
-
-experimental-plugins\vision\core.md
-experimental-plugins\core
-
-Legacy plugin, only kept because its scripts can be used as examples to implement the base python scripts.
-
-- logging.py
-- orchestrator.py
-- runner.py
-- worktree.py
+- agentic-core uses Kafka for agent communication; agentic-workflows uses file-based state
+- agentic-core uses PostgreSQL + pgvector for memory; agentic-workflows uses YAML frontmatter with file glob patterns
+- agentic-core supports multi-agent meetings; agentic-workflows focuses on YAML-driven workflow execution
 
 ## Design Decisions
 
