@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any
 
+    from agentic_workflows.console import ConsoleOutput
+
 MODEL_MAP = {
     "sonnet": "sonnet",
     "haiku": "haiku",
@@ -47,6 +49,7 @@ def run_claude(
     print_output: bool = False,
     skip_permissions: bool = False,
     allowed_tools: list[str] | None = None,
+    console: ConsoleOutput | None = None,
 ) -> ClaudeResult:
     """Run claude with the given prompt.
 
@@ -58,6 +61,7 @@ def run_claude(
         print_output: Whether to stream output in real-time
         skip_permissions: Whether to skip permission prompts
         allowed_tools: List of tools Claude is allowed to use without prompting
+        console: Optional console output handler for streaming
 
     Returns:
         ClaudeResult with captured output
@@ -94,7 +98,10 @@ def run_claude(
         stdout_lines: list[str] = []
         if process.stdout:
             for line in process.stdout:
-                print(line, end="", flush=True)
+                if console:
+                    console.stream_line(line)
+                else:
+                    print(line, end="", flush=True)
                 stdout_lines.append(line)
 
         try:

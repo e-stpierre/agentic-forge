@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from agentic_workflows.config import load_config
+from agentic_workflows.console import ConsoleOutput, OutputLevel, extract_summary
 from agentic_workflows.logging.logger import WorkflowLogger
 from agentic_workflows.parser import StepDefinition, StepType, WorkflowDefinition, WorkflowSettings
 from agentic_workflows.progress import (
@@ -64,6 +65,10 @@ class WorkflowExecutor:
         workflow_id = str(uuid.uuid4())[:8]
         self.workflow_settings = workflow.settings
 
+        # Create console output handler
+        output_level = OutputLevel.ALL if terminal_output == "all" else OutputLevel.BASE
+        console = ConsoleOutput(level=output_level)
+
         for var in workflow.variables:
             if var.name not in variables:
                 if var.required and var.default is None:
@@ -78,15 +83,18 @@ class WorkflowExecutor:
         logger = WorkflowLogger(workflow_id, self.repo_root)
         logger.info("workflow", f"Started workflow: {workflow.name}")
 
+        # Print workflow start
+        console.workflow_start(workflow.name, workflow_id)
+
         if dry_run:
             logger.info("workflow", "Dry run mode - skipping execution")
+            console.info("Dry run mode - skipping execution")
             progress.status = WorkflowStatus.COMPLETED.value
             progress.completed_at = datetime.now(timezone.utc).isoformat()
             save_progress(progress, self.repo_root)
             return progress
 
         skip_until = from_step
-        print_output = terminal_output == "all"
 
         for step in workflow.steps:
             if skip_until:
@@ -96,7 +104,7 @@ class WorkflowExecutor:
                     continue
 
             try:
-                self._execute_step(step, progress, variables, logger, print_output)
+                self._execute_step(step, progress, variables, logger, console)
                 save_progress(progress, self.repo_root)
 
                 if progress.status == WorkflowStatus.FAILED.value:
@@ -104,6 +112,7 @@ class WorkflowExecutor:
 
             except Exception as e:
                 logger.error(step.name, f"Step failed: {e}")
+                console.step_failed(step.name, str(e))
                 update_step_failed(progress, step.name, str(e))
                 progress.status = WorkflowStatus.FAILED.value
                 save_progress(progress, self.repo_root)
@@ -116,6 +125,8 @@ class WorkflowExecutor:
 
         self._render_outputs(workflow, progress, variables, logger)
 
+        # Print workflow completion
+        console.workflow_complete(workflow.name, progress.status)
         logger.info("workflow", f"Workflow {progress.status}: {workflow.name}")
         return progress
 
@@ -184,10 +195,11 @@ class WorkflowExecutor:
         progress: WorkflowProgress,
         variables: dict[str, Any],
         logger: WorkflowLogger,
-        print_output: bool,
+        console: ConsoleOutput,
     ) -> None:
         """Execute a single step."""
         logger.info(step.name, f"Starting step: {step.name}")
+        console.step_start(step.name, step.type.value)
         update_step_started(progress, step.name)
         save_progress(progress, self.repo_root)
 
@@ -198,11 +210,11 @@ class WorkflowExecutor:
         }
 
         if step.type == StepType.PROMPT:
-            self._execute_prompt_step(step, progress, context, logger, print_output)
+            self._execute_prompt_step(step, progress, context, logger, console)
         elif step.type == StepType.COMMAND:
-            self._execute_command_step(step, progress, context, logger, print_output)
+            self._execute_command_step(step, progress, context, logger, console)
         elif step.type == StepType.RALPH_LOOP:
-            self._execute_ralph_loop_step(step, progress, context, logger, print_output)
+            self._execute_ralph_loop_step(step, progress, context, logger, console)
         else:
             raise NotImplementedError(f"Step type not yet implemented: {step.type.value}")
 
@@ -212,7 +224,7 @@ class WorkflowExecutor:
         progress: WorkflowProgress,
         context: dict[str, Any],
         logger: WorkflowLogger,
-        print_output: bool,
+        console: ConsoleOutput,
     ) -> None:
         """Execute a prompt step."""
         prompt = step.prompt or ""
@@ -231,6 +243,8 @@ class WorkflowExecutor:
         bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
         allowed_tools = self.workflow_settings.required_tools if self.workflow_settings else None
 
+        print_output = console.level == OutputLevel.ALL
+
         for attempt in range(max_retry + 1):
             result = run_claude(
                 prompt=prompt,
@@ -240,15 +254,19 @@ class WorkflowExecutor:
                 print_output=print_output,
                 skip_permissions=bypass_permissions,
                 allowed_tools=allowed_tools,
+                console=console,
             )
 
             if result.success:
-                output_summary = result.stdout[:200] if result.stdout else ""
+                output_summary = extract_summary(result.stdout) if result.stdout else ""
                 update_step_completed(progress, step.name, output_summary, result.stdout)
+                console.step_complete(step.name, output_summary)
                 logger.info(step.name, "Step completed successfully")
                 return
 
             if attempt < max_retry:
+                error_summary = extract_summary(result.stderr) if result.stderr else "Unknown error"
+                console.step_retry(step.name, attempt + 1, max_retry + 1, error_summary)
                 logger.warning(
                     step.name,
                     f"Attempt {attempt + 1} failed, retrying...",
@@ -258,6 +276,8 @@ class WorkflowExecutor:
                     progress.current_step["retry_count"] = attempt + 1
             else:
                 error_msg = result.stderr or "Step failed"
+                error_summary = extract_summary(error_msg) if error_msg else "Unknown error"
+                console.step_failed(step.name, error_summary)
                 update_step_failed(progress, step.name, error_msg)
                 progress.status = WorkflowStatus.FAILED.value
                 logger.error(step.name, f"Step failed after {max_retry + 1} attempts")
@@ -268,7 +288,7 @@ class WorkflowExecutor:
         progress: WorkflowProgress,
         context: dict[str, Any],
         logger: WorkflowLogger,
-        print_output: bool,
+        console: ConsoleOutput,
     ) -> None:
         """Execute a command step."""
         command = step.command or ""
@@ -283,6 +303,8 @@ class WorkflowExecutor:
         bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
         allowed_tools = self.workflow_settings.required_tools if self.workflow_settings else None
 
+        print_output = console.level == OutputLevel.ALL
+
         for attempt in range(max_retry + 1):
             result = run_claude_with_command(
                 command=command,
@@ -293,15 +315,19 @@ class WorkflowExecutor:
                 print_output=print_output,
                 skip_permissions=bypass_permissions,
                 allowed_tools=allowed_tools,
+                console=console,
             )
 
             if result.success:
-                output_summary = result.stdout[:200] if result.stdout else ""
+                output_summary = extract_summary(result.stdout) if result.stdout else ""
                 update_step_completed(progress, step.name, output_summary, result.stdout)
+                console.step_complete(step.name, output_summary)
                 logger.info(step.name, "Step completed successfully")
                 return
 
             if attempt < max_retry:
+                error_summary = extract_summary(result.stderr) if result.stderr else "Unknown error"
+                console.step_retry(step.name, attempt + 1, max_retry + 1, error_summary)
                 logger.warning(
                     step.name,
                     f"Attempt {attempt + 1} failed, retrying...",
@@ -311,6 +337,8 @@ class WorkflowExecutor:
                     progress.current_step["retry_count"] = attempt + 1
             else:
                 error_msg = result.stderr or "Step failed"
+                error_summary = extract_summary(error_msg) if error_msg else "Unknown error"
+                console.step_failed(step.name, error_summary)
                 update_step_failed(progress, step.name, error_msg)
                 progress.status = WorkflowStatus.FAILED.value
                 logger.error(step.name, f"Step failed after {max_retry + 1} attempts")
@@ -321,7 +349,7 @@ class WorkflowExecutor:
         progress: WorkflowProgress,
         context: dict[str, Any],
         logger: WorkflowLogger,
-        print_output: bool,
+        console: ConsoleOutput,
     ) -> None:
         """Execute a Ralph Wiggum loop step.
 
@@ -349,6 +377,8 @@ class WorkflowExecutor:
         bypass_permissions = self.workflow_settings.bypass_permissions if self.workflow_settings else False
         allowed_tools = self.workflow_settings.required_tools if self.workflow_settings else None
 
+        print_output = console.level == OutputLevel.ALL
+
         _ralph_state = create_ralph_state(
             workflow_id=progress.workflow_id,
             step_name=step.name,
@@ -359,6 +389,7 @@ class WorkflowExecutor:
         )
 
         logger.info(step.name, f"Starting Ralph loop (max {max_iterations} iterations)")
+        console.info(f"Ralph loop starting (max {max_iterations} iterations)")
 
         all_outputs: list[str] = []
 
@@ -376,20 +407,28 @@ class WorkflowExecutor:
                 print_output=print_output,
                 skip_permissions=bypass_permissions,
                 allowed_tools=allowed_tools,
+                console=console,
             )
 
             if not result.success:
+                error_summary = extract_summary(result.stderr) if result.stderr else "Unknown error"
                 logger.warning(step.name, f"Iteration {iteration} failed: {result.stderr}")
+                console.ralph_iteration(step.name, iteration, max_iterations, f"Failed: {error_summary}")
                 if iteration < max_iterations:
                     update_ralph_iteration(progress.workflow_id, step.name, self.repo_root)
                     continue
                 else:
                     deactivate_ralph_state(progress.workflow_id, step.name, self.repo_root)
+                    console.step_failed(step.name, f"Ralph loop failed after {max_iterations} iterations")
                     update_step_failed(progress, step.name, f"Ralph loop failed after {max_iterations} iterations")
                     progress.status = WorkflowStatus.FAILED.value
                     return
 
             all_outputs.append(result.stdout)
+
+            # Print iteration summary
+            iteration_summary = extract_summary(result.stdout)
+            console.ralph_iteration(step.name, iteration, max_iterations, iteration_summary)
 
             completion_result = detect_completion_promise(result.stdout, completion_promise)
 
@@ -399,6 +438,7 @@ class WorkflowExecutor:
                 combined_output = "\n\n---\n\n".join(all_outputs)
                 output_summary = f"Completed in {iteration} iterations"
                 update_step_completed(progress, step.name, output_summary, combined_output)
+                console.ralph_complete(step.name, iteration, max_iterations)
                 return
 
             if iteration < max_iterations:
@@ -409,3 +449,4 @@ class WorkflowExecutor:
         combined_output = "\n\n---\n\n".join(all_outputs)
         output_summary = f"Max iterations ({max_iterations}) reached without completion promise"
         update_step_completed(progress, step.name, output_summary, combined_output)
+        console.ralph_max_iterations(step.name, max_iterations)
