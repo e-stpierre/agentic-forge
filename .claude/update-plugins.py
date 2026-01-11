@@ -112,7 +112,11 @@ def print_task_error(description: str, error: str | None = None) -> None:
 
 
 def run_command(
-    cmd: list[str], description: str, cwd: Path | None = None, silent: bool = True
+    cmd: list[str],
+    description: str,
+    cwd: Path | None = None,
+    silent: bool = True,
+    allow_failure: bool = False,
 ) -> tuple[bool, str]:
     """
     Run a command and return (success, error_output).
@@ -122,6 +126,7 @@ def run_command(
         description: Human-readable description for display
         cwd: Working directory
         silent: If True, capture output; if False, let it stream
+        allow_failure: If True, show success even if command fails (useful for uninstall)
 
     Returns:
         Tuple of (success: bool, error_output: str)
@@ -134,6 +139,9 @@ def run_command(
     )
 
     if result.returncode != 0:
+        if allow_failure:
+            print_task_success(description)
+            return True, ""
         error_msg = result.stdout if silent and result.stdout else f"Exit code: {result.returncode}"
         print_task_error(description, error_msg)
         return False, error_msg
@@ -287,10 +295,11 @@ def main():
             print_step(current_step, total_steps, "Reinstall Claude Code Plugins")
 
             for plugin in requested_claude_plugins:
-                # Uninstall first (ignore errors if not installed)
+                # Uninstall first (allow failure if not installed)
                 run_command(
                     ["claude", "plugin", "uninstall", plugin],
                     f"Uninstall {plugin}",
+                    allow_failure=True,
                 )
                 # Install from staged marketplace
                 success, _ = run_command(
@@ -325,6 +334,7 @@ def main():
                 run_command(
                     ["uv", "tool", "uninstall", "agentic-sdlc"],
                     "Uninstall agentic-sdlc",
+                    allow_failure=True,
                 )
 
                 # Install from the freshly built wheel to bypass uv cache

@@ -1236,4 +1236,4 @@ This output is stored in the workflow progress document and passed as input to t
 | Prefect/Airflow | Workflow orchestration               | Traditional DAG, not AI-native         |
 | Semantic Kernel | Microsoft's agentic framework        | Heavy SDK, not file-based              |
 
-**Agentic-workflows differentiator:** File-based state, CLI subscription focus (Claude Max), YAML workflows, checkpoint/resume, memory system without databases
+**Agentic-SDLC differentiator:** File-based state, CLI subscription focus (Claude Max), YAML workflows, checkpoint/resume, memory system without databases

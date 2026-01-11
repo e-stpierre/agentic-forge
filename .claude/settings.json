@@ -23,5 +23,6 @@
       "Skill(agentic-sdlc:*)",
       "Skill(interactive-sdlc:*)"
     ]
-  }
+  },
+  "enabledPlugins": {}
 }
