@@ -1,7 +1,9 @@
-"""Keyword-based memory search using frontmatter."""
+"""Keyword-based memory search using frontmatter with caching."""
 
 from __future__ import annotations
 
+import time
+from functools import lru_cache
 from pathlib import Path
 
 from agentic_sdlc.memory.manager import MemoryEntry, MemoryManager
@@ -102,6 +104,51 @@ COMMON_WORDS = {
 }
 
 
+@lru_cache(maxsize=128)
+def _get_memory_list_cached(
+    category: str | None,
+    repo_root_str: str,
+    cache_key: float,
+) -> tuple[MemoryEntry, ...]:
+    """Cached memory list retrieval.
+
+    Args:
+        category: Filter by category
+        repo_root_str: Repository root as string (for hashability)
+        cache_key: Cache invalidation key based on directory mtime
+
+    Returns:
+        Tuple of MemoryEntry objects (tuple for hashability)
+
+    Note:
+        This is an internal function. Use search_memories() instead.
+    """
+    manager = MemoryManager(Path(repo_root_str) if repo_root_str else None)
+    memories = manager.list_memories(category=category, limit=1000)
+    return tuple(memories)
+
+
+def _get_cache_key(repo_root: Path | None) -> float:
+    """Get cache invalidation key based on memory directory modification time.
+
+    Args:
+        repo_root: Repository root path
+
+    Returns:
+        Modification timestamp to use as cache key
+    """
+    from agentic_sdlc.config import load_config
+
+    config = load_config(repo_root)
+    memory_dir = Path(config["memory"]["directory"])
+    if not memory_dir.is_absolute():
+        memory_dir = (repo_root or Path.cwd()) / memory_dir
+
+    if memory_dir.exists():
+        return memory_dir.stat().st_mtime
+    return 0.0
+
+
 def search_memories(
     query: str,
     category: str | None = None,
@@ -109,12 +156,20 @@ def search_memories(
     limit: int = 10,
     repo_root: Path | None = None,
 ) -> list[MemoryEntry]:
-    """Search memories by keyword matching.
+    """Search memories by keyword matching with caching.
 
     Searches in:
     - Tags (any match)
     - Title (contains)
     - Content (contains)
+
+    Results are scored based on:
+    - Tag filter match: +10 points per matching tag
+    - Tag contains query: +5 points
+    - Title exact match: +8 points
+    - Title word match: +3 points per word
+    - Content exact match: +4 points
+    - Content word match: +1 point per word
 
     Args:
         query: Search query string
@@ -124,10 +179,15 @@ def search_memories(
         repo_root: Repository root
 
     Returns:
-        List of matching MemoryEntry objects
+        List of matching MemoryEntry objects sorted by score (descending)
+
+    Note:
+        Memory list is cached based on directory modification time.
+        Cache is automatically invalidated when memories are added/removed.
     """
-    manager = MemoryManager(repo_root)
-    all_memories = manager.list_memories(category=category, limit=1000)
+    cache_key = _get_cache_key(repo_root)
+    repo_root_str = str(repo_root) if repo_root else ""
+    all_memories = list(_get_memory_list_cached(category, repo_root_str, cache_key))
 
     query_lower = query.lower()
     query_words = query_lower.split()
