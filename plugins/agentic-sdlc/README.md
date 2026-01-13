@@ -69,6 +69,16 @@ uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plu
 uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
 ```
 
+## Running Tests
+
+```bash
+# Install dev dependencies and run tests
+uv run --extra dev pytest
+
+# Run with coverage report
+uv run --extra dev pytest --cov --cov-report=term-missing
+```
+
 ## Python CLI
 
 ### CLI Commands
