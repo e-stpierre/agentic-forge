@@ -134,7 +134,7 @@ def run_command(
     print_task_start(description)
 
     capture = subprocess.PIPE if silent else None
-    result = subprocess.run(cmd, cwd=cwd, shell=True, stdout=capture, stderr=subprocess.STDOUT, text=True)
+    result = subprocess.run(cmd, cwd=cwd, shell=False, stdout=capture, stderr=subprocess.STDOUT, text=True)
 
     if result.returncode != 0:
         if allow_failure:

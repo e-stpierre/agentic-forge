@@ -34,7 +34,7 @@ def _run_git(
         capture_output=True,
         text=True,
         cwd=str(cwd) if cwd else None,
-        shell=True,
+        shell=False,
     )
     if check and result.returncode != 0:
         raise RuntimeError(f"Git command failed: {' '.join(cmd)}\n{result.stderr}")

@@ -88,7 +88,7 @@ def run_claude(
             stderr=subprocess.PIPE,
             text=True,
             cwd=cwd_str,
-            shell=True,
+            shell=False,
         )
 
         if process.stdin:
@@ -129,7 +129,7 @@ def run_claude(
                 text=True,
                 cwd=cwd_str,
                 timeout=timeout,
-                shell=True,
+                shell=False,
             )
             return ClaudeResult(
                 returncode=result.returncode,
@@ -183,7 +183,7 @@ def check_claude_available() -> bool:
             ["claude", "--version"],
             capture_output=True,
             text=True,
-            shell=True,
+            shell=False,
             timeout=10,
         )
         return result.returncode == 0
