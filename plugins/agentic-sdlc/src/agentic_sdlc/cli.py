@@ -136,6 +136,11 @@ def main() -> None:
     config_set = config_subparsers.add_parser("set", help="Set config value")
     config_set.add_argument("key", help="Configuration key (dot notation)")
     config_set.add_argument("value", help="Value to set")
+    config_set.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow creating custom configuration keys not in default schema",
+    )
 
     # one-shot convenience command
     oneshot_parser = subparsers.add_parser("one-shot", help="Execute a single task end-to-end")
@@ -471,8 +476,13 @@ def cmd_config(args: Namespace) -> None:
         else:
             print(value)
     elif args.config_command == "set":
-        set_config_value(args.key, args.value)
-        print(f"Set {args.key} = {args.value}")
+        try:
+            force = getattr(args, "force", False)
+            set_config_value(args.key, args.value, force=force)
+            print(f"Set {args.key} = {args.value}")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
     else:
         print("Usage: agentic-sdlc config get|set <key> [value]", file=sys.stderr)
         sys.exit(1)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 import json
 from pathlib import Path
 from typing import Any
@@ -82,8 +83,69 @@ def get_config_value(key: str, repo_root: Path | None = None) -> Any:
     return value
 
 
-def set_config_value(key: str, value: str, repo_root: Path | None = None) -> None:
-    """Set configuration value by dot-notation key."""
+def _get_all_valid_keys(config: dict[str, Any], prefix: str = "") -> list[str]:
+    """Recursively get all valid configuration keys in dot notation.
+
+    Args:
+        config: Configuration dictionary to traverse
+        prefix: Current key prefix for recursion
+
+    Returns:
+        List of all valid configuration keys in dot notation
+    """
+    keys = []
+    for key, value in config.items():
+        full_key = f"{prefix}.{key}" if prefix else key
+        keys.append(full_key)
+        if isinstance(value, dict):
+            keys.extend(_get_all_valid_keys(value, full_key))
+    return keys
+
+
+def _validate_config_key(key: str, repo_root: Path | None = None, force: bool = False) -> None:
+    """Validate that a configuration key exists in the schema.
+
+    Args:
+        key: Dot-notation configuration key to validate
+        repo_root: Repository root path
+        force: If True, skip validation and allow creating new keys
+
+    Raises:
+        ValueError: If key is not valid and force is False
+    """
+    if force:
+        return
+
+    default_config = get_default_config()
+    valid_keys = _get_all_valid_keys(default_config)
+
+    if key not in valid_keys:
+        # Find closest matches
+        close_matches = difflib.get_close_matches(key, valid_keys, n=3, cutoff=0.6)
+        error_msg = f"Invalid configuration key: '{key}'"
+        if close_matches:
+            suggestions = "', '".join(close_matches)
+            error_msg += f"\n\nDid you mean one of these?\n  '{suggestions}'"
+        error_msg += "\n\nUse --force flag to create a custom configuration key."
+        raise ValueError(error_msg)
+
+
+def set_config_value(
+    key: str, value: str, repo_root: Path | None = None, force: bool = False
+) -> None:
+    """Set configuration value by dot-notation key.
+
+    Args:
+        key: Dot-notation key (e.g., 'defaults.maxRetry')
+        value: String value to set (auto-converted to bool/int if applicable)
+        repo_root: Repository root path
+        force: If True, allow creating new keys not in default schema
+
+    Raises:
+        ValueError: If key is invalid and force is False
+    """
+    _validate_config_key(key, repo_root, force)
+
     config = load_config(repo_root)
     parts = key.split(".")
     target = config
