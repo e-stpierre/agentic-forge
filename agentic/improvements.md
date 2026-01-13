@@ -18,6 +18,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [ ] IMP-005: Normalize PR creation as workflow variable with conditional step
 - [ ] IMP-006: Replace fix prompt steps with ralph-loop in analyse workflows
 - [ ] IMP-007: Standardize Claude session output format and execution context
+- [ ] SEC-001: Fix Jinja2 template injection vulnerability (disabled autoescaping)
 
 ## Improvements List
 
@@ -135,6 +136,7 @@ But nested steps (inside parallel/serial blocks) are not flattened, so the filte
 - Output format: JSON (for workflow integration) + markdown report
 - Output location: Workflow output directory, not fixed `/analysis/`
 - Configuration: Read from workflow context, not `.claude/settings.json`
+- Add an important instruction that only real issue must be reported, don't add anything in the document that is already resolved
 
 **Workflows to Update**:
 
@@ -403,6 +405,7 @@ At the END of your session, you MUST output a JSON block. The block MUST contain
 ```
 
 **Base Keys** (REQUIRED in every output):
+
 - `sessionId`: The session ID for /resume capability
 - `isSuccess`: Boolean indicating if the task completed successfully
 - `context`: 2-5 sentence summary of what was done, errors if any, important notes
@@ -415,6 +418,7 @@ This JSON block is REQUIRED. Include it as the last thing in your output.
 **Implementation**: Use `--append-system-prompt` flag in runner.py
 
 This approach:
+
 - Appends to Claude's default system prompt (doesn't replace it)
 - Works automatically for both `run_claude()` and `run_claude_with_command()`
 - No need to modify individual commands
@@ -472,3 +476,85 @@ def parse_session_output(stdout: str) -> dict:
 - [ ] Executor parses JSON output for success/failure/context
 - [ ] Session ID captured for potential /resume capability
 - [ ] No modifications needed to individual commands
+
+---
+
+### SEC-001: Fix Jinja2 template injection vulnerability (disabled autoescaping)
+
+**Status**: Pending
+
+**Severity**: High (CWE-1336: Server-Side Template Injection)
+
+**Problem**: The Jinja2 template environment is configured with `autoescape=False`, which disables automatic HTML escaping. While templates are used for generating prompts (not HTML), the template resolver accepts arbitrary template strings via `from_string()` and renders them with user-provided context data.
+
+**Vulnerable Locations**:
+
+- `experimental-plugins/agentic-core/src/agentic_core/workflow/templates.py:15`
+- `plugins/agentic-sdlc/src/agentic_sdlc/renderer.py:20-24`
+
+**Current Code**:
+
+```python
+self.env = Environment(
+    undefined=StrictUndefined,
+    autoescape=False,  # DANGEROUS
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+```
+
+**Risk**: If an attacker can control any part of the template string (via workflow files, configuration, or other inputs), they could inject malicious Jinja2 code that executes arbitrary Python code during template rendering. This could lead to:
+
+- Remote code execution
+- File system access
+- Data exfiltration
+- Environment variable leakage
+
+**Remediation**:
+
+1. **Enable autoescape** using `select_autoescape`
+2. **Validate template sources**: Only load templates from trusted sources
+3. **Use sandboxed environment**: Consider `jinja2.sandbox.SandboxedEnvironment` for untrusted templates
+
+**Fixed Code**:
+
+```python
+from jinja2 import Environment, StrictUndefined, select_autoescape
+
+self.env = Environment(
+    undefined=StrictUndefined,
+    autoescape=select_autoescape(default=True),
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+```
+
+**Alternative (Sandboxed)**:
+
+```python
+from jinja2.sandbox import SandboxedEnvironment
+
+self.env = SandboxedEnvironment(
+    undefined=StrictUndefined,
+    autoescape=select_autoescape(default=True),
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+```
+
+**Files to Modify**:
+
+- `experimental-plugins/agentic-core/src/agentic_core/workflow/templates.py`
+- `plugins/agentic-sdlc/src/agentic_sdlc/renderer.py`
+
+**References**:
+
+- CWE-1336: https://cwe.mitre.org/data/definitions/1336.html
+- OWASP A03:2021 Injection
+
+**Acceptance Criteria**:
+
+- [ ] `autoescape=select_autoescape(default=True)` enabled in all Jinja2 environments
+- [ ] Consider using `SandboxedEnvironment` for workflow templates
+- [ ] Template sources validated to be from trusted locations only
+- [ ] Test that existing templates still render correctly with autoescaping enabled
