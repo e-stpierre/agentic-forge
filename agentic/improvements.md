@@ -21,7 +21,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [x] SEC-001: Fix Jinja2 template injection vulnerability (disabled autoescaping)
 - [x] SEC-002: Fix command injection via shell=True using shutil.which()
 - [x] DEBT-001: Refactor monolithic executor, orchestrator, and CLI classes
-- [ ] TEST-001: Setup pytest architecture and add initial tests for agentic-sdlc
+- [x] TEST-001: Setup pytest architecture and add initial tests for agentic-sdlc
 - [ ] TEST-002: Add comprehensive test coverage for all agentic-sdlc modules
 - [ ] TEST-003: Add CI GitHub action for Python tests
 
@@ -796,7 +796,7 @@ cli.py (630 lines) ->
 
 ### TEST-001: Setup pytest architecture and add initial tests for agentic-sdlc
 
-**Status**: Pending (depends on DEBT-001)
+**Status**: Completed
 
 **Priority**: Critical
 
@@ -943,12 +943,12 @@ def test_load_default_config():
 
 **Acceptance Criteria**:
 
-- [ ] `pytest` and related dependencies added to `pyproject.toml`
-- [ ] `tests/` directory created with proper structure
-- [ ] `conftest.py` with shared fixtures (temp_dir, mock_subprocess, sample_workflow_yaml)
-- [ ] 3-5 initial tests passing for parser and config modules
-- [ ] `uv run pytest` executes successfully from plugin directory
-- [ ] Coverage report generates correctly with `uv run pytest --cov`
+- [x] `pytest` and related dependencies added to `pyproject.toml`
+- [x] `tests/` directory created with proper structure
+- [x] `conftest.py` with shared fixtures (temp_dir, mock_subprocess, sample_workflow_yaml)
+- [x] 3-5 initial tests passing for parser and config modules (36 tests created and passing)
+- [x] `uv run pytest` executes successfully from plugin directory
+- [x] Coverage report generates correctly with `uv run pytest --cov`
 
 ---
 
