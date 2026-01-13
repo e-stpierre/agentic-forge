@@ -6,7 +6,18 @@ This template defines the exact structure for Claude Code command prompts.
 REQUIRED FRONTMATTER FIELDS:
 - name: Kebab-case identifier for the command
 - description: One-line description shown in help menus (recommended: under 100 characters)
-- argument-hint: Usage pattern showing arguments (can be empty string)
+- output: Output format type ("json" for structured output, "markdown" for human-readable)
+- arguments: Structured array of argument definitions (see below)
+
+FRONTMATTER FORMAT:
+Commands use structured argument definitions for programmatic parsing:
+  arguments:
+    - name: argument-name
+      description: What this argument does
+      required: true/false
+
+This differs from skills which use a simple argument-hint string. Commands need
+structured metadata because they often have JSON output and are invoked programmatically.
 
 REQUIRED SECTIONS:
 - Arguments (if command takes arguments)

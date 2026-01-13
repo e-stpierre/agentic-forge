@@ -8,6 +8,13 @@ REQUIRED FRONTMATTER FIELDS:
 - description: One-line description shown when skill is available (recommended: under 100 characters)
 - argument-hint: Usage pattern showing expected inputs (can be empty string)
 
+FRONTMATTER FORMAT:
+Skills use a simple argument-hint string for flexible invocation:
+  argument-hint: "[context]" or "query [--options]"
+
+This differs from commands which use structured argument arrays. Skills are more
+flexible and conversational, focused on specific capabilities rather than rigid workflows.
+
 REQUIRED SECTIONS:
 - Definition
 - Arguments (if skill takes arguments)
