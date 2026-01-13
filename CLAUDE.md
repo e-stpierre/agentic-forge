@@ -160,6 +160,33 @@ CI automatically formats code on pull requests. To run locally: `pnpm check`
 - **Running scripts**: Use `uv run` for executing Python scripts
 - This ensures consistent Python environments across different systems and avoids Python PATH issues
 
+### Python Library Choices
+
+**Experimental vs Stable Plugin Philosophy:**
+
+Experimental plugins (in `/experimental-plugins/`) may use different libraries than stable plugins (in `/plugins/`) to explore better approaches. Once a plugin stabilizes and moves to `/plugins/`, standardize on the established patterns below.
+
+**Standard Library Choices for Stable Plugins:**
+
+- **YAML parsing**: Use standard library `yaml` (PyYAML) for simplicity and zero additional dependencies
+- **CLI framework**: Use `argparse` (standard library) for command-line interfaces
+- **Configuration**: Use `.claude/settings.json` with plugin-specific keys for user-facing configuration that integrates with Claude Code
+
+**Configuration File Standards:**
+
+- **User settings**: Use `.claude/settings.json` for configuration that users edit directly or that integrates with Claude Code's settings system
+- **Workflow state**: Use `agentic/` directory for workflow-specific state, progress tracking, and generated artifacts that are part of the workflow execution
+- **Plugin-specific data**: Plugins may create subdirectories in `agentic/` for storing execution state, checkpoints, logs, and other runtime data
+
+**Experimental Plugin Flexibility:**
+
+Experimental plugins may use alternative libraries to test improved approaches:
+- `ruamel.yaml` for better YAML 1.2 support and format preservation
+- `typer` for enhanced CLI user experience with auto-completion
+- Custom configuration locations for specialized workflows
+
+When an experimental plugin graduates to stable status, evaluate whether to adopt the new approach project-wide or standardize to existing patterns.
+
 ## Git Operations
 
 Always use `/git-branch`, `/git-commit` and `/git-pr` commands for commits, pull requests, and branch management. These commands ensure consistent structure and formatting.
