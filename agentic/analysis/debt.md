@@ -23,6 +23,7 @@
 **Issue:** The agentic-sdlc plugin has 4,692 lines of Python code across 20 modules with 0 test files. This is a critical gap for a workflow orchestration system that handles complex state management, parallel execution, file I/O, and error recovery.
 
 **Improvement:** Establish comprehensive test suites covering:
+
 - YAML parser edge cases (invalid syntax, missing required fields, type validation)
 - Workflow executor error scenarios (step failures, timeouts, retries)
 - Configuration merge logic (deep merge with overrides)
@@ -43,6 +44,7 @@
 **Severity:** Major
 
 **Location:**
+
 - plugins/agentic-sdlc/src/agentic_sdlc/executor.py (827 lines)
 - plugins/agentic-sdlc/src/agentic_sdlc/orchestrator.py (752 lines)
 - plugins/agentic-sdlc/src/agentic_sdlc/cli.py (630 lines)
@@ -50,6 +52,7 @@
 **Issue:** Large classes with multiple responsibilities violate Single Responsibility Principle. The executor handles parallel execution, conditional logic, step execution, and error recovery all in one class. The orchestrator combines decision loop management, signal handling, and progress updates. The CLI module handles argument parsing, subcommand routing, and I/O coordination.
 
 **Improvement:** Extract concerns into focused classes:
+
 - `ParallelStepExecutor` - Manages git worktrees and parallel step execution
 - `ConditionalStepEvaluator` - Handles Jinja2 condition evaluation
 - `StepErrorHandler` - Centralized retry and error recovery logic
@@ -70,6 +73,7 @@
 **Location:** plugins/agentic-sdlc/ (executor, orchestrator, progress, ralph_loop modules)
 
 **Issue:** Multiple overlapping recovery mechanisms make behavior unpredictable:
+
 - Step-level retry logic (max_retry setting)
 - Checkpoint recovery system (save/load progress state)
 - Ralph loop iteration tracking (separate state file)
@@ -79,6 +83,7 @@
 The interaction between these systems is not well-documented. For example, what happens if a checkpoint is triggered during parallel execution with a ralph-loop step that fails on iteration 3?
 
 **Improvement:**
+
 - Centralize recovery logic in a dedicated `RecoveryManager` class
 - Document interaction between retry, checkpoint, and parallel execution
 - Add state machine diagram to architecture docs showing all possible states and transitions
@@ -112,6 +117,7 @@ class StepType(Enum):
 Adding new step types requires modifying parser.py, executor.py, and orchestrator.py. This creates tight coupling and makes it difficult for users to add custom step types without forking the plugin.
 
 **Improvement:** Implement plugin-based step type registration:
+
 - Define a `StepHandler` interface with `parse()`, `execute()`, and `validate()` methods
 - Allow registration of custom step handlers via configuration or Python entry points
 - Use factory pattern to instantiate handlers based on step type string
@@ -128,12 +134,14 @@ Adding new step types requires modifying parser.py, executor.py, and orchestrato
 **Severity:** Minor
 
 **Location:**
+
 - plugins/agentic-sdlc/pyproject.toml (requires-python = ">=3.10")
 - experimental-plugins/agentic-core/pyproject.toml (requires-python = ">=3.12")
 
 **Issue:** Different Python version requirements may cause compatibility issues when users install both plugins in the same environment. Agentic-core uses Python 3.12+ features while agentic-sdlc supports 3.10+.
 
 **Improvement:** Standardize on a single minimum Python version across all plugins. Either:
+
 - Upgrade agentic-sdlc to require Python 3.12+ (aligns with latest stable)
 - Downgrade agentic-core to support Python 3.10+ (broader compatibility)
 
@@ -150,16 +158,19 @@ Document the decision in CLAUDE.md as a project-wide guideline.
 **Severity:** Minor
 
 **Location:**
+
 - plugins/agentic-sdlc/pyproject.toml
 - experimental-plugins/agentic-core/pyproject.toml
 
 **Issue:** Different dependency strategies with no shared version management:
+
 - agentic-sdlc: Minimal dependencies (PyYAML, Jinja2, filelock)
 - agentic-core: Extensive dependencies (asyncpg, confluent-kafka, transformers, pydantic)
 
 Both use Jinja2 but specify different version constraints. No compatibility matrix or version pinning strategy documented.
 
 **Improvement:**
+
 - Consider monorepo dependency management (single pyproject.toml with workspace support)
 - Document explicit compatibility matrix in root README
 - Use version ranges that allow overlap (e.g., jinja2>=3.1,<4.0)
@@ -178,12 +189,14 @@ Both use Jinja2 but specify different version constraints. No compatibility matr
 **Location:** experimental-plugins/agentic-core/
 
 **Issue:** Agentic-core has significant infrastructure dependencies (PostgreSQL + Kafka via Docker Compose) but lacks:
+
 - CHANGELOG.md (per project policy, only added when moving to /plugins/)
 - Stability timeline (when will it move from experimental to official?)
 - Migration guide for projects using earlier versions
 - Upgrade path from agentic-sdlc's keyword-based memory to agentic-core's semantic memory
 
 **Improvement:**
+
 - Create docs/vision/agentic-core-roadmap.md with timeline and milestone criteria
 - Document breaking changes expected before v1.0.0
 - Add migration guide covering: data migration (memory format), configuration changes, API breaking changes
@@ -202,6 +215,7 @@ Both use Jinja2 but specify different version constraints. No compatibility matr
 **Severity:** Major
 
 **Location:**
+
 - plugins/agentic-sdlc/src/agentic_sdlc/parser.py (dict-based validation)
 - plugins/agentic-sdlc/src/agentic_sdlc/config.py (string parsing with isdigit())
 - experimental-plugins/agentic-core/ (Pydantic models)
@@ -209,12 +223,14 @@ Both use Jinja2 but specify different version constraints. No compatibility matr
 **Issue:** Mixed validation approaches create inconsistent error handling:
 
 agentic-sdlc uses manual dict validation:
+
 ```python
 if "name" not in data:
     raise WorkflowParseError("Missing required field: name")
 ```
 
 agentic-sdlc config uses string parsing:
+
 ```python
 if value.lower() == "true":
     parsed_value = True
@@ -225,6 +241,7 @@ elif value.isdigit():
 agentic-core uses Pydantic for type safety and automatic validation.
 
 **Improvement:** Migrate agentic-sdlc to use Pydantic for:
+
 - WorkflowDefinition and nested dataclasses
 - Configuration schema validation
 - API input/output validation
@@ -259,6 +276,7 @@ def set_config_value(key: str, value: str, repo_root: Path | None = None) -> Non
 Typing `agentic-sdlc config set defaults.maxRetry 5` works, but so does `agentic-sdlc config set defaults.maxRtry 5` (typo creates new key).
 
 **Improvement:**
+
 - Add JSON Schema validation for config structure
 - Reject unknown configuration keys with helpful error message
 - Suggest closest matching key when typo detected (e.g., "Did you mean 'maxRetry'?")
@@ -277,11 +295,13 @@ Typing `agentic-sdlc config set defaults.maxRetry 5` works, but so does `agentic
 **Location:** All Python modules in plugins/agentic-sdlc/
 
 **Issue:** Many functions lack docstrings. Based on sampling:
+
 - executor.py: Class-level docstring present, but many methods undocumented
 - orchestrator.py: Some functions have type hints but no docstrings explaining behavior
 - Complex functions like `_execute_parallel_step` have no documentation of assumptions or side effects
 
 **Improvement:** Add comprehensive docstrings following Google or NumPy style:
+
 - Module-level docstrings explaining purpose
 - Class-level docstrings with usage examples
 - Function docstrings with Args, Returns, Raises sections
@@ -302,6 +322,7 @@ Typing `agentic-sdlc config set defaults.maxRetry 5` works, but so does `agentic
 **Issue:** The main() function has deep nesting due to multiple subcommands and argument parsing logic all in one function (630 lines total). This makes it hard to follow control flow.
 
 **Improvement:** Extract each subcommand into a separate handler function:
+
 - `handle_run(args: Namespace) -> None`
 - `handle_resume(args: Namespace) -> None`
 - `handle_status(args: Namespace) -> None`
@@ -324,6 +345,7 @@ Keep CLI parsing logic flat in main(), dispatch to handlers.
 **Issue:** The project makes several non-trivial architectural decisions (Python + Claude hybrid model, file-based state, git worktrees for parallelism, new session per step) but doesn't document the reasoning or alternatives considered.
 
 **Improvement:** Add docs/adr/ directory with decision records:
+
 - ADR-001: Why hybrid Python + Claude orchestration?
 - ADR-002: Why new session per workflow step?
 - ADR-003: Why file-based progress instead of database?
@@ -344,12 +366,14 @@ Use lightweight format (date, status, context, decision, consequences).
 **Location:** plugins/interactive-sdlc/commands/ (21 Markdown files)
 
 **Issue:** The interactive-sdlc plugin is entirely prompt-based (no code, just Markdown commands). While this is flexible, it's harder to maintain than code:
+
 - No type checking or syntax validation
 - Changes require manual testing across all commands
 - No automated tests possible for prompt quality
 - Version control diffs are less meaningful for prose
 
 **Improvement:**
+
 - Establish prompt testing methodology (example: maintain a test suite of expected inputs/outputs)
 - Use the /normalize command to validate prompt structure against templates
 - Consider hybrid approach: complex logic in Python, simple tasks in prompts
@@ -366,12 +390,14 @@ Use lightweight format (date, status, context, decision, consequences).
 **Severity:** Minor
 
 **Location:**
+
 - plugins/agentic-sdlc/ (uses ThreadPoolExecutor, synchronous)
 - experimental-plugins/agentic-core/ (uses asyncio, asynchronous)
 
 **Issue:** Agentic-sdlc uses synchronous code with ThreadPoolExecutor for parallel execution, while agentic-core uses async/await patterns with asyncpg and asyncio. This makes it difficult to share code between plugins and creates different mental models.
 
 **Improvement:** Consider async refactoring for agentic-sdlc to match agentic-core:
+
 - Replace ThreadPoolExecutor with asyncio.gather() for parallel steps
 - Use aiofiles for async file I/O
 - Make run_claude() async
@@ -394,6 +420,7 @@ This would enable better performance and consistency.
 **Issue:** File-based locking with FileLock could contend under high concurrency (e.g., many parallel steps updating progress simultaneously). The current implementation uses a single lock file for the entire progress.json.
 
 **Improvement:**
+
 - Profile lock contention under realistic parallel workflow scenarios
 - If contention is a problem, consider finer-grained locking (per-step locks)
 - Alternative: Use atomic file operations (write to temp file, rename)
@@ -414,6 +441,7 @@ This would enable better performance and consistency.
 **Location:** plugins/agentic-sdlc/src/agentic_sdlc/memory/search.py
 
 **Issue:** The memory search implementation uses linear search through all memory files with simple keyword matching:
+
 - No semantic search capability
 - No ranking or relevance scoring
 - No vector embeddings
@@ -422,6 +450,7 @@ This would enable better performance and consistency.
 As memory volume grows, search becomes less effective and requires exact keyword matches.
 
 **Improvement:**
+
 - Add optional semantic search with embeddings (like agentic-core's pgvector integration)
 - Implement BM25-style ranking for keyword search to score relevance
 - Add caching layer for frequently accessed memories
@@ -444,6 +473,7 @@ Start with caching as low-effort win, then add ranking, then consider semantic s
 **Issue:** `load_config()` reads and parses config.json from disk every time it's called. For workflows with many steps, this file I/O happens repeatedly.
 
 **Improvement:**
+
 - Add in-memory caching with cache invalidation on config changes
 - Use functools.lru_cache with file modification time check
 - Alternative: Load config once at executor initialization, pass config object to steps
@@ -461,11 +491,13 @@ Start with caching as low-effort win, then add ranking, then consider semantic s
 **Location:** plugins/agentic-sdlc/src/agentic_sdlc/ralph_loop.py
 
 **Issue:** Ralph loop creates a separate state file for each ralph-loop step (ralph-{step-name}.md). For workflows with multiple ralph-loops running many iterations, this creates many small files:
+
 - File system overhead for many small files
 - Slower to read/write many files vs one consolidated file
 - Harder to clean up orphaned files
 
 **Improvement:**
+
 - Consolidate ralph loop state into progress.json as a nested structure
 - Use single ralph-state.json file with all loop states
 - Add cleanup command to remove orphaned ralph state files

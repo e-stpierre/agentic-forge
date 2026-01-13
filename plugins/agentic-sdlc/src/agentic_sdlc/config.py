@@ -130,9 +130,7 @@ def _validate_config_key(key: str, repo_root: Path | None = None, force: bool = 
         raise ValueError(error_msg)
 
 
-def set_config_value(
-    key: str, value: str, repo_root: Path | None = None, force: bool = False
-) -> None:
+def set_config_value(key: str, value: str, repo_root: Path | None = None, force: bool = False) -> None:
     """Set configuration value by dot-notation key.
 
     Args:
