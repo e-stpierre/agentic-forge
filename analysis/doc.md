@@ -33,6 +33,7 @@
 **Code Reference:** plugins/agentic-sdlc/commands/plan.md:5-15
 
 **Fix:** Update the README examples to match the actual command interface:
+
 - Change `/plan --type feature ...` to just use the command's actual argument structure
 - Remove references to `--spec` argument which doesn't exist
 - Ensure examples match what users can actually execute
@@ -58,6 +59,7 @@
 **Files:** README.md, plugins/agentic-sdlc/README.md, plugins/interactive-sdlc/README.md
 
 **Issue:** Command references use inconsistent formats across documentation:
+
 - Root README uses `/interactive-sdlc:plan-feature` format
 - Some sections use `/plan` without plugin prefix
 - Commands are sometimes shown with backticks, sometimes without
@@ -65,6 +67,7 @@
 **Code Reference:** N/A (formatting consistency issue)
 
 **Fix:** Establish and apply a consistent format:
+
 - Always use plugin prefix for disambiguation: `/interactive-sdlc:command` or `/agentic-sdlc:command`
 - Always wrap commands in backticks for readability
 - Update style guide in CLAUDE.md if needed
