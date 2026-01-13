@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,6 +14,28 @@ if TYPE_CHECKING:
     from typing import Any
 
     from agentic_sdlc.console import ConsoleOutput
+
+
+def get_executable(name: str) -> str:
+    """Resolve executable path for cross-platform subprocess calls.
+
+    Uses shutil.which() to find the full path, allowing shell=False
+    in subprocess calls while maintaining Windows compatibility.
+
+    Args:
+        name: Executable name (e.g., "claude", "git")
+
+    Returns:
+        Full path to the executable
+
+    Raises:
+        FileNotFoundError: If executable not found in PATH
+    """
+    path = shutil.which(name)
+    if not path:
+        raise FileNotFoundError(f"Executable not found in PATH: {name}")
+    return path
+
 
 MODEL_MAP = {
     "sonnet": "sonnet",
@@ -151,7 +174,8 @@ def run_claude(
     Returns:
         ClaudeResult with captured output
     """
-    cmd = ["claude", "--print"]
+    claude_path = get_executable("claude")
+    cmd = [claude_path, "--print"]
 
     if model and model in MODEL_MAP:
         cmd.extend(["--model", MODEL_MAP[model]])
@@ -179,7 +203,7 @@ def run_claude(
             stderr=subprocess.PIPE,
             text=True,
             cwd=cwd_str,
-            shell=True,
+            shell=False,
         )
 
         if process.stdin:
@@ -220,7 +244,7 @@ def run_claude(
                 text=True,
                 cwd=cwd_str,
                 timeout=timeout,
-                shell=True,
+                shell=False,
             )
             return ClaudeResult(
                 returncode=result.returncode,
@@ -270,11 +294,12 @@ def check_claude_available() -> bool:
         True if claude is available, False otherwise
     """
     try:
+        claude_path = get_executable("claude")
         result = subprocess.run(
-            ["claude", "--version"],
+            [claude_path, "--version"],
             capture_output=True,
             text=True,
-            shell=True,
+            shell=False,
             timeout=10,
         )
         return result.returncode == 0

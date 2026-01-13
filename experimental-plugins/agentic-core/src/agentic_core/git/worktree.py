@@ -15,6 +15,27 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+def get_executable(name: str) -> str:
+    """Resolve executable path for cross-platform subprocess calls.
+
+    Uses shutil.which() to find the full path, allowing shell=False
+    in subprocess calls while maintaining Windows compatibility.
+
+    Args:
+        name: Executable name (e.g., "claude", "git")
+
+    Returns:
+        Full path to the executable
+
+    Raises:
+        FileNotFoundError: If executable not found in PATH
+    """
+    path = shutil.which(name)
+    if not path:
+        raise FileNotFoundError(f"Executable not found in PATH: {name}")
+    return path
+
+
 @dataclass
 class Worktree:
     """Represents a git worktree."""
@@ -47,7 +68,8 @@ def _run_git(
     Returns:
         CompletedProcess result
     """
-    cmd = ["git"] + args
+    git_path = get_executable("git")
+    cmd = [git_path] + args
     cwd_str = str(cwd) if cwd else None
 
     result = subprocess.run(
@@ -55,7 +77,7 @@ def _run_git(
         capture_output=True,
         text=True,
         cwd=cwd_str,
-        shell=True,  # Required on Windows for PATH resolution
+        shell=False,
     )
 
     if check and result.returncode != 0:

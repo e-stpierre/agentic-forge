@@ -28,6 +28,27 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 
+
+def get_executable(name: str) -> str:
+    """Resolve executable path for cross-platform subprocess calls.
+
+    Uses shutil.which() to find the full path, allowing shell=False
+    in subprocess calls while maintaining Windows compatibility.
+
+    Args:
+        name: Executable name (e.g., "claude", "git", "uv")
+
+    Returns:
+        Full path to the executable
+
+    Raises:
+        FileNotFoundError: If executable not found in PATH
+    """
+    path = shutil.which(name)
+    if not path:
+        raise FileNotFoundError(f"Executable not found in PATH: {name}")
+    return path
+
 # Enable UTF-8 mode for Windows console output
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -133,8 +154,12 @@ def run_command(
     """
     print_task_start(description)
 
+    # Resolve executable path to avoid shell=True
+    exec_path = get_executable(cmd[0])
+    resolved_cmd = [exec_path] + cmd[1:]
+
     capture = subprocess.PIPE if silent else None
-    result = subprocess.run(cmd, cwd=cwd, shell=True, stdout=capture, stderr=subprocess.STDOUT, text=True)
+    result = subprocess.run(resolved_cmd, cwd=cwd, shell=False, stdout=capture, stderr=subprocess.STDOUT, text=True)
 
     if result.returncode != 0:
         if allow_failure:

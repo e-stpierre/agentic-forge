@@ -1,5 +1,6 @@
 """Base interface for AI CLI providers."""
 
+import shutil
 import subprocess
 import time
 from abc import ABC, abstractmethod
@@ -7,6 +8,27 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Optional
+
+
+def get_executable(name: str) -> str:
+    """Resolve executable path for cross-platform subprocess calls.
+
+    Uses shutil.which() to find the full path, allowing shell=False
+    in subprocess calls while maintaining Windows compatibility.
+
+    Args:
+        name: Executable name (e.g., "claude", "git")
+
+    Returns:
+        Full path to the executable
+
+    Raises:
+        FileNotFoundError: If executable not found in PATH
+    """
+    path = shutil.which(name)
+    if not path:
+        raise FileNotFoundError(f"Executable not found in PATH: {name}")
+    return path
 
 
 class ExecutionMode(Enum):
@@ -137,16 +159,20 @@ class CLIProvider(ABC):
 
         cwd = working_dir or Path.cwd()
 
+        # Resolve executable path to avoid shell=True
+        exec_path = get_executable(cmd[0])
+        resolved_cmd = [exec_path] + cmd[1:]
+
         start = time.time()
         try:
             result = subprocess.run(
-                cmd,
+                resolved_cmd,
                 input=stdin_prompt,
                 capture_output=True,
                 text=True,
                 cwd=str(cwd),
                 timeout=timeout,
-                shell=True,  # Required on Windows for PATH resolution
+                shell=False,
             )
             duration_ms = int((time.time() - start) * 1000)
 
@@ -185,17 +211,18 @@ class CLIProvider(ABC):
             True if the CLI is available and working
         """
         try:
-            cmd = self.build_command(
+            cmd, _ = self.build_command(
                 prompt="Say 'ok'",
                 timeout=30,
                 json_output=True,
             )
+            exec_path = get_executable(cmd[0])
             result = subprocess.run(
-                [cmd[0], "--version"],
+                [exec_path, "--version"],
                 capture_output=True,
                 text=True,
                 timeout=10,
-                shell=True,  # Required on Windows for PATH resolution
+                shell=False,
             )
             return result.returncode == 0
         except Exception:

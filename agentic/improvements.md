@@ -19,7 +19,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [x] IMP-006: Replace fix prompt steps with ralph-loop in analyse workflows
 - [x] IMP-007: Standardize Claude session output format and execution context
 - [x] SEC-001: Fix Jinja2 template injection vulnerability (disabled autoescaping)
-- [ ] SEC-002: Fix command injection via shell=True using shutil.which()
+- [x] SEC-002: Fix command injection via shell=True using shutil.which()
 - [ ] DEBT-001: Refactor monolithic executor, orchestrator, and CLI classes
 - [ ] TEST-001: Setup pytest architecture and add initial tests for agentic-sdlc
 - [ ] TEST-002: Add comprehensive test coverage for all agentic-sdlc modules
@@ -540,7 +540,7 @@ self.env = SandboxedEnvironment(
 
 ### SEC-002: Fix command injection via shell=True using shutil.which()
 
-**Status**: Pending
+**Status**: Completed
 
 **Severity**: High (CWE-78: OS Command Injection)
 
@@ -647,12 +647,12 @@ process = subprocess.Popen(
 
 **Acceptance Criteria**:
 
-- [ ] `get_executable()` utility function added to affected modules
-- [ ] All `subprocess.Popen()` and `subprocess.run()` calls use `shell=False`
-- [ ] Executable paths resolved via `shutil.which()` before subprocess calls
-- [ ] Windows compatibility verified (test on Windows with `claude` in PATH)
-- [ ] Unix compatibility verified
-- [ ] Error handling for missing executables (clear error message)
+- [x] `get_executable()` utility function added to affected modules
+- [x] All `subprocess.Popen()` and `subprocess.run()` calls use `shell=False`
+- [x] Executable paths resolved via `shutil.which()` before subprocess calls
+- [x] Windows compatibility verified (test on Windows with `claude` in PATH)
+- [x] Unix compatibility verified
+- [x] Error handling for missing executables (clear error message)
 
 ---
 

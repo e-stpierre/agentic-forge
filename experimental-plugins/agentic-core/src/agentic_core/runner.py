@@ -8,9 +8,31 @@ rather than just returning text responses.
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+
+
+def get_executable(name: str) -> str:
+    """Resolve executable path for cross-platform subprocess calls.
+
+    Uses shutil.which() to find the full path, allowing shell=False
+    in subprocess calls while maintaining Windows compatibility.
+
+    Args:
+        name: Executable name (e.g., "claude", "git")
+
+    Returns:
+        Full path to the executable
+
+    Raises:
+        FileNotFoundError: If executable not found in PATH
+    """
+    path = shutil.which(name)
+    if not path:
+        raise FileNotFoundError(f"Executable not found in PATH: {name}")
+    return path
 
 
 @dataclass
@@ -57,7 +79,8 @@ def run_claude(
         ClaudeResult with captured output
     """
     # Build command - use stdin for prompt to avoid shell escaping issues
-    cmd = ["claude", "--print"]
+    claude_path = get_executable("claude")
+    cmd = [claude_path, "--print"]
     if skip_permissions:
         cmd.append("--dangerously-skip-permissions")
 
@@ -73,7 +96,7 @@ def run_claude(
             stderr=subprocess.PIPE,
             text=True,
             cwd=cwd_str,
-            shell=True,  # Required on Windows for PATH resolution
+            shell=False,
         )
 
         # Send prompt via stdin
@@ -114,7 +137,7 @@ def run_claude(
                 text=True,
                 cwd=cwd_str,
                 timeout=timeout,
-                shell=True,  # Required on Windows for PATH resolution
+                shell=False,
             )
 
             return ClaudeResult(
@@ -167,11 +190,12 @@ def check_claude_available() -> bool:
         True if claude is available, False otherwise
     """
     try:
+        claude_path = get_executable("claude")
         result = subprocess.run(
-            ["claude", "--version"],
+            [claude_path, "--version"],
             capture_output=True,
             text=True,
-            shell=True,  # Required on Windows for PATH resolution
+            shell=False,
             timeout=10,
         )
         return result.returncode == 0
