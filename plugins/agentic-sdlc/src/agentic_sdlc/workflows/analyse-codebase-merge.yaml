@@ -25,6 +25,11 @@ variables:
     required: false
     default: "major"
     description: Minimum severity for validation auto-fix
+  - name: paths
+    type: string
+    required: false
+    default: ""
+    description: Space-separated list of paths to analyze (optional)
 
 steps:
   - name: analyse-and-fix-all
@@ -41,9 +46,9 @@ steps:
         steps:
           - name: analyse-bug
             type: command
-            command: analyse
+            command: analyse-bug
             args:
-              type: bug
+              paths: "{{ variables.paths }}"
 
           - name: fix-bug
             type: conditional
@@ -61,9 +66,9 @@ steps:
         steps:
           - name: analyse-debt
             type: command
-            command: analyse
+            command: analyse-debt
             args:
-              type: debt
+              paths: "{{ variables.paths }}"
 
           - name: fix-debt
             type: conditional
@@ -81,9 +86,9 @@ steps:
         steps:
           - name: analyse-doc
             type: command
-            command: analyse
+            command: analyse-doc
             args:
-              type: doc
+              paths: "{{ variables.paths }}"
 
           - name: fix-doc
             type: conditional
@@ -101,9 +106,9 @@ steps:
         steps:
           - name: analyse-security
             type: command
-            command: analyse
+            command: analyse-security
             args:
-              type: security
+              paths: "{{ variables.paths }}"
 
           - name: fix-security
             type: conditional
@@ -121,9 +126,9 @@ steps:
         steps:
           - name: analyse-style
             type: command
-            command: analyse
+            command: analyse-style
             args:
-              type: style
+              paths: "{{ variables.paths }}"
 
           - name: fix-style
             type: conditional

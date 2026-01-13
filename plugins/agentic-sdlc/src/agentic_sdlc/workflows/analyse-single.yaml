@@ -18,13 +18,62 @@ variables:
     required: false
     default: "none"
     description: Severity level for automatic fixes (none, minor, major, critical)
+  - name: paths
+    type: string
+    required: false
+    default: ""
+    description: Space-separated list of paths to analyze (optional)
 
 steps:
-  - name: run-analysis
-    type: command
-    command: analyse
-    args:
-      type: "{{ variables.analysis_type }}"
+  - name: run-bug-analysis
+    type: conditional
+    condition: "variables.analysis_type == 'bug'"
+    then:
+      - name: analyse-bug
+        type: command
+        command: analyse-bug
+        args:
+          paths: "{{ variables.paths }}"
+
+  - name: run-debt-analysis
+    type: conditional
+    condition: "variables.analysis_type == 'debt'"
+    then:
+      - name: analyse-debt
+        type: command
+        command: analyse-debt
+        args:
+          paths: "{{ variables.paths }}"
+
+  - name: run-doc-analysis
+    type: conditional
+    condition: "variables.analysis_type == 'doc'"
+    then:
+      - name: analyse-doc
+        type: command
+        command: analyse-doc
+        args:
+          paths: "{{ variables.paths }}"
+
+  - name: run-security-analysis
+    type: conditional
+    condition: "variables.analysis_type == 'security'"
+    then:
+      - name: analyse-security
+        type: command
+        command: analyse-security
+        args:
+          paths: "{{ variables.paths }}"
+
+  - name: run-style-analysis
+    type: conditional
+    condition: "variables.analysis_type == 'style'"
+    then:
+      - name: analyse-style
+        type: command
+        command: analyse-style
+        args:
+          paths: "{{ variables.paths }}"
 
   - name: check-autofix
     type: conditional
@@ -40,5 +89,5 @@ steps:
 outputs:
   - name: analysis-report
     template: analysis/{{ variables.analysis_type }}.md.j2
-    path: {{ variables.analysis_type }}.md
+    path: "{{ variables.analysis_type }}.md"
     when: completed

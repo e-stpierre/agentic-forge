@@ -13,7 +13,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 
 - [x] IMP-001: Workflow outputs should write to workflow output directory
 - [x] IMP-002: Fix analysis summary template malformed output
-- [ ] IMP-003: Split analyse command into 5 distinct commands
+- [x] IMP-003: Split analyse command into 5 distinct commands
 - [ ] IMP-004: Commands must use full namespace in workflows
 - [ ] IMP-005: Normalize PR creation as workflow variable with conditional step
 - [ ] IMP-006: Replace fix prompt steps with ralph-loop in analyse workflows
@@ -101,7 +101,7 @@ But nested steps (inside parallel/serial blocks) are not flattened, so the filte
 
 ### IMP-003: Split analyse command into 5 distinct commands
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: The current `analyse.md` command is a monolithic command that handles all 5 analysis types via a `type` argument. This causes:
 
@@ -152,12 +152,12 @@ But nested steps (inside parallel/serial blocks) are not flattened, so the filte
 
 **Acceptance Criteria**:
 
-- [ ] 5 separate command files created in `commands/analyse/` subdirectory
-- [ ] Each command follows the command template exactly
-- [ ] Each command has type-specific criteria, output format, and report template
-- [ ] Commands return JSON for workflow integration
-- [ ] Original `analyse.md` removed or deprecated
-- [ ] All 3 workflows updated to use new command names (analyse-bug, analyse-debt, etc.)
+- [x] 5 separate command files created in `commands/analyse/` subdirectory
+- [x] Each command follows the command template exactly
+- [x] Each command has type-specific criteria, output format, and report template
+- [x] Commands return JSON for workflow integration
+- [x] Original `analyse.md` removed or deprecated
+- [x] All 3 workflows updated to use new command names (analyse-bug, analyse-debt, etc.)
 
 ---
 
