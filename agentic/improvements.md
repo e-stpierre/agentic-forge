@@ -142,6 +142,7 @@ But nested steps (inside parallel/serial blocks) are not flattened, so the filte
 - Output location: Workflow output directory, not fixed `/analysis/`
 - Configuration: Read from workflow context, not `.claude/settings.json`
 - Add an important instruction that only real issue must be reported, don't add anything in the document that is already resolved
+- The analyse commands must all support an optional argument that is the list of path to consider during the analysis. When this argument is provided, only this list of path is considered. The analyse workflows must support this list of path as variable and pass it to the commands.
 
 **Workflows to Update**:
 
@@ -608,6 +609,7 @@ process = subprocess.Popen(
 **Solution**: Use `shutil.which()` to resolve executable path before subprocess call
 
 This approach:
+
 - Resolves the full path to the executable in Python
 - Eliminates the need for `shell=True` entirely
 - Works on both Windows and Unix
@@ -695,11 +697,11 @@ process = subprocess.Popen(
 
 **Affected Files**:
 
-| File | Lines | Responsibilities |
-|------|-------|------------------|
-| `plugins/agentic-sdlc/src/agentic_sdlc/executor.py` | 827 | Parallel execution, conditional logic, step dispatch, error recovery, worktree management |
-| `plugins/agentic-sdlc/src/agentic_sdlc/orchestrator.py` | 752 | Decision loop, signal handling, progress updates, workflow coordination |
-| `plugins/agentic-sdlc/src/agentic_sdlc/cli.py` | 630 | Argument parsing, subcommand routing, I/O coordination, validation |
+| File                                                    | Lines | Responsibilities                                                                          |
+| ------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------- |
+| `plugins/agentic-sdlc/src/agentic_sdlc/executor.py`     | 827   | Parallel execution, conditional logic, step dispatch, error recovery, worktree management |
+| `plugins/agentic-sdlc/src/agentic_sdlc/orchestrator.py` | 752   | Decision loop, signal handling, progress updates, workflow coordination                   |
+| `plugins/agentic-sdlc/src/agentic_sdlc/cli.py`          | 630   | Argument parsing, subcommand routing, I/O coordination, validation                        |
 
 **Issues**:
 
@@ -1071,13 +1073,13 @@ on:
   push:
     branches: [main]
     paths:
-      - 'plugins/agentic-sdlc/**'
-      - '.github/workflows/python-tests.yml'
+      - "plugins/agentic-sdlc/**"
+      - ".github/workflows/python-tests.yml"
   pull_request:
     branches: [main]
     paths:
-      - 'plugins/agentic-sdlc/**'
-      - '.github/workflows/python-tests.yml'
+      - "plugins/agentic-sdlc/**"
+      - ".github/workflows/python-tests.yml"
 
 jobs:
   test:
@@ -1085,7 +1087,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ['3.11', '3.12']
+        python-version: ["3.11", "3.12"]
       fail-fast: false
 
     steps:

@@ -35,6 +35,11 @@ steps:
       ## Task
       {{ variables.task }}
 
+      ## Important Notes
+      - The project is a WIP, breaking change can be made without coding backward compatibility
+      - Any code can be changed if necessary
+      - If you find a bug or something that does not work as expected, fix it.
+
       ## Instructions
       1. Analyze the current state of the codebase
       2. Identify what needs to be done next
@@ -52,7 +57,7 @@ steps:
       Do not output false promises to exit early.
     max-iterations: "{{ variables.max_iterations }}"
     completion-promise: "{{ variables.completion_promise }}"
-    model: sonnet
+    model: opus
     timeout-minutes: 30
 
 outputs:
