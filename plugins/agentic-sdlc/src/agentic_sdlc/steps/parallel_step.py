@@ -26,7 +26,7 @@ class ParallelStepExecutor(StepExecutor):
     When git.worktree is enabled, each branch runs in its own git worktree.
     """
 
-    def __init__(self, branch_executor: "BranchStepExecutor"):
+    def __init__(self, branch_executor: BranchStepExecutor):
         """Initialize with branch executor for nested steps.
 
         Args:
@@ -78,9 +78,7 @@ class ParallelStepExecutor(StepExecutor):
                     console.info(f"  Branch '{branch_step.name}' worktree: {worktree.branch}")
                     branch_context.cwd_override = worktree.path
 
-                result = self.branch_executor.execute(
-                    branch_step, progress, branch_context, logger, console
-                )
+                result = self.branch_executor.execute(branch_step, progress, branch_context, logger, console)
 
                 return (branch_step.name, result.success, result.output_summary, worktree)
             except Exception as e:
@@ -196,7 +194,6 @@ class BranchStepExecutor:
         console: ConsoleOutput,
     ) -> StepResult:
         """Execute a branch step by delegating to the appropriate executor."""
-        from agentic_sdlc.parser import StepType
 
         logger.info(step.name, f"Starting branch step: {step.name}")
 

@@ -17,7 +17,7 @@ def get_bundled_workflows_dir() -> Path:
     return Path(__file__).parent.parent / "workflows"
 
 
-def cmd_init(args: "Namespace") -> None:
+def cmd_init(args: Namespace) -> None:
     """Copy bundled workflow templates to local project."""
     bundled_dir = get_bundled_workflows_dir()
     if not bundled_dir.exists():
@@ -69,7 +69,7 @@ def cmd_init(args: "Namespace") -> None:
         print("  agentic-sdlc run agentic/workflows/<workflow>.yaml")
 
 
-def cmd_configure(args: "Namespace") -> None:
+def cmd_configure(args: Namespace) -> None:
     """Interactive configuration wizard."""
     from agentic_sdlc.config import load_config
 

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 
-def cmd_memory(args: "Namespace") -> None:
+def cmd_memory(args: Namespace) -> None:
     """Memory management commands."""
     from agentic_sdlc.memory import MemoryManager, search_memories
 

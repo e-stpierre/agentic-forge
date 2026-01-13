@@ -21,7 +21,7 @@ class ConditionalStepExecutor(StepExecutor):
     Evaluates the condition expression and executes either the 'then' or 'else' branch.
     """
 
-    def __init__(self, branch_executor: "BranchStepExecutor"):
+    def __init__(self, branch_executor: BranchStepExecutor):
         """Initialize with branch executor for nested steps.
 
         Args:

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 
-def cmd_resume(args: "Namespace") -> None:
+def cmd_resume(args: Namespace) -> None:
     """Resume a paused or failed workflow."""
     from agentic_sdlc.progress import WorkflowStatus, load_progress, save_progress
 

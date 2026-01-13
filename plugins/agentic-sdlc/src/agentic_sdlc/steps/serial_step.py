@@ -21,7 +21,7 @@ class SerialStepExecutor(StepExecutor):
     Each step runs one after another. If any step fails, subsequent steps are skipped.
     """
 
-    def __init__(self, branch_executor: "BranchStepExecutor"):
+    def __init__(self, branch_executor: BranchStepExecutor):
         """Initialize with branch executor for nested steps.
 
         Args:

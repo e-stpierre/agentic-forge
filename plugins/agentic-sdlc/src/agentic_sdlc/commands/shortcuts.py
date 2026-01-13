@@ -15,7 +15,7 @@ def get_bundled_workflows_dir() -> Path:
     return Path(__file__).parent.parent / "workflows"
 
 
-def cmd_input(args: "Namespace") -> None:
+def cmd_input(args: Namespace) -> None:
     """Provide human input for a wait-for-human step."""
     from agentic_sdlc.orchestrator import process_human_input
 
@@ -25,7 +25,7 @@ def cmd_input(args: "Namespace") -> None:
         sys.exit(1)
 
 
-def cmd_oneshot(args: "Namespace") -> None:
+def cmd_oneshot(args: Namespace) -> None:
     """Execute a single task end-to-end using the one-shot workflow."""
     from agentic_sdlc.executor import WorkflowExecutor
     from agentic_sdlc.parser import WorkflowParseError, WorkflowParser
@@ -67,7 +67,7 @@ def cmd_oneshot(args: "Namespace") -> None:
         sys.exit(1)
 
 
-def cmd_analyse(args: "Namespace") -> None:
+def cmd_analyse(args: Namespace) -> None:
     """Analyze codebase using the analyse-codebase workflow."""
     from agentic_sdlc.executor import WorkflowExecutor
     from agentic_sdlc.parser import WorkflowParseError, WorkflowParser

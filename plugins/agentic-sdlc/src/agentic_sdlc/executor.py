@@ -57,11 +57,13 @@ class WorkflowExecutor:
         self.ralph_loop_executor = RalphLoopStepExecutor()
 
         # Create branch executor for nested steps
-        self.branch_executor = BranchStepExecutor({
-            StepType.PROMPT.value: self.prompt_executor,
-            StepType.COMMAND.value: self.command_executor,
-            StepType.RALPH_LOOP.value: self.ralph_loop_executor,
-        })
+        self.branch_executor = BranchStepExecutor(
+            {
+                StepType.PROMPT.value: self.prompt_executor,
+                StepType.COMMAND.value: self.command_executor,
+                StepType.RALPH_LOOP.value: self.ralph_loop_executor,
+            }
+        )
 
         # Create complex executors that depend on branch executor
         self.parallel_executor = ParallelStepExecutor(self.branch_executor)

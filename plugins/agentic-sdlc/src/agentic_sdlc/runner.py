@@ -69,7 +69,7 @@ class SessionOutput:
     raw_json: dict[str, Any] | None = None
 
     @classmethod
-    def from_stdout(cls, stdout: str) -> "SessionOutput":
+    def from_stdout(cls, stdout: str) -> SessionOutput:
         """Extract the session output JSON from Claude's stdout.
 
         Looks for the last JSON block that contains the required base keys

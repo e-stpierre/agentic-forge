@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import signal
 import sys
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -57,9 +58,9 @@ class SignalManager:
 
 
 def handle_graceful_shutdown(
-    progress: "WorkflowProgress",
-    logger: "WorkflowLogger",
-    repo_root: "Path",
+    progress: WorkflowProgress,
+    logger: WorkflowLogger,
+    repo_root: Path,
 ) -> None:
     """Handle graceful shutdown by cancelling workflow and cleaning up.
 

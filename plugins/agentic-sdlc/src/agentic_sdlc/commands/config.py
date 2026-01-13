@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 
-def cmd_config(args: "Namespace") -> None:
+def cmd_config(args: Namespace) -> None:
     """Get or set configuration values."""
     from agentic_sdlc.config import get_config_value, set_config_value
 

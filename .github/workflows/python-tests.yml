@@ -1,0 +1,67 @@
+name: Python Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/agentic-sdlc/**"
+      - ".github/workflows/python-tests.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "plugins/agentic-sdlc/**"
+      - ".github/workflows/python-tests.yml"
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        working-directory: plugins/agentic-sdlc
+        run: uv sync --dev
+
+      - name: Run tests with coverage
+        working-directory: plugins/agentic-sdlc
+        run: uv run pytest --cov --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          file: plugins/agentic-sdlc/coverage.xml
+          flags: agentic-sdlc
+          fail_ci_if_error: false
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        working-directory: plugins/agentic-sdlc
+        run: uv sync --dev
+
+      - name: Run ruff check
+        working-directory: plugins/agentic-sdlc
+        run: uv run ruff check src/
+
+      - name: Run ruff format check
+        working-directory: plugins/agentic-sdlc
+        run: uv run ruff format --check src/

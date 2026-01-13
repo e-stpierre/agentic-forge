@@ -43,7 +43,7 @@ def resolve_workflow_path(workflow_arg: Path) -> tuple[Path, bool]:
     return workflow_arg.resolve(), False
 
 
-def cmd_run(args: "Namespace") -> None:
+def cmd_run(args: Namespace) -> None:
     """Run a workflow."""
     from agentic_sdlc.executor import WorkflowExecutor
     from agentic_sdlc.parser import WorkflowParseError, WorkflowParser

@@ -16,7 +16,9 @@ if TYPE_CHECKING:
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
     """Create a temporary directory for test files."""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    # ignore_cleanup_errors=True prevents Windows PermissionError during cleanup
+    # when files are still held by another process (common in test teardown)
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         yield Path(tmpdir)
 
 

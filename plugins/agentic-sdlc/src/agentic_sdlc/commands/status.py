@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 
-def cmd_status(args: "Namespace") -> None:
+def cmd_status(args: Namespace) -> None:
     """Show workflow status."""
     from agentic_sdlc.progress import load_progress
 
@@ -48,7 +48,7 @@ def cmd_status(args: "Namespace") -> None:
             print(f"  - {error['step']}: {error['error']}")
 
 
-def cmd_cancel(args: "Namespace") -> None:
+def cmd_cancel(args: Namespace) -> None:
     """Cancel a running workflow."""
     from datetime import datetime, timezone
 
@@ -73,7 +73,7 @@ def cmd_cancel(args: "Namespace") -> None:
     print(f"Workflow cancelled: {args.workflow_id}")
 
 
-def cmd_list(args: "Namespace") -> None:
+def cmd_list(args: Namespace) -> None:
     """List workflows."""
     workflows_dir = Path.cwd() / "agentic" / "workflows"
     if not workflows_dir.exists():
