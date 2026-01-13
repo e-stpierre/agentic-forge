@@ -58,11 +58,18 @@ class Database:
     """Async PostgreSQL database client."""
 
     def __init__(self, connection_url: Optional[str] = None):
-        """Initialize database with connection URL."""
-        self.connection_url = connection_url or os.environ.get(
-            "AGENTIC_DATABASE_URL",
-            "postgresql://agentic:agentic@localhost:5432/agentic",
-        )
+        """Initialize database with connection URL.
+
+        Raises:
+            ValueError: If no connection URL is provided via parameter or environment variable.
+        """
+        self.connection_url = connection_url or os.environ.get("AGENTIC_DATABASE_URL")
+        if not self.connection_url:
+            raise ValueError(
+                "Database connection URL required. Set AGENTIC_DATABASE_URL environment variable "
+                "or pass connection_url parameter. "
+                "Example: postgresql://user:pass@localhost:5432/dbname"
+            )
         self._pool: Optional[asyncpg.Pool] = None
 
     async def connect(self) -> None:
