@@ -282,7 +282,14 @@ class WorkflowExecutor:
             )
 
             if result.success:
-                output_summary = extract_summary(result.stdout) if result.stdout else ""
+                # Use session output context if available, fall back to extracted summary
+                session_out = result.session_output
+                if session_out.is_success and session_out.context:
+                    output_summary = session_out.context
+                    if session_out.session_id:
+                        logger.info(step.name, f"Session ID: {session_out.session_id}")
+                else:
+                    output_summary = extract_summary(result.stdout) if result.stdout else ""
                 update_step_completed(progress, step.name, output_summary, result.stdout)
                 console.step_complete(step.name, output_summary)
                 logger.info(step.name, "Step completed successfully")
@@ -345,7 +352,14 @@ class WorkflowExecutor:
             )
 
             if result.success:
-                output_summary = extract_summary(result.stdout) if result.stdout else ""
+                # Use session output context if available, fall back to extracted summary
+                session_out = result.session_output
+                if session_out.is_success and session_out.context:
+                    output_summary = session_out.context
+                    if session_out.session_id:
+                        logger.info(step.name, f"Session ID: {session_out.session_id}")
+                else:
+                    output_summary = extract_summary(result.stdout) if result.stdout else ""
                 update_step_completed(progress, step.name, output_summary, result.stdout)
                 console.step_complete(step.name, output_summary)
                 logger.info(step.name, "Step completed successfully")

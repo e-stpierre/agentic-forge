@@ -17,7 +17,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [x] IMP-004: Commands must use full namespace in workflows
 - [x] IMP-005: Normalize PR creation as workflow variable with conditional step
 - [x] IMP-006: Replace fix prompt steps with ralph-loop in analyse workflows
-- [ ] IMP-007: Standardize Claude session output format and execution context
+- [x] IMP-007: Standardize Claude session output format and execution context
 - [ ] SEC-001: Fix Jinja2 template injection vulnerability (disabled autoescaping)
 - [ ] SEC-002: Fix command injection via shell=True using shutil.which()
 - [ ] DEBT-001: Refactor monolithic executor, orchestrator, and CLI classes
@@ -376,7 +376,7 @@ steps:
 
 ### IMP-007: Standardize Claude session output format and execution context
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: Claude sessions in agentic-sdlc have no standardized output format or execution context. This causes:
 
@@ -475,13 +475,13 @@ def parse_session_output(stdout: str) -> dict:
 
 **Acceptance Criteria**:
 
-- [ ] `prompts/agentic-system.md` file created with base system prompt
-- [ ] `--append-system-prompt` flag added to all Claude subprocess calls in runner.py
-- [ ] Execution context clearly states no questions, no permission requests
-- [ ] Output JSON format documents base keys AND that additional keys may be required
-- [ ] Executor parses JSON output for success/failure/context
-- [ ] Session ID captured for potential /resume capability
-- [ ] No modifications needed to individual commands
+- [x] `prompts/agentic-system.md` file created with base system prompt
+- [x] `--append-system-prompt` flag added to all Claude subprocess calls in runner.py
+- [x] Execution context clearly states no questions, no permission requests
+- [x] Output JSON format documents base keys AND that additional keys may be required
+- [x] Executor parses JSON output for success/failure/context
+- [x] Session ID captured for potential /resume capability
+- [x] No modifications needed to individual commands
 
 ---
 
