@@ -5,11 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from jinja2 import FileSystemLoader, StrictUndefined
+from jinja2.sandbox import SandboxedEnvironment
 
 
 class TemplateRenderer:
-    """Render Jinja2 templates with workflow context."""
+    """Render Jinja2 templates with workflow context.
+
+    Uses SandboxedEnvironment to prevent template injection attacks.
+    The sandbox restricts access to dangerous attributes and methods,
+    preventing malicious templates from executing arbitrary Python code.
+    """
 
     def __init__(self, template_dirs: list[Path] | None = None):
         if template_dirs is None:
@@ -17,9 +23,11 @@ class TemplateRenderer:
             template_dirs = [default_templates]
 
         self.template_dirs = template_dirs
-        self.env = Environment(
+        # Use SandboxedEnvironment to prevent SSTI attacks
+        # autoescape=False is intentional: we render prompts/markdown, not HTML
+        self.env = SandboxedEnvironment(
             loader=FileSystemLoader([str(d) for d in template_dirs if d.exists()]),
-            autoescape=select_autoescape(default=False),
+            autoescape=False,
             undefined=StrictUndefined,
         )
         self.env.globals = {}
