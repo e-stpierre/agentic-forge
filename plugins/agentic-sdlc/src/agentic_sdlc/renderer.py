@@ -45,6 +45,50 @@ class TemplateRenderer:
             self.env.loader = FileSystemLoader([str(d) for d in self.template_dirs if d.exists()])
 
 
+def _extract_analysis_steps(step_outputs: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Extract analysis steps (analyse-*) from all step outputs.
+
+    This flattens nested steps into a dictionary keyed by step name,
+    making it easier for templates to iterate over analysis results.
+
+    Filters to only include actual analysis type steps (bug, debt, doc, security, style),
+    not container steps like 'analyse-and-fix-all'.
+
+    Args:
+        step_outputs: Dictionary of all step outputs from the workflow.
+
+    Returns:
+        Dictionary containing only analyse-* steps with their data.
+    """
+    # Known analysis types that should be included
+    analysis_types = ("bug", "debt", "doc", "security", "style")
+
+    analysis_steps: dict[str, dict[str, Any]] = {}
+    for step_name, step_data in step_outputs.items():
+        if step_name.startswith("analyse-"):
+            # Extract the type after 'analyse-' prefix
+            analysis_type = step_name[len("analyse-") :]
+            if analysis_type in analysis_types:
+                analysis_steps[step_name] = step_data
+    return analysis_steps
+
+
+def _extract_fix_steps(step_outputs: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Extract fix steps (fix-* or apply-*) from all step outputs.
+
+    Args:
+        step_outputs: Dictionary of all step outputs from the workflow.
+
+    Returns:
+        Dictionary containing only fix-related steps with their data.
+    """
+    fix_steps: dict[str, dict[str, Any]] = {}
+    for step_name, step_data in step_outputs.items():
+        if step_name.startswith("fix-") or step_name.startswith("apply-"):
+            fix_steps[step_name] = step_data
+    return fix_steps
+
+
 def build_template_context(
     workflow_name: str,
     started_at: str,
@@ -55,7 +99,15 @@ def build_template_context(
     pull_requests: list[dict[str, Any]],
     inputs: dict[str, Any],
 ) -> dict[str, Any]:
-    """Build the template context object for output templates."""
+    """Build the template context object for output templates.
+
+    Provides both the raw step_outputs and pre-filtered analysis/fix steps
+    to make template iteration cleaner.
+    """
+    # Extract analysis and fix steps for easier template access
+    analysis_steps = _extract_analysis_steps(step_outputs)
+    fix_steps = _extract_fix_steps(step_outputs)
+
     return {
         "workflow": {
             "name": workflow_name,
@@ -63,6 +115,8 @@ def build_template_context(
             "completed_at": completed_at,
         },
         "steps": step_outputs,
+        "analysis_steps": analysis_steps,
+        "fix_steps": fix_steps,
         "files_changed": files_changed,
         "branches": branches,
         "pull_requests": pull_requests,

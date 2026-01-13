@@ -5,63 +5,54 @@ Workflow: {{ workflow.name }}
 
 ## Overview
 
-This report summarizes the results of running {{ steps | length }} analysis types on the codebase.
+This report summarizes the results of running {{ analysis_steps | length }} analysis types on the codebase.
 
-| Analysis | Status | Issues Found |
-|----------|--------|--------------|
-{% for step_name, step in steps.items() %}
-{% if step_name.startswith('analyse-') %}
-| {{ step_name | replace('analyse-', '') | title }} | {{ step.status }} | {{ step.summary | default('-') }} |
-{% endif %}
-{% endfor %}
+| Analysis | Status | Summary |
+|----------|--------|---------|
+{%- for step_name, step in analysis_steps.items() %}
+| {{ step_name | replace('analyse-', '') | title }} | {{ step.status }} | {{ step.output_summary | default('-') }} |
+{%- endfor %}
 
 ## Analysis Details
-
-{% for step_name, step in steps.items() %}
-{% if step_name.startswith('analyse-') %}
+{% for step_name, step in analysis_steps.items() %}
 ### {{ step_name | replace('analyse-', '') | title }} Analysis
 
 **Status**: {{ step.status }}
-{% if step.output_summary %}
+{%- if step.output_summary %}
+
 **Summary**: {{ step.output_summary }}
-{% endif %}
+{%- endif %}
 
 Output: `agentic/analysis/{{ step_name | replace('analyse-', '') }}.md`
 
 ---
-
-{% endif %}
-{% endfor %}
-
+{%- endfor %}
 {% if inputs.autofix and inputs.autofix != 'none' %}
+
 ## Autofix Summary
 
 Autofix was enabled at severity level: **{{ inputs.autofix }}**
 
 | Type | Fix Status |
 |------|------------|
-{% for step_name, step in steps.items() %}
-{% if step_name.startswith('fix-') %}
-| {{ step_name | replace('fix-', '') | title }} | {{ step.status }} |
-{% endif %}
-{% endfor %}
-
+{%- for step_name, step in fix_steps.items() %}
+| {{ step_name | replace('fix-', '') | replace('apply-', '') | replace('-fixes', '') | title }} | {{ step.status }} |
+{%- endfor %}
 {% endif %}
 
 ## Files Changed
 
-{% if files_changed %}
+{% if files_changed -%}
 {% for file in files_changed %}
 - `{{ file }}`
 {% endfor %}
-{% else %}
+{%- else -%}
 No files were changed during this analysis.
-{% endif %}
-
+{%- endif %}
 {% if pull_requests %}
-## Pull Requests
 
+## Pull Requests
 {% for pr in pull_requests %}
 - [#{{ pr.number }}]({{ pr.url }})
-{% endfor %}
+{%- endfor %}
 {% endif %}

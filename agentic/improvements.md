@@ -12,7 +12,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 ## Progress Tracking
 
 - [x] IMP-001: Workflow outputs should write to workflow output directory
-- [ ] IMP-002: Fix analysis summary template malformed output
+- [x] IMP-002: Fix analysis summary template malformed output
 - [ ] IMP-003: Split analyse command into 5 distinct commands
 - [ ] IMP-004: Commands must use full namespace in workflows
 - [ ] IMP-005: Normalize PR creation as workflow variable with conditional step
@@ -64,7 +64,7 @@ The file should be created at `agentic/outputs/<timestamp>-<workflow>/summary.md
 
 ### IMP-002: Fix analysis summary template malformed output
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: The analysis summary output (`agentic/analysis/summary.md`) contains many empty lines and missing data. The template iterates over all steps but the step structure is nested (parallel > serial > steps) while the template expects a flat dictionary.
 
@@ -92,10 +92,10 @@ But nested steps (inside parallel/serial blocks) are not flattened, so the filte
 
 **Acceptance Criteria**:
 
-- [ ] Template context flattens nested steps or provides proper accessor
-- [ ] No empty lines in rendered output
-- [ ] All analysis steps are properly rendered in the summary table
-- [ ] Step summaries contain actual analysis results, not "Unknown skill: analyse"
+- [x] Template context flattens nested steps or provides proper accessor
+- [x] No empty lines in rendered output
+- [x] All analysis steps are properly rendered in the summary table
+- [x] Step summaries contain actual analysis results, not "Unknown skill: analyse"
 
 ---
 
