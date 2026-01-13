@@ -19,6 +19,11 @@ variables:
     required: false
     default: ""
     description: Space-separated list of paths to analyze (optional)
+  - name: create_pr
+    type: boolean
+    required: false
+    default: true
+    description: Whether to create a PR for each analysis branch
 
 steps:
   - name: analyse-and-fix-all
@@ -27,7 +32,6 @@ steps:
     merge-mode: independent
     git:
       worktree: true
-      auto-pr: true
       branch-prefix: "agentic/analysis"
     steps:
       - name: bug-analysis
@@ -50,6 +54,17 @@ steps:
                   Fix all issues with severity {{ variables.autofix }} or higher.
                   Commit fixes with clear messages.
 
+          - name: create-bug-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-bug-pr
+                type: command
+                command: agentic-sdlc:git-pr
+                args:
+                  title: "[Analysis] Bug analysis and fixes"
+                  draft: false
+
       - name: debt-analysis
         type: serial
         steps:
@@ -69,6 +84,17 @@ steps:
                   Review the technical debt analysis in agentic/analysis/debt.md.
                   Fix all issues with severity {{ variables.autofix }} or higher.
                   Commit fixes with clear messages.
+
+          - name: create-debt-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-debt-pr
+                type: command
+                command: agentic-sdlc:git-pr
+                args:
+                  title: "[Analysis] Technical debt analysis and fixes"
+                  draft: false
 
       - name: doc-analysis
         type: serial
@@ -90,6 +116,17 @@ steps:
                   Fix all issues with severity {{ variables.autofix }} or higher.
                   Commit fixes with clear messages.
 
+          - name: create-doc-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-doc-pr
+                type: command
+                command: agentic-sdlc:git-pr
+                args:
+                  title: "[Analysis] Documentation analysis and fixes"
+                  draft: false
+
       - name: security-analysis
         type: serial
         steps:
@@ -110,6 +147,17 @@ steps:
                   Fix all issues with severity {{ variables.autofix }} or higher.
                   Commit fixes with clear messages.
 
+          - name: create-security-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-security-pr
+                type: command
+                command: agentic-sdlc:git-pr
+                args:
+                  title: "[Analysis] Security analysis and fixes"
+                  draft: false
+
       - name: style-analysis
         type: serial
         steps:
@@ -129,6 +177,17 @@ steps:
                   Review the style analysis in agentic/analysis/style.md.
                   Fix all issues with severity {{ variables.autofix }} or higher.
                   Commit fixes with clear messages.
+
+          - name: create-style-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-style-pr
+                type: command
+                command: agentic-sdlc:git-pr
+                args:
+                  title: "[Analysis] Style analysis and fixes"
+                  draft: false
 
 outputs:
   - name: analysis-summary

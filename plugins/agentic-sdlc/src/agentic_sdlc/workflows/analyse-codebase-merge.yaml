@@ -11,7 +11,6 @@ settings:
     enabled: true
     worktree: true
     auto-commit: true
-    auto-pr: false
     branch-prefix: "agentic/analysis"
 
 variables:
@@ -30,6 +29,11 @@ variables:
     required: false
     default: ""
     description: Space-separated list of paths to analyze (optional)
+  - name: create_pr
+    type: boolean
+    required: false
+    default: true
+    description: Whether to create a PR after all changes are merged
 
 steps:
   - name: analyse-and-fix-all
@@ -38,7 +42,6 @@ steps:
     merge-mode: merge
     git:
       worktree: true
-      auto-pr: false
       branch-prefix: "agentic/analysis"
     steps:
       - name: bug-analysis
@@ -172,11 +175,15 @@ steps:
           severity: "{{ variables.fix_severity }}"
 
   - name: create-pr
-    type: command
-    command: agentic-sdlc:git-pr
-    args:
-      title: "[Analysis] Codebase analysis and fixes"
-      draft: false
+    type: conditional
+    condition: "variables.create_pr"
+    then:
+      - name: open-pr
+        type: command
+        command: agentic-sdlc:git-pr
+        args:
+          title: "[Analysis] Codebase analysis and fixes"
+          draft: false
 
 outputs:
   - name: analysis-summary

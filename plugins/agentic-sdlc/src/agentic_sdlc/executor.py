@@ -491,8 +491,6 @@ class WorkflowExecutor:
         based on the merge strategy.
 
         When git.worktree is enabled, each branch runs in its own git worktree.
-        When git.auto_pr is enabled with merge_mode=independent, each branch
-        creates a PR on completion.
         """
         if not step.steps:
             logger.warning(step.name, "Parallel step has no sub-steps")
@@ -501,7 +499,6 @@ class WorkflowExecutor:
             return
 
         use_worktree = step.git and step.git.worktree
-        auto_pr = step.git and step.git.auto_pr
 
         logger.info(step.name, f"Starting parallel execution of {len(step.steps)} branches")
         if use_worktree:
@@ -533,9 +530,6 @@ class WorkflowExecutor:
                 self._execute_branch_step(
                     branch_step, progress, branch_context, logger, console, cwd_override=worktree.path if worktree else None
                 )
-
-                if auto_pr and worktree and step.merge_mode == "independent":
-                    self._create_branch_pr(branch_step.name, worktree, logger, console)
 
                 return (branch_step.name, True, "completed", worktree)
             except Exception as e:
@@ -584,31 +578,6 @@ class WorkflowExecutor:
                 update_step_completed(progress, step.name, output_summary)
                 console.step_complete(step.name, output_summary)
                 logger.info(step.name, output_summary)
-
-    def _create_branch_pr(
-        self,
-        branch_name: str,
-        worktree: Worktree,
-        logger: WorkflowLogger,
-        console: ConsoleOutput,
-    ) -> None:
-        """Create a PR for a parallel branch."""
-        try:
-            result = run_claude_with_command(
-                command="git-pr",
-                args={"title": f"[Parallel] {branch_name}", "draft": "false"},
-                cwd=worktree.path,
-                model="haiku",
-                timeout=120,
-                print_output=False,
-            )
-            if result.success:
-                console.info(f"  Branch '{branch_name}' PR created")
-                logger.info(branch_name, "PR created successfully")
-            else:
-                logger.warning(branch_name, f"PR creation failed: {result.stderr}")
-        except Exception as e:
-            logger.warning(branch_name, f"PR creation failed: {e}")
 
     def _merge_worktree_branches(
         self,

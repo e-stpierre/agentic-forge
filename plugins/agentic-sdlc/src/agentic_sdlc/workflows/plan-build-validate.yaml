@@ -10,7 +10,6 @@ settings:
     enabled: true
     worktree: true
     auto-commit: true
-    auto-pr: true
     branch-prefix: "feature"
 
 variables:
@@ -28,6 +27,11 @@ variables:
     required: false
     default: "major"
     description: Minimum severity for auto-fix
+  - name: create_pr
+    type: boolean
+    required: false
+    default: true
+    description: Whether to create a PR
 
 steps:
   - name: plan
@@ -89,11 +93,15 @@ steps:
           severity: "{{ variables.fix_severity }}"
 
   - name: create-pr
-    type: command
-    command: agentic-sdlc:git-pr
-    args:
-      title: "{{ outputs.plan.summary }}"
-      draft: false
+    type: conditional
+    condition: "variables.create_pr"
+    then:
+      - name: open-pr
+        type: command
+        command: agentic-sdlc:git-pr
+        args:
+          title: "{{ outputs.plan.summary }}"
+          draft: false
 
 outputs:
   - name: implementation-report

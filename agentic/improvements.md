@@ -15,7 +15,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [x] IMP-002: Fix analysis summary template malformed output
 - [x] IMP-003: Split analyse command into 5 distinct commands
 - [x] IMP-004: Commands must use full namespace in workflows
-- [ ] IMP-005: Normalize PR creation as workflow variable with conditional step
+- [x] IMP-005: Normalize PR creation as workflow variable with conditional step
 - [ ] IMP-006: Replace fix prompt steps with ralph-loop in analyse workflows
 - [ ] IMP-007: Standardize Claude session output format and execution context
 - [ ] SEC-001: Fix Jinja2 template injection vulnerability (disabled autoescaping)
@@ -213,7 +213,7 @@ But nested steps (inside parallel/serial blocks) are not flattened, so the filte
 
 ### IMP-005: Normalize PR creation as workflow variable with conditional step
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: PR creation in parallel workflows is handled by `_create_branch_pr` method in executor.py (lines 584-607), which is triggered by `git.auto_pr: true` on parallel steps. This:
 
@@ -279,12 +279,12 @@ steps:
 
 **Acceptance Criteria**:
 
-- [ ] `_create_branch_pr` method deleted from executor.py
-- [ ] Auto-pr call removed from `_execute_parallel_step`
-- [ ] `auto-pr` removed from `step-git` schema definition
-- [ ] All workflows use `create_pr` variable at workflow level
-- [ ] All workflows use conditional step with git-pr command for PR creation
-- [ ] Parallel branches in worktrees still work correctly (just without auto-pr)
+- [x] `_create_branch_pr` method deleted from executor.py
+- [x] Auto-pr call removed from `_execute_parallel_step`
+- [x] `auto-pr` removed from `step-git` schema definition
+- [x] All workflows use `create_pr` variable at workflow level
+- [x] All workflows use conditional step with git-pr command for PR creation
+- [x] Parallel branches in worktrees still work correctly (just without auto-pr)
 
 ---
 

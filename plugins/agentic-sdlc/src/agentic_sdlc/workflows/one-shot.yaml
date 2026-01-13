@@ -10,7 +10,6 @@ settings:
     enabled: true
     worktree: true
     auto-commit: true
-    auto-pr: true
     branch-prefix: "agentic"
 
 variables:
