@@ -16,7 +16,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [x] IMP-003: Split analyse command into 5 distinct commands
 - [x] IMP-004: Commands must use full namespace in workflows
 - [x] IMP-005: Normalize PR creation as workflow variable with conditional step
-- [ ] IMP-006: Replace fix prompt steps with ralph-loop in analyse workflows
+- [x] IMP-006: Replace fix prompt steps with ralph-loop in analyse workflows
 - [ ] IMP-007: Standardize Claude session output format and execution context
 - [ ] SEC-001: Fix Jinja2 template injection vulnerability (disabled autoescaping)
 - [ ] SEC-002: Fix command injection via shell=True using shutil.which()
@@ -290,7 +290,7 @@ steps:
 
 ### IMP-006: Replace fix prompt steps with ralph-loop in analyse workflows
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: Current analyse workflows use simple `prompt` steps to fix issues (e.g., "Fix all issues with severity X or higher"). This approach:
 
@@ -365,12 +365,12 @@ steps:
 
 **Acceptance Criteria**:
 
-- [ ] All `apply-*-fixes` prompt steps replaced with ralph-loop steps
-- [ ] Each ralph-loop reads analysis doc, picks ONE issue, fixes it, commits, ends
-- [ ] Completion promise returned when doc missing or all issues fixed
-- [ ] Issues that can't be fixed are marked as skipped with reason
-- [ ] Commits include issue ID in title (e.g., "[BUG-001] Fix null check")
-- [ ] Build and lint run after each fix
+- [x] All `apply-*-fixes` prompt steps replaced with ralph-loop steps
+- [x] Each ralph-loop reads analysis doc, picks ONE issue, fixes it, commits, ends
+- [x] Completion promise returned when doc missing or all issues fixed
+- [x] Issues that can't be fixed are marked as skipped with reason
+- [x] Commits include issue ID in title (e.g., "[BUG-001] Fix null check")
+- [x] Build and lint run after each fix
 
 ---
 
