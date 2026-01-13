@@ -28,6 +28,7 @@ No critical issues found.
 **Impact:** While unlikely in normal usage (max_retries defaults to 3), this edge case could cause confusing error messages or unexpected behavior if misconfigured. A TypeError "exceptions must derive from BaseException" would be raised instead of the actual error.
 
 **Fix:** Initialize `last_error` to a default exception or add a check before raising:
+
 ```python
 if last_error is None:
     raise RuntimeError("All retries exhausted without capturing error")
@@ -45,6 +46,7 @@ raise last_error
 **Impact:** In high-concurrency scenarios with multiple agents starting simultaneously, this could cause connection pool creation failures, resource leaks, or connection exhaustion.
 
 **Fix:** Use an asyncio.Lock to ensure thread-safe initialization:
+
 ```python
 async def acquire(self):
     if self._pool is None:
@@ -66,6 +68,7 @@ async def acquire(self):
 **Impact:** If worktree cleanup fails (e.g., due to locked files from a still-running process), the next worktree creation could fail with cryptic errors or create a corrupt worktree state. This is especially problematic in parallel execution scenarios where multiple worktrees are created/destroyed rapidly.
 
 **Fix:** Remove `ignore_errors=True` and handle errors explicitly, or at minimum log when cleanup fails:
+
 ```python
 try:
     shutil.rmtree(worktree_path)
@@ -99,6 +102,7 @@ except Exception as e:
 **Impact:** Edge case where malformed Kafka messages could corrupt the recovered state with invalid step names (None, 0, etc.), leading to workflow state corruption or validation failures later.
 
 **Fix:** Add explicit type checking:
+
 ```python
 step = event.get("step_name")
 if step and isinstance(step, str) and step not in state.get("completed_steps", []):
@@ -118,6 +122,7 @@ if step and isinstance(step, str) and step not in state.get("completed_steps", [
 **Impact:** Users may be unaware that some checkpoints failed to parse, leading to incomplete recovery data. In debugging scenarios, this silent failure makes it harder to identify data corruption issues.
 
 **Fix:** Add logging when YAML parsing fails:
+
 ```python
 except yaml.YAMLError as e:
     logger.warning(f"Failed to parse checkpoint frontmatter: {e}")
