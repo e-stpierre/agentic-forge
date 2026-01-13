@@ -38,9 +38,32 @@ from agentic_sdlc.runner import run_claude, run_claude_with_command
 
 
 class WorkflowExecutor:
-    """Executes workflow definitions."""
+    """Executes workflow definitions.
+
+    The WorkflowExecutor is responsible for orchestrating workflow execution,
+    including:
+    - Step execution in sequence or parallel
+    - Template rendering with Jinja2
+    - Progress tracking and persistence
+    - Error handling and retries
+    - Output generation
+
+    Each workflow step runs in a fresh environment, preventing context
+    accumulation. State is persisted to disk after each step.
+
+    Attributes:
+        repo_root: Repository root directory
+        config: Loaded configuration from agentic/config.json
+        renderer: Template renderer for Jinja2 templates
+        workflow_settings: Current workflow settings (set during execution)
+    """
 
     def __init__(self, repo_root: Path | None = None):
+        """Initialize the workflow executor.
+
+        Args:
+            repo_root: Repository root path. Defaults to current directory.
+        """
         self.repo_root = repo_root or Path.cwd()
         self.config = load_config(self.repo_root)
         self.renderer = TemplateRenderer()
@@ -148,7 +171,22 @@ class WorkflowExecutor:
         variables: dict[str, Any],
         logger: WorkflowLogger,
     ) -> None:
-        """Render output templates at workflow completion."""
+        """Render output templates at workflow completion.
+
+        Processes all output definitions in the workflow and renders templates
+        based on workflow results. Outputs can be conditional (only render on
+        completion or failure).
+
+        Args:
+            workflow: Workflow definition containing output templates
+            progress: Workflow progress with step results
+            variables: Input variables for template context
+            logger: Logger for tracking output generation
+
+        Note:
+            Template paths are resolved relative to plugin templates directory
+            and repository root. Output paths support variable interpolation.
+        """
         if not workflow.outputs:
             return
 
@@ -208,7 +246,21 @@ class WorkflowExecutor:
         logger: WorkflowLogger,
         console: ConsoleOutput,
     ) -> None:
-        """Execute a single step."""
+        """Execute a single workflow step.
+
+        Dispatches to type-specific execution methods based on step.type.
+        Updates progress tracking before and after execution.
+
+        Args:
+            step: Step definition to execute
+            progress: Workflow progress tracker (modified in-place)
+            variables: Template variables and workflow inputs
+            logger: Logger for step execution
+            console: Console output handler
+
+        Raises:
+            NotImplementedError: If step type is not yet supported
+        """
         logger.info(step.name, f"Starting step: {step.name}")
         console.step_start(step.name, step.type.value)
         update_step_started(progress, step.name)
@@ -244,7 +296,23 @@ class WorkflowExecutor:
         console: ConsoleOutput,
         cwd_override: Path | None = None,
     ) -> None:
-        """Execute a prompt step."""
+        """Execute a prompt step by running Claude with the prompt text.
+
+        Renders the prompt template with context variables, then executes
+        it in a new Claude Code session. Captures output and extracts summary.
+
+        Args:
+            step: Step definition with prompt text
+            progress: Workflow progress tracker (modified in-place)
+            context: Template context (variables, outputs, etc.)
+            logger: Logger for step execution
+            console: Console output handler
+            cwd_override: Optional working directory override (used for parallel steps)
+
+        Note:
+            Each prompt step runs in a fresh Claude session to prevent context
+            accumulation across steps.
+        """
         prompt = step.prompt or ""
 
         if self.renderer.has_variables(prompt):
