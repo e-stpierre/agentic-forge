@@ -31,7 +31,7 @@ steps:
     then:
       - name: analyse-bug
         type: command
-        command: analyse-bug
+        command: agentic-sdlc:analyse-bug
         args:
           paths: "{{ variables.paths }}"
 
@@ -41,7 +41,7 @@ steps:
     then:
       - name: analyse-debt
         type: command
-        command: analyse-debt
+        command: agentic-sdlc:analyse-debt
         args:
           paths: "{{ variables.paths }}"
 
@@ -51,7 +51,7 @@ steps:
     then:
       - name: analyse-doc
         type: command
-        command: analyse-doc
+        command: agentic-sdlc:analyse-doc
         args:
           paths: "{{ variables.paths }}"
 
@@ -61,7 +61,7 @@ steps:
     then:
       - name: analyse-security
         type: command
-        command: analyse-security
+        command: agentic-sdlc:analyse-security
         args:
           paths: "{{ variables.paths }}"
 
@@ -71,7 +71,7 @@ steps:
     then:
       - name: analyse-style
         type: command
-        command: analyse-style
+        command: agentic-sdlc:analyse-style
         args:
           paths: "{{ variables.paths }}"
 

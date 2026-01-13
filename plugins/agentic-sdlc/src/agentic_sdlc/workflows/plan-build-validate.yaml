@@ -32,7 +32,7 @@ variables:
 steps:
   - name: plan
     type: command
-    command: plan
+    command: agentic-sdlc:plan
     args:
       type: "{{ variables.type }}"
       context: "{{ variables.task }}"
@@ -62,7 +62,7 @@ steps:
 
   - name: validate
     type: command
-    command: validate
+    command: agentic-sdlc:validate
     args:
       plan: "agentic/outputs/{{ workflow_id }}/plan.md"
       severity: minor
@@ -84,13 +84,13 @@ steps:
 
       - name: revalidate
         type: command
-        command: validate
+        command: agentic-sdlc:validate
         args:
           severity: "{{ variables.fix_severity }}"
 
   - name: create-pr
     type: command
-    command: git-pr
+    command: agentic-sdlc:git-pr
     args:
       title: "{{ outputs.plan.summary }}"
       draft: false

@@ -153,6 +153,30 @@ After installation, plugins are immediately available in your Claude Code sessio
 - **Skills**: Activated via `Skill` tool or skill name
 - **Hooks**: Execute automatically on configured events
 
+### Command Namespacing
+
+Commands are namespaced by their plugin name using the format `plugin-name:command-name`. This prevents conflicts when multiple plugins provide similar commands:
+
+```bash
+# Interactive SDLC commands
+/interactive-sdlc:plan-feature
+/interactive-sdlc:validate
+/interactive-sdlc:analyse-bug
+
+# Agentic SDLC commands
+/agentic-sdlc:plan
+/agentic-sdlc:validate
+/agentic-sdlc:analyse-bug
+```
+
+In workflow YAML files, always use the full namespace to ensure the correct plugin's command is executed:
+
+```yaml
+steps:
+  - type: command
+    command: agentic-sdlc:validate  # Explicit - uses agentic-sdlc plugin
+```
+
 Refer to individual plugin documentation for specific usage instructions and examples.
 
 ## Local Setup
