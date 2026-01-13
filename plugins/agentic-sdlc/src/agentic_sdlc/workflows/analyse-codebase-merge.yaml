@@ -176,5 +176,5 @@ steps:
 outputs:
   - name: analysis-summary
     template: analysis-summary.md.j2
-    path: agentic/analysis/summary.md
+    path: summary.md
     when: completed

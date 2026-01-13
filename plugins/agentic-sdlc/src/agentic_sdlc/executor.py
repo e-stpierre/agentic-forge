@@ -178,6 +178,9 @@ class WorkflowExecutor:
         plugin_templates = Path(__file__).parent / "templates"
         template_dirs = [plugin_templates, self.repo_root]
 
+        # Workflow output directory: agentic/outputs/<workflow_id>/
+        output_dir = self.repo_root / "agentic" / "outputs" / progress.workflow_id
+
         for output in workflow.outputs:
             if output.when == "completed" and progress.status != WorkflowStatus.COMPLETED.value:
                 continue
@@ -188,7 +191,8 @@ class WorkflowExecutor:
                 output_path_str = output.path
                 if self.renderer.has_variables(output_path_str):
                     output_path_str = self.renderer.render_string(output_path_str, {"workflow_id": progress.workflow_id, **variables})
-                output_path = self.repo_root / output_path_str
+                # Resolve output path relative to workflow output directory
+                output_path = output_dir / output_path_str
 
                 render_workflow_output(
                     template_path=Path(output.template),

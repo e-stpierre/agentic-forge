@@ -11,7 +11,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 
 ## Progress Tracking
 
-- [ ] IMP-001: Workflow outputs should write to workflow output directory
+- [x] IMP-001: Workflow outputs should write to workflow output directory
 - [ ] IMP-002: Fix analysis summary template malformed output
 - [ ] IMP-003: Split analyse command into 5 distinct commands
 - [ ] IMP-004: Commands must use full namespace in workflows
@@ -33,7 +33,7 @@ List the details of every improvement request, 100 lines maximum per item.
 
 ### IMP-001: Workflow outputs should write to workflow output directory
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: Workflow output files are written to hardcoded paths (e.g., `agentic/analysis/summary.md`) instead of the workflow output directory (e.g., `agentic/outputs/20260113-111144-analyse-codebase/`).
 

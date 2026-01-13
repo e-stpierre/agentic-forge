@@ -40,5 +40,5 @@ steps:
 outputs:
   - name: analysis-report
     template: analysis/{{ variables.analysis_type }}.md.j2
-    path: agentic/analysis/{{ variables.analysis_type }}.md
+    path: {{ variables.analysis_type }}.md
     when: completed

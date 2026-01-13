@@ -98,5 +98,5 @@ steps:
 outputs:
   - name: implementation-report
     template: implementation-report.md.j2
-    path: agentic/outputs/{{ workflow_id }}/report.md
+    path: report.md
     when: completed
