@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from jinja2 import Environment, StrictUndefined
+from jinja2 import Environment, StrictUndefined, select_autoescape
 
 
 class TemplateResolver:
@@ -12,7 +12,7 @@ class TemplateResolver:
         """Initialize template resolver."""
         self.env = Environment(
             undefined=StrictUndefined,
-            autoescape=False,
+            autoescape=select_autoescape(default=True),
             trim_blocks=True,
             lstrip_blocks=True,
         )
