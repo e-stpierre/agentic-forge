@@ -55,7 +55,7 @@ def _run_git(
         capture_output=True,
         text=True,
         cwd=cwd_str,
-        shell=True,  # Required on Windows for PATH resolution
+        shell=False,
     )
 
     if check and result.returncode != 0:

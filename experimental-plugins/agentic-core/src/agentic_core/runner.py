@@ -73,7 +73,7 @@ def run_claude(
             stderr=subprocess.PIPE,
             text=True,
             cwd=cwd_str,
-            shell=True,  # Required on Windows for PATH resolution
+            shell=False,
         )
 
         # Send prompt via stdin
@@ -114,7 +114,7 @@ def run_claude(
                 text=True,
                 cwd=cwd_str,
                 timeout=timeout,
-                shell=True,  # Required on Windows for PATH resolution
+                shell=False,
             )
 
             return ClaudeResult(
@@ -171,7 +171,7 @@ def check_claude_available() -> bool:
             ["claude", "--version"],
             capture_output=True,
             text=True,
-            shell=True,  # Required on Windows for PATH resolution
+            shell=False,
             timeout=10,
         )
         return result.returncode == 0

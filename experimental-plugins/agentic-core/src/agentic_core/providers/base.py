@@ -146,7 +146,7 @@ class CLIProvider(ABC):
                 text=True,
                 cwd=str(cwd),
                 timeout=timeout,
-                shell=True,  # Required on Windows for PATH resolution
+                shell=False,
             )
             duration_ms = int((time.time() - start) * 1000)
 
@@ -195,7 +195,7 @@ class CLIProvider(ABC):
                 capture_output=True,
                 text=True,
                 timeout=10,
-                shell=True,  # Required on Windows for PATH resolution
+                shell=False,
             )
             return result.returncode == 0
         except Exception:
