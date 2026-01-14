@@ -116,12 +116,15 @@ Save to `agentic/analysis/bug.md`:
 ---
 
 ## Major
+
 [Same format as Critical]
 
 ## Medium
+
 [Same format as Critical]
 
 ## Low
+
 [Same format as Critical]
 ```
 

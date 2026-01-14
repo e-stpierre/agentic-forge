@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from jinja2 import UndefinedError
-
 from agentic_sdlc.renderer import (
     TemplateRenderer,
     _extract_analysis_steps,
@@ -14,6 +12,8 @@ from agentic_sdlc.renderer import (
     build_template_context,
     render_workflow_output,
 )
+from jinja2 import UndefinedError
+from jinja2.sandbox import SecurityError
 
 
 class TestTemplateRenderer:
@@ -137,7 +137,7 @@ class TestSandboxedEnvironment:
         renderer = TemplateRenderer()
 
         # Attempt to access __class__ (common SSTI attack vector)
-        with pytest.raises(Exception):  # SecurityError or similar
+        with pytest.raises(SecurityError):
             renderer.render_string("{{ ''.__class__ }}", {})
 
     def test_sandbox_allows_normal_operations(self) -> None:

@@ -145,6 +145,7 @@ Based on analysis, the established patterns are:
 ---
 
 ## Minor Issues
+
 [Same format as Major]
 ```
 

@@ -29,7 +29,7 @@ Analyze documentation quality, accuracy, and completeness by comparing against a
 
 1. **Determine Scope**
    - If `[paths]` are provided, focus only on those files/directories
-   - Otherwise, find all documentation files (README, docs/, *.md)
+   - Otherwise, find all documentation files (README, docs/, \*.md)
    - Identify inline documentation (JSDoc, docstrings, comments)
 
 2. **Analyze for Issues**
@@ -118,27 +118,32 @@ Save to `agentic/analysis/doc.md`:
 ---
 
 ## Major Issues (Outdated/Incomplete)
+
 [Same format as Critical]
 
 ## Minor Issues (Improvements)
+
 [Same format as Critical]
 ```
 
 ## Issue Categories
 
 ### Critical (Wrong/Misleading)
+
 - Documents non-existent features
 - Wrong API signatures
 - Incorrect behavior descriptions
 - Security-related misinformation
 
 ### Major (Outdated/Incomplete)
+
 - Features added but not documented
 - Deprecated features still documented
 - Missing important sections
 - Outdated examples
 
 ### Minor (Improvements)
+
 - Typos and grammar issues
 - Unclear explanations
 - Missing examples

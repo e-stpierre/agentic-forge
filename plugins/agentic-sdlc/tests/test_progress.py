@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
-
-import pytest
 
 from agentic_sdlc.progress import (
     StepProgress,
     StepStatus,
     WorkflowProgress,
     WorkflowStatus,
+    _dict_to_progress,
+    _progress_to_dict,
     create_progress,
     generate_workflow_id,
     get_progress_path,
@@ -22,8 +21,6 @@ from agentic_sdlc.progress import (
     update_step_failed,
     update_step_skipped,
     update_step_started,
-    _dict_to_progress,
-    _progress_to_dict,
 )
 
 

@@ -22,13 +22,14 @@ steps:
     merge-mode: independent
     git:
       worktree: true
-      auto-pr: true
+      auto-pr: false
       branch-prefix: "agentic/analysis"
     steps:
       - name: bug-analysis
         type: serial
         steps:
           - name: analyse-bug
+            model: opus
             type: command
             command: analyse
             args:
@@ -49,6 +50,7 @@ steps:
         type: serial
         steps:
           - name: analyse-debt
+            model: opus
             type: command
             command: analyse
             args:
@@ -69,6 +71,7 @@ steps:
         type: serial
         steps:
           - name: analyse-doc
+            model: opus
             type: command
             command: analyse
             args:
@@ -89,6 +92,7 @@ steps:
         type: serial
         steps:
           - name: analyse-security
+            model: opus
             type: command
             command: analyse
             args:
@@ -109,6 +113,7 @@ steps:
         type: serial
         steps:
           - name: analyse-style
+            model: opus
             type: command
             command: analyse
             args:

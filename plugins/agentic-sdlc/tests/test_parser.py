@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from agentic_sdlc.parser import (
     StepType,
     WorkflowParseError,
@@ -14,9 +13,7 @@ from agentic_sdlc.parser import (
 class TestWorkflowParser:
     """Tests for WorkflowParser class."""
 
-    def test_parse_minimal_workflow(
-        self, sample_workflow_yaml: str, temp_dir
-    ) -> None:
+    def test_parse_minimal_workflow(self, sample_workflow_yaml: str, temp_dir) -> None:
         """Test parsing a minimal valid workflow."""
         workflow_file = temp_dir / "workflow.yaml"
         workflow_file.write_text(sample_workflow_yaml)
@@ -82,9 +79,7 @@ steps:
         with pytest.raises(WorkflowParseError, match="Invalid step type"):
             parser.parse_file(workflow_file)
 
-    def test_parse_parallel_workflow(
-        self, sample_parallel_workflow_yaml: str
-    ) -> None:
+    def test_parse_parallel_workflow(self, sample_parallel_workflow_yaml: str) -> None:
         """Test parsing workflow with parallel steps."""
         parser = WorkflowParser()
         workflow = parser.parse_string(sample_parallel_workflow_yaml)
@@ -98,9 +93,7 @@ steps:
         assert parallel_step.steps[0].name == "branch-a"
         assert parallel_step.steps[0].type == StepType.SERIAL
 
-    def test_parse_conditional_workflow(
-        self, sample_conditional_workflow_yaml: str
-    ) -> None:
+    def test_parse_conditional_workflow(self, sample_conditional_workflow_yaml: str) -> None:
         """Test parsing workflow with conditional steps."""
         parser = WorkflowParser()
         workflow = parser.parse_string(sample_conditional_workflow_yaml)

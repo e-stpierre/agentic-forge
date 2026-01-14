@@ -2,21 +2,19 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from agentic_sdlc.runner import (
+    MODEL_MAP,
     ClaudeResult,
     SessionOutput,
+    _get_agentic_system_prompt,
     check_claude_available,
     get_executable,
     run_claude,
     run_claude_with_command,
-    MODEL_MAP,
-    _get_agentic_system_prompt,
 )
 
 
@@ -320,6 +318,7 @@ class TestRunClaude:
 
         # Should handle timeout gracefully
         import subprocess
+
         mock_run.side_effect = subprocess.TimeoutExpired("claude", 300)
 
         result = run_claude("prompt", timeout=300, append_system_prompt=False)
@@ -430,6 +429,6 @@ class TestAgenticSystemPrompt:
     def test_get_agentic_system_prompt_not_exists(self, mock_path) -> None:
         """Test loading system prompt when file doesn't exist."""
         mock_path.exists.return_value = False
-        prompt = _get_agentic_system_prompt()
+        # Call function to verify it doesn't error
         # The actual implementation doesn't use the mock this way
-        # so this test may not work as expected
+        _get_agentic_system_prompt()

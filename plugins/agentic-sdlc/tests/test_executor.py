@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 from agentic_sdlc.executor import WorkflowExecutor
-from agentic_sdlc.parser import StepDefinition, StepType, WorkflowDefinition, WorkflowParser
+from agentic_sdlc.parser import StepType, WorkflowParser
 from agentic_sdlc.progress import WorkflowStatus
 
 
@@ -167,8 +166,7 @@ steps:
         executor = WorkflowExecutor(repo_root=temp_dir)
         progress = executor.run(workflow, from_step="step2", dry_run=True)
 
-        # step1 should be skipped
-        pending = progress.pending_steps
+        # step1 should be skipped, step2 starts execution
         # In dry run, all are pending but step1 should be skipped
         assert progress.status == WorkflowStatus.COMPLETED.value
 
@@ -264,10 +262,9 @@ outputs:
         executor = WorkflowExecutor(repo_root=temp_dir)
         progress = executor.run(workflow, dry_run=True)
 
-        # Output should be in workflow output directory
-        output_path = temp_dir / "agentic" / "outputs" / progress.workflow_id / "output.md"
         # In dry run with no template directory, this may not render
         # The test verifies the execution path doesn't error
+        assert progress is not None
 
 
 class TestWorkflowExecutorErrorHandling:

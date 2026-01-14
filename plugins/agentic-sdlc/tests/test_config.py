@@ -5,17 +5,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from agentic_sdlc.config import (
-    DEFAULT_CONFIG,
+    _deep_merge,
     get_config_path,
     get_config_value,
     get_default_config,
     load_config,
     save_config,
     set_config_value,
-    _deep_merge,
 )
 
 
@@ -165,9 +162,7 @@ class TestConfigValues:
         value = get_config_value("defaults.model", temp_dir)
         assert value == "opus"
 
-    def test_set_config_value_creates_nested_structure(
-        self, temp_dir: Path
-    ) -> None:
+    def test_set_config_value_creates_nested_structure(self, temp_dir: Path) -> None:
         """Test setting value creates nested structure if needed."""
         set_config_value("new.nested.key", "value", temp_dir)
 

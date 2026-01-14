@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from agentic_sdlc.ralph_loop import (
     CompletionResult,
-    RalphLoopState,
+    _parse_ralph_state,
     build_ralph_system_message,
     create_ralph_state,
     deactivate_ralph_state,
@@ -17,8 +15,6 @@ from agentic_sdlc.ralph_loop import (
     get_ralph_state_path,
     load_ralph_state,
     update_ralph_iteration,
-    _parse_ralph_state,
-    _save_ralph_state,
 )
 
 

@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from agentic_sdlc.git.worktree import (
     Worktree,
     _generate_suffix,
@@ -231,6 +230,7 @@ class TestGetDefaultBranch:
     @patch("agentic_sdlc.git.worktree._run_git")
     def test_get_default_branch_fallback_main(self, mock_run) -> None:
         """Test fallback to main branch."""
+
         def side_effect(args, **kwargs):
             if args[0] == "symbolic-ref":
                 result = MagicMock(returncode=1)

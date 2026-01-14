@@ -126,7 +126,7 @@ Save to `agentic/analysis/security.md`:
 ## Summary
 
 | Risk Level | Issues |
-|------------|--------|
+| ---------- | ------ |
 | Critical   | X      |
 | High       | Y      |
 | Medium     | Z      |
@@ -145,12 +145,15 @@ Save to `agentic/analysis/security.md`:
 ---
 
 ## High Risk
+
 [Same format as Critical]
 
 ## Medium Risk
+
 [Same format as Critical]
 
 ## Low Risk
+
 [Same format as Critical]
 ```
 

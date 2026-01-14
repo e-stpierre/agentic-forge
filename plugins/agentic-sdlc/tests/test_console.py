@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
-
-import pytest
 
 from agentic_sdlc.console import (
     Color,
     ConsoleOutput,
     OutputLevel,
-    extract_summary,
     _colorize,
-    _supports_color,
+    extract_summary,
 )
 
 
@@ -38,11 +34,21 @@ class TestColor:
     def test_all_colors_exist(self) -> None:
         """Test all expected colors exist."""
         colors = [
-            Color.RESET, Color.BOLD, Color.DIM,
-            Color.RED, Color.GREEN, Color.YELLOW,
-            Color.BLUE, Color.MAGENTA, Color.CYAN, Color.WHITE,
-            Color.BRIGHT_RED, Color.BRIGHT_GREEN, Color.BRIGHT_YELLOW,
-            Color.BRIGHT_BLUE, Color.BRIGHT_CYAN,
+            Color.RESET,
+            Color.BOLD,
+            Color.DIM,
+            Color.RED,
+            Color.GREEN,
+            Color.YELLOW,
+            Color.BLUE,
+            Color.MAGENTA,
+            Color.CYAN,
+            Color.WHITE,
+            Color.BRIGHT_RED,
+            Color.BRIGHT_GREEN,
+            Color.BRIGHT_YELLOW,
+            Color.BRIGHT_BLUE,
+            Color.BRIGHT_CYAN,
         ]
         assert len(colors) == 15
 
@@ -52,13 +58,15 @@ class TestColorize:
 
     def test_colorize_with_color_support(self, monkeypatch) -> None:
         """Test colorize when color is supported."""
+
         # Create a mock stdout that supports color
         class MockStdout:
             def isatty(self):
                 return True
 
         import sys
-        monkeypatch.setattr(sys, 'stdout', MockStdout())
+
+        monkeypatch.setattr(sys, "stdout", MockStdout())
 
         result = _colorize("test", Color.RED)
         assert Color.RED.value in result
@@ -67,12 +75,14 @@ class TestColorize:
 
     def test_colorize_multiple_colors(self, monkeypatch) -> None:
         """Test colorize with multiple color codes."""
+
         class MockStdout:
             def isatty(self):
                 return True
 
         import sys
-        monkeypatch.setattr(sys, 'stdout', MockStdout())
+
+        monkeypatch.setattr(sys, "stdout", MockStdout())
 
         result = _colorize("test", Color.BOLD, Color.RED)
         assert Color.BOLD.value in result
@@ -366,7 +376,7 @@ Line 7
         summary = extract_summary(output, max_lines=3)
 
         # Should have at most 3 lines (excluding empty ones)
-        lines = [l for l in summary.split("\n") if l.strip()]
+        lines = [line for line in summary.split("\n") if line.strip()]
         assert len(lines) <= 3
 
     def test_extract_summary_max_chars(self) -> None:

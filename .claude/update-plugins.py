@@ -49,6 +49,7 @@ def get_executable(name: str) -> str:
         raise FileNotFoundError(f"Executable not found in PATH: {name}")
     return path
 
+
 # Enable UTF-8 mode for Windows console output
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")

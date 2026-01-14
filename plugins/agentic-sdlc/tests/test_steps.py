@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from agentic_sdlc.console import ConsoleOutput
 from agentic_sdlc.logging.logger import WorkflowLogger
 from agentic_sdlc.parser import StepDefinition, StepType, WorkflowSettings
@@ -59,6 +58,7 @@ def mock_logger() -> MagicMock:
 def mock_console() -> ConsoleOutput:
     """Create a mock console."""
     import io
+
     return ConsoleOutput(stream=io.StringIO())
 
 

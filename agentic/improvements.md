@@ -526,7 +526,7 @@ self.env = SandboxedEnvironment(
 
 **References**:
 
-- CWE-1336: https://cwe.mitre.org/data/definitions/1336.html
+- CWE-1336: <https://cwe.mitre.org/data/definitions/1336.html>
 - OWASP A03:2021 Injection
 
 **Acceptance Criteria**:
@@ -642,7 +642,7 @@ process = subprocess.Popen(
 
 **References**:
 
-- CWE-78: https://cwe.mitre.org/data/definitions/78.html
+- CWE-78: <https://cwe.mitre.org/data/definitions/78.html>
 - OWASP A03:2021 Injection
 
 **Acceptance Criteria**:
@@ -853,69 +853,69 @@ plugins/agentic-sdlc/
 
 1. `conftest.py` - Shared fixtures:
 
-```python
-import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-import tempfile
+   ```python
+   import pytest
+   from pathlib import Path
+   from unittest.mock import MagicMock, patch
+   import tempfile
 
-@pytest.fixture
-def temp_dir():
-    """Create a temporary directory for test files."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir)
+   @pytest.fixture
+   def temp_dir():
+       """Create a temporary directory for test files."""
+       with tempfile.TemporaryDirectory() as tmpdir:
+           yield Path(tmpdir)
 
-@pytest.fixture
-def mock_subprocess():
-    """Mock subprocess.Popen for Claude calls."""
-    with patch('agentic_sdlc.runner.subprocess.Popen') as mock:
-        process = MagicMock()
-        process.communicate.return_value = ('{"success": true}', '')
-        process.returncode = 0
-        mock.return_value = process
-        yield mock
+   @pytest.fixture
+   def mock_subprocess():
+       """Mock subprocess.Popen for Claude calls."""
+       with patch('agentic_sdlc.runner.subprocess.Popen') as mock:
+           process = MagicMock()
+           process.communicate.return_value = ('{"success": true}', '')
+           process.returncode = 0
+           mock.return_value = process
+           yield mock
 
-@pytest.fixture
-def sample_workflow_yaml():
-    """Return a minimal valid workflow YAML."""
-    return """
-name: test-workflow
-version: "1.0"
-steps:
-  - name: test-step
-    type: prompt
-    prompt: "Test prompt"
-"""
-```
+   @pytest.fixture
+   def sample_workflow_yaml():
+       """Return a minimal valid workflow YAML."""
+       return """
+   name: test-workflow
+   version: "1.0"
+   steps:
+   - name: test-step
+       type: prompt
+       prompt: "Test prompt"
+   """
+   ```
 
 2. `test_parser.py` - 3-5 initial parser tests:
 
-```python
-import pytest
-from agentic_sdlc.parser import parse_workflow
+   ```python
+   import pytest
+   from agentic_sdlc.parser import parse_workflow
 
-def test_parse_minimal_workflow(sample_workflow_yaml, temp_dir):
-    """Test parsing a minimal valid workflow."""
-    workflow_file = temp_dir / "workflow.yaml"
-    workflow_file.write_text(sample_workflow_yaml)
-    workflow = parse_workflow(workflow_file)
-    assert workflow.name == "test-workflow"
-    assert len(workflow.steps) == 1
+   def test_parse_minimal_workflow(sample_workflow_yaml, temp_dir):
+       """Test parsing a minimal valid workflow."""
+       workflow_file = temp_dir / "workflow.yaml"
+       workflow_file.write_text(sample_workflow_yaml)
+       workflow = parse_workflow(workflow_file)
+       assert workflow.name == "test-workflow"
+       assert len(workflow.steps) == 1
 
-def test_parse_missing_name_raises_error(temp_dir):
-    """Test that missing name field raises validation error."""
-    workflow_file = temp_dir / "workflow.yaml"
-    workflow_file.write_text("steps: []")
-    with pytest.raises(ValueError):
-        parse_workflow(workflow_file)
+   def test_parse_missing_name_raises_error(temp_dir):
+       """Test that missing name field raises validation error."""
+       workflow_file = temp_dir / "workflow.yaml"
+       workflow_file.write_text("steps: []")
+       with pytest.raises(ValueError):
+           parse_workflow(workflow_file)
 
-def test_parse_invalid_yaml_raises_error(temp_dir):
-    """Test that invalid YAML syntax raises error."""
-    workflow_file = temp_dir / "workflow.yaml"
-    workflow_file.write_text("name: [invalid yaml")
-    with pytest.raises(Exception):
-        parse_workflow(workflow_file)
-```
+   def test_parse_invalid_yaml_raises_error(temp_dir):
+       """Test that invalid YAML syntax raises error."""
+       workflow_file = temp_dir / "workflow.yaml"
+       workflow_file.write_text("name: [invalid yaml")
+       with pytest.raises(Exception):
+           parse_workflow(workflow_file)
+   ```
 
 3. `test_config.py` - Configuration merge test:
 
@@ -988,9 +988,9 @@ def test_load_default_config():
 
 **Deferred Items**:
 
-- CLI command handlers (commands/*.py) - 0% coverage, not critical for core functionality
+- CLI command handlers (commands/\*.py) - 0% coverage, not critical for core functionality
 - Orchestrator (orchestrator.py) - 0% coverage, complex decision loop logic
-- Memory module (memory/*.py) - 0% coverage, optional feature
+- Memory module (memory/\*.py) - 0% coverage, optional feature
 
 **Acceptance Criteria**:
 

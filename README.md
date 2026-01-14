@@ -174,7 +174,7 @@ In workflow YAML files, always use the full namespace to ensure the correct plug
 ```yaml
 steps:
   - type: command
-    command: agentic-sdlc:validate  # Explicit - uses agentic-sdlc plugin
+    command: agentic-sdlc:validate # Explicit - uses agentic-sdlc plugin
 ```
 
 Refer to individual plugin documentation for specific usage instructions and examples.
