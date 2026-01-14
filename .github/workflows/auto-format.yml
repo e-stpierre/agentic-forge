@@ -2,7 +2,7 @@ name: Auto-Format Code
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    branches: [main]
 
 concurrency:
   group: format-${{ github.event.pull_request.number }}
