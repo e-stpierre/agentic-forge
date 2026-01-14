@@ -1,10 +1,32 @@
 """Claude CLI provider implementation."""
 
 import json
+import shutil
 from pathlib import Path
 from typing import Optional
 
 from agentic_core.providers.base import CLIProvider, InvocationResult, ProviderCapabilities
+
+
+def get_executable(name: str) -> str:
+    """Resolve executable path for cross-platform subprocess calls.
+
+    Uses shutil.which() to find the full path, allowing shell=False
+    in subprocess calls while maintaining Windows compatibility.
+
+    Args:
+        name: Executable name (e.g., "claude", "git")
+
+    Returns:
+        Full path to the executable
+
+    Raises:
+        FileNotFoundError: If executable not found in PATH
+    """
+    path = shutil.which(name)
+    if not path:
+        raise FileNotFoundError(f"Executable not found in PATH: {name}")
+    return path
 
 
 class ClaudeProvider(CLIProvider):
@@ -150,12 +172,13 @@ class ClaudeProvider(CLIProvider):
         import subprocess
 
         try:
+            exec_path = get_executable(self.cli_path)
             result = subprocess.run(
-                [self.cli_path, "--version"],
+                [exec_path, "--version"],
                 capture_output=True,
                 text=True,
                 timeout=10,
-                shell=True,  # Required on Windows for PATH resolution
+                shell=False,
             )
             return result.returncode == 0
         except Exception:

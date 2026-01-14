@@ -1,0 +1,26 @@
+name: plan1-test
+version: "1.0"
+description: Test workflow for Plan 1 validation
+
+variables:
+  - name: task_description
+    type: string
+    required: true
+    description: What to analyze
+
+steps:
+  - name: analyze
+    type: prompt
+    prompt: |
+      Analyze the following task and provide a brief summary:
+      {{ task_description }}
+
+      Respond with only a 2-3 sentence summary.
+    model: haiku
+
+  - name: confirm
+    type: prompt
+    prompt: |
+      Based on the previous analysis, confirm you understood the task.
+      Say "Analysis complete" and nothing else.
+    model: haiku

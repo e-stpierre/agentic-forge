@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import signal
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -50,6 +48,7 @@ from agentic_sdlc.ralph_loop import (
 )
 from agentic_sdlc.renderer import TemplateRenderer
 from agentic_sdlc.runner import run_claude
+from agentic_sdlc.signal_manager import SignalManager, handle_graceful_shutdown
 
 if TYPE_CHECKING:
     from typing import Any
@@ -83,20 +82,15 @@ class WorkflowOrchestrator:
         self.config = load_config(self.repo_root)
         self.renderer = TemplateRenderer()
         self.executor = WorkflowExecutor(self.repo_root)
-        self._shutdown_requested = False
         self._running_processes: list = []
 
-        if sys.platform != "win32":
-            signal.signal(signal.SIGINT, self._handle_shutdown)
-            signal.signal(signal.SIGTERM, self._handle_shutdown)
-        else:
-            signal.signal(signal.SIGINT, self._handle_shutdown)
-            signal.signal(signal.SIGBREAK, self._handle_shutdown)
+        # Initialize signal manager for graceful shutdown
+        self._signal_manager = SignalManager()
 
-    def _handle_shutdown(self, signum: int, frame: Any) -> None:
-        """Handle graceful shutdown on SIGINT/SIGTERM."""
-        self._shutdown_requested = True
-        print("\nShutdown requested, cleaning up...")
+    @property
+    def _shutdown_requested(self) -> bool:
+        """Check if shutdown has been requested."""
+        return self._signal_manager.shutdown_requested
 
     def _resolve_model(self, step_model: str | None) -> str:
         """Resolve the model to use for a step.
@@ -710,10 +704,7 @@ class WorkflowOrchestrator:
         logger: WorkflowLogger,
     ) -> None:
         """Handle graceful shutdown."""
-        logger.info("orchestrator", "Performing graceful shutdown")
-        progress.status = WorkflowStatus.CANCELLED.value
-
-        prune_orphaned(self.repo_root)
+        handle_graceful_shutdown(progress, logger, self.repo_root)
 
     def _workflow_to_dict(self, workflow: WorkflowDefinition) -> dict[str, Any]:
         """Convert workflow to dict for YAML serialization."""

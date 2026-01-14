@@ -10,7 +10,6 @@ settings:
     enabled: true
     worktree: true
     auto-commit: true
-    auto-pr: true
     branch-prefix: "agentic"
 
 variables:
@@ -41,7 +40,7 @@ steps:
 
   - name: validate
     type: command
-    command: validate
+    command: agentic-sdlc:validate
     args:
       severity: major
 
@@ -51,6 +50,6 @@ steps:
     then:
       - name: open-pr
         type: command
-        command: git-pr
+        command: agentic-sdlc:git-pr
         args:
           draft: false

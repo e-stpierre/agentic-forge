@@ -1,0 +1,67 @@
+name: ralph-loop
+version: "1.0"
+description: Workflow using the Ralph Wiggum iterative loop pattern
+
+settings:
+  max-retry: 3
+  timeout-minutes: 120
+  track-progress: true
+  bypass-permissions: true
+  git:
+    enabled: true
+    auto-commit: true
+    auto-pr: false
+
+variables:
+  - name: task
+    type: string
+    required: true
+    description: Task to complete iteratively
+  - name: completion_promise
+    type: string
+    required: false
+    default: TASK_COMPLETE
+    description: Completion promise text that signals the loop should exit
+  - name: max_iterations
+    type: number
+    required: false
+    default: 5
+    description: Maximum iterations before stopping
+
+steps:
+  - name: iterative-task
+    type: ralph-loop
+    prompt: |
+      ## Task
+      {{ variables.task }}
+
+      ## Important Notes
+      - The project is a WIP, breaking change can be made without coding backward compatibility
+      - Any code can be changed if necessary
+      - If you find a bug or something that does not work as expected, fix it.
+
+      ## Instructions
+      1. Analyze the current state of the codebase
+      2. Identify what needs to be done next
+      3. Make incremental progress on the task
+      4. Commit your changes with a clear message
+      5. Assess if the task is fully complete
+
+      ## Completion
+      When the task is FULLY complete and verified, output:
+      ```json
+      {"ralph_complete": true, "promise": "{{ variables.completion_promise }}"}
+      ```
+
+      IMPORTANT: Only output the completion JSON when everything is genuinely done.
+      Do not output false promises to exit early.
+    max-iterations: "{{ variables.max_iterations }}"
+    completion-promise: "{{ variables.completion_promise }}"
+    model: opus
+    timeout-minutes: 30
+
+outputs:
+  - name: ralph-report
+    template: ralph-report.md.j2
+    path: agentic/outputs/{{ workflow_id }}/ralph-report.md
+    when: completed

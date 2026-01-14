@@ -2,15 +2,23 @@
 
 from typing import Any, Optional
 
-from jinja2 import Environment, StrictUndefined
+from jinja2 import StrictUndefined
+from jinja2.sandbox import SandboxedEnvironment
 
 
 class TemplateResolver:
-    """Resolves Jinja2 templates in workflow prompts and configurations."""
+    """Resolves Jinja2 templates in workflow prompts and configurations.
+
+    Uses SandboxedEnvironment to prevent template injection attacks.
+    The sandbox restricts access to dangerous attributes and methods,
+    preventing malicious templates from executing arbitrary Python code.
+    """
 
     def __init__(self):
         """Initialize template resolver."""
-        self.env = Environment(
+        # Use SandboxedEnvironment to prevent SSTI attacks
+        # autoescape=False is intentional: we render prompts/markdown, not HTML
+        self.env = SandboxedEnvironment(
             undefined=StrictUndefined,
             autoescape=False,
             trim_blocks=True,

@@ -238,7 +238,7 @@
         },
         "git": {
           "$ref": "#/definitions/step-git",
-          "description": "Git settings for parallel step branches (worktree isolation, auto-pr)"
+          "description": "Git settings for parallel step branches (worktree isolation)"
         }
       }
     },
@@ -250,11 +250,6 @@
           "type": "boolean",
           "default": false,
           "description": "Run each parallel branch in a dedicated worktree"
-        },
-        "auto-pr": {
-          "type": "boolean",
-          "default": false,
-          "description": "Create a PR for each parallel branch on completion"
         },
         "branch-prefix": {
           "type": "string",

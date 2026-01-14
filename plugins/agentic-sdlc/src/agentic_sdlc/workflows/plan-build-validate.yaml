@@ -10,7 +10,6 @@ settings:
     enabled: true
     worktree: true
     auto-commit: true
-    auto-pr: true
     branch-prefix: "feature"
 
 variables:
@@ -28,11 +27,16 @@ variables:
     required: false
     default: "major"
     description: Minimum severity for auto-fix
+  - name: create_pr
+    type: boolean
+    required: false
+    default: true
+    description: Whether to create a PR
 
 steps:
   - name: plan
     type: command
-    command: plan
+    command: agentic-sdlc:plan
     args:
       type: "{{ variables.type }}"
       context: "{{ variables.task }}"
@@ -62,7 +66,7 @@ steps:
 
   - name: validate
     type: command
-    command: validate
+    command: agentic-sdlc:validate
     args:
       plan: "agentic/outputs/{{ workflow_id }}/plan.md"
       severity: minor
@@ -84,19 +88,23 @@ steps:
 
       - name: revalidate
         type: command
-        command: validate
+        command: agentic-sdlc:validate
         args:
           severity: "{{ variables.fix_severity }}"
 
   - name: create-pr
-    type: command
-    command: git-pr
-    args:
-      title: "{{ outputs.plan.summary }}"
-      draft: false
+    type: conditional
+    condition: "variables.create_pr"
+    then:
+      - name: open-pr
+        type: command
+        command: agentic-sdlc:git-pr
+        args:
+          title: "{{ outputs.plan.summary }}"
+          draft: false
 
 outputs:
   - name: implementation-report
     template: implementation-report.md.j2
-    path: agentic/outputs/{{ workflow_id }}/report.md
+    path: report.md
     when: completed

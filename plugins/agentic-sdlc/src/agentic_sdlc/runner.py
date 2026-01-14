@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import re
+import shutil
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,11 +15,103 @@ if TYPE_CHECKING:
 
     from agentic_sdlc.console import ConsoleOutput
 
+
+def get_executable(name: str) -> str:
+    """Resolve executable path for cross-platform subprocess calls.
+
+    Uses shutil.which() to find the full path, allowing shell=False
+    in subprocess calls while maintaining Windows compatibility.
+
+    Args:
+        name: Executable name (e.g., "claude", "git")
+
+    Returns:
+        Full path to the executable
+
+    Raises:
+        FileNotFoundError: If executable not found in PATH
+    """
+    path = shutil.which(name)
+    if not path:
+        raise FileNotFoundError(f"Executable not found in PATH: {name}")
+    return path
+
+
 MODEL_MAP = {
     "sonnet": "sonnet",
     "haiku": "haiku",
     "opus": "opus",
 }
+
+# Path to the agentic system prompt file
+AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent.parent.parent / "prompts" / "agentic-system.md"
+
+
+def _get_agentic_system_prompt() -> str | None:
+    """Load the agentic system prompt from file.
+
+    Returns:
+        The system prompt content, or None if the file doesn't exist.
+    """
+    if AGENTIC_SYSTEM_PROMPT_FILE.exists():
+        return AGENTIC_SYSTEM_PROMPT_FILE.read_text(encoding="utf-8")
+    return None
+
+
+@dataclass
+class SessionOutput:
+    """Parsed output from a Claude session with standardized format."""
+
+    session_id: str | None = None
+    is_success: bool = False
+    context: str = ""
+    extra: dict[str, Any] = field(default_factory=dict)
+    raw_json: dict[str, Any] | None = None
+
+    @classmethod
+    def from_stdout(cls, stdout: str) -> SessionOutput:
+        """Extract the session output JSON from Claude's stdout.
+
+        Looks for the last JSON block that contains the required base keys
+        (sessionId, isSuccess, context).
+
+        Args:
+            stdout: The full stdout from Claude session
+
+        Returns:
+            SessionOutput with parsed values, or defaults if not found
+        """
+        if not stdout:
+            return cls(context="No output received from Claude session")
+
+        # Find all JSON blocks in the output
+        json_pattern = r"```(?:json)?\s*(\{[^`]*\})\s*```"
+        matches = re.findall(json_pattern, stdout, re.DOTALL)
+
+        # Also look for bare JSON objects at the end of output
+        bare_json_pattern = r"\{[^{}]*\"sessionId\"[^{}]*\}"
+        bare_matches = re.findall(bare_json_pattern, stdout, re.DOTALL)
+
+        all_matches = matches + bare_matches
+
+        # Try to parse each match, starting from the last (most recent)
+        for match in reversed(all_matches):
+            try:
+                data = json.loads(match)
+                # Check if it has the required base keys
+                if "sessionId" in data and "isSuccess" in data and "context" in data:
+                    extra = {k: v for k, v in data.items() if k not in ("sessionId", "isSuccess", "context")}
+                    return cls(
+                        session_id=data.get("sessionId"),
+                        is_success=bool(data.get("isSuccess", False)),
+                        context=data.get("context", ""),
+                        extra=extra,
+                        raw_json=data,
+                    )
+            except json.JSONDecodeError:
+                continue
+
+        return cls(context="No valid session output JSON found in Claude response")
 
 
 @dataclass
@@ -29,11 +124,22 @@ class ClaudeResult:
     prompt: str
     cwd: Path | None
     model: str | None = None
+    _session_output: SessionOutput | None = None
 
     @property
     def success(self) -> bool:
         """Return True if the command completed successfully."""
         return self.returncode == 0
+
+    @property
+    def session_output(self) -> SessionOutput:
+        """Parse and return the session output from stdout.
+
+        The session output is parsed lazily on first access.
+        """
+        if self._session_output is None:
+            self._session_output = SessionOutput.from_stdout(self.stdout)
+        return self._session_output
 
     def __str__(self) -> str:
         status = "SUCCESS" if self.success else "FAILED"
@@ -50,6 +156,7 @@ def run_claude(
     skip_permissions: bool = False,
     allowed_tools: list[str] | None = None,
     console: ConsoleOutput | None = None,
+    append_system_prompt: bool = True,
 ) -> ClaudeResult:
     """Run claude with the given prompt.
 
@@ -62,11 +169,13 @@ def run_claude(
         skip_permissions: Whether to skip permission prompts
         allowed_tools: List of tools Claude is allowed to use without prompting
         console: Optional console output handler for streaming
+        append_system_prompt: Whether to append the agentic system prompt (default True)
 
     Returns:
         ClaudeResult with captured output
     """
-    cmd = ["claude", "--print"]
+    claude_path = get_executable("claude")
+    cmd = [claude_path, "--print"]
 
     if model and model in MODEL_MAP:
         cmd.extend(["--model", MODEL_MAP[model]])
@@ -78,6 +187,12 @@ def run_claude(
         for tool in allowed_tools:
             cmd.extend(["--allowedTools", tool])
 
+    # Append agentic system prompt for standardized output format
+    if append_system_prompt:
+        system_prompt = _get_agentic_system_prompt()
+        if system_prompt:
+            cmd.extend(["--append-system-prompt", system_prompt])
+
     cwd_str = str(cwd) if cwd else None
 
     if print_output:
@@ -88,7 +203,7 @@ def run_claude(
             stderr=subprocess.PIPE,
             text=True,
             cwd=cwd_str,
-            shell=True,
+            shell=False,
         )
 
         if process.stdin:
@@ -129,7 +244,7 @@ def run_claude(
                 text=True,
                 cwd=cwd_str,
                 timeout=timeout,
-                shell=True,
+                shell=False,
             )
             return ClaudeResult(
                 returncode=result.returncode,
@@ -179,11 +294,12 @@ def check_claude_available() -> bool:
         True if claude is available, False otherwise
     """
     try:
+        claude_path = get_executable("claude")
         result = subprocess.run(
-            ["claude", "--version"],
+            [claude_path, "--version"],
             capture_output=True,
             text=True,
-            shell=True,
+            shell=False,
             timeout=10,
         )
         return result.returncode == 0

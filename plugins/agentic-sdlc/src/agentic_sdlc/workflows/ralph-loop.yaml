@@ -32,8 +32,17 @@ steps:
   - name: iterative-task
     type: ralph-loop
     prompt: |
+      ## Ralph Wiggum Loop - Iteration {{iteration}}/{{max_iterations}}
+
+      You are in a Ralph Wiggum iterative loop. Each iteration starts a fresh session.
+
       ## Task
       {{ variables.task }}
+
+      ## How Iterations Work
+      - Each iteration is independent - just STOP when your unit of work is done
+      - The loop automatically starts a new iteration after you stop
+      - You do NOT need to output anything special to end an iteration - just stop working
 
       ## Instructions
       1. Analyze the current state of the codebase
@@ -42,14 +51,16 @@ steps:
       4. Commit your changes with a clear message
       5. Assess if the task is fully complete
 
-      ## Completion
-      When the task is FULLY complete and verified, output:
+      ## Completion Signal
+      When your task is FULLY complete (not just one step), output:
       ```json
       {"ralph_complete": true, "promise": "{{ variables.completion_promise }}"}
       ```
 
-      IMPORTANT: Only output the completion JSON when everything is genuinely done.
-      Do not output false promises to exit early.
+      **IMPORTANT**:
+      - Only output the completion JSON when the ENTIRE task is genuinely finished
+      - If you're doing iterative work (one item at a time), do NOT output completion after each item
+      - Simply STOP after completing your iteration - no special output needed
     max-iterations: "{{ variables.max_iterations }}"
     completion-promise: "{{ variables.completion_promise }}"
     model: sonnet
@@ -58,5 +69,5 @@ steps:
 outputs:
   - name: ralph-report
     template: ralph-report.md.j2
-    path: agentic/outputs/{{ workflow_id }}/ralph-report.md
+    path: ralph-report.md
     when: completed
