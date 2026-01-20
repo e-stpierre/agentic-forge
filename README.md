@@ -195,6 +195,10 @@ Open the workspace file (`.vscode/agentic-forge.code-workspace`) and install rec
 
 CI automatically formats code on pull requests. To run locally: `pnpm check`
 
+## Credits
+
+- [Geoffrey Huntley](https://ghuntley.com/ralph/) - Ralph Wiggum as a "software engineer"
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
