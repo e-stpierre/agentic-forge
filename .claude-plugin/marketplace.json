@@ -5,7 +5,7 @@
     "email": "me@estpierre.dev"
   },
   "metadata": {
-    "description": "Extensions for Claude Code featuring interactive commands for guided development and Python-based agentic workflows with YAML orchestration for autonomous multi-step tasks",
+    "description": "Claude Code plugins featuring interactive commands for guided development and Python-based agentic workflows with YAML orchestration for autonomous multi-step tasks",
     "version": "0.1.0"
   },
   "plugins": [

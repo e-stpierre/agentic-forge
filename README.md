@@ -1,62 +1,21 @@
-# Agentic Forge
+<p align="center">
+  <img src="agentic-forge.png" alt="Agentic Forge" width="500">
+</p>
 
-[![Auto-Format Code](https://github.com/e-stpierre/agentic-forge/actions/workflows/auto-format.yml/badge.svg)](https://github.com/e-stpierre/agentic-forge/actions/workflows/auto-format.yml)
+<h1 align="center">Agentic Forge</h1>
 
-A modular collection of commands, sub-agents, skills, and hooks designed to extend and customize Claude Code for both generic and specialized development scenarios.
+<p align="center">
+  <a href="https://claude.ai/code"><img src="https://img.shields.io/badge/Built%20for-Claude%20Code-orange" alt="Built for Claude Code"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
 
-This repository provides a plug-and-play framework to define reusable automation units — from lightweight code utilities to fully autonomous agent behaviors — that enhance Claude's coding workflow, environment integration, and project
-orchestration capabilities.
+<p align="center">
+  <strong>Claude Code plugins for interactive and autonomous development workflows</strong>
+</p>
 
-## Features
-
-### Command
-
-Ready-to-use slash commands for automation, scripting, and file manipulation. Commands provide quick access to common development workflows and can be composed to build complex automation pipelines.
-
-- **Quick Actions**: Instant access to frequently-used development tasks
-- **Composable**: Chain commands together for powerful workflows
-- **Context-Aware**: Commands can adapt based on project context
-
-### Sub-Agents
-
-Specialized agent personalities and workflows for focused domains. Sub-agents bring domain expertise and autonomous task execution to specific problem areas.
-
-- **Domain Experts**: DevOps, testing, code review, documentation, and more
-- **Autonomous Workflows**: Let specialized agents handle complex multi-step tasks
-- **Customizable Behavior**: Configure agent personalities and capabilities
-
-### Skill
-
-Composable building blocks for logic, data processing, and system interaction. Skills are reusable components that agents and commands can leverage.
-
-- **Reusable Logic**: Share common functionality across commands and agents
-- **Extensible**: Build new skills on top of existing ones
-- **Interoperable**: Skills work seamlessly with all plugin types
-
-### Hooks
-
-Extend Claude Code's runtime behavior to inject context, monitor state, or adapt responses dynamically. Hooks enable event-driven customization of the development environment.
-
-- **Event-Driven**: React to session start, tool calls, and other events
-- **State Monitoring**: Track and respond to changes in your development environment
-- **Dynamic Context**: Inject relevant information based on current state
-
-## Repository Structure
-
-```
-agentic-forge/
-├── docs/                   # Documentation, guides and templates
-├── experimental-plugins/   # Experimental early-access plugins
-└── plugins/                # Root folder for all official plugins
-    └── <plugin-name>/
-        ├── agents/         # Sub-agent configurations
-        ├── commands/       # Slash command definitions
-        ├── skills/         # Reusable skill modules
-        ├── hooks/          # Runtime hooks and event handlers
-        └── README.md       # Plugin-specific documentation
-```
-
-Each plugin is self-contained within its own directory under `plugins/`, allowing for modular installation and management.
+<p align="center">
+  Interactive commands for guided development | YAML-based agentic workflows | Multi-step task orchestration
+</p>
 
 ## Getting Started
 
