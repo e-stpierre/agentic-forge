@@ -1,97 +1,78 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "agentic-forge",
-  "version": "1.0.0",
-  "description": "Ready-to-use collection of modular extensions for Claude Code including commands, sub-agents, skills, and hooks for various development scenarios",
   "owner": {
-    "name": "Étienne St-Pierre"
+    "name": "Étienne St-Pierre",
+    "email": "me@estpierre.dev"
+  },
+  "metadata": {
+    "description": "Claude Code plugins featuring interactive commands for guided development and Python-based agentic workflows with YAML orchestration for autonomous multi-step tasks",
+    "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "interactive-sdlc",
-      "source": "./",
+      "source": "./plugins/interactive-sdlc",
       "description": "[Beta] Interactive SDLC commands for guided development within Claude Code sessions",
       "version": "0.1.0",
-      "category": "sdlc",
       "author": {
-        "name": "Étienne St-Pierre"
+        "name": "Étienne St-Pierre",
+        "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": [
-        "beta",
-        "sdlc",
-        "interactive",
-        "planning",
-        "building",
-        "validation",
-        "workflows",
-        "git",
-        "github"
-      ],
+      "keywords": ["beta", "sdlc", "interactive"],
+      "category": "interactive",
       "strict": false,
       "commands": [
-        "./plugins/interactive-sdlc/commands/configure.md",
-        "./plugins/interactive-sdlc/commands/plan/plan-chore.md",
-        "./plugins/interactive-sdlc/commands/plan/plan-bug.md",
-        "./plugins/interactive-sdlc/commands/plan/plan-feature.md",
-        "./plugins/interactive-sdlc/commands/dev/build.md",
-        "./plugins/interactive-sdlc/commands/dev/validate.md",
-        "./plugins/interactive-sdlc/commands/dev/document.md",
-        "./plugins/interactive-sdlc/commands/workflows/one-shot.md",
-        "./plugins/interactive-sdlc/commands/workflows/plan-build-validate.md",
-        "./plugins/interactive-sdlc/commands/analyse/analyse-bug.md",
-        "./plugins/interactive-sdlc/commands/analyse/analyse-doc.md",
-        "./plugins/interactive-sdlc/commands/analyse/analyse-debt.md",
-        "./plugins/interactive-sdlc/commands/analyse/analyse-style.md",
-        "./plugins/interactive-sdlc/commands/analyse/analyse-security.md",
-        "./plugins/interactive-sdlc/commands/git/git-branch.md",
-        "./plugins/interactive-sdlc/commands/git/git-commit.md",
-        "./plugins/interactive-sdlc/commands/git/git-pr.md",
-        "./plugins/interactive-sdlc/commands/github/create-gh-issue.md",
-        "./plugins/interactive-sdlc/commands/github/read-gh-issue.md"
+        "./commands/configure.md",
+        "./commands/plan/plan-chore.md",
+        "./commands/plan/plan-bug.md",
+        "./commands/plan/plan-feature.md",
+        "./commands/dev/build.md",
+        "./commands/dev/validate.md",
+        "./commands/dev/document.md",
+        "./commands/workflows/one-shot.md",
+        "./commands/workflows/plan-build-validate.md",
+        "./commands/analyse/analyse-bug.md",
+        "./commands/analyse/analyse-doc.md",
+        "./commands/analyse/analyse-debt.md",
+        "./commands/analyse/analyse-style.md",
+        "./commands/analyse/analyse-security.md",
+        "./commands/git/git-branch.md",
+        "./commands/git/git-commit.md",
+        "./commands/git/git-pr.md",
+        "./commands/github/create-gh-issue.md",
+        "./commands/github/read-gh-issue.md"
       ]
     },
     {
       "name": "agentic-sdlc",
-      "source": "./",
+      "source": "./plugins/agentic-sdlc",
       "description": "[Beta] YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory for complex multi-step tasks",
       "version": "0.1.0",
-      "category": "sdlc",
       "author": {
-        "name": "Étienne St-Pierre"
+        "name": "Étienne St-Pierre",
+        "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": [
-        "beta",
-        "workflows",
-        "yaml",
-        "orchestration",
-        "parallel",
-        "autonomous",
-        "agentic",
-        "memory",
-        "python"
-      ],
+      "keywords": ["beta", "sdlc", "agentic"],
+      "category": "agentic",
       "strict": false,
       "commands": [
-        "./plugins/agentic-sdlc/commands/analyse.md",
-        "./plugins/agentic-sdlc/commands/build.md",
-        "./plugins/agentic-sdlc/commands/orchestrate.md",
-        "./plugins/agentic-sdlc/commands/plan.md",
-        "./plugins/agentic-sdlc/commands/validate.md",
-        "./plugins/agentic-sdlc/commands/git/branch.md",
-        "./plugins/agentic-sdlc/commands/git/commit.md",
-        "./plugins/agentic-sdlc/commands/git/pr.md"
+        "./commands/analyse.md",
+        "./commands/build.md",
+        "./commands/orchestrate.md",
+        "./commands/plan.md",
+        "./commands/validate.md",
+        "./commands/git/branch.md",
+        "./commands/git/commit.md",
+        "./commands/git/pr.md"
       ],
-      "agents": [
-        "./plugins/agentic-sdlc/agents/explorer.md",
-        "./plugins/agentic-sdlc/agents/reviewer.md"
-      ],
+      "agents": ["./agents/explorer.md", "./agents/reviewer.md"],
       "skills": [
-        "./plugins/agentic-sdlc/skills/create-checkpoint.md",
-        "./plugins/agentic-sdlc/skills/create-log.md",
-        "./plugins/agentic-sdlc/skills/create-memory.md",
-        "./plugins/agentic-sdlc/skills/search-memory.md"
+        "./skills/create-checkpoint.md",
+        "./skills/create-log.md",
+        "./skills/create-memory.md",
+        "./skills/search-memory.md"
       ]
     }
   ]

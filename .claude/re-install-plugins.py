@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run python
 """
-Update all plugins from the local marketplace.
+Reinstall all plugins and Python CLI tools from the local marketplace.
 
 This script:
 1. Creates a staged copy of the repo (excluding node_modules, .git, etc.)
@@ -9,14 +9,14 @@ This script:
 4. Force reinstalls the Python tools (agentic-core, agentic-sdlc)
 
 Usage:
-    uv run .claude/update-plugins.py
+    uv run .claude/re-install-plugins.py
 
     Or run from anywhere:
-    uv run path/to/update-plugins.py
+    uv run path/to/re-install-plugins.py
 
     Reinstall specific plugins only:
-    uv run .claude/update-plugins.py agentic-sdlc
-    uv run .claude/update-plugins.py interactive-sdlc agentic-sdlc
+    uv run .claude/re-install-plugins.py agentic-sdlc
+    uv run .claude/re-install-plugins.py interactive-sdlc agentic-sdlc
 """
 
 import argparse
