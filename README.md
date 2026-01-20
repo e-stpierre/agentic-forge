@@ -40,14 +40,6 @@ Once the marketplace is added, browse and install plugins using the plugin menu 
 /plugin
 ```
 
-This opens an interactive menu where you can:
-
-- Browse all available plugins from the marketplace
-- View plugin descriptions and capabilities
-- Install plugins directly to your project
-- Manage installed plugins
-- Update marketplace and plugins
-
 ### Python CLI
 
 Some plugins include Python CLI tools for workflow orchestration. Install them with uv:
@@ -72,16 +64,20 @@ Interactive SDLC commands for guided development within Claude Code sessions wit
 
 **Best for**: Interactive development where you want to be involved in decisions.
 
-**Key commands**:
+**Examples**:
 
-- `/interactive-sdlc:plan-feature` - Plan a feature with milestones
-- `/interactive-sdlc:plan-bug` - Plan a bug fix with root cause analysis
-- `/interactive-sdlc:plan-chore` - Plan a maintenance task
-- `/interactive-sdlc:build` - Implement a plan file
-- `/interactive-sdlc:validate` - Validate implementation quality
-- `/interactive-sdlc:one-shot` - Quick task without saved plan
-- `/interactive-sdlc:document` - Generate documentation with mermaid diagrams
-- `/interactive-sdlc:analyse-*` - Analysis commands for bugs, docs, debt, style, security
+```bash
+# Plan a feature with milestones and implementation steps
+/interactive-sdlc:plan-feature
+
+# Run analysis on your codebase (bugs, docs, debt, style, security)
+/interactive-sdlc:analyse-security
+
+# Full workflow from branch creation to PR with user interaction
+/interactive-sdlc:one-shot
+```
+
+See [Interactive-SDLC README](plugins/interactive-sdlc/README.md) for all commands and options.
 
 ### Agentic SDLC
 
@@ -89,54 +85,21 @@ YAML-based workflow orchestration for fully autonomous task execution with paral
 
 **Best for**: Autonomous development where you want Claude to work independently.
 
-**Key commands**:
-
-- `/agentic-sdlc:plan` - Generate implementation plans
-- `/agentic-sdlc:build` - Implement changes following a plan
-- `/agentic-sdlc:validate` - Validate implementation quality
-- `/agentic-sdlc:analyse` - Run codebase analysis
-- `/agentic-sdlc:orchestrate` - Evaluate workflow state and determine next action
-
-**Python CLI**:
-
-- `agentic-sdlc run <workflow.yaml>` - Execute a YAML workflow
-- `agentic-sdlc one-shot "task"` - Complete a task end-to-end with PR
-- `agentic-sdlc analyse --type security` - Run security analysis
-
-### Usage
-
-After installation, plugins are immediately available in your Claude Code session:
-
-- **Commands**: Available via `/command-name` (e.g., `/interactive-sdlc:plan-feature`)
-- **Agents**: Invoked automatically via commands or Task tool
-- **Skills**: Activated via `Skill` tool or skill name
-- **Hooks**: Execute automatically on configured events
-
-### Command Namespacing
-
-Commands are namespaced by their plugin name using the format `plugin-name:command-name`. This prevents conflicts when multiple plugins provide similar commands:
+**Examples**:
 
 ```bash
-# Interactive SDLC commands
-/interactive-sdlc:plan-feature
-/interactive-sdlc:validate
-/interactive-sdlc:analyse-bug
+# Complete a task end-to-end autonomously with PR creation
+agentic-sdlc one-shot "Add user authentication"
 
-# Agentic SDLC commands
-/agentic-sdlc:plan
-/agentic-sdlc:validate
-/agentic-sdlc:analyse-bug
+# Run a workflow with variables for iterative task completion
+agentic-sdlc run ralph-loop.yaml --var "max_iterations=20" \
+  --var "task=Follow the improvement plan. Each iteration: read plan, implement next task, commit, STOP."
+
+# Run plan-build-validate workflow for full SDLC automation
+agentic-sdlc run plan-build-validate.yaml --var "task=Add dark mode support"
 ```
 
-In workflow YAML files, always use the full namespace to ensure the correct plugin's command is executed:
-
-```yaml
-steps:
-  - type: command
-    command: agentic-sdlc:validate # Explicit - uses agentic-sdlc plugin
-```
-
-Refer to individual plugin documentation for specific usage instructions and examples.
+See [Agentic-SDLC README](plugins/agentic-sdlc/README.md) for all commands and workflow options.
 
 ## Credits
 
