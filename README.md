@@ -179,30 +179,10 @@ steps:
 
 Refer to individual plugin documentation for specific usage instructions and examples.
 
-## Local Setup
-
-### Automatic plugin installation
-
-The following script can be run to automatically re-install every plugin and CLI tools contained in this repository.
-
-```
-uv run .claude/update-plugins.py
-```
-
-### Code Style
-
-Open the workspace file (`.vscode/agentic-forge.code-workspace`) and install recommended extensions for auto-format on save.
-
-CI automatically formats code on pull requests. To run locally: `pnpm check`
-
 ## Credits
 
-- [Geoffrey Huntley](https://ghuntley.com/ralph/) - Ralph Wiggum as a "software engineer"
+- [Geoffrey Huntley - Ralph Wiggum as a "software engineer"](https://ghuntley.com/ralph/)
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-**Note**: These are ready-to-use plugins. Plugin quality and compatibility may vary. Always review plugins before using them in production environments.

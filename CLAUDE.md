@@ -23,9 +23,9 @@ The `/docs/vision/` subdirectory contains vision documents for planned plugins a
 
 ### `/experimental-plugins/`
 
-Root directory containing all experimental plugins. These plugins are not yet officially released. These plugins should also not be explicitely documented in the repository root README.md, but the directory can be mention and the plugins can be used in examples, such as uv tool installation.
+Root directory containing all experimental plugins. These plugins are not yet officially released. These plugins should also not be explicitely documented in the repository root README.md, but the directory can be mention and the plugins can be used in examples, such as uv tool installation. Breaking changes are accepted in experimental-plugins.
 
-**Important**: Experimental plugins must NOT have a `CHANGELOG.md` file. The changelog is only added once the plugin becomes officially supported, moves to version 1.x.x+, and is relocated to the `/plugins/` directory.
+**Important**: Experimental plugins must NOT have a `CHANGELOG.md` file. The changelog is only added once the plugin becomes officially supported, moves to version 0.1.x+, and is relocated to the `/plugins/` directory.
 
 ### `/plugins/`
 
@@ -166,7 +166,12 @@ This ensures the correct plugin's command is executed, especially when both `int
 
 ### Code Style and Formatting
 
-CI automatically formats code on pull requests. To run locally: `pnpm check`
+CI validates format, lint, and tests on all pull requests. Run locally before opening a pull request:
+
+```bash
+pnpm check          # Format and lint
+uv run pytest       # Python tests (for plugins with Python code)
+```
 
 ## Technical Considerations
 
@@ -177,11 +182,3 @@ CI automatically formats code on pull requests. To run locally: `pnpm check`
 - **Installing tools**: Use `uv tool install` instead of `pip install`
 - **Running scripts**: Use `uv run` for executing Python scripts
 - This ensures consistent Python environments across different systems and avoids Python PATH issues
-
-## Git Operations
-
-Always use `/git-branch`, `/git-commit` and `/git-pr` commands for commits, pull requests, and branch management. These commands ensure consistent structure and formatting.
-
-## Breaking Changes
-
-This repository is in active development. Breaking changes are acceptable in any plugin at any time without backward compatibility considerations or migration documentation. When a breaking change is needed, simply make the change.
