@@ -19,11 +19,7 @@
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": [
-        "beta",
-        "sdlc",
-        "interactive"
-      ],
+      "keywords": ["beta", "sdlc", "interactive"],
       "category": "interactive",
       "strict": false,
       "commands": [
@@ -58,11 +54,7 @@
         "email": "me@estpierre.dev"
       },
       "license": "MIT",
-      "keywords": [
-        "beta",
-        "sdlc",
-        "agentic"
-      ],
+      "keywords": ["beta", "sdlc", "agentic"],
       "category": "agentic",
       "strict": false,
       "commands": [
@@ -75,10 +67,7 @@
         "./commands/git/commit.md",
         "./commands/git/pr.md"
       ],
-      "agents": [
-        "./agents/explorer.md",
-        "./agents/reviewer.md"
-      ],
+      "agents": ["./agents/explorer.md", "./agents/reviewer.md"],
       "skills": [
         "./skills/create-checkpoint.md",
         "./skills/create-log.md",
