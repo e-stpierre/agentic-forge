@@ -1,6 +1,6 @@
 # Agentic SDLC
 
-Agentic SDLC enables Claude Code to execute complex, multi-step tasks with high success rates through YAML-based workflow orchestration. The framework allows Claude Code to work fully independently with resiliency and accuracy in multi-session workflows, supporting parallel execution, conditional logic, retry mechanisms, and persistent memory across sessions.
+Agentic SDLC enables Claude Code to execute complex, multi-step tasks with high success rates through YAML-based workflow orchestration. The framework allows Claude Code to work fully independently with resiliency and accuracy in multi-session workflows, supporting parallel execution, conditional logic, and retry mechanisms.
 
 ## Overview
 
@@ -11,7 +11,6 @@ Key capabilities:
 - YAML workflow definitions with variables, conditions, and parallel execution
 - Hybrid Python + Claude orchestration model for reliability
 - Git worktree isolation for parallel task execution
-- Persistent memory system for cross-session learning
 - Progress tracking and checkpoint management
 
 Quick examples:
@@ -56,12 +55,10 @@ Quick examples:
 
 ## Skills
 
-| Skill                | Description                                                   |
-| -------------------- | ------------------------------------------------------------- |
-| `/create-memory`     | Create persistent memory documents for patterns and learnings |
-| `/search-memory`     | Search existing memories by category, tags, or content        |
-| `/create-checkpoint` | Create checkpoint entries in workflow checkpoint file         |
-| `/create-log`        | Add log entries to workflow log file                          |
+| Skill                | Description                                           |
+| -------------------- | ----------------------------------------------------- |
+| `/create-checkpoint` | Create checkpoint entries in workflow checkpoint file |
+| `/create-log`        | Add log entries to workflow log file                  |
 
 ## Installation
 
@@ -100,7 +97,6 @@ uv run --extra dev pytest --cov --cov-report=term-missing
 | `agentic-sdlc analyse`   | Run codebase analysis                        |
 | `agentic-sdlc configure` | Interactive configuration setup              |
 | `agentic-sdlc config`    | Get or set configuration values              |
-| `agentic-sdlc memory`    | Manage memory documents                      |
 
 ### CLI Options
 
@@ -129,10 +125,6 @@ Configuration is stored in `agentic/config.json`. Use the CLI (`agentic-sdlc con
     "mainBranch": "main",
     "autoCommit": true,
     "autoPr": true
-  },
-  "memory": {
-    "enabled": true,
-    "directory": "agentic/memory"
   },
   "defaults": {
     "maxRetry": 3,
@@ -191,10 +183,6 @@ agentic/
 │       ├── progress.json # Workflow progress
 │       ├── checkpoint.md # Checkpoints
 │       └── logs.ndjson   # Structured logs
-├── memory/               # Persistent memories
-│   ├── decision/
-│   ├── pattern/
-│   └── index.md          # Memory index
 └── analysis/             # Analysis outputs
     ├── bug.md
     ├── debt.md
@@ -207,7 +195,6 @@ agentic/
 
 - Parallel steps require git repository (uses worktrees for isolation)
 - Each step starts a new session (no context accumulation across steps)
-- Memory search uses keyword matching (no semantic/vector search)
 
 ## Complete Examples
 
@@ -418,31 +405,6 @@ agentic-sdlc config set git.mainBranch develop
 agentic-sdlc config set logging.level Warning
 ```
 
-### agentic-sdlc memory
-
-**Subcommands:**
-
-- `list [--category <cat>]` - List memories, optionally filtered by category
-- `search <query>` - Search memories by keywords
-- `prune [--older-than <duration>]` - Remove old memories
-
-**Examples:**
-
-```bash
-# List all memories
-agentic-sdlc memory list
-
-# List memories by category
-agentic-sdlc memory list --category pattern
-agentic-sdlc memory list --category error
-
-# Search memories
-agentic-sdlc memory search "authentication middleware"
-
-# Prune old memories
-agentic-sdlc memory prune --older-than 30d
-```
-
 ### /plan
 
 **Arguments:**
@@ -526,46 +488,6 @@ The `/analyse` command has type-specific variants: `/analyse-bug`, `/analyse-deb
 
 # Run documentation analysis
 /analyse-doc
-```
-
-### /create-memory
-
-**Arguments:**
-
-- `--category <cat>` - Memory category: pattern, lesson, error, decision, context
-- `--tags <tags>` - Comma-separated tags for searchability
-
-**Examples:**
-
-```bash
-# Create a pattern memory
-/create-memory --category pattern --tags "authentication,middleware"
-Discovered custom middleware chain pattern in src/middleware/
-
-# Create an error memory
-/create-memory --category error --tags "timeout,database"
-Database connection timeout solution: increase pool size
-```
-
-### /search-memory
-
-**Arguments:**
-
-- `--category <cat>` - Filter by category
-- `--tags <tags>` - Filter by tags
-- `<query>` - Search keywords
-
-**Examples:**
-
-```bash
-# Search by keywords
-/search-memory authentication middleware
-
-# Search by category
-/search-memory --category pattern
-
-# Search by tags
-/search-memory --tags "database,optimization"
 ```
 
 ### /create-checkpoint

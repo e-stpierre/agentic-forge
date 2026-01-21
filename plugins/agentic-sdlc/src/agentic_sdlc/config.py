@@ -17,11 +17,6 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "autoCommit": True,
         "autoPr": True,
     },
-    "memory": {
-        "enabled": True,
-        "directory": "agentic/memory",
-        "template": "default",
-    },
     "defaults": {
         "model": "sonnet",
         "maxRetry": 3,

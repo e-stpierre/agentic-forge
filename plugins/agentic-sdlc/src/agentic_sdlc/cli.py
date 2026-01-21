@@ -16,7 +16,6 @@ from agentic_sdlc.commands import (
     cmd_init,
     cmd_input,
     cmd_list,
-    cmd_memory,
     cmd_oneshot,
     cmd_resume,
     cmd_run,
@@ -95,20 +94,6 @@ def main() -> None:
         help="List available bundled workflows without copying",
     )
 
-    # memory commands
-    memory_parser = subparsers.add_parser("memory", help="Memory management")
-    memory_subparsers = memory_parser.add_subparsers(dest="memory_command")
-    memory_list = memory_subparsers.add_parser("list", help="List memories")
-    memory_list.add_argument(
-        "--category",
-        choices=["pattern", "lesson", "error", "decision", "context"],
-        help="Filter by category",
-    )
-    memory_search = memory_subparsers.add_parser("search", help="Search memories")
-    memory_search.add_argument("query", help="Search query")
-    memory_prune = memory_subparsers.add_parser("prune", help="Prune old memories")
-    memory_prune.add_argument("--older-than", default="30d", help="Age threshold (e.g., 30d)")
-
     # config get/set commands
     config_parser = subparsers.add_parser("config", help="Get or set configuration")
     config_subparsers = config_parser.add_subparsers(dest="config_command")
@@ -172,8 +157,6 @@ def main() -> None:
         cmd_init(args)
     elif args.command == "config":
         cmd_config(args)
-    elif args.command == "memory":
-        cmd_memory(args)
     elif args.command == "one-shot":
         cmd_oneshot(args)
     elif args.command == "analyse":

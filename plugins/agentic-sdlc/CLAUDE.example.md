@@ -2,17 +2,6 @@
 
 Add these sections to your CLAUDE.md to enable agentic workflow features.
 
-## Memory Management
-
-Create memories using `/create-memory` when you encounter:
-
-- Architectural decisions and their rationale
-- User preferences expressed during sessions
-- Patterns/conventions discovered in the codebase
-- Errors encountered and their solutions
-
-Before starting complex tasks, use `/search-memory` or check `agentic/memory/index.md` for relevant context.
-
 ## Checkpoint Guidelines
 
 Create checkpoints using `/create-checkpoint` when:
@@ -27,15 +16,13 @@ This repository uses agentic-sdlc for automated development. Key directories:
 
 - `agentic/outputs/` - Workflow execution state and logs
 - `agentic/workflows/` - Workflow YAML templates
-- `agentic/memory/` - Persistent learnings and patterns
 - `agentic/analysis/` - Code analysis reports
 
 When working in a workflow context, always:
 
 1. Check for existing checkpoints before starting
 2. Update progress after completing tasks
-3. Create memories for significant learnings
-4. Use structured JSON output for commands
+3. Use structured JSON output for commands
 
 ## Available Commands
 
@@ -59,10 +46,8 @@ When working in a workflow context, always:
 - `/git-commit` - Create commits
 - `/git-pr` - Create pull requests
 
-### Memory & State
+### State
 
-- `/create-memory` - Store learnings for future reference
-- `/search-memory` - Find relevant context
 - `/create-checkpoint` - Record progress
 - `/create-log` - Add structured log entries
 
@@ -86,8 +71,6 @@ agentic-sdlc run agentic/workflows/my-custom-workflow.yaml
 
 ## Best Practices
 
-1. **Before Complex Tasks**: Search memories for relevant context
-2. **During Implementation**: Create checkpoints at milestones
-3. **After Discoveries**: Create memories for future sessions
-4. **On Errors**: Document solutions as error memories
-5. **For Decisions**: Record architectural decisions with rationale
+1. **During Implementation**: Create checkpoints at milestones
+2. **On Completion**: Record progress in checkpoints
+3. **For Logging**: Use structured log entries for significant events

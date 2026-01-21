@@ -47,7 +47,7 @@
     {
       "name": "agentic-sdlc",
       "source": "./plugins/agentic-sdlc",
-      "description": "[Beta] YAML-based workflow orchestration with parallel execution, conditional logic, retry mechanisms, and persistent memory for complex multi-step tasks",
+      "description": "[Beta] YAML-based workflow orchestration with parallel execution, conditional logic, and retry mechanisms for complex multi-step tasks",
       "version": "0.1.0",
       "author": {
         "name": "Étienne St-Pierre",
@@ -74,9 +74,7 @@
       "agents": ["./agents/explorer.md", "./agents/reviewer.md"],
       "skills": [
         "./skills/create-checkpoint.md",
-        "./skills/create-log.md",
-        "./skills/create-memory.md",
-        "./skills/search-memory.md"
+        "./skills/create-log.md"
       ]
     }
   ]
