@@ -35,9 +35,9 @@ Set up interactive-sdlc plugin configuration interactively by reading existing s
    | ------------------------------ | ------ | ----------- | ------------ |
    | `planDirectory`                | string | Valid path  | `"specs"`    |
    | `analysisDirectory`            | string | Valid path  | `"analysis"` |
-   | `defaultExploreAgents.chore`   | number | 0-5         | `2`           |
-   | `defaultExploreAgents.bug`     | number | 0-5         | `2`           |
-   | `defaultExploreAgents.feature` | number | 0-10        | `3`           |
+   | `defaultExploreAgents.chore`   | number | 0-5         | `2`          |
+   | `defaultExploreAgents.bug`     | number | 0-5         | `2`          |
+   | `defaultExploreAgents.feature` | number | 0-10        | `3`          |
 
 3. **If Configuration is Valid and Complete**
    - Display success message

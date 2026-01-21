@@ -28,9 +28,9 @@
 
 1. Add this repository as a plugin marketplace in Claude Code:
 
-    ```bash
-    /plugin marketplace add e-stpierre/agentic-forge
-    ```
+   ```bash
+   /plugin marketplace add e-stpierre/agentic-forge
+   ```
 
 2. Install the plugin(s) you need and refer to their README for usage.
 
@@ -44,19 +44,19 @@ YAML-based workflow orchestration for autonomous task execution with parallel ex
 
 1. Install the plugin in Claude Code:
 
-    ```bash
-    /plugin install agentic-sdlc@agentic-forge
-    ```
+   ```bash
+   /plugin install agentic-sdlc@agentic-forge
+   ```
 
 2. Install the python CLI tools:
 
-    ```bash
-    # Windows (PowerShell)
-    uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
+   ```bash
+   # Windows (PowerShell)
+   uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
 
-    # macOS/Linux
-    uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
-    ```
+   # macOS/Linux
+   uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
+   ```
 
 #### Examples
 
@@ -86,9 +86,9 @@ Interactive SDLC commands for guided development within Claude Code sessions thr
 
 1. Install the plugin in Claude Code:
 
-    ```bash
-    /plugin install interactive-sdlc@agentic-forge
-    ```
+   ```bash
+   /plugin install interactive-sdlc@agentic-forge
+   ```
 
 #### Examples
 

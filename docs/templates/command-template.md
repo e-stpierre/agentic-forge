@@ -37,10 +37,11 @@ name: {{command-name}}
 description: {{command-description}}
 argument-hint: {{argument-pattern}} # Optional: for interactive commands only
 arguments:
-  - name: {{arg-name}}
-    description: {{arg-description}}
-    required: {{true|false}}
-    default: {{default-value}} # Optional: only if required is false
+
+- name: {{arg-name}}
+  description: {{arg-description}}
+  required: {{true|false}}
+  default: {{default-value}} # Optional: only if required is false
 
 ---
 

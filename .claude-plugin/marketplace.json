@@ -72,10 +72,7 @@
         "./commands/git/git-pr.md"
       ],
       "agents": ["./agents/explorer.md", "./agents/reviewer.md"],
-      "skills": [
-        "./skills/create-checkpoint.md",
-        "./skills/create-log.md"
-      ]
+      "skills": ["./skills/create-checkpoint.md", "./skills/create-log.md"]
     }
   ]
 }

@@ -17,57 +17,57 @@ All commands use the `/interactive-sdlc:` namespace prefix. Commands are organiz
 
 ### Setup
 
-| Command | Description |
-|---------|-------------|
+| Command                       | Description                               |
+| ----------------------------- | ----------------------------------------- |
 | `/interactive-sdlc:configure` | Set up plugin configuration interactively |
 
 ### Planning (`commands/plan/`)
 
-| Command | Description |
-|---------|-------------|
-| `/interactive-sdlc:plan-chore` | Plan a maintenance task |
-| `/interactive-sdlc:plan-bug` | Plan a bug fix with root cause analysis |
-| `/interactive-sdlc:plan-feature` | Plan a feature with milestones |
+| Command                          | Description                             |
+| -------------------------------- | --------------------------------------- |
+| `/interactive-sdlc:plan-chore`   | Plan a maintenance task                 |
+| `/interactive-sdlc:plan-bug`     | Plan a bug fix with root cause analysis |
+| `/interactive-sdlc:plan-feature` | Plan a feature with milestones          |
 
 ### Development (`commands/dev/`)
 
-| Command | Description |
-|---------|-------------|
-| `/interactive-sdlc:build` | Implement a plan file with checkpoint support |
+| Command                      | Description                                                           |
+| ---------------------------- | --------------------------------------------------------------------- |
+| `/interactive-sdlc:build`    | Implement a plan file with checkpoint support                         |
 | `/interactive-sdlc:validate` | Comprehensive validation (tests, code review, build, plan compliance) |
-| `/interactive-sdlc:document` | Generate or update documentation with mermaid diagrams |
+| `/interactive-sdlc:document` | Generate or update documentation with mermaid diagrams                |
 
 ### Workflows (`commands/workflows/`)
 
-| Command | Description |
-|---------|-------------|
-| `/interactive-sdlc:one-shot` | Quick task without saved plan file |
+| Command                                 | Description                               |
+| --------------------------------------- | ----------------------------------------- |
+| `/interactive-sdlc:one-shot`            | Quick task without saved plan file        |
 | `/interactive-sdlc:plan-build-validate` | Full workflow from planning to validation |
 
 ### Analysis (`commands/analyse/`)
 
-| Command | Description |
-|---------|-------------|
-| `/interactive-sdlc:analyse-bug` | Analyze codebase for bugs and logic errors |
-| `/interactive-sdlc:analyse-doc` | Analyze documentation quality and accuracy |
-| `/interactive-sdlc:analyse-debt` | Identify technical debt and refactoring opportunities |
-| `/interactive-sdlc:analyse-style` | Check code style, consistency, and best practices |
+| Command                              | Description                                           |
+| ------------------------------------ | ----------------------------------------------------- |
+| `/interactive-sdlc:analyse-bug`      | Analyze codebase for bugs and logic errors            |
+| `/interactive-sdlc:analyse-doc`      | Analyze documentation quality and accuracy            |
+| `/interactive-sdlc:analyse-debt`     | Identify technical debt and refactoring opportunities |
+| `/interactive-sdlc:analyse-style`    | Check code style, consistency, and best practices     |
 | `/interactive-sdlc:analyse-security` | Scan for security vulnerabilities and unsafe patterns |
 
 ### Git (`commands/git/`)
 
-| Command | Description |
-|---------|-------------|
+| Command                        | Description                                          |
+| ------------------------------ | ---------------------------------------------------- |
 | `/interactive-sdlc:git-branch` | Create branches with standardized naming conventions |
-| `/interactive-sdlc:git-commit` | Commit changes with structured messages |
-| `/interactive-sdlc:git-pr` | Create pull requests with contextual descriptions |
+| `/interactive-sdlc:git-commit` | Commit changes with structured messages              |
+| `/interactive-sdlc:git-pr`     | Create pull requests with contextual descriptions    |
 
 ### GitHub (`commands/github/`)
 
-| Command | Description |
-|---------|-------------|
+| Command                             | Description                                       |
+| ----------------------------------- | ------------------------------------------------- |
 | `/interactive-sdlc:create-gh-issue` | Create GitHub issues with title, body, and labels |
-| `/interactive-sdlc:read-gh-issue` | Read GitHub issue content by number |
+| `/interactive-sdlc:read-gh-issue`   | Read GitHub issue content by number               |
 
 ## Arguments Reference
 
