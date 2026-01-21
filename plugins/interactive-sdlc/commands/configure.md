@@ -30,10 +30,10 @@ Set up interactive-sdlc plugin configuration interactively by reading existing s
 2. **Validate Current Configuration**
    Check each setting against expected schema:
 
-   | Setting                        | Type   | Valid Range | Default       |
-   | ------------------------------ | ------ | ----------- | ------------- |
-   | `planDirectory`                | string | Valid path  | `"/specs"`    |
-   | `analysisDirectory`            | string | Valid path  | `"/analysis"` |
+   | Setting                        | Type   | Valid Range | Default      |
+   | ------------------------------ | ------ | ----------- | ------------ |
+   | `planDirectory`                | string | Valid path  | `"specs"`    |
+   | `analysisDirectory`            | string | Valid path  | `"analysis"` |
    | `defaultExploreAgents.chore`   | number | 0-5         | `2`           |
    | `defaultExploreAgents.bug`     | number | 0-5         | `2`           |
    | `defaultExploreAgents.feature` | number | 0-10        | `3`           |
@@ -71,8 +71,8 @@ Committed to git, shared across team:
 ```json
 {
   "interactive-sdlc": {
-    "planDirectory": "/specs",
-    "analysisDirectory": "/analysis",
+    "planDirectory": "specs",
+    "analysisDirectory": "analysis",
     "defaultExploreAgents": {
       "chore": 2,
       "bug": 2,
@@ -89,7 +89,7 @@ Gitignored, personal preferences:
 ```json
 {
   "interactive-sdlc": {
-    "planDirectory": "/my-specs",
+    "planDirectory": "my-specs",
     "defaultExploreAgents": {
       "feature": 5
     }
@@ -104,11 +104,11 @@ Show current configuration status and changes made:
 **If configuration is valid:**
 
 ```
-✓ Configuration is valid
+Configuration is valid
 
 Current interactive-sdlc configuration:
-  planDirectory: /specs
-  analysisDirectory: /analysis
+  planDirectory: specs
+  analysisDirectory: analysis
   defaultExploreAgents:
     chore: 2
     bug: 2
@@ -124,8 +124,8 @@ or run /interactive-sdlc:configure again.
 Configuration updated successfully!
 
 Current configuration:
-  planDirectory: /specs
-  analysisDirectory: /analysis
+  planDirectory: specs
+  analysisDirectory: analysis
   defaultExploreAgents:
     chore: 2
     bug: 2

@@ -96,7 +96,7 @@ Changes summary:
 - [list key changes made]
 
 Next steps:
-- Run validation: /interactive-sdlc:validate --plan /specs/feature-auth.md
+- Run validation: /interactive-sdlc:validate --plan specs/feature-auth.md
 - Review changes and test functionality
 ```
 

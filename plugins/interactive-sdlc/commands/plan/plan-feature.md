@@ -29,7 +29,7 @@ Plan a feature with comprehensive codebase exploration, architecture design, mil
 ## Instructions
 
 1. **Read Configuration**
-   - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `/specs`)
+   - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `specs`)
    - Read `interactive-sdlc.defaultExploreAgents.feature` (default: 3)
 
 2. **Explore Codebase**
@@ -63,55 +63,9 @@ Plan a feature with comprehensive codebase exploration, architecture design, mil
    - Define tasks within each milestone
 
 6. **Generate Plan**
-   - Create a plan following this structure:
-
-   ```markdown
-   # Feature: <feature-title>
-
-   ## Overview
-
-   What this feature does and why it's valuable
-
-   ## Requirements
-
-   Functional and non-functional requirements
-
-   ## Architecture
-
-   High-level design decisions and patterns to use
-
-   ## Milestones
-
-   ### Milestone 1: <milestone-title>
-
-   What this milestone achieves
-
-   #### Task 1.1: <task-title>
-
-   Specific task description
-
-   #### Task 1.2: <task-title>
-
-   Specific task description
-
-   ### Milestone 2: <milestone-title>
-
-   What this milestone achieves
-
-   #### Task 2.1: <task-title>
-
-   Specific task description
-
-   (Additional milestones as needed)
-
-   ## Testing Strategy
-
-   How this feature will be tested
-
-   ## Validation Criteria
-
-   How to verify the feature is complete and working
-   ```
+   - Create a plan using the structure defined in the Templates section
+   - Fill in all required sections with gathered requirements and architecture decisions
+   - Include 2-5 milestones with specific tasks for each
 
 7. **Save Plan**
    - Save to `{planDirectory}/feature-{slugified-title}.md`
@@ -126,7 +80,7 @@ Plan a feature with comprehensive codebase exploration, architecture design, mil
 Present the plan file path and a brief summary of the feature design:
 
 ```
-Plan saved to /specs/feature-{slugified-title}.md
+Plan saved to specs/feature-{slugified-title}.md
 
 ## Summary
 - Feature: [one-line description]
@@ -138,7 +92,7 @@ Architecture highlights:
 - [key architectural decisions]
 
 Next steps:
-- Implement with: /interactive-sdlc:build /specs/feature-{slugified-title}.md
+- Implement with: /interactive-sdlc:build specs/feature-{slugified-title}.md
 - Or run full workflow: /interactive-sdlc:plan-build-validate
 ```
 

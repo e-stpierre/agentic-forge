@@ -60,10 +60,10 @@ On failure, output:
 
 ## Examples
 
-```
-/create-gh-issue "Fix login bug" --body "Users cannot login with Safari" --labels bug,priority-high
+```bash
+/interactive-sdlc:create-gh-issue "Fix login bug" --body "Users cannot login with Safari" --labels bug,priority-high
 
-/create-gh-issue "Add dark mode support" --labels enhancement,ui --milestone "v2.0"
+/interactive-sdlc:create-gh-issue "Add dark mode support" --labels enhancement,ui --milestone "v2.0"
 
-/create-gh-issue "Update documentation" --body "README needs examples" --assignee @me
+/interactive-sdlc:create-gh-issue "Update documentation" --body "README needs examples" --assignee @me
 ```

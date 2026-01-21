@@ -66,8 +66,8 @@ Format the output as a structured summary:
 
 ## Examples
 
-```
-/read-gh-issue 123
+```bash
+/interactive-sdlc:read-gh-issue 123
 
-/read-gh-issue 456 --comments
+/interactive-sdlc:read-gh-issue 456 --comments
 ```

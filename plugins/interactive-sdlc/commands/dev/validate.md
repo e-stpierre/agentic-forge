@@ -68,7 +68,7 @@ Perform ALL validation types (unless skipped):
   - `Cargo.toml`: `cargo build`
   - `go.mod`: `go build ./...`
   - `Makefile` with build target: `make build`
-  - `pyproject.toml`: `uv build` or `python -m build`
+  - `pyproject.toml`: `uv build`
 - Execute build process
 - Report build errors with details
 
@@ -87,51 +87,131 @@ Perform ALL validation types (unless skipped):
 
 ## Output Guidance
 
-Generate a comprehensive validation report:
+Generate a comprehensive validation report using the structure defined in the Templates section. Present results clearly with:
+
+- Summary statistics for each validation type
+- Detailed findings grouped by severity
+- Actionable recommendations for fixing issues
+- Plan compliance status (if plan provided)
+
+## Templates
+
+### Validation Report Structure
 
 ```markdown
 # Validation Report
 
+<!--
+Instructions:
+- Generate this report after completing all validation steps
+- Include all sections, even if results are empty
+-->
+
 ## Summary
 
-- Tests: PASS/FAIL (X passed, Y failed)
-- Build: PASS/FAIL
-- Code Review: X critical, Y major, Z medium, W low
-- Plan Compliance: X% complete (if plan provided)
+- Tests: {{test_status}} ({{passed_count}} passed, {{failed_count}} failed)
+- Build: {{build_status}}
+- Code Review: {{critical_count}} critical, {{major_count}} major, {{medium_count}} medium, {{low_count}} low
+- Plan Compliance: {{compliance_percent}}% complete
+
+<!--
+Instructions:
+- Replace {{test_status}} with PASS or FAIL
+- Replace {{passed_count}}, {{failed_count}} with actual counts
+- Replace {{build_status}} with PASS or FAIL
+- Replace {{critical_count}}, {{major_count}}, {{medium_count}}, {{low_count}} with issue counts
+- Replace {{compliance_percent}} with percentage (omit line if no plan provided)
+-->
 
 ## Test Results
 
-[Details of any failures]
+{{test_details}}
+
+<!--
+Instructions:
+- Replace {{test_details}} with details of any test failures
+- Include test name, expected vs actual, and error messages
+- If all tests pass, write "All tests passed successfully."
+-->
 
 ## Build Results
 
-[Details of any errors]
+{{build_details}}
+
+<!--
+Instructions:
+- Replace {{build_details}} with details of any build errors
+- Include error messages and affected files
+- If build succeeds, write "Build completed successfully."
+-->
 
 ## Code Review Findings
 
 ### Critical
 
-[Critical issues found]
+{{critical_issues}}
+
+<!--
+Instructions:
+- Replace {{critical_issues}} with critical issues found
+- Include file location, issue description, and suggested fix
+- If none found, write "No critical issues found."
+-->
 
 ### Major
 
-[Major issues found]
+{{major_issues}}
+
+<!--
+Instructions:
+- Replace {{major_issues}} with major issues found
+- Use same format as critical issues
+- If none found, write "No major issues found."
+-->
 
 ### Medium
 
-[Medium issues found]
+{{medium_issues}}
+
+<!--
+Instructions:
+- Replace {{medium_issues}} with medium issues found
+- Use same format as critical issues
+- If none found, write "No medium issues found."
+-->
 
 ### Low
 
-[Low issues found]
+{{low_issues}}
 
-## Plan Compliance (if applicable)
+<!--
+Instructions:
+- Replace {{low_issues}} with low severity issues found
+- Use same format as critical issues
+- If none found, write "No low severity issues found."
+-->
 
-[Compliance details]
+## Plan Compliance
+
+{{compliance_details}}
+
+<!--
+Instructions:
+- Replace {{compliance_details}} with compliance analysis
+- List completed requirements, missing items, and deviations
+- Omit this section if no --plan was provided
+-->
 
 ## Recommendations
 
-[Next steps to address issues]
+{{recommendations}}
+
+<!--
+Instructions:
+- Replace {{recommendations}} with prioritized next steps
+- Order by severity: critical first, then major, etc.
+- Include specific actions to resolve each issue
+-->
 ```
 
 ## Auto-Fix Behavior

@@ -29,7 +29,7 @@ Plan a bug fix with thorough root cause analysis, reproduction steps, and a stru
 ## Instructions
 
 1. **Read Configuration**
-   - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `/specs`)
+   - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `specs`)
    - Read `interactive-sdlc.defaultExploreAgents.bug` (default: 2)
 
 2. **Explore Codebase**
@@ -55,39 +55,9 @@ Plan a bug fix with thorough root cause analysis, reproduction steps, and a stru
    - Document findings
 
 5. **Generate Plan**
-   - Create a plan following this structure:
-
-   ```markdown
-   # Bug Fix: <bug-title>
-
-   ## Description
-
-   Clear explanation of the bug and its impact
-
-   ## Reproduction Steps
-
-   Step-by-step instructions to reproduce the bug
-
-   ## Root Cause Analysis
-
-   Technical explanation of why the bug occurs
-
-   ## Fix Strategy
-
-   High-level approach to fixing the bug
-
-   ## Tasks
-
-   Specific tasks to implement the fix
-
-   ## Validation
-
-   How to verify the bug is fixed and won't regress
-
-   ## Testing
-
-   Test cases to add or update to prevent regression
-   ```
+   - Create a plan using the structure defined in the Templates section
+   - Fill in all required sections with investigation findings
+   - Include specific tasks to implement the fix and prevent regression
 
 6. **Save Plan**
    - Save to `{planDirectory}/bug-{slugified-title}.md`
@@ -102,7 +72,7 @@ Plan a bug fix with thorough root cause analysis, reproduction steps, and a stru
 Present the plan file path and a brief summary of the bug analysis:
 
 ```
-Plan saved to /specs/bug-{slugified-title}.md
+Plan saved to specs/bug-{slugified-title}.md
 
 ## Summary
 - Bug: [one-line description]
@@ -111,7 +81,7 @@ Plan saved to /specs/bug-{slugified-title}.md
 - Test cases to add: X
 
 Next steps:
-- Implement with: /interactive-sdlc:build /specs/bug-{slugified-title}.md
+- Implement with: /interactive-sdlc:build specs/bug-{slugified-title}.md
 - Or run full workflow: /interactive-sdlc:plan-build-validate
 ```
 
