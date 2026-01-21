@@ -52,7 +52,6 @@ def main() -> None:
         default="base",
         help="Terminal output granularity",
     )
-    run_parser.add_argument("--dry-run", action="store_true", help="Validate without executing")
 
     # resume command
     resume_parser = subparsers.add_parser("resume", help="Resume a workflow")

@@ -58,7 +58,11 @@
       "category": "agentic",
       "strict": false,
       "commands": [
-        "./commands/analyse.md",
+        "./commands/analyse/analyse-bug.md",
+        "./commands/analyse/analyse-debt.md",
+        "./commands/analyse/analyse-doc.md",
+        "./commands/analyse/analyse-security.md",
+        "./commands/analyse/analyse-style.md",
         "./commands/build.md",
         "./commands/orchestrate.md",
         "./commands/plan.md",

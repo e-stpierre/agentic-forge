@@ -60,4 +60,4 @@ You can also read the memory index directly:
 
 1. Read `agentic/memory/index.md` for an overview
 2. Use grep for specific keywords in memory files
-3. Read relevant files from `agentic/memory/{category}s/`
+3. Read relevant files from `agentic/memory/{category}/`

@@ -47,7 +47,11 @@ When working in a workflow context, always:
 
 ### Analysis
 
-- `/analyse` - Analyze codebase for issues (bug, debt, doc, security, style)
+- `/analyse-bug` - Analyze for bugs and logic errors
+- `/analyse-debt` - Identify technical debt
+- `/analyse-doc` - Check documentation quality
+- `/analyse-security` - Scan for security vulnerabilities
+- `/analyse-style` - Check code style
 
 ### Git Operations
 
@@ -67,14 +71,17 @@ When working in a workflow context, always:
 Execute workflows using the CLI:
 
 ```bash
-# Run a one-shot task
-agentic-sdlc run workflows/one-shot.yaml --var "task=Add health check endpoint"
+# Run a one-shot task (bundled workflow)
+agentic-sdlc run one-shot.yaml --var "task=Add health check endpoint"
 
-# Run full SDLC workflow
-agentic-sdlc run workflows/plan-build-validate.yaml --var "task=Implement user authentication"
+# Run full SDLC workflow (bundled workflow)
+agentic-sdlc run plan-build-validate.yaml --var "task=Implement user authentication"
 
-# Run codebase analysis
-agentic-sdlc run workflows/analyse-codebase.yaml --var "autofix=major"
+# Run codebase analysis (bundled workflow)
+agentic-sdlc run analyse-codebase.yaml --var "autofix=major"
+
+# Run a local custom workflow
+agentic-sdlc run agentic/workflows/my-custom-workflow.yaml
 ```
 
 ## Best Practices

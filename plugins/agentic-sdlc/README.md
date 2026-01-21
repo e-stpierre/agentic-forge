@@ -27,13 +27,17 @@ Quick examples:
 
 ### Core Commands
 
-| Command        | Description                                                   |
-| -------------- | ------------------------------------------------------------- |
-| `/plan`        | Generate implementation plans for features, bugs, or chores   |
-| `/build`       | Implement changes following a plan file                       |
-| `/validate`    | Run validation checks on implementation                       |
-| `/analyse`     | Analyze codebase for issues (bug, debt, doc, security, style) |
-| `/orchestrate` | Evaluate workflow state and determine next action             |
+| Command             | Description                                                 |
+| ------------------- | ----------------------------------------------------------- |
+| `/plan`             | Generate implementation plans for features, bugs, or chores |
+| `/build`            | Implement changes following a plan file                     |
+| `/validate`         | Run validation checks on implementation                     |
+| `/analyse-bug`      | Analyze codebase for bugs and logic errors                  |
+| `/analyse-debt`     | Identify technical debt and refactoring opportunities       |
+| `/analyse-doc`      | Analyze documentation quality and completeness              |
+| `/analyse-security` | Scan for security vulnerabilities                           |
+| `/analyse-style`    | Check code style and best practices                         |
+| `/orchestrate`      | Evaluate workflow state and determine next action           |
 
 ### Git Commands (`commands/git/`)
 
@@ -112,7 +116,7 @@ uv run --extra dev pytest --cov --cov-report=term-missing
 
 ## Configuration
 
-Configuration is stored in `agentic/config.json`. Use the CLI or `/configure` command to modify settings.
+Configuration is stored in `agentic/config.json`. Use the CLI (`agentic-sdlc configure`) to modify settings.
 
 ```json
 {
@@ -168,6 +172,7 @@ Key architectural decisions:
 | ---------------- | --------------------------------------------------------------------------------- |
 | `prompt`         | Execute a prompt in a Claude session                                              |
 | `command`        | Execute a Claude command with arguments                                           |
+| `serial`         | Execute nested steps sequentially in order                                        |
 | `parallel`       | Execute nested steps concurrently in git worktrees                                |
 | `conditional`    | Execute steps based on Jinja2 condition                                           |
 | `ralph-loop`     | Repeat a prompt until completion promise or max iterations (Ralph Wiggum pattern) |
@@ -178,14 +183,17 @@ Key architectural decisions:
 ```
 agentic/
 ├── config.json           # Global configuration
-├── workflows/            # Workflow executions
+├── workflows/            # Workflow YAML templates
+│   ├── my-workflow.yaml
+│   └── ...
+├── outputs/              # Workflow execution state
 │   └── {workflow-id}/
 │       ├── progress.json # Workflow progress
 │       ├── checkpoint.md # Checkpoints
 │       └── logs.ndjson   # Structured logs
 ├── memory/               # Persistent memories
-│   ├── decisions/
-│   ├── patterns/
+│   ├── decision/
+│   ├── pattern/
 │   └── index.md          # Memory index
 └── analysis/             # Analysis outputs
     ├── bug.md
@@ -439,14 +447,17 @@ agentic-sdlc memory prune --older-than 30d
 
 **Arguments:**
 
-- `--type <type>` - Plan type: feature, bug, chore (required)
-- `--spec <path>` - Path to specification file
-- `--output <path>` - Output file path
+- `--type <type>` - Plan type: feature, bug, chore (default: auto, infers from context)
+- `--template <path>` - Custom template path (optional)
+- `<context>` - Task description or issue reference (required, positional)
 
 **Examples:**
 
 ```bash
-# Generate a feature plan
+# Generate a feature plan (type auto-detected)
+/plan Add user profile page with avatar upload
+
+# Generate a feature plan with explicit type
 /plan --type feature Add user profile page with avatar upload
 
 # Generate a bug fix plan
@@ -460,8 +471,9 @@ agentic-sdlc memory prune --older-than 30d
 
 **Arguments:**
 
-- `--plan <path>` - Path to plan file (required)
-- `--milestone <n>` - Implement specific milestone only
+- `--plan <path>` - Path to plan document or plan JSON (optional)
+- `--milestone <n>` - Implement specific milestone only (optional)
+- `--context <text>` - Additional context or instructions (optional)
 
 **Examples:**
 
@@ -471,6 +483,9 @@ agentic-sdlc memory prune --older-than 30d
 
 # Implement specific milestone
 /build --plan plan.md --milestone 2
+
+# Implement with additional context
+/build --plan plan.md --context "Focus on error handling"
 ```
 
 ### /validate
@@ -491,22 +506,26 @@ agentic-sdlc memory prune --older-than 30d
 
 ### /analyse
 
+The `/analyse` command has type-specific variants: `/analyse-bug`, `/analyse-debt`, `/analyse-doc`, `/analyse-security`, `/analyse-style`.
+
 **Arguments:**
 
-- `--type <type>` - Analysis type: bug, debt, doc, security, style
-- `--template <path>` - Custom output template
+- `[paths]` - Space-separated list of files or directories to analyze (optional)
 
 **Examples:**
 
 ```bash
-# Run security analysis
-/analyse --type security
+# Run security analysis on entire codebase
+/analyse-security
 
-# Run code style analysis
-/analyse --type style
+# Run code style analysis on specific directory
+/analyse-style src/
 
-# Run with custom template
-/analyse --type debt --template templates/custom-debt.md.j2
+# Run bug analysis on specific files
+/analyse-bug src/auth/handler.ts src/auth/session.ts
+
+# Run documentation analysis
+/analyse-doc
 ```
 
 ### /create-memory
@@ -633,14 +652,10 @@ steps:
     steps:
       - name: security
         type: command
-        command: agentic-sdlc:analyse
-        args:
-          type: security
+        command: agentic-sdlc:analyse-security
       - name: style
         type: command
-        command: agentic-sdlc:analyse
-        args:
-          type: style
+        command: agentic-sdlc:analyse-style
 ```
 
 **Conditional execution:**
@@ -649,7 +664,7 @@ steps:
 steps:
   - name: fix-issues
     type: conditional
-    condition: "{{ outputs.validate['issues_count'] > 0 }}"
+    condition: "{{ outputs.validate.issues | length > 0 }}"
     then:
       - name: apply-fixes
         type: command
