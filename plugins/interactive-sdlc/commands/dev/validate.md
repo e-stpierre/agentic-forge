@@ -2,6 +2,25 @@
 name: validate
 description: Comprehensive validation including tests, code review, build verification, and plan compliance
 argument-hint: "[--plan <plan-file>] [--skip-tests] [--skip-build] [--skip-review] [--autofix <levels>] [context]"
+arguments:
+  - name: plan
+    description: Plan file to verify compliance against
+    required: false
+  - name: skip-tests
+    description: Skip test execution
+    required: false
+  - name: skip-build
+    description: Skip build verification
+    required: false
+  - name: skip-review
+    description: Skip code review
+    required: false
+  - name: autofix
+    description: Comma-separated list of severity levels to auto-fix
+    required: false
+  - name: context
+    description: Optional freeform context for validation focus
+    required: false
 ---
 
 # Validate

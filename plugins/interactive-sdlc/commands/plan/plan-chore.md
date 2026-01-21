@@ -2,6 +2,16 @@
 name: plan-chore
 description: Plan a maintenance task with codebase exploration and structured plan generation
 argument-hint: "[--explore N] [--git] [context]"
+arguments:
+  - name: explore
+    description: Override default explore agent count (default 2)
+    required: false
+  - name: git
+    description: Commit plan file after creation
+    required: false
+  - name: context
+    description: Optional freeform context for argument inference
+    required: false
 ---
 
 # Plan Chore

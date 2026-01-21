@@ -2,6 +2,10 @@
 name: analyse-style
 description: Check code style, consistency, and best practices adherence
 argument-hint: "[context]"
+arguments:
+  - name: context
+    description: Specific areas or files to focus on
+    required: false
 ---
 
 # Analyse Style

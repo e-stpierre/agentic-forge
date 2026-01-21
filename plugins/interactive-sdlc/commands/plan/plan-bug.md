@@ -2,6 +2,16 @@
 name: plan-bug
 description: Plan a bug fix with root cause analysis, reproduction steps, and structured fix strategy
 argument-hint: "[--explore N] [--git] [context]"
+arguments:
+  - name: explore
+    description: Override default explore agent count (default 2)
+    required: false
+  - name: git
+    description: Commit plan file after creation
+    required: false
+  - name: context
+    description: Optional freeform context for argument inference
+    required: false
 ---
 
 # Plan Bug

@@ -2,6 +2,10 @@
 name: git-pr
 description: Create a pull request with contextual title and description
 argument-hint: [base-branch]
+arguments:
+  - name: base-branch
+    description: Target branch for the PR. Defaults to main/master
+    required: false
 ---
 
 # Git PR Command

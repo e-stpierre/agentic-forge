@@ -2,6 +2,10 @@
 name: analyse-doc
 description: Analyze documentation quality, accuracy, and completeness
 argument-hint: "[context]"
+arguments:
+  - name: context
+    description: Specific documentation files or areas to focus on
+    required: false
 ---
 
 # Analyse Doc

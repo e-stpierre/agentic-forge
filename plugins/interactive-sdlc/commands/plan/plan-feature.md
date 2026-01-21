@@ -2,6 +2,16 @@
 name: plan-feature
 description: Plan a feature with milestones, architecture design, and comprehensive task breakdown
 argument-hint: "[--explore N] [--git] [context]"
+arguments:
+  - name: explore
+    description: Override default explore agent count (default 3)
+    required: false
+  - name: git
+    description: Commit plan file after creation
+    required: false
+  - name: context
+    description: Optional freeform context for argument inference
+    required: false
 ---
 
 # Plan Feature

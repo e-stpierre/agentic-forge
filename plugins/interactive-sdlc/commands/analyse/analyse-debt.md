@@ -2,6 +2,10 @@
 name: analyse-debt
 description: Identify technical debt, optimization opportunities, and refactoring needs
 argument-hint: "[context]"
+arguments:
+  - name: context
+    description: Specific areas or concerns to focus on
+    required: false
 ---
 
 # Analyse Debt

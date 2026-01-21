@@ -2,6 +2,19 @@
 name: plan-build-validate
 description: Full guided workflow from planning through implementation to validation
 argument-hint: "[--git] [--pr] [--explore N] [context]"
+arguments:
+  - name: git
+    description: Auto-commit throughout workflow (plan file, build checkpoints)
+    required: false
+  - name: pr
+    description: Create draft PR when validation passes
+    required: false
+  - name: explore
+    description: Override explore agent count for planning phase
+    required: false
+  - name: context
+    description: Task description to reduce prompts
+    required: false
 ---
 
 # Plan-Build-Validate

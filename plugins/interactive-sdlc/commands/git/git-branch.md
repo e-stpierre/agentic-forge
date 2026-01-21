@@ -2,6 +2,17 @@
 name: git-branch
 description: Create a branch with standardized naming convention
 argument-hint: [category] <branch-name> [issue-id]
+arguments:
+  - name: category
+    description: Branch type (poc, feature, fix, chore, doc, refactor)
+    required: false
+    default: feature
+  - name: branch-name
+    description: Short kebab-case description of the work
+    required: true
+  - name: issue-id
+    description: GitHub issue number associated with this work
+    required: false
 ---
 
 # Git Branch Command
