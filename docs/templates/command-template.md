@@ -16,6 +16,7 @@ REQUIRED SECTIONS:
 - Output Guidance
 
 OPTIONAL SECTIONS:
+- Command-Specific Guidelines (for domain-specific behavioral guidance unique to this command)
 - Templates (for commands that generate structured outputs)
 - Configuration (for commands with configurable settings)
 - Important Notes (for critical reminders, constraints, and anti-patterns)
@@ -82,6 +83,19 @@ Instructions:
   - Validate input before processing
   - Preserve existing functionality
   - Report errors clearly
+-->
+
+## Command-Specific Guidelines (optional)
+
+{{command_specific_guidelines}}
+
+<!--
+Instructions:
+- Replace {{command_specific_guidelines}} with domain-specific behavioral guidance
+- Each guideline must be in a sub-section (###) with a clear, descriptive title
+- Use for specialized context that doesn't fit standard sections
+- Include examples, conventions, or patterns specific to this command's domain
+- Omit this section if not needed
 -->
 
 ## Instructions

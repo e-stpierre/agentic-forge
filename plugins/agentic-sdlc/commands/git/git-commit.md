@@ -35,7 +35,9 @@ Create a well-structured commit with a concise title and optional bullet-point d
 - Description uses 1-5 bullet points for larger commits highlighting important aspects
 - Always include AI attribution with your model name: `Co-Authored-By: Claude <model> <noreply@anthropic.com>`
 
-## Plan Step Reference
+## Command-Specific Guidelines
+
+### Plan Step Reference
 
 When following a plan (implementation plan, milestone plan, etc.), include the current step reference at the start of the commit title in brackets:
 
