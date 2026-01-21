@@ -10,7 +10,7 @@
 - Checkpoint manager for session state tracking
 - Python CLI for workflow management (`agentic-sdlc run`, `agentic-sdlc init`)
 - Core commands: plan, build, validate, analyse, orchestrate
-- Git commands: branch, commit, pr
+- Git commands: git-branch, git-commit, git-pr
 - Explorer and reviewer agents for specialized tasks
 - Skills for memory and checkpoint management
 - Jinja2 templates for plans, reports, and analysis outputs

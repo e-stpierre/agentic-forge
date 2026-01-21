@@ -35,7 +35,7 @@ claude --plugin-dir ./plugins/<plugin-name>
 
 - `feature/description` - New features or plugins
 - `fix/description` - Bug fixes
-- `docs/description` - Documentation updates
+- `doc/description` - Documentation updates
 - `refactor/description` - Refactoring
 
 ### Commit Messages

@@ -67,9 +67,9 @@
         "./commands/orchestrate.md",
         "./commands/plan.md",
         "./commands/validate.md",
-        "./commands/git/branch.md",
-        "./commands/git/commit.md",
-        "./commands/git/pr.md"
+        "./commands/git/git-branch.md",
+        "./commands/git/git-commit.md",
+        "./commands/git/git-pr.md"
       ],
       "agents": ["./agents/explorer.md", "./agents/reviewer.md"],
       "skills": [
