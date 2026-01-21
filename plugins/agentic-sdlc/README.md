@@ -633,12 +633,12 @@ steps:
     steps:
       - name: security
         type: command
-        command: analyse
+        command: agentic-sdlc:analyse
         args:
           type: security
       - name: style
         type: command
-        command: analyse
+        command: agentic-sdlc:analyse
         args:
           type: style
 ```
@@ -653,7 +653,7 @@ steps:
     then:
       - name: apply-fixes
         type: command
-        command: build
+        command: agentic-sdlc:build
         args:
           plan: fix-plan.md
 ```
