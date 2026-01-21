@@ -1,7 +1,10 @@
 ---
 name: analyse-debt
 description: Identify technical debt, optimization opportunities, and refactoring needs
-argument-hint: "[paths]"
+arguments:
+  - name: paths
+    description: Space-separated list of files or directories to analyze
+    required: false
 ---
 
 # Analyse Debt

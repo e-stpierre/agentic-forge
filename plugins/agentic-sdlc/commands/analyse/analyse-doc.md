@@ -1,7 +1,10 @@
 ---
 name: analyse-doc
 description: Analyze documentation quality, accuracy, and completeness
-argument-hint: "[paths]"
+arguments:
+  - name: paths
+    description: Space-separated list of files or directories to analyze
+    required: false
 ---
 
 # Analyse Doc
