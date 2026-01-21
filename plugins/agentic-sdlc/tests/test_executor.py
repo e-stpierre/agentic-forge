@@ -53,25 +53,31 @@ class TestWorkflowExecutorRun:
         workflow = parser.parse_string(sample_workflow_yaml)
 
         executor = WorkflowExecutor(repo_root=temp_dir)
-        progress = executor.run(workflow, dry_run=True)
+        progress = executor.run(workflow)
 
         assert progress.workflow_name == "test-workflow"
         assert progress.status == WorkflowStatus.COMPLETED.value
 
-    def test_run_creates_progress_file(self, temp_dir: Path, sample_workflow_yaml: str) -> None:
+    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    def test_run_creates_progress_file(self, mock_execute, temp_dir: Path, sample_workflow_yaml: str) -> None:
         """Test running creates progress file."""
+        mock_execute.return_value = None
+
         parser = WorkflowParser()
         workflow = parser.parse_string(sample_workflow_yaml)
 
         executor = WorkflowExecutor(repo_root=temp_dir)
-        progress = executor.run(workflow, dry_run=True)
+        progress = executor.run(workflow)
 
         progress_dir = temp_dir / "agentic" / "outputs" / progress.workflow_id
         assert progress_dir.exists()
         assert (progress_dir / "progress.json").exists()
 
-    def test_run_with_variables(self, temp_dir: Path) -> None:
+    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    def test_run_with_variables(self, mock_execute, temp_dir: Path) -> None:
         """Test running with custom variables."""
+        mock_execute.return_value = None
+
         workflow_yaml = """
 name: variable-test
 version: "1.0"
@@ -92,13 +98,15 @@ steps:
         progress = executor.run(
             workflow,
             variables={"custom_var": "custom_value"},
-            dry_run=True,
         )
 
         assert progress.variables["custom_var"] == "custom_value"
 
-    def test_run_with_default_variables(self, temp_dir: Path) -> None:
+    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    def test_run_with_default_variables(self, mock_execute, temp_dir: Path) -> None:
         """Test running uses default variable values."""
+        mock_execute.return_value = None
+
         workflow_yaml = """
 name: default-var-test
 version: "1.0"
@@ -116,7 +124,7 @@ steps:
         workflow = parser.parse_string(workflow_yaml)
 
         executor = WorkflowExecutor(repo_root=temp_dir)
-        progress = executor.run(workflow, dry_run=True)
+        progress = executor.run(workflow)
 
         assert progress.variables["my_var"] == "the_default"
 
@@ -143,8 +151,11 @@ steps:
         with pytest.raises(ValueError, match="Missing required variable"):
             executor.run(workflow)
 
-    def test_run_from_step(self, temp_dir: Path) -> None:
+    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    def test_run_from_step(self, mock_execute, temp_dir: Path) -> None:
         """Test running from a specific step."""
+        mock_execute.return_value = None
+
         workflow_yaml = """
 name: multi-step
 version: "1.0"
@@ -164,25 +175,29 @@ steps:
         workflow = parser.parse_string(workflow_yaml)
 
         executor = WorkflowExecutor(repo_root=temp_dir)
-        progress = executor.run(workflow, from_step="step2", dry_run=True)
+        progress = executor.run(workflow, from_step="step2")
 
-        # step1 should be skipped, step2 starts execution
-        # In dry run, all are pending but step1 should be skipped
+        # step1 should be skipped, step2 and step3 executed
         assert progress.status == WorkflowStatus.COMPLETED.value
+        # Mock should be called twice (step2 and step3)
+        assert mock_execute.call_count == 2
 
-    def test_run_sets_terminal_output_level(self, temp_dir: Path, sample_workflow_yaml: str) -> None:
+    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    def test_run_sets_terminal_output_level(self, mock_execute, temp_dir: Path, sample_workflow_yaml: str) -> None:
         """Test terminal output level is set correctly."""
+        mock_execute.return_value = None
+
         parser = WorkflowParser()
         workflow = parser.parse_string(sample_workflow_yaml)
 
         executor = WorkflowExecutor(repo_root=temp_dir)
 
         # Test base mode
-        progress = executor.run(workflow, terminal_output="base", dry_run=True)
+        progress = executor.run(workflow, terminal_output="base")
         assert progress is not None
 
         # Test all mode
-        progress = executor.run(workflow, terminal_output="all", dry_run=True)
+        progress = executor.run(workflow, terminal_output="all")
         assert progress is not None
 
 
@@ -260,11 +275,12 @@ outputs:
         workflow = parser.parse_string(workflow_yaml)
 
         executor = WorkflowExecutor(repo_root=temp_dir)
-        progress = executor.run(workflow, dry_run=True)
+        progress = executor.run(workflow)
 
-        # In dry run with no template directory, this may not render
+        # Workflow with no steps should complete successfully
         # The test verifies the execution path doesn't error
         assert progress is not None
+        assert progress.status == WorkflowStatus.COMPLETED.value
 
 
 class TestWorkflowExecutorErrorHandling:

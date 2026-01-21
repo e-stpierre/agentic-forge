@@ -87,7 +87,6 @@ def cmd_run(args: Namespace) -> None:
             variables=variables,
             from_step=args.from_step,
             terminal_output=args.terminal_output,
-            dry_run=args.dry_run,
         )
         print(f"\nWorkflow {progress.status}: {progress.workflow_id}")
         if progress.errors:

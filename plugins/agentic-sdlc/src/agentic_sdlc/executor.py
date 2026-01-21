@@ -90,7 +90,6 @@ class WorkflowExecutor:
         variables: dict[str, Any] | None = None,
         from_step: str | None = None,
         terminal_output: str = "base",
-        dry_run: bool = False,
     ) -> WorkflowProgress:
         """Execute a workflow.
 
@@ -99,7 +98,6 @@ class WorkflowExecutor:
             variables: Variables to pass to templates
             from_step: Resume from a specific step
             terminal_output: Output mode (base or all)
-            dry_run: Validate without executing
         """
         variables = variables or {}
         workflow_id = generate_workflow_id(workflow.name)
@@ -125,14 +123,6 @@ class WorkflowExecutor:
 
         # Print workflow start
         console.workflow_start(workflow.name, workflow_id)
-
-        if dry_run:
-            logger.info("workflow", "Dry run mode - skipping execution")
-            console.info("Dry run mode - skipping execution")
-            progress.status = WorkflowStatus.COMPLETED.value
-            progress.completed_at = datetime.now(timezone.utc).isoformat()
-            save_progress(progress, self.repo_root)
-            return progress
 
         skip_until = from_step
 
