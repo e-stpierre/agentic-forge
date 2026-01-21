@@ -2,6 +2,22 @@
 name: create-gh-issue
 description: Create a GitHub issue with title, body, and labels
 argument-hint: "<title>" [--body <body>] [--labels <labels>] [--milestone <milestone>]
+arguments:
+  - name: title
+    description: The issue title
+    required: true
+  - name: body
+    description: The issue body/description
+    required: false
+  - name: labels
+    description: Comma-separated list of labels to apply
+    required: false
+  - name: milestone
+    description: Milestone to assign the issue to
+    required: false
+  - name: assignee
+    description: GitHub username to assign (use @me for self)
+    required: false
 ---
 
 # Create GitHub Issue Command
@@ -60,10 +76,10 @@ On failure, output:
 
 ## Examples
 
-```
-/create-gh-issue "Fix login bug" --body "Users cannot login with Safari" --labels bug,priority-high
+```bash
+/interactive-sdlc:create-gh-issue "Fix login bug" --body "Users cannot login with Safari" --labels bug,priority-high
 
-/create-gh-issue "Add dark mode support" --labels enhancement,ui --milestone "v2.0"
+/interactive-sdlc:create-gh-issue "Add dark mode support" --labels enhancement,ui --milestone "v2.0"
 
-/create-gh-issue "Update documentation" --body "README needs examples" --assignee @me
+/interactive-sdlc:create-gh-issue "Update documentation" --body "README needs examples" --assignee @me
 ```

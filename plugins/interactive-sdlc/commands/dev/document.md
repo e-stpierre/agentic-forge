@@ -2,6 +2,13 @@
 name: document
 description: Generate or update project documentation with mermaid diagrams
 argument-hint: "[--output <path>] [context]"
+arguments:
+  - name: output
+    description: Specify output file path
+    required: false
+  - name: context
+    description: Description of what to document
+    required: true
 ---
 
 # Document
@@ -164,35 +171,74 @@ Documentation saved to docs/architecture.md
 The documentation has been formatted with markdownlint-cli2.
 ```
 
-Generated documentation should follow this structure:
+## Templates
+
+### Documentation Structure
 
 ````markdown
-# [Title]
+# {{title}}
+
+<!--
+Instructions:
+- Replace {{title}} with a descriptive document title
+- Use title case (e.g., "API Reference", "Authentication Flow")
+-->
 
 ## Overview
 
-Brief description of what this document covers.
+{{overview}}
 
-## [Main Sections]
+<!--
+Instructions:
+- Replace {{overview}} with a brief description of what this document covers
+- Keep it to 2-4 sentences
+-->
 
-Detailed content with code examples and diagrams.
+## {{main_section}}
+
+{{main_content}}
+
+<!--
+Instructions:
+- Replace {{main_section}} with appropriate section name
+- Replace {{main_content}} with detailed content
+- Include code examples and diagrams as needed
+- Add multiple sections as required
+-->
 
 ### Diagrams
 
 ```mermaid
-[Appropriate diagram type]
+{{diagram}}
 ```
-````
+
+<!--
+Instructions:
+- Replace {{diagram}} with appropriate mermaid diagram
+- Choose diagram type based on content (flowchart, sequence, class, etc.)
+- Keep diagrams simple and focused
+-->
 
 ## Examples
 
-Practical usage examples.
+{{examples}}
+
+<!--
+Instructions:
+- Replace {{examples}} with practical usage examples
+- Include code snippets where helpful
+-->
 
 ## Related
 
-Links to related documentation.
+{{related_links}}
 
-```
+<!--
+Instructions:
+- Replace {{related_links}} with links to related documentation
+- Use markdown link format: [Link Text](url)
+-->
+````
 
 ## Important Notes
 
@@ -201,4 +247,3 @@ Links to related documentation.
 - Include practical examples in all documentation
 - Follow existing documentation conventions in the project
 - Keep diagrams as simple as possible while conveying the necessary information
-```

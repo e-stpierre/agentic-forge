@@ -2,6 +2,10 @@
 name: analyse-style
 description: Check code style, consistency, and best practices adherence
 argument-hint: "[context]"
+arguments:
+  - name: context
+    description: Specific areas or files to focus on
+    required: false
 ---
 
 # Analyse Style
@@ -27,7 +31,7 @@ Check code style, consistency, and best practices adherence by identifying incon
 ## Instructions
 
 1. **Read Configuration**
-   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
+   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `analysis`)
 
 2. **Understand Project Conventions**
    - Check for ESLint, Prettier, Ruff configs
@@ -68,7 +72,7 @@ Check code style, consistency, and best practices adherence by identifying incon
 Present a summary and save the report:
 
 ```
-Style & consistency analysis complete. Report saved to /analysis/style.md
+Style & consistency analysis complete. Report saved to analysis/style.md
 
 ## Summary
 - Major Inconsistencies: X issues

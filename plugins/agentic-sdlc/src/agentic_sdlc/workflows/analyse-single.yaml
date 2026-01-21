@@ -102,7 +102,7 @@ steps:
           5. Implement the fix
           6. Run build/lint commands and fix any errors
           7. Mark the issue as fixed in the analysis document
-          8. Commit using /agentic-sdlc:git-commit with title starting with issue ID
+          8. Commit using agentic-sdlc:git-commit with title starting with issue ID
           9. End this session (do NOT continue to next issue)
 
           ## Completion

@@ -80,7 +80,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using /agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -125,7 +125,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using /agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -170,7 +170,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using /agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -215,7 +215,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using /agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -260,7 +260,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using /agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -301,7 +301,7 @@ steps:
           4. Navigate the code to understand the failure
           5. Implement the fix
           6. Run the failing check again to verify
-          7. Commit using /agentic-sdlc:git-commit with clear message
+          7. Commit using agentic-sdlc:git-commit with clear message
           8. End this session (do NOT continue to next issue)
 
           ## Checks to Run

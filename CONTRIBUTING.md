@@ -4,8 +4,8 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ## Ways to Contribute
 
-- **Report bugs** - Found something broken? Open an issue
-- **Suggest features** - Have an idea for a new plugin or enhancement? Let us know
+- **Report bugs** - Found something broken? [Open an issue](https://github.com/e-stpierre/agentic-forge/issues)
+- **Suggest features** - Have an idea for a new plugin or enhancement? [Let us know](https://github.com/e-stpierre/agentic-forge/issues)
 - **Improve docs** - Fix typos, clarify explanations, add examples
 - **Write code** - Bug fixes, new plugins, improvements to existing ones
 
@@ -35,16 +35,16 @@ claude --plugin-dir ./plugins/<plugin-name>
 
 - `feature/description` - New features or plugins
 - `fix/description` - Bug fixes
-- `docs/description` - Documentation updates
+- `doc/description` - Documentation updates
 - `refactor/description` - Refactoring
 
 ### Commit Messages
 
-Write clear, concise commit messages.
+Write clear, concise commit messages that describe the change. For example: `Add retry logic to workflow executor` or `Fix validation error in analyse-bug command`.
 
 ### Code Formatting
 
-Validate format, lint and tests locally before submitting a PR:
+Run format, lint, and test checks locally before submitting a PR:
 
 ```bash
 pnpm check          # Format and lint
@@ -58,7 +58,7 @@ uv run pytest       # Python tests (for plugins with Python code)
 Each plugin lives in its own directory:
 
 - `/plugins/` - Official, stable plugins
-- `/experimental-plugins/` - Early-stage plugins being tested, not yet ready for general use
+- `/experimental-plugins/` - Work-in-progress plugins that may have breaking changes
 
 ```
 plugins/<plugin-name>/
@@ -80,7 +80,7 @@ plugins/<plugin-name>/
 
 ### Prompt Templates
 
-All prompts must follow the templates in [`docs/templates/`](docs/templates/). Use the `/normalize` command (inside Claude Code) to validate:
+All prompts must follow the templates in [`docs/templates/`](docs/templates/). Use the `/normalize` command inside Claude Code to validate.
 
 ```bash
 # Validate all prompts
@@ -140,7 +140,7 @@ Be respectful and constructive. We're all here to build useful tools together.
 
 ## Questions?
 
-Open an issue with the `question` label.
+[Open an issue](https://github.com/e-stpierre/agentic-forge/issues) with the `question` label.
 
 ---
 

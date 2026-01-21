@@ -46,26 +46,6 @@
         }
       }
     },
-    "memory": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable memory system"
-        },
-        "directory": {
-          "type": "string",
-          "default": "agentic/memory",
-          "description": "Memory storage location"
-        },
-        "template": {
-          "type": "string",
-          "default": "default",
-          "description": "Default memory template"
-        }
-      }
-    },
     "defaults": {
       "type": "object",
       "properties": {

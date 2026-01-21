@@ -36,7 +36,6 @@ class TestConfigDefaults:
         assert "outputDirectory" in config
         assert "logging" in config
         assert "git" in config
-        assert "memory" in config
         assert "defaults" in config
         assert "execution" in config
 

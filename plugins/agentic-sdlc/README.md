@@ -1,6 +1,6 @@
 # Agentic SDLC
 
-Agentic SDLC enables Claude Code to execute complex, multi-step tasks with high success rates through YAML-based workflow orchestration. The framework allows Claude Code to work fully independently with resiliency and accuracy in multi-session workflows, supporting parallel execution, conditional logic, retry mechanisms, and persistent memory across sessions.
+Agentic SDLC enables Claude Code to execute complex, multi-step tasks with high success rates through YAML-based workflow orchestration. The framework allows Claude Code to work fully independently with resiliency and accuracy in multi-session workflows, supporting parallel execution, conditional logic, and retry mechanisms.
 
 ## Overview
 
@@ -11,7 +11,6 @@ Key capabilities:
 - YAML workflow definitions with variables, conditions, and parallel execution
 - Hybrid Python + Claude orchestration model for reliability
 - Git worktree isolation for parallel task execution
-- Persistent memory system for cross-session learning
 - Progress tracking and checkpoint management
 
 Quick examples:
@@ -27,13 +26,17 @@ Quick examples:
 
 ### Core Commands
 
-| Command        | Description                                                   |
-| -------------- | ------------------------------------------------------------- |
-| `/plan`        | Generate implementation plans for features, bugs, or chores   |
-| `/build`       | Implement changes following a plan file                       |
-| `/validate`    | Run validation checks on implementation                       |
-| `/analyse`     | Analyze codebase for issues (bug, debt, doc, security, style) |
-| `/orchestrate` | Evaluate workflow state and determine next action             |
+| Command             | Description                                                 |
+| ------------------- | ----------------------------------------------------------- |
+| `/plan`             | Generate implementation plans for features, bugs, or chores |
+| `/build`            | Implement changes following a plan file                     |
+| `/validate`         | Run validation checks on implementation                     |
+| `/analyse-bug`      | Analyze codebase for bugs and logic errors                  |
+| `/analyse-debt`     | Identify technical debt and refactoring opportunities       |
+| `/analyse-doc`      | Analyze documentation quality and completeness              |
+| `/analyse-security` | Scan for security vulnerabilities                           |
+| `/analyse-style`    | Check code style and best practices                         |
+| `/orchestrate`      | Evaluate workflow state and determine next action           |
 
 ### Git Commands (`commands/git/`)
 
@@ -52,12 +55,10 @@ Quick examples:
 
 ## Skills
 
-| Skill                | Description                                                   |
-| -------------------- | ------------------------------------------------------------- |
-| `/create-memory`     | Create persistent memory documents for patterns and learnings |
-| `/search-memory`     | Search existing memories by category, tags, or content        |
-| `/create-checkpoint` | Create checkpoint entries in workflow checkpoint file         |
-| `/create-log`        | Add log entries to workflow log file                          |
+| Skill                | Description                                           |
+| -------------------- | ----------------------------------------------------- |
+| `/create-checkpoint` | Create checkpoint entries in workflow checkpoint file |
+| `/create-log`        | Add log entries to workflow log file                  |
 
 ## Installation
 
@@ -96,7 +97,6 @@ uv run --extra dev pytest --cov --cov-report=term-missing
 | `agentic-sdlc analyse`   | Run codebase analysis                        |
 | `agentic-sdlc configure` | Interactive configuration setup              |
 | `agentic-sdlc config`    | Get or set configuration values              |
-| `agentic-sdlc memory`    | Manage memory documents                      |
 
 ### CLI Options
 
@@ -112,7 +112,7 @@ uv run --extra dev pytest --cov --cov-report=term-missing
 
 ## Configuration
 
-Configuration is stored in `agentic/config.json`. Use the CLI or `/configure` command to modify settings.
+Configuration is stored in `agentic/config.json`. Use the CLI (`agentic-sdlc configure`) to modify settings.
 
 ```json
 {
@@ -125,10 +125,6 @@ Configuration is stored in `agentic/config.json`. Use the CLI or `/configure` co
     "mainBranch": "main",
     "autoCommit": true,
     "autoPr": true
-  },
-  "memory": {
-    "enabled": true,
-    "directory": "agentic/memory"
   },
   "defaults": {
     "maxRetry": 3,
@@ -168,6 +164,7 @@ Key architectural decisions:
 | ---------------- | --------------------------------------------------------------------------------- |
 | `prompt`         | Execute a prompt in a Claude session                                              |
 | `command`        | Execute a Claude command with arguments                                           |
+| `serial`         | Execute nested steps sequentially in order                                        |
 | `parallel`       | Execute nested steps concurrently in git worktrees                                |
 | `conditional`    | Execute steps based on Jinja2 condition                                           |
 | `ralph-loop`     | Repeat a prompt until completion promise or max iterations (Ralph Wiggum pattern) |
@@ -178,15 +175,14 @@ Key architectural decisions:
 ```
 agentic/
 ├── config.json           # Global configuration
-├── workflows/            # Workflow executions
+├── workflows/            # Workflow YAML templates
+│   ├── my-workflow.yaml
+│   └── ...
+├── outputs/              # Workflow execution state
 │   └── {workflow-id}/
 │       ├── progress.json # Workflow progress
 │       ├── checkpoint.md # Checkpoints
 │       └── logs.ndjson   # Structured logs
-├── memory/               # Persistent memories
-│   ├── decisions/
-│   ├── patterns/
-│   └── index.md          # Memory index
 └── analysis/             # Analysis outputs
     ├── bug.md
     ├── debt.md
@@ -199,7 +195,6 @@ agentic/
 
 - Parallel steps require git repository (uses worktrees for isolation)
 - Each step starts a new session (no context accumulation across steps)
-- Memory search uses keyword matching (no semantic/vector search)
 
 ## Complete Examples
 
@@ -410,43 +405,21 @@ agentic-sdlc config set git.mainBranch develop
 agentic-sdlc config set logging.level Warning
 ```
 
-### agentic-sdlc memory
-
-**Subcommands:**
-
-- `list [--category <cat>]` - List memories, optionally filtered by category
-- `search <query>` - Search memories by keywords
-- `prune [--older-than <duration>]` - Remove old memories
-
-**Examples:**
-
-```bash
-# List all memories
-agentic-sdlc memory list
-
-# List memories by category
-agentic-sdlc memory list --category pattern
-agentic-sdlc memory list --category error
-
-# Search memories
-agentic-sdlc memory search "authentication middleware"
-
-# Prune old memories
-agentic-sdlc memory prune --older-than 30d
-```
-
 ### /plan
 
 **Arguments:**
 
-- `--type <type>` - Plan type: feature, bug, chore (required)
-- `--spec <path>` - Path to specification file
-- `--output <path>` - Output file path
+- `--type <type>` - Plan type: feature, bug, chore (default: auto, infers from context)
+- `--template <path>` - Custom template path (optional)
+- `<context>` - Task description or issue reference (required, positional)
 
 **Examples:**
 
 ```bash
-# Generate a feature plan
+# Generate a feature plan (type auto-detected)
+/plan Add user profile page with avatar upload
+
+# Generate a feature plan with explicit type
 /plan --type feature Add user profile page with avatar upload
 
 # Generate a bug fix plan
@@ -460,8 +433,9 @@ agentic-sdlc memory prune --older-than 30d
 
 **Arguments:**
 
-- `--plan <path>` - Path to plan file (required)
-- `--milestone <n>` - Implement specific milestone only
+- `--plan <path>` - Path to plan document or plan JSON (optional)
+- `--milestone <n>` - Implement specific milestone only (optional)
+- `--context <text>` - Additional context or instructions (optional)
 
 **Examples:**
 
@@ -471,6 +445,9 @@ agentic-sdlc memory prune --older-than 30d
 
 # Implement specific milestone
 /build --plan plan.md --milestone 2
+
+# Implement with additional context
+/build --plan plan.md --context "Focus on error handling"
 ```
 
 ### /validate
@@ -491,62 +468,26 @@ agentic-sdlc memory prune --older-than 30d
 
 ### /analyse
 
+The `/analyse` command has type-specific variants: `/analyse-bug`, `/analyse-debt`, `/analyse-doc`, `/analyse-security`, `/analyse-style`.
+
 **Arguments:**
 
-- `--type <type>` - Analysis type: bug, debt, doc, security, style
-- `--template <path>` - Custom output template
+- `[paths]` - Space-separated list of files or directories to analyze (optional)
 
 **Examples:**
 
 ```bash
-# Run security analysis
-/analyse --type security
+# Run security analysis on entire codebase
+/analyse-security
 
-# Run code style analysis
-/analyse --type style
+# Run code style analysis on specific directory
+/analyse-style src/
 
-# Run with custom template
-/analyse --type debt --template templates/custom-debt.md.j2
-```
+# Run bug analysis on specific files
+/analyse-bug src/auth/handler.ts src/auth/session.ts
 
-### /create-memory
-
-**Arguments:**
-
-- `--category <cat>` - Memory category: pattern, lesson, error, decision, context
-- `--tags <tags>` - Comma-separated tags for searchability
-
-**Examples:**
-
-```bash
-# Create a pattern memory
-/create-memory --category pattern --tags "authentication,middleware"
-Discovered custom middleware chain pattern in src/middleware/
-
-# Create an error memory
-/create-memory --category error --tags "timeout,database"
-Database connection timeout solution: increase pool size
-```
-
-### /search-memory
-
-**Arguments:**
-
-- `--category <cat>` - Filter by category
-- `--tags <tags>` - Filter by tags
-- `<query>` - Search keywords
-
-**Examples:**
-
-```bash
-# Search by keywords
-/search-memory authentication middleware
-
-# Search by category
-/search-memory --category pattern
-
-# Search by tags
-/search-memory --tags "database,optimization"
+# Run documentation analysis
+/analyse-doc
 ```
 
 ### /create-checkpoint
@@ -633,14 +574,10 @@ steps:
     steps:
       - name: security
         type: command
-        command: analyse
-        args:
-          type: security
+        command: agentic-sdlc:analyse-security
       - name: style
         type: command
-        command: analyse
-        args:
-          type: style
+        command: agentic-sdlc:analyse-style
 ```
 
 **Conditional execution:**
@@ -649,11 +586,11 @@ steps:
 steps:
   - name: fix-issues
     type: conditional
-    condition: "{{ outputs.validate['issues_count'] > 0 }}"
+    condition: "{{ outputs.validate.issues | length > 0 }}"
     then:
       - name: apply-fixes
         type: command
-        command: build
+        command: agentic-sdlc:build
         args:
           plan: fix-plan.md
 ```

@@ -2,6 +2,10 @@
 name: analyse-doc
 description: Analyze documentation quality, accuracy, and completeness
 argument-hint: "[context]"
+arguments:
+  - name: context
+    description: Specific documentation files or areas to focus on
+    required: false
 ---
 
 # Analyse Doc
@@ -27,10 +31,10 @@ Analyze documentation quality, accuracy, and completeness by comparing against a
 ## Instructions
 
 1. **Read Configuration**
-   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
+   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `analysis`)
 
 2. **Identify Documentation**
-   - Find all documentation files (README, docs/, \*.md)
+   - Find all documentation files (README, docs/, `*.md`)
    - Identify inline documentation (JSDoc, docstrings, comments)
    - Check for documentation templates or standards
 
@@ -58,7 +62,7 @@ Analyze documentation quality, accuracy, and completeness by comparing against a
 Present a summary and save the report:
 
 ```
-Documentation analysis complete. Report saved to /analysis/doc.md
+Documentation analysis complete. Report saved to analysis/doc.md
 
 ## Summary
 - Critical (Wrong/Misleading): X issues

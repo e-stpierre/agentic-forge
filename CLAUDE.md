@@ -19,8 +19,6 @@ The agentic-forge repository aims to:
 Comprehensive documentation for plugin development and usage.
 This directory also contains template files for agent, command and skill. These templates must be respected when creating a new prompt.
 
-The `/docs/vision/` subdirectory contains vision documents for planned plugins and features.
-
 ### `/experimental-plugins/`
 
 Root directory containing all experimental plugins. These plugins are not yet officially released. These plugins should also not be explicitely documented in the repository root README.md, but the directory can be mention and the plugins can be used in examples, such as uv tool installation. Breaking changes are accepted in experimental-plugins.

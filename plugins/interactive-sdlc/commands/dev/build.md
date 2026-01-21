@@ -2,6 +2,19 @@
 name: build
 description: Implement a plan file with checkpoint support for resuming work
 argument-hint: '<plan-file> [--git] [--checkpoint "<text>"] [context]'
+arguments:
+  - name: plan-file
+    description: Path to plan file
+    required: true
+  - name: git
+    description: Auto-commit changes at logical checkpoints
+    required: false
+  - name: checkpoint
+    description: Resume from specific task/milestone
+    required: false
+  - name: context
+    description: Optional freeform context for implementation guidance
+    required: false
 ---
 
 # Build
@@ -96,7 +109,7 @@ Changes summary:
 - [list key changes made]
 
 Next steps:
-- Run validation: /interactive-sdlc:validate --plan /specs/feature-auth.md
+- Run validation: /interactive-sdlc:validate --plan specs/feature-auth.md
 - Review changes and test functionality
 ```
 

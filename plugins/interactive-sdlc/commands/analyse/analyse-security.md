@@ -2,6 +2,10 @@
 name: analyse-security
 description: Scan for security vulnerabilities, unsafe patterns, and dependency issues
 argument-hint: "[context]"
+arguments:
+  - name: context
+    description: Specific areas or concerns to focus on
+    required: false
 ---
 
 # Analyse Security
@@ -27,7 +31,7 @@ Scan for security vulnerabilities, unsafe patterns, and dependency issues by che
 ## Instructions
 
 1. **Read Configuration**
-   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
+   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `analysis`)
 
 2. **Scan for Vulnerabilities**
    Check for common security issues:
@@ -79,7 +83,7 @@ Scan for security vulnerabilities, unsafe patterns, and dependency issues by che
 Present a summary and save the report:
 
 ```
-Security analysis complete. Report saved to /analysis/security.md
+Security analysis complete. Report saved to analysis/security.md
 
 ## Summary
 | Risk Level | Issues |

@@ -2,6 +2,17 @@
 name: git-branch
 description: Create a branch with standardized naming convention
 argument-hint: [category] <branch-name> [issue-id]
+arguments:
+  - name: category
+    description: Branch type (poc, feature, fix, chore, doc, refactor)
+    required: false
+    default: feature
+  - name: branch-name
+    description: Short kebab-case description of the work
+    required: true
+  - name: issue-id
+    description: GitHub issue number associated with this work
+    required: false
 ---
 
 # Git Branch Command
@@ -10,7 +21,7 @@ Creates a new git branch following the naming convention: `<category>/<issue-id>
 
 ## Arguments
 
-- **`[category]`** (optional): Branch type. Common values: poc, feature, hotfix, chore, docs. Accepts any value. Defaults to `feature`
+- **`[category]`** (optional): Branch type. Common values: poc, feature, fix, chore, doc, refactor. Accepts any value. Defaults to `feature`
 - **`<branch-name>`** (required): Short kebab-case description of the work
 - **`[issue-id]`** (optional): GitHub issue number associated with this work
 
@@ -33,7 +44,7 @@ Create and checkout a new branch with consistent naming that links to issue trac
    - Look for GitHub issue references (#123, issue 123)
    - Derive branch name from the task description
    - Default category to `feature` if not provided
-3. Use the provided category or default to `feature`. Common categories: poc, feature, hotfix, chore, docs
+3. Use the provided category or default to `feature`. Common categories: poc, feature, fix, chore, doc, refactor
 4. Construct the branch name:
    - With issue: `<category>/<issue-id>_<branch-name>`
    - Without issue: `<category>/<branch-name>`

@@ -6,7 +6,10 @@ This template defines the exact structure for Claude Code command prompts.
 REQUIRED FRONTMATTER FIELDS:
 - name: Kebab-case identifier for the command
 - description: One-line description shown in help menus (recommended: under 100 characters)
-- argument-hint: Usage pattern showing arguments (can be empty string)
+- arguments: List of argument definitions with name, description, required, and optional default
+
+OPTIONAL FRONTMATTER FIELDS:
+- argument-hint: Usage pattern hint for interactive commands (e.g., "<type> [context]"). Recommended for commands expected to be used manually in a Claude session, not agentic workflows.
 
 REQUIRED SECTIONS:
 - Arguments (if command takes arguments)
@@ -16,6 +19,7 @@ REQUIRED SECTIONS:
 - Output Guidance
 
 OPTIONAL SECTIONS:
+- Command-Specific Guidelines (for domain-specific behavioral guidance unique to this command)
 - Templates (for commands that generate structured outputs)
 - Configuration (for commands with configurable settings)
 - Important Notes (for critical reminders, constraints, and anti-patterns)
@@ -31,7 +35,13 @@ ARGUMENT DESIGN PRINCIPLES:
 
 name: {{command-name}}
 description: {{command-description}}
-argument-hint: {{argument-pattern}}
+argument-hint: {{argument-pattern}} # Optional: for interactive commands only
+arguments:
+
+- name: {{arg-name}}
+  description: {{arg-description}}
+  required: {{true|false}}
+  default: {{default-value}} # Optional: only if required is false
 
 ---
 
@@ -53,10 +63,11 @@ Instructions:
 Instructions:
 - Replace {{arguments}} with a bullet-point list defining each argument
 - Format: **`argument-name`** (required/optional): Description and expected format
+- This section documents the arguments defined in the frontmatter for human readers
 - Include default values where applicable
 - If present, the [context] argument should always come last
 - Do NOT add arguments for values that can be configured in settings.json
-- Omit this section entirely if the command takes no arguments
+- Omit this section entirely if the command takes no arguments (frontmatter arguments can be empty list)
 -->
 
 ## Objective
@@ -82,6 +93,19 @@ Instructions:
   - Validate input before processing
   - Preserve existing functionality
   - Report errors clearly
+-->
+
+## Command-Specific Guidelines (optional)
+
+{{command_specific_guidelines}}
+
+<!--
+Instructions:
+- Replace {{command_specific_guidelines}} with domain-specific behavioral guidance
+- Each guideline must be in a sub-section (###) with a clear, descriptive title
+- Use for specialized context that doesn't fit standard sections
+- Include examples, conventions, or patterns specific to this command's domain
+- Omit this section if not needed
 -->
 
 ## Instructions

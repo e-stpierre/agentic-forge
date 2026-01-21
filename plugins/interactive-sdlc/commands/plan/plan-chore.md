@@ -2,6 +2,16 @@
 name: plan-chore
 description: Plan a maintenance task with codebase exploration and structured plan generation
 argument-hint: "[--explore N] [--git] [context]"
+arguments:
+  - name: explore
+    description: Override default explore agent count (default 2)
+    required: false
+  - name: git
+    description: Commit plan file after creation
+    required: false
+  - name: context
+    description: Optional freeform context for argument inference
+    required: false
 ---
 
 # Plan Chore
@@ -29,7 +39,7 @@ Plan a maintenance task with comprehensive codebase exploration, gathering user 
 ## Instructions
 
 1. **Read Configuration**
-   - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `/specs`)
+   - Read `.claude/settings.json` for `interactive-sdlc.planDirectory` (default: `specs`)
    - Read `interactive-sdlc.defaultExploreAgents.chore` (default: 2)
 
 2. **Explore Codebase**
@@ -47,27 +57,9 @@ Plan a maintenance task with comprehensive codebase exploration, gathering user 
      - Any specific files or areas to focus on?
 
 4. **Generate Plan**
-   - Create a plan following this structure:
-
-   ```markdown
-   # Chore: <chore-title>
-
-   ## Description
-
-   Brief description of what needs to be done and why
-
-   ## Scope
-
-   What is included and what is explicitly out of scope
-
-   ## Tasks
-
-   List of specific tasks required to complete this chore, in order
-
-   ## Validation Criteria
-
-   How to verify this chore is complete
-   ```
+   - Create a plan using the structure defined in the Templates section
+   - Fill in all required sections with gathered requirements
+   - List tasks in execution order
 
 5. **Save Plan**
    - Save to `{planDirectory}/chore-{slugified-title}.md`
@@ -82,7 +74,7 @@ Plan a maintenance task with comprehensive codebase exploration, gathering user 
 Present the plan file path and a brief summary of what was planned:
 
 ```
-Plan saved to /specs/chore-{slugified-title}.md
+Plan saved to specs/chore-{slugified-title}.md
 
 ## Summary
 - Tasks identified: X
@@ -90,7 +82,7 @@ Plan saved to /specs/chore-{slugified-title}.md
 - Validation criteria defined
 
 Next steps:
-- Implement with: /interactive-sdlc:build /specs/chore-{slugified-title}.md
+- Implement with: /interactive-sdlc:build specs/chore-{slugified-title}.md
 - Or run full workflow: /interactive-sdlc:plan-build-validate
 ```
 

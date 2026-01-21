@@ -1,10 +1,16 @@
 ---
 name: git-commit
-description: Commit changes with a structured message
-argument-hint: [message]
+description: Create a git commit with structured message
+output: json
 arguments:
   - name: message
-    description: Override commit title. If not provided, auto-generate from changes
+    description: Commit message (auto-generated if not provided)
+    required: false
+  - name: files
+    description: Specific files to commit (default: all staged)
+    required: false
+  - name: plan_step
+    description: Reference to plan step being completed
     required: false
 ---
 
@@ -15,6 +21,8 @@ Commits staged changes with a structured message.
 ## Arguments
 
 - **`[message]`** (optional): Override commit title. If not provided, auto-generate from changes.
+- **`[files]`** (optional): Specific files to commit. Default: all staged.
+- **`[plan_step]`** (optional): Reference to plan step being completed.
 
 ## Objective
 
@@ -27,7 +35,9 @@ Create a well-structured commit with a concise title and optional bullet-point d
 - Description uses 1-5 bullet points for larger commits highlighting important aspects
 - Always include AI attribution with your model name: `Co-Authored-By: Claude <model> <noreply@anthropic.com>`
 
-## Plan Step Reference
+## Command-Specific Guidelines
+
+### Plan Step Reference
 
 When following a plan (implementation plan, milestone plan, etc.), include the current step reference at the start of the commit title in brackets:
 
@@ -72,10 +82,22 @@ Only include this prefix if you are actively following a plan with numbered step
    )"
    ```
 
-7. Report success with commit hash
+7. Return JSON output with commit details
 
 ## Output Guidance
 
-- Show the commit title used (including plan step prefix if applicable)
-- Show bullet points if description was included
-- On error, report the specific failure
+Return JSON with commit details:
+
+```json
+{
+  "success": true,
+  "commit_hash": "abc1234",
+  "message": "Implement OAuth callback handler",
+  "files_committed": ["src/auth/callback.ts", "src/auth/callback.test.ts"],
+  "stats": {
+    "files_changed": 2,
+    "insertions": 145,
+    "deletions": 23
+  }
+}
+```

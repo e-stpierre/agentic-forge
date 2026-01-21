@@ -2,6 +2,10 @@
 name: analyse-bug
 description: Analyze codebase for bugs, logic errors, and runtime issues
 argument-hint: "[context]"
+arguments:
+  - name: context
+    description: Specific areas or concerns to focus on, or directories/files to analyze
+    required: false
 ---
 
 # Analyse Bug
@@ -27,7 +31,7 @@ Analyze codebase for real bugs, logic errors, and runtime issues, categorizing f
 ## Instructions
 
 1. **Read Configuration**
-   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
+   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `analysis`)
 
 2. **Determine Scope**
    - If `[context]` specifies files/directories, focus on those
@@ -59,7 +63,7 @@ Analyze codebase for real bugs, logic errors, and runtime issues, categorizing f
 Present a summary and save the report:
 
 ```
-Bug analysis complete. Report saved to /analysis/bug.md
+Bug analysis complete. Report saved to analysis/bug.md
 
 ## Summary
 - Critical: X issues

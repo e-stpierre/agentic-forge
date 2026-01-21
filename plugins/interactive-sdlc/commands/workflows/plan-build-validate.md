@@ -2,6 +2,19 @@
 name: plan-build-validate
 description: Full guided workflow from planning through implementation to validation
 argument-hint: "[--git] [--pr] [--explore N] [context]"
+arguments:
+  - name: git
+    description: Auto-commit throughout workflow (plan file, build checkpoints)
+    required: false
+  - name: pr
+    description: Create draft PR when validation passes
+    required: false
+  - name: explore
+    description: Override explore agent count for planning phase
+    required: false
+  - name: context
+    description: Task description to reduce prompts
+    required: false
 ---
 
 # Plan-Build-Validate
@@ -112,33 +125,15 @@ If validation fails:
 
 ## Workflow Summary
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   plan-build-validate                        │
-├─────────────────────────────────────────────────────────────┤
-│  1. Determine Task Type                                      │
-│     ├── Analyze context or ask user                         │
-│     └── chore / bug / feature                               │
-├─────────────────────────────────────────────────────────────┤
-│  2. Plan (full namespace command)                           │
-│     ├── /interactive-sdlc:plan-chore                        │
-│     ├── /interactive-sdlc:plan-bug                          │
-│     └── /interactive-sdlc:plan-feature                      │
-│     → Saves plan file                                        │
-├─────────────────────────────────────────────────────────────┤
-│  3. Build                                                    │
-│     └── /interactive-sdlc:build <plan-file>                 │
-│     → Implements all tasks                                   │
-├─────────────────────────────────────────────────────────────┤
-│  4. Validate                                                 │
-│     └── /interactive-sdlc:validate --plan <plan-file>       │
-│     → Tests, review, build, compliance                       │
-├─────────────────────────────────────────────────────────────┤
-│  5. Create PR (if --pr and validation passes)               │
-│     └── gh pr create --draft                                 │
-│     → Returns PR URL                                         │
-└─────────────────────────────────────────────────────────────┘
-```
+Determine Task Type -> Plan (plan-chore/plan-bug/plan-feature) -> Build -> Validate -> Create PR (if --pr and passes)
+
+**Step details:**
+
+1. **Determine Task Type**: Analyze context or ask user (chore/bug/feature)
+2. **Plan**: Execute appropriate planning command, saves plan file
+3. **Build**: Implement all tasks from the plan
+4. **Validate**: Run tests, code review, build verification, plan compliance
+5. **Create PR**: If `--pr` flag and validation passes, create draft PR
 
 ## Output Guidance
 

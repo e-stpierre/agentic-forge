@@ -2,6 +2,10 @@
 name: analyse-debt
 description: Identify technical debt, optimization opportunities, and refactoring needs
 argument-hint: "[context]"
+arguments:
+  - name: context
+    description: Specific areas or concerns to focus on
+    required: false
 ---
 
 # Analyse Debt
@@ -27,7 +31,7 @@ Identify technical debt, optimization opportunities, and refactoring needs by an
 ## Instructions
 
 1. **Read Configuration**
-   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `/analysis`)
+   - Read `.claude/settings.json` for `interactive-sdlc.analysisDirectory` (default: `analysis`)
 
 2. **Analyze Codebase**
    Look for technical debt indicators:
@@ -71,7 +75,7 @@ Identify technical debt, optimization opportunities, and refactoring needs by an
 Present a summary and save the report:
 
 ```
-Technical debt analysis complete. Report saved to /analysis/debt.md
+Technical debt analysis complete. Report saved to analysis/debt.md
 
 ## Summary
 | Category | Issues | Total Effort |

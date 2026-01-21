@@ -1,7 +1,10 @@
 ---
 name: analyse-style
 description: Check code style, consistency, and best practices adherence
-argument-hint: "[paths]"
+arguments:
+  - name: paths
+    description: Space-separated list of files or directories to analyze
+    required: false
 ---
 
 # Analyse Style

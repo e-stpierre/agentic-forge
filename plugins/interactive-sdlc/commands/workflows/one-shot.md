@@ -2,6 +2,19 @@
 name: one-shot
 description: Quick task execution without a saved plan file. Ideal for small, well-defined tasks
 argument-hint: "[--git] [--validate] [--explore N] [context]"
+arguments:
+  - name: git
+    description: Auto-commit changes when done
+    required: false
+  - name: validate
+    description: Run validation after implementation
+    required: false
+  - name: explore
+    description: Override explore agent count (default 0 for speed)
+    required: false
+  - name: context
+    description: Task description
+    required: false
 ---
 
 # One-Shot
