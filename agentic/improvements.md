@@ -16,7 +16,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [x] IMP-003: Add release-notes command to CLI
 - [x] IMP-004: Add update command to CLI
 - [x] IMP-005: Auto-discover workflow files
-- [ ] IMP-006: List command returns no results
+- [x] IMP-006: List command returns no results
 - [ ] DOC-001: Restructure agentic-sdlc documentation
 
 ## Improvements List
@@ -163,7 +163,7 @@ Running `agentic-sdlc update` should update the plugin to the latest version usi
 
 ### IMP-006: List command returns no results
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: The `agentic-sdlc list` command always returns "No workflows found" even when workflows have been run. This appears to be a bug in the implementation.
 
@@ -187,10 +187,10 @@ The `cmd_list()` function looks for workflow progress in `agentic/workflows/` bu
 
 **Acceptance Criteria**:
 
-- [ ] List command shows workflows that have been previously run
-- [ ] Correctly identifies the workflow progress storage location
-- [ ] `--status` filter works correctly for running/completed/failed/paused
-- [ ] Empty list message is accurate (distinguishes "no workflows dir" from "no matching workflows")
+- [x] List command shows workflows that have been previously run
+- [x] Correctly identifies the workflow progress storage location
+- [x] `--status` filter works correctly for running/completed/failed/paused
+- [x] Empty list message is accurate (distinguishes "no workflows dir" from "no matching workflows")
 
 ---
 

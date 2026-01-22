@@ -75,17 +75,17 @@ def cmd_cancel(args: Namespace) -> None:
 
 def cmd_list(args: Namespace) -> None:
     """List workflows."""
-    workflows_dir = Path.cwd() / "agentic" / "workflows"
-    if not workflows_dir.exists():
+    outputs_dir = Path.cwd() / "agentic" / "outputs"
+    if not outputs_dir.exists():
         print("No workflows found.")
         return
 
     workflows = []
-    for workflow_dir in workflows_dir.iterdir():
+    for workflow_dir in outputs_dir.iterdir():
         if workflow_dir.is_dir():
             progress_file = workflow_dir / "progress.json"
             if progress_file.exists():
-                with open(progress_file) as f:
+                with open(progress_file, encoding="utf-8") as f:
                     data = json.load(f)
                     if args.status is None or data.get("status") == args.status:
                         workflows.append(data)
