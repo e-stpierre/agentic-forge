@@ -22,6 +22,7 @@ agentic-sdlc run plan-build-validate.yaml --var "task=Add a login button to the 
 ```
 
 This will:
+
 1. Generate an implementation plan
 2. Implement the changes
 3. Validate with tests and code review
@@ -118,15 +119,18 @@ agentic-sdlc analyse --type security --autofix major
 ## Troubleshooting
 
 **Workflow not found?**
+
 - Use `agentic-sdlc init --list` to see available bundled workflows
 - Bundled workflows work without copying: `agentic-sdlc run plan-build-validate.yaml`
 
 **Need more verbose output?**
+
 ```bash
 agentic-sdlc run workflow.yaml --terminal-output all
 ```
 
 **Configuration issues?**
+
 ```bash
 # Interactive setup
 agentic-sdlc configure

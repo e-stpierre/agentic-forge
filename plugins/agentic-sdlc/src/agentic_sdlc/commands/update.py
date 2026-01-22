@@ -6,9 +6,10 @@ import importlib.metadata
 import shutil
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+import tomllib
 
 if TYPE_CHECKING:
     import argparse
@@ -59,6 +60,7 @@ def _compare_versions(current: str, available: str) -> int:
     Returns:
         -1 if current < available, 0 if equal, 1 if current > available
     """
+
     def parse_version(v: str) -> tuple[int, ...]:
         return tuple(int(x) for x in v.split("."))
 

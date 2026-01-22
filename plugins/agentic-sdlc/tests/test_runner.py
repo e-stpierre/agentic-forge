@@ -394,9 +394,7 @@ class TestRunClaudeWithCommand:
             cwd=None,
         )
 
-        run_claude_with_command(
-            "command", args={"context": "hello world", "path": "simple"}
-        )
+        run_claude_with_command("command", args={"context": "hello world", "path": "simple"})
 
         mock_run.assert_called_once()
         call_args = mock_run.call_args

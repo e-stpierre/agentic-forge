@@ -151,7 +151,7 @@ def cmd_run(args: Namespace) -> None:
             if location in by_location:
                 location_label = location.replace("-", " ").title()
                 print(f"{location_label}:")
-                for name, path in by_location[location]:
+                for name, _path in by_location[location]:
                     print(f"  {name}")
                 print()
 

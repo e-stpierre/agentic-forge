@@ -19,28 +19,28 @@ Complete guide to authoring YAML workflows for agentic-sdlc.
 Every workflow YAML file has this basic structure:
 
 ```yaml
-name: workflow-name          # Unique identifier
-version: "1.0"               # Schema version
-description: Description     # Human-readable description
+name: workflow-name # Unique identifier
+version: "1.0" # Schema version
+description: Description # Human-readable description
 
-settings:                    # Workflow configuration (optional)
+settings: # Workflow configuration (optional)
   max-retry: 3
   timeout-minutes: 60
   track-progress: true
 
-variables:                   # Input parameters (optional)
+variables: # Input parameters (optional)
   - name: task
     type: string
     required: true
     description: Task to complete
 
-steps:                       # Workflow steps (required)
+steps: # Workflow steps (required)
   - name: step-1
     type: prompt
     prompt: |
       Execute this task: {{ variables.task }}
 
-outputs:                     # Output artifacts (optional)
+outputs: # Output artifacts (optional)
   - name: report
     template: report.md.j2
     path: report.md
@@ -56,25 +56,25 @@ Configure workflow behavior with these settings:
 ```yaml
 settings:
   # Retry failed steps automatically
-  max-retry: 3                    # Default: 3, Range: 0+
+  max-retry: 3 # Default: 3, Range: 0+
 
   # Maximum time for entire workflow
-  timeout-minutes: 180            # Default: 60, Range: 1+
+  timeout-minutes: 180 # Default: 60, Range: 1+
 
   # Track progress in progress.json
-  track-progress: true            # Default: true
+  track-progress: true # Default: true
 
   # Auto-fix issues during validation
-  autofix: "major"                # Options: none, minor, major, critical
+  autofix: "major" # Options: none, minor, major, critical
 
   # Terminal output verbosity
-  terminal-output: "base"         # Options: base (last message), all (stream)
+  terminal-output: "base" # Options: base (last message), all (stream)
 
   # Bypass permission prompts (use with caution)
-  bypass-permissions: false       # Default: false
+  bypass-permissions: false # Default: false
 
   # Tools Claude can use without prompting
-  required-tools:                 # Default: []
+  required-tools: # Default: []
     - "Bash"
     - "Edit"
     - "Write"
@@ -86,19 +86,19 @@ settings:
 settings:
   git:
     # Enable git operations
-    enabled: true                 # Default: false
+    enabled: true # Default: false
 
     # Use worktrees for parallel steps
-    worktree: true                # Default: false
+    worktree: true # Default: false
 
     # Auto-commit changes after each step
-    auto-commit: true             # Default: true
+    auto-commit: true # Default: true
 
     # Auto-create PR when workflow completes
-    auto-pr: true                 # Default: true
+    auto-pr: true # Default: true
 
     # Prefix for branch names
-    branch-prefix: "feature"      # Default: "agentic"
+    branch-prefix: "feature" # Default: "agentic"
 ```
 
 ## Variables
@@ -136,6 +136,7 @@ variables:
 ```
 
 **Variable Types:**
+
 - `string` - Text values
 - `number` - Numeric values
 - `boolean` - true/false values
@@ -143,11 +144,13 @@ variables:
 **Using Variables:**
 
 Pass variables via CLI:
+
 ```bash
 agentic-sdlc run workflow.yaml --var "task=Add login" --var "create_pr=true"
 ```
 
 Reference in workflow:
+
 ```yaml
 prompt: "{{ variables.task }}"
 condition: "{{ variables.create_pr }}"
@@ -168,11 +171,11 @@ steps:
       {{ variables.task }}
 
       Follow the plan in {{ variables.plan_path }}
-    model: sonnet                    # Optional: sonnet, haiku, opus
-    timeout-minutes: 30              # Optional: override global timeout
-    max-retry: 2                     # Optional: override global retry
-    on-error: retry                  # Optional: retry, skip, fail
-    checkpoint: true                 # Optional: create checkpoint after step
+    model: sonnet # Optional: sonnet, haiku, opus
+    timeout-minutes: 30 # Optional: override global timeout
+    max-retry: 2 # Optional: override global retry
+    on-error: retry # Optional: retry, skip, fail
+    checkpoint: true # Optional: create checkpoint after step
 ```
 
 ### Command Step
@@ -183,7 +186,7 @@ Execute a Claude command with arguments.
 steps:
   - name: run-validation
     type: command
-    command: agentic-sdlc:validate   # Must use namespace prefix
+    command: agentic-sdlc:validate # Must use namespace prefix
     args:
       plan: "agentic/outputs/{{ workflow_id }}/plan.md"
       severity: minor
@@ -191,6 +194,7 @@ steps:
 ```
 
 **Available Commands:**
+
 - `agentic-sdlc:plan` - Generate implementation plan
 - `agentic-sdlc:build` - Implement changes from plan
 - `agentic-sdlc:validate` - Run validation checks
@@ -233,10 +237,10 @@ Execute nested steps concurrently in git worktrees.
 steps:
   - name: run-all-analysis
     type: parallel
-    merge-strategy: wait-all         # Wait for all to complete
-    merge-mode: independent          # independent or merge
+    merge-strategy: wait-all # Wait for all to complete
+    merge-mode: independent # independent or merge
     git:
-      worktree: true                 # Run in separate worktrees
+      worktree: true # Run in separate worktrees
       branch-prefix: "analysis"
     steps:
       - name: security
@@ -253,9 +257,11 @@ steps:
 ```
 
 **Merge Strategies:**
+
 - `wait-all` - Wait for all parallel steps to complete
 
 **Merge Modes:**
+
 - `independent` - Each step works in isolation (no branch merging)
 - `merge` - Merge parallel branches back to parent branch
 
@@ -302,7 +308,7 @@ condition: "{{ variables.severity == 'major' }}"
 
 Iterative prompt execution with completion detection.
 
-```yaml
+````yaml
 steps:
   - name: implement-incrementally
     type: ralph-loop
@@ -321,19 +327,21 @@ steps:
       ```
 
       IMPORTANT: Only output completion JSON when genuinely finished.
-    max-iterations: 10               # Maximum iterations
-    completion-promise: "ALL_DONE"   # Text to match in completion JSON
+    max-iterations: 10 # Maximum iterations
+    completion-promise: "ALL_DONE" # Text to match in completion JSON
     model: sonnet
     checkpoint: true
-```
+````
 
 **How Ralph Loops Work:**
+
 1. Each iteration runs in a fresh Claude session (no context accumulation)
 2. State persists in `agentic/outputs/{workflow-id}/ralph-{step-name}.md`
 3. Loop exits when Claude outputs the completion JSON or max iterations reached
 4. The `completion-promise` field must match the `promise` value in Claude's JSON output
 
 **Completion JSON Format:**
+
 ```json
 {
   "ralph_complete": true,
@@ -355,12 +363,13 @@ steps:
       Respond with:
       - "approved" to continue
       - Provide feedback for changes
-    polling-interval: 15             # Check every 15 seconds
-    on-timeout: abort                # abort or continue
-    timeout-minutes: 1440            # 24 hours default
+    polling-interval: 15 # Check every 15 seconds
+    on-timeout: abort # abort or continue
+    timeout-minutes: 1440 # 24 hours default
 ```
 
 **Providing Input:**
+
 ```bash
 # User provides input via CLI
 agentic-sdlc input <workflow-id> "approved"
@@ -437,7 +446,7 @@ Enable git for the entire workflow:
 settings:
   git:
     enabled: true
-    worktree: false        # Use main working directory
+    worktree: false # Use main working directory
     auto-commit: true
     auto-pr: true
     branch-prefix: "feature"
@@ -452,7 +461,7 @@ steps:
   - name: parallel-features
     type: parallel
     git:
-      worktree: true       # Each step in separate worktree
+      worktree: true # Each step in separate worktree
       branch-prefix: "feat"
     steps:
       - name: feature-a
@@ -465,6 +474,7 @@ steps:
 ```
 
 **How Worktrees Work:**
+
 1. Python creates a git worktree for each parallel step
 2. Each step runs in its isolated worktree
 3. Changes are committed to separate branches
@@ -479,12 +489,13 @@ steps:
   - name: flaky-operation
     type: command
     command: agentic-sdlc:validate
-    max-retry: 5           # Retry up to 5 times
-    on-error: retry        # retry, skip, or fail
+    max-retry: 5 # Retry up to 5 times
+    on-error: retry # retry, skip, or fail
     timeout-minutes: 10
 ```
 
 **Error Actions:**
+
 - `retry` - Retry the step (up to max-retry times)
 - `skip` - Skip the step and continue workflow
 - `fail` - Fail the entire workflow immediately
@@ -513,7 +524,7 @@ steps:
   - name: critical-step
     type: command
     command: agentic-sdlc:plan
-    checkpoint: true       # Create checkpoint after success
+    checkpoint: true # Create checkpoint after success
 ```
 
 Checkpoints are saved to `agentic/outputs/{workflow-id}/checkpoint.md`.
@@ -525,9 +536,9 @@ Generate artifacts when workflow completes or fails:
 ```yaml
 outputs:
   - name: implementation-report
-    template: report.md.j2     # Jinja2 template file
-    path: report.md            # Output file path
-    when: completed            # completed or failed
+    template: report.md.j2 # Jinja2 template file
+    path: report.md # Output file path
+    when: completed # completed or failed
 
   - name: error-log
     template: error.md.j2
@@ -537,12 +548,14 @@ outputs:
 
 **Template Location:**
 Templates are resolved from:
+
 1. Workflow directory (same directory as YAML file)
 2. `agentic/templates/`
 3. Bundled plugin templates
 
 **Template Context:**
 Templates have access to:
+
 - `workflow` - Workflow metadata
 - `variables` - All workflow variables
 - `outputs` - All step outputs
@@ -571,11 +584,11 @@ steps:
   - name: plan
     type: command
     command: agentic-sdlc:plan
-    checkpoint: true         # Can resume from here
+    checkpoint: true # Can resume from here
 
   - name: implement
     type: ralph-loop
-    checkpoint: true         # Checkpoint after each milestone
+    checkpoint: true # Checkpoint after each milestone
 ```
 
 ### 3. Set Appropriate Timeouts
@@ -606,8 +619,8 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
 - name: optional-task
   type: command
   command: agentic-sdlc:analyse-style
-  on-error: skip           # Don't fail workflow if this fails
-  max-retry: 1             # Try once, then skip
+  on-error: skip # Don't fail workflow if this fails
+  max-retry: 1 # Try once, then skip
 ```
 
 ### 6. Use Parallel Steps for Independent Tasks
@@ -657,7 +670,6 @@ variables:
     Implement next incomplete milestone from plan.
     Output completion JSON when ALL milestones done.
   max-iterations: 10
-
 # Not good for: Single-step tasks (use prompt instead)
 ```
 

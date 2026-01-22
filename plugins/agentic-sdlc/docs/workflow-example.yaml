@@ -183,7 +183,7 @@ steps:
       - name: security-scan
         type: command
         command: agentic-sdlc:analyse-security
-        on-error: skip  # Don't fail workflow if security scan fails
+        on-error: skip # Don't fail workflow if security scan fails
 
       - name: style-check
         type: command

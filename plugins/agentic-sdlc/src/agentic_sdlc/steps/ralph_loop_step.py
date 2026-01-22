@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agentic_sdlc.console import OutputLevel, extract_summary
+from agentic_sdlc.console import extract_summary
 from agentic_sdlc.progress import WorkflowStatus, update_step_completed, update_step_failed
 from agentic_sdlc.ralph_loop import (
     build_ralph_system_message,

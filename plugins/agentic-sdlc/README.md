@@ -63,6 +63,7 @@ agentic-sdlc run plan-build-validate.yaml --var "task=Add feature description"
 ```
 
 This executes:
+
 1. Generate implementation plan
 2. Implement changes incrementally
 3. Run validation (tests + code review)
@@ -88,17 +89,17 @@ agentic-sdlc analyse --type security --autofix major
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `run <workflow.yaml>` | Execute a workflow from YAML file |
-| `one-shot <task>` | Complete a task end-to-end |
-| `analyse` | Run codebase analysis (security, bugs, debt, style, docs) |
-| `init` | Copy bundled workflows locally for customization |
-| `list` | Show workflow execution history |
-| `status <id>` | Check workflow execution status |
-| `resume <id>` | Resume a paused or failed workflow |
-| `input <id> <response>` | Provide human input for wait-for-human steps |
-| `configure` | Interactive configuration setup |
+| Command                 | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| `run <workflow.yaml>`   | Execute a workflow from YAML file                         |
+| `one-shot <task>`       | Complete a task end-to-end                                |
+| `analyse`               | Run codebase analysis (security, bugs, debt, style, docs) |
+| `init`                  | Copy bundled workflows locally for customization          |
+| `list`                  | Show workflow execution history                           |
+| `status <id>`           | Check workflow execution status                           |
+| `resume <id>`           | Resume a paused or failed workflow                        |
+| `input <id> <response>` | Provide human input for wait-for-human steps              |
+| `configure`             | Interactive configuration setup                           |
 
 See [Quick Start](docs/QuickStart.md) for detailed command examples.
 
@@ -107,11 +108,13 @@ See [Quick Start](docs/QuickStart.md) for detailed command examples.
 Available in Claude Code sessions:
 
 **Planning & Implementation:**
+
 - `/plan` - Generate implementation plans (feature, bug, chore)
 - `/build` - Implement changes following a plan
 - `/validate` - Run validation checks
 
 **Analysis:**
+
 - `/analyse-bug` - Find bugs and logic errors
 - `/analyse-debt` - Identify technical debt
 - `/analyse-doc` - Check documentation quality
@@ -119,6 +122,7 @@ Available in Claude Code sessions:
 - `/analyse-style` - Code style and best practices
 
 **Git Operations:**
+
 - `/git-branch` - Create git branch
 - `/git-commit` - Create structured commit
 - `/git-pr` - Create pull request
@@ -214,6 +218,7 @@ Generate Outputs
 ```
 
 **Key Design Principles:**
+
 - Fresh Claude session per step (prevents context overflow)
 - Python handles deterministic operations (parsing, I/O, timeouts)
 - Claude handles intelligent decisions (conditions, error recovery)

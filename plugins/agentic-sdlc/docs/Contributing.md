@@ -182,6 +182,7 @@ pnpm check
 ```
 
 Follow commit message conventions:
+
 - `feat: Add new feature`
 - `fix: Fix bug description`
 - `docs: Update documentation`
@@ -296,6 +297,7 @@ agentic-sdlc run your-workflow.yaml
 ### Python Orchestrator Responsibilities
 
 The Python orchestrator handles:
+
 - Parsing YAML workflow definitions
 - Managing process lifecycle (starting/stopping Claude sessions)
 - File I/O operations (progress, checkpoints, logs)
@@ -304,6 +306,7 @@ The Python orchestrator handles:
 - Deterministic control flow
 
 **DO:**
+
 - Parse and validate YAML
 - Manage subprocess execution
 - Handle timeouts and retries
@@ -311,6 +314,7 @@ The Python orchestrator handles:
 - Create git worktrees
 
 **DON'T:**
+
 - Make intelligent decisions (leave to Claude)
 - Evaluate conditions (delegate to Claude orchestrator command)
 - Parse complex outputs (use structured JSON from Claude)
@@ -318,6 +322,7 @@ The Python orchestrator handles:
 ### Claude Orchestrator Responsibilities
 
 Claude handles intelligent decisions:
+
 - Evaluating Jinja2 conditions in conditional steps
 - Deciding next step in workflow progression
 - Interpreting step outputs
@@ -325,12 +330,14 @@ Claude handles intelligent decisions:
 - Content generation
 
 **DO:**
+
 - Evaluate conditions
 - Interpret outputs
 - Generate content
 - Make context-aware decisions
 
 **DON'T:**
+
 - Direct file manipulation (use Claude tools)
 - Process management
 - Timeout handling
@@ -394,6 +401,7 @@ agentic-sdlc run test-workflow.yaml
 ### README Updates
 
 Keep README concise:
+
 - Link to detailed docs in `docs/`
 - Focus on quick start and common examples
 - Under 200 lines
@@ -401,6 +409,7 @@ Keep README concise:
 ### Detailed Documentation
 
 Place detailed content in `docs/`:
+
 - **QuickStart.md**: 5-minute getting started
 - **WorkflowBuilder.md**: Complete workflow authoring
 - **Contributing.md**: Development guidelines
@@ -408,6 +417,7 @@ Place detailed content in `docs/`:
 ### Prompt Documentation
 
 Follow template conventions:
+
 - Use `docs/templates/` as reference
 - Validate with `/normalize`
 - Include examples and usage notes
@@ -417,6 +427,7 @@ Follow template conventions:
 ### Version Numbering
 
 Follow semantic versioning (major.minor.patch):
+
 - **major**: Breaking changes
 - **minor**: New features (backward compatible)
 - **patch**: Bug fixes
@@ -426,15 +437,20 @@ Follow semantic versioning (major.minor.patch):
 1. Update version in `pyproject.toml`
 2. Update `CHANGELOG.md` with changes
 3. Commit changes:
+
 ```bash
 /git-commit -m "chore: Bump version to X.Y.Z"
 ```
+
 4. Create git tag:
+
 ```bash
 git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
+
 5. Build and publish:
+
 ```bash
 uv build
 # Distribution handled by repository maintainers
@@ -445,12 +461,14 @@ uv build
 ### Common Development Issues
 
 **Import errors after changes:**
+
 ```bash
 # Reinstall in editable mode
 uv tool install --editable --force .
 ```
 
 **Tests failing:**
+
 ```bash
 # Check test isolation
 uv run pytest --verbose --capture=no
@@ -460,6 +478,7 @@ uv run pytest --cache-clear
 ```
 
 **Schema validation errors:**
+
 ```bash
 # Validate workflow against schema
 uv run python -c "import json; import yaml;

@@ -22,8 +22,8 @@ def cmd_release_notes(args: argparse.Namespace) -> None:
 
     # Try to find it relative to the package source
     try:
-        # Get the path to the installed package
-        dist = importlib.metadata.distribution("agentic-sdlc")
+        # Verify the package is installed (editable or regular)
+        importlib.metadata.distribution("agentic-sdlc")
         # For editable installs, the package location points to src/
         # We need to go up to the plugin root to find CHANGELOG.md
         package_file = Path(__file__)
@@ -95,10 +95,7 @@ def _extract_version_section(content: str, version: str) -> str | None:
     next_version_pattern = re.compile(r"^## \[[\d.]+\]", re.MULTILINE)
     next_match = next_version_pattern.search(content, match.end())
 
-    if next_match:
-        end = next_match.start()
-    else:
-        end = len(content)
+    end = next_match.start() if next_match else len(content)
 
     return content[start:end]
 
