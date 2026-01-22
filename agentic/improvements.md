@@ -13,7 +13,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 
 - [x] IMP-001: Workflow logging not capturing agent messages
 - [x] IMP-002: Add version command to CLI
-- [ ] IMP-003: Add release-notes command to CLI
+- [x] IMP-003: Add release-notes command to CLI
 - [ ] IMP-004: Add update command to CLI
 - [ ] IMP-005: Auto-discover workflow files
 - [ ] IMP-006: List command returns no results
@@ -82,7 +82,7 @@ Running `agentic-sdlc version` or `agentic-sdlc --version` should print the curr
 
 ### IMP-003: Add release-notes command to CLI
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: Users have no easy way to view the changelog/release notes from the command line. They must manually find and read the CHANGELOG.md file.
 
@@ -98,10 +98,10 @@ Running `agentic-sdlc release-notes` should print the contents of the CHANGELOG.
 
 **Acceptance Criteria**:
 
-- [ ] `agentic-sdlc release-notes` prints the full changelog
-- [ ] `agentic-sdlc release-notes --version 0.1.0` prints only that version's notes
-- [ ] `agentic-sdlc release-notes --latest` prints only the most recent version's notes
-- [ ] Handles missing CHANGELOG.md gracefully with informative message
+- [x] `agentic-sdlc release-notes` prints the full changelog
+- [x] `agentic-sdlc release-notes 0.1.0` prints only that version's notes (uses positional arg to avoid conflict with global --version flag)
+- [x] `agentic-sdlc release-notes --latest` prints only the most recent version's notes
+- [x] Handles missing CHANGELOG.md gracefully with informative message
 
 ---
 

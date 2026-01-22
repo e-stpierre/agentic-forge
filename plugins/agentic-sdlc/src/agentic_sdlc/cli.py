@@ -17,6 +17,7 @@ from agentic_sdlc.commands import (
     cmd_input,
     cmd_list,
     cmd_oneshot,
+    cmd_release_notes,
     cmd_resume,
     cmd_run,
     cmd_status,
@@ -145,6 +146,19 @@ def main() -> None:
     # version command
     subparsers.add_parser("version", help="Show version information")
 
+    # release-notes command
+    release_notes_parser = subparsers.add_parser("release-notes", help="Show release notes from CHANGELOG")
+    release_notes_parser.add_argument(
+        "specific_version",
+        nargs="?",
+        help="Show release notes for a specific version (e.g., 0.1.0)",
+    )
+    release_notes_parser.add_argument(
+        "--latest",
+        action="store_true",
+        help="Show only the most recent version's release notes",
+    )
+
     args = parser.parse_args()
 
     # Handle --version flag
@@ -177,6 +191,8 @@ def main() -> None:
         cmd_analyse(args)
     elif args.command == "version":
         cmd_version(args)
+    elif args.command == "release-notes":
+        cmd_release_notes(args)
     else:
         parser.print_help()
         sys.exit(1)

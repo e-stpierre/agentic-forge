@@ -2,6 +2,7 @@
 
 from agentic_sdlc.commands.config import cmd_config
 from agentic_sdlc.commands.init import cmd_configure, cmd_init
+from agentic_sdlc.commands.release_notes import cmd_release_notes
 from agentic_sdlc.commands.resume import cmd_resume
 from agentic_sdlc.commands.run import cmd_run
 from agentic_sdlc.commands.shortcuts import cmd_analyse, cmd_input, cmd_oneshot
@@ -21,4 +22,5 @@ __all__ = [
     "cmd_analyse",
     "cmd_input",
     "cmd_version",
+    "cmd_release_notes",
 ]
