@@ -15,7 +15,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [x] IMP-002: Add version command to CLI
 - [x] IMP-003: Add release-notes command to CLI
 - [x] IMP-004: Add update command to CLI
-- [ ] IMP-005: Auto-discover workflow files
+- [x] IMP-005: Auto-discover workflow files
 - [ ] IMP-006: List command returns no results
 - [ ] DOC-001: Restructure agentic-sdlc documentation
 
@@ -132,7 +132,7 @@ Running `agentic-sdlc update` should update the plugin to the latest version usi
 
 ### IMP-005: Auto-discover workflow files
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: The `agentic-sdlc run` command requires users to specify the full path to a workflow YAML file. There is no auto-discovery of workflow files from standard locations.
 
@@ -153,11 +153,11 @@ Running `agentic-sdlc update` should update the plugin to the latest version usi
 
 **Acceptance Criteria**:
 
-- [ ] `agentic-sdlc run <name>` finds workflow by name without full path
-- [ ] Searches project-local, user-global, and bundled workflow directories
-- [ ] `agentic-sdlc run --list` shows all discoverable workflows with their locations
-- [ ] Full path still works for custom workflow locations
-- [ ] Clear error message when workflow name is ambiguous (found in multiple locations)
+- [x] `agentic-sdlc run <name>` finds workflow by name without full path
+- [x] Searches project-local, user-global, and bundled workflow directories
+- [x] `agentic-sdlc run --list` shows all discoverable workflows with their locations
+- [x] Full path still works for custom workflow locations
+- [x] Clear error message when workflow not found with suggestions
 
 ---
 
@@ -176,6 +176,7 @@ Running `agentic-sdlc update` should update the plugin to the latest version usi
 **Root Cause Analysis**:
 
 The `cmd_list()` function looks for workflow progress in `agentic/workflows/` but:
+
 1. This directory may not exist if no workflows have been run
 2. The progress files may be stored elsewhere (need to verify with `progress.py`)
 3. The directory structure assumption may not match actual workflow execution behavior

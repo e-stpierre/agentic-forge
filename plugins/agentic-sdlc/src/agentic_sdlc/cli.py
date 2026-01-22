@@ -44,7 +44,18 @@ def main() -> None:
 
     # run command
     run_parser = subparsers.add_parser("run", help="Run a workflow")
-    run_parser.add_argument("workflow", type=Path, help="Path to workflow YAML file")
+    run_parser.add_argument(
+        "workflow",
+        type=str,
+        nargs="?",
+        help="Workflow name or path to YAML file",
+    )
+    run_parser.add_argument(
+        "--list",
+        action="store_true",
+        dest="list_workflows",
+        help="List all available workflows",
+    )
     run_parser.add_argument(
         "--var",
         action="append",
