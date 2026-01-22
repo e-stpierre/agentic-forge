@@ -1,0 +1,180 @@
+---
+name: add-improvement
+description: Add a new improvement to the improvements tracking document
+argument-hint: <context> [--explore]
+arguments:
+  - name: explore-codebase
+    description: Analyze codebase for additional context (boolean flag)
+    required: false
+    default: false
+  - name: context
+    description: Description of the improvement request
+    required: true
+---
+
+# Add Improvement
+
+Add a new improvement entry to the improvements tracking document. This command creates a structured improvement record with progress tracking and detailed description.
+
+## Arguments
+
+- **`--explore-codebase`** (optional): When set, analyze the codebase based on the context to add additional technical information to the improvement request. Defaults to `false`.
+- **`<context>`** (required): Description of the improvement request. Can include problem description, affected areas, or desired outcome.
+
+## Objective
+
+Create a new improvement entry in the improvements tracking document with a unique ID, progress tracking checkbox, and detailed description section.
+
+## Core Principles
+
+- Create the improvements document if it doesn't exist
+- Generate unique improvement IDs using sequential numbering
+- Keep improvement details concise (max 100 lines per entry)
+- Preserve existing improvements when adding new ones
+- Use consistent formatting matching existing entries
+
+## Instructions
+
+1. **Determine File Path**
+   - Check for `agentic-sdlc.improvementsPath` in settings
+   - Default to `agentic/improvements.md` if not configured
+
+2. **Check Document Existence**
+   - If the document does not exist, create it with the template structure (see Templates section)
+   - If it exists, read the current content
+
+3. **Generate Improvement ID**
+   - Scan existing entries to find the highest ID number
+   - Generate next sequential ID in format `IMP-XXX` (e.g., `IMP-007`)
+   - Use prefix based on context if clearly identifiable:
+     - `SEC-XXX` for security-related improvements
+     - `DEBT-XXX` for technical debt
+     - `TEST-XXX` for testing improvements
+     - `DOC-XXX` for documentation improvements
+     - `IMP-XXX` for general improvements (default)
+
+4. **Codebase Analysis** (if `--explore-codebase` is set)
+   - Analyze the codebase to identify:
+     - Relevant files and components affected
+     - Existing patterns or implementations related to the improvement
+     - Dependencies or impacts on other parts of the system
+   - Include this technical context in the improvement details
+
+5. **Create Improvement Entry**
+   - Add checkbox entry to Progress Tracking section: `- [ ] ID: Short title`
+   - Add detailed section to Improvements List with:
+     - Status: Pending
+     - Problem: Clear description of the issue or opportunity
+     - Files to Investigate: Relevant file paths (if known or discovered via codebase exploration)
+     - Expected Behavior / Goal: What the improvement should achieve
+     - Acceptance Criteria: Measurable criteria for completion
+
+6. **Write Updated Document**
+   - Preserve all existing content
+   - Insert new checkbox in Progress Tracking section (at the end of the list)
+   - Append new details section to Improvements List
+
+7. **Report Result**
+   - Output confirmation with the new improvement ID
+   - Show the improvement title and file path
+
+## Output Guidance
+
+Return a JSON object summarizing the action taken:
+
+```json
+{
+  "success": true,
+  "improvement_id": "IMP-007",
+  "title": "Short descriptive title",
+  "document_path": "agentic/improvements.md",
+  "explored_codebase": false,
+  "files_identified": []
+}
+```
+
+## Templates
+
+### New Document Template
+
+When creating a new improvements document, use this structure:
+
+```markdown
+# Improvements
+
+This file tracks improvement opportunities identified during code analysis. Each improvement has a checklist entry for progress tracking and a detailed section explaining the issue.
+
+## How to Use This File
+
+1. **Adding Improvements**: Add a checkbox to the Progress Tracking section (`- [ ] IMP-XXX: Short title`) and a corresponding details section with problem description, files to investigate, and acceptance criteria.
+2. **Working on Improvements**: Mark the item as in-progress by keeping `[ ]` and update the Status in the details section to "In Progress".
+3. **Completing Improvements**: Change `[ ]` to `[x]` and update the Status to "Completed".
+4. **Implementation**: Use `/agentic-sdlc:build` to implement individual improvements.
+
+## Progress Tracking
+
+<!-- Add new items here -->
+
+## Improvements List
+
+List the details of every improvement request, 100 lines maximum per item.
+```
+
+### Improvement Entry Template
+
+```markdown
+---
+
+### ID: Short descriptive title
+
+**Status**: Pending
+
+**Problem**: Clear description of the issue or opportunity.
+
+**Files to Investigate**:
+
+- `path/to/file.ts` - Brief note about relevance
+
+**Expected Behavior / Goal**: What the improvement should achieve.
+
+**Acceptance Criteria**:
+
+- [ ] First measurable criterion
+- [ ] Second measurable criterion
+```
+
+## Configuration
+
+The improvements document path is configured via `agentic-sdlc.improvementsPath` in settings or defaults to `agentic/improvements.md` within the configured output directory.
+
+To override in `.claude/settings.json`:
+
+```json
+{
+  "agentic-sdlc": {
+    "improvementsPath": "custom/path/improvements.md"
+  }
+}
+```
+
+## Important Notes
+
+- Keep each improvement entry under 100 lines to maintain readability
+- Use existing ID prefixes when the improvement type is clear (SEC, DEBT, TEST, DOC)
+- Do not modify existing improvements when adding new ones
+- The codebase exploration is optional and adds overhead - use when context is needed
+- Improvement entries should be self-contained and actionable
+
+---
+
+## Improvement Context
+
+{{ context }}
+
+{% if explore_codebase %}
+**Codebase Exploration**: Enabled - analyze codebase for additional context.
+{% endif %}
+
+---
+
+Add the improvement to the tracking document and return JSON output.
