@@ -58,7 +58,8 @@ class RalphLoopStepExecutor(StepExecutor):
         bypass_permissions = context.workflow_settings.bypass_permissions if context.workflow_settings else False
         allowed_tools = context.workflow_settings.required_tools if context.workflow_settings else None
 
-        print_output = console.level == OutputLevel.ALL
+        # Always enable streaming when console is provided (handles both BASE and ALL modes)
+        print_output = True
 
         logger.info(step.name, f"Starting Ralph loop (max {max_iterations} iterations)")
         console.info(f"Ralph loop starting (max {max_iterations} iterations)")

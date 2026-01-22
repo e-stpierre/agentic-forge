@@ -43,7 +43,8 @@ class CommandStepExecutor(StepExecutor):
         bypass_permissions = context.workflow_settings.bypass_permissions if context.workflow_settings else False
         allowed_tools = context.workflow_settings.required_tools if context.workflow_settings else None
 
-        print_output = console.level == OutputLevel.ALL
+        # Always enable streaming when console is provided (handles both BASE and ALL modes)
+        print_output = True
 
         for attempt in range(max_retry + 1):
             result = run_claude_with_command(

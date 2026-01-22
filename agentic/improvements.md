@@ -11,7 +11,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 
 ## Progress Tracking
 
-- [ ] IMP-001: Workflow logging not capturing agent messages
+- [x] IMP-001: Workflow logging not capturing agent messages
 - [ ] IMP-002: Add version command to CLI
 - [ ] IMP-003: Add release-notes command to CLI
 - [ ] IMP-004: Add update command to CLI
@@ -27,7 +27,7 @@ List the details of every improvement request, 100 lines maximum per item.
 
 ### IMP-001: Workflow logging not capturing agent messages
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: The workflow logging system has a `terminal-output` setting configured in the workflow schema with `base` and `all` options, but the implementation is not working as expected. When running workflows programmatically via the CLI, agent messages produced during Claude sessions are not being captured and displayed in the terminal. The `base` logging mode should display the last message from the agent and overwrite it as new messages arrive, providing a live status update experience.
 
@@ -48,11 +48,11 @@ List the details of every improvement request, 100 lines maximum per item.
 
 **Acceptance Criteria**:
 
-- [ ] Base mode displays live agent status by showing the last message and overwriting it
-- [ ] All mode streams complete agent output to terminal
-- [ ] Claude subprocess stdout is properly captured and forwarded to ConsoleOutput
-- [ ] Terminal output mode setting from workflow YAML flows through CLI to runner
-- [ ] Works correctly on both Windows and Unix terminals
+- [x] Base mode displays live agent status by showing the last message and overwriting it
+- [x] All mode streams complete agent output to terminal
+- [x] Claude subprocess stdout is properly captured and forwarded to ConsoleOutput
+- [x] Terminal output mode setting from workflow YAML flows through CLI to runner
+- [x] Works correctly on both Windows and Unix terminals
 
 ---
 

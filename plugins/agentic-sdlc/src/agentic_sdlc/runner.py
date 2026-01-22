@@ -219,6 +219,10 @@ def run_claude(
                     print(line, end="", flush=True)
                 stdout_lines.append(line)
 
+        # Signal that streaming is complete
+        if console:
+            console.stream_complete()
+
         try:
             process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
