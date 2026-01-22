@@ -48,7 +48,7 @@
       "name": "agentic-sdlc",
       "source": "./plugins/agentic-sdlc",
       "description": "[Beta] YAML-based workflow orchestration with parallel execution, conditional logic, and retry mechanisms for complex multi-step tasks",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
