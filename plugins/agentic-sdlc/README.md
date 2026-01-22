@@ -1,64 +1,48 @@
 # Agentic SDLC
 
-Agentic SDLC enables Claude Code to execute complex, multi-step tasks with high success rates through YAML-based workflow orchestration. The framework allows Claude Code to work fully independently with resiliency and accuracy in multi-session workflows, supporting parallel execution, conditional logic, and retry mechanisms.
+Agentic SDLC enables Claude Code to execute complex, multi-step tasks autonomously through YAML-based workflow orchestration. The framework provides fully independent operation with built-in resiliency, progress tracking, and error recovery across multi-session workflows.
 
 ## Overview
 
-Agentic SDLC provides a complete framework for automating software development tasks from simple one-shot operations to complex multi-step workflows. The plugin combines a Python CLI orchestrator with Claude Code commands, agents, and skills to enable fully autonomous task execution with built-in error recovery and progress tracking.
+Execute complete development workflows from planning through implementation to validation, with support for parallel execution, conditional logic, and iterative refinement.
 
-Key capabilities:
+**Quick Examples:**
 
-- YAML workflow definitions with variables, conditions, and parallel execution
-- Hybrid Python + Claude orchestration model for reliability
-- Git worktree isolation for parallel task execution
-- Progress tracking and checkpoint management
+```bash
+# Run a complete feature workflow
+agentic-sdlc run plan-build-validate.yaml --var "task=Add user authentication"
 
-Quick examples:
+# Quick one-shot task completion
+agentic-sdlc one-shot "Fix null pointer in UserService" --git --pr
 
-- `agentic-sdlc run plan-build-validate.yaml` - Run bundled workflow (works immediately)
-- `agentic-sdlc init` - Copy bundled workflows locally to customize
-- `agentic-sdlc one-shot "Add user authentication"` - Complete a task end-to-end with PR
-- `agentic-sdlc analyse --type security` - Run security analysis on codebase
-- `/plan --type feature` - Generate a feature implementation plan
-- `/build --plan plan.md` - Implement changes following a plan
+# Run security analysis
+agentic-sdlc analyse --type security --autofix major
+```
 
-## Commands
+**Inside Claude Code:**
 
-### Core Commands
+```bash
+/plan Add user profile with avatar upload    # Generate implementation plan
+/build --plan plan.md                         # Implement the plan
+/validate                                     # Run validation checks
+/git-pr                                       # Create pull request
+```
 
-| Command             | Description                                                 |
-| ------------------- | ----------------------------------------------------------- |
-| `/plan`             | Generate implementation plans for features, bugs, or chores |
-| `/build`            | Implement changes following a plan file                     |
-| `/validate`         | Run validation checks on implementation                     |
-| `/analyse-bug`      | Analyze codebase for bugs and logic errors                  |
-| `/analyse-debt`     | Identify technical debt and refactoring opportunities       |
-| `/analyse-doc`      | Analyze documentation quality and completeness              |
-| `/analyse-security` | Scan for security vulnerabilities                           |
-| `/analyse-style`    | Check code style and best practices                         |
-| `/orchestrate`      | Evaluate workflow state and determine next action           |
+## Key Features
 
-### Git Commands (`commands/git/`)
+- **YAML Workflows**: Define complex multi-step processes with variables, conditions, and loops
+- **Hybrid Orchestration**: Python handles deterministic operations, Claude makes intelligent decisions
+- **Git Worktree Isolation**: Execute parallel tasks in isolated git worktrees
+- **Progress Tracking**: Resume from checkpoints after interruptions or errors
+- **Built-in Commands**: Plan, build, validate, analyze, and git operations
+- **Error Recovery**: Automatic retry with configurable strategies
 
-| Command       | Description                                      |
-| ------------- | ------------------------------------------------ |
-| `/git-branch` | Create and manage git branches                   |
-| `/git-commit` | Create commits with structured messages          |
-| `/git-pr`     | Create pull requests with generated descriptions |
+## Documentation
 
-## Agents
-
-| Agent      | Description                                                           |
-| ---------- | --------------------------------------------------------------------- |
-| `explorer` | Explores codebase efficiently to find relevant files and line numbers |
-| `reviewer` | Validates tests, reviews code quality, and ensures correctness        |
-
-## Skills
-
-| Skill                | Description                                           |
-| -------------------- | ----------------------------------------------------- |
-| `/create-checkpoint` | Create checkpoint entries in workflow checkpoint file |
-| `/create-log`        | Add log entries to workflow log file                  |
+- **[Quick Start](docs/QuickStart.md)** - Get running in 5 minutes
+- **[Workflow Builder Guide](docs/WorkflowBuilder.md)** - Complete workflow authoring documentation
+- **[Workflow Example](docs/workflow-example.yaml)** - Annotated reference with all options
+- **[Contributing](docs/Contributing.md)** - Development and testing guidelines
 
 ## Installation
 
@@ -70,49 +54,132 @@ uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plu
 uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
 ```
 
-## Running Tests
+## Common Workflows
+
+### Plan -> Build -> Validate -> PR
 
 ```bash
-# Install dev dependencies and run tests
-uv run --extra dev pytest
-
-# Run with coverage report
-uv run --extra dev pytest --cov --cov-report=term-missing
+agentic-sdlc run plan-build-validate.yaml --var "task=Add feature description"
 ```
 
-## Python CLI
+This executes:
 
-### CLI Commands
+1. Generate implementation plan
+2. Implement changes incrementally
+3. Run validation (tests + code review)
+4. Create pull request
 
-| Command                  | Description                                  |
-| ------------------------ | -------------------------------------------- |
-| `agentic-sdlc run`       | Execute a workflow from YAML file            |
-| `agentic-sdlc init`      | Copy bundled workflow templates locally      |
-| `agentic-sdlc resume`    | Resume a paused or failed workflow           |
-| `agentic-sdlc status`    | Check workflow execution status              |
-| `agentic-sdlc cancel`    | Cancel a running workflow                    |
-| `agentic-sdlc list`      | List workflow executions                     |
-| `agentic-sdlc input`     | Provide human input for wait-for-human steps |
-| `agentic-sdlc one-shot`  | Execute a single task end-to-end             |
-| `agentic-sdlc analyse`   | Run codebase analysis                        |
-| `agentic-sdlc configure` | Interactive configuration setup              |
-| `agentic-sdlc config`    | Get or set configuration values              |
+### One-Shot Task Completion
 
-### CLI Options
+```bash
+agentic-sdlc one-shot "Your task description" --git --pr
+```
 
-| Flag                | Description                                     |
-| ------------------- | ----------------------------------------------- |
-| `--var key=value`   | Pass variables to workflow                      |
-| `--from-step`       | Resume from specific step                       |
-| `--terminal-output` | Output verbosity: `base` or `all`               |
-| `--type`            | Analysis type: bug, debt, doc, security, style  |
-| `--autofix`         | Auto-fix severity: none, minor, major, critical |
-| `--git`             | Enable git operations                           |
-| `--pr`              | Create pull request on completion               |
+Complete a task end-to-end with automatic git operations and PR creation.
+
+### Codebase Analysis
+
+```bash
+# Run all analysis types in parallel
+agentic-sdlc analyse
+
+# Specific analysis with auto-fix
+agentic-sdlc analyse --type security --autofix major
+```
+
+## CLI Commands
+
+| Command                 | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| `run <workflow.yaml>`   | Execute a workflow from YAML file                         |
+| `one-shot <task>`       | Complete a task end-to-end                                |
+| `analyse`               | Run codebase analysis (security, bugs, debt, style, docs) |
+| `init`                  | Copy bundled workflows locally for customization          |
+| `list`                  | Show workflow execution history                           |
+| `status <id>`           | Check workflow execution status                           |
+| `resume <id>`           | Resume a paused or failed workflow                        |
+| `input <id> <response>` | Provide human input for wait-for-human steps              |
+| `configure`             | Interactive configuration setup                           |
+
+See [Quick Start](docs/QuickStart.md) for detailed command examples.
+
+## Claude Commands
+
+Available in Claude Code sessions:
+
+**Planning & Implementation:**
+
+- `/plan` - Generate implementation plans (feature, bug, chore)
+- `/build` - Implement changes following a plan
+- `/validate` - Run validation checks
+
+**Analysis:**
+
+- `/analyse-bug` - Find bugs and logic errors
+- `/analyse-debt` - Identify technical debt
+- `/analyse-doc` - Check documentation quality
+- `/analyse-security` - Security vulnerability scan
+- `/analyse-style` - Code style and best practices
+
+**Git Operations:**
+
+- `/git-branch` - Create git branch
+- `/git-commit` - Create structured commit
+- `/git-pr` - Create pull request
+
+## Workflow Structure
+
+Basic workflow anatomy:
+
+```yaml
+name: my-workflow
+version: "1.0"
+description: What this workflow does
+
+settings:
+  max-retry: 3
+  timeout-minutes: 60
+  git:
+    enabled: true
+
+variables:
+  - name: task
+    type: string
+    required: true
+
+steps:
+  - name: generate-plan
+    type: command
+    command: agentic-sdlc:plan
+    args:
+      context: "{{ variables.task }}"
+
+  - name: implement
+    type: ralph-loop
+    prompt: "Implement next milestone from plan"
+    max-iterations: 10
+
+  - name: validate
+    type: command
+    command: agentic-sdlc:validate
+```
+
+See [Workflow Builder Guide](docs/WorkflowBuilder.md) for complete documentation and [workflow-example.yaml](docs/workflow-example.yaml) for an annotated reference.
 
 ## Configuration
 
-Configuration is stored in `agentic/config.json`. Use the CLI (`agentic-sdlc configure`) to modify settings.
+Configure via CLI or edit `agentic/config.json`:
+
+```bash
+# Interactive configuration
+agentic-sdlc configure
+
+# Get/set specific values
+agentic-sdlc config get defaults.maxRetry
+agentic-sdlc config set defaults.maxRetry 5
+```
+
+Default configuration:
 
 ```json
 {
@@ -128,490 +195,58 @@ Configuration is stored in `agentic/config.json`. Use the CLI (`agentic-sdlc con
   },
   "defaults": {
     "maxRetry": 3,
-    "timeoutMinutes": 60,
-    "trackProgress": true
-  },
-  "execution": {
-    "maxWorkers": 4,
-    "pollingIntervalSeconds": 5
+    "timeoutMinutes": 60
   }
 }
 ```
 
 ## Architecture
 
-The framework uses a hybrid Python + Claude orchestration model:
+**Hybrid Python + Claude Orchestration:**
 
 ```
-Python Orchestrator -> Parse YAML -> Initialize Progress -> Loop:
-  -> Claude Orchestrator Command (decide next step)
-  -> Execute Step (new Claude session)
-  -> Update Progress -> Handle Errors/Retries
--> Generate Output
+Python CLI -> Parse YAML -> Initialize Progress
+   |
+   v
+Loop: Claude Orchestrator (decides next step)
+   -> Execute Step (fresh Claude session)
+   -> Update Progress
+   -> Handle Errors/Retries
+   |
+   v
+Generate Outputs
 ```
 
-Key architectural decisions:
+**Key Design Principles:**
 
-- **New session per step**: Each workflow step runs in a fresh Claude session to prevent context accumulation
-- **Python handles deterministic operations**: Parsing, file I/O, timeouts, process management
-- **Claude handles intelligent decisions**: Next step selection, condition evaluation, error recovery
-- **Git worktrees for parallelism**: Parallel steps execute in isolated worktrees to prevent conflicts
-- **File-based state**: Progress tracked in `progress.json`, memories in markdown with frontmatter
+- Fresh Claude session per step (prevents context overflow)
+- Python handles deterministic operations (parsing, I/O, timeouts)
+- Claude handles intelligent decisions (conditions, error recovery)
+- File-based state (progress.json, checkpoints, logs)
+- Git worktrees for parallel step isolation
 
-### Workflow Step Types
-
-| Type             | Description                                                                       |
-| ---------------- | --------------------------------------------------------------------------------- |
-| `prompt`         | Execute a prompt in a Claude session                                              |
-| `command`        | Execute a Claude command with arguments                                           |
-| `serial`         | Execute nested steps sequentially in order                                        |
-| `parallel`       | Execute nested steps concurrently in git worktrees                                |
-| `conditional`    | Execute steps based on Jinja2 condition                                           |
-| `ralph-loop`     | Repeat a prompt until completion promise or max iterations (Ralph Wiggum pattern) |
-| `wait-for-human` | Pause workflow for human input                                                    |
-
-### Output Directory Structure
+## Directory Structure
 
 ```
 agentic/
-├── config.json           # Global configuration
-├── workflows/            # Workflow YAML templates
-│   ├── my-workflow.yaml
-│   └── ...
+├── config.json           # Configuration
+├── workflows/            # Custom workflows (created with 'init')
 ├── outputs/              # Workflow execution state
 │   └── {workflow-id}/
-│       ├── progress.json # Workflow progress
-│       ├── checkpoint.md # Checkpoints
-│       └── logs.ndjson   # Structured logs
+│       ├── progress.json
+│       ├── checkpoint.md
+│       └── logs.ndjson
 └── analysis/             # Analysis outputs
-    ├── bug.md
-    ├── debt.md
-    ├── doc.md
-    ├── security.md
-    └── style.md
 ```
 
-## Limitations
-
-- Parallel steps require git repository (uses worktrees for isolation)
-- Each step starts a new session (no context accumulation across steps)
-
-## Complete Examples
-
-### agentic-sdlc run
-
-**Arguments:**
-
-- `<workflow.yaml>` - Path to workflow YAML file (required)
-- `--var key=value` - Pass variable to workflow (repeatable)
-- `--from-step <step>` - Resume from specific step
-- `--terminal-output <level>` - Output verbosity: `base` (default) or `all`
-
-**Path Resolution:**
-
-The `run` command automatically resolves workflow paths in this order:
-
-1. Exact path (absolute or relative to current directory)
-2. `agentic/workflows/<name>` (local project workflows)
-3. Bundled plugin workflows (included with the plugin)
-
-This means bundled workflows work immediately without copying files locally.
-
-**Examples:**
+## Testing
 
 ```bash
-# Run a bundled workflow directly (no setup needed)
-agentic-sdlc run plan-build-validate.yaml
+# Run tests
+uv run --extra dev pytest
 
-# Run with variables
-agentic-sdlc run one-shot.yaml --var "task=Add login feature"
-
-# Run a local workflow
-agentic-sdlc run agentic/workflows/my-custom-workflow.yaml
-
-# Resume from a specific step
-agentic-sdlc run workflow.yaml --from-step validate
-
-# Show all Claude output
-agentic-sdlc run workflow.yaml --terminal-output all
+# With coverage
+uv run --extra dev pytest --cov --cov-report=term-missing
 ```
 
-### agentic-sdlc init
-
-**Arguments:**
-
-- `--list` - List available bundled workflows without copying
-- `--force` - Overwrite existing workflow files
-
-**Examples:**
-
-```bash
-# List available bundled workflows
-agentic-sdlc init --list
-
-# Copy all bundled workflows to agentic/workflows/
-agentic-sdlc init
-
-# Overwrite existing local workflows with bundled versions
-agentic-sdlc init --force
-```
-
-### agentic-sdlc resume
-
-**Arguments:**
-
-- `<workflow-id>` - ID of workflow to resume (required)
-
-**Examples:**
-
-```bash
-# Resume a paused workflow
-agentic-sdlc resume abc123
-
-# Resume after fixing an issue
-agentic-sdlc resume plan-build-validate-2024-01-15
-```
-
-### agentic-sdlc status
-
-**Arguments:**
-
-- `<workflow-id>` - ID of workflow to check (required)
-
-**Examples:**
-
-```bash
-# Check workflow status
-agentic-sdlc status abc123
-```
-
-### agentic-sdlc list
-
-**Arguments:**
-
-- `--status <status>` - Filter by status: running, completed, failed, paused
-
-**Examples:**
-
-```bash
-# List all workflows
-agentic-sdlc list
-
-# List only running workflows
-agentic-sdlc list --status running
-
-# List failed workflows
-agentic-sdlc list --status failed
-```
-
-### agentic-sdlc cancel
-
-**Arguments:**
-
-- `<workflow-id>` - ID of workflow to cancel (required)
-
-**Examples:**
-
-```bash
-# Cancel a running workflow
-agentic-sdlc cancel abc123
-```
-
-### agentic-sdlc input
-
-**Arguments:**
-
-- `<workflow-id>` - ID of workflow waiting for input (required)
-- `<response>` - Human response text (required)
-
-**Examples:**
-
-```bash
-# Provide input to a waiting workflow
-agentic-sdlc input abc123 "Approved. Proceed with implementation."
-
-# Provide feedback on a plan
-agentic-sdlc input abc123 "Please also add input validation for the email field."
-```
-
-### agentic-sdlc one-shot
-
-**Arguments:**
-
-- `<prompt>` - Task description (required)
-- `--git` - Enable git operations (branch, commit)
-- `--pr` - Create pull request on completion
-
-**Examples:**
-
-```bash
-# Complete a task with PR
-agentic-sdlc one-shot "Add user authentication with JWT tokens" --git --pr
-
-# Complete a task without PR
-agentic-sdlc one-shot "Fix the null pointer exception in UserService" --git
-
-# Simple task without git
-agentic-sdlc one-shot "Update the README with installation instructions"
-```
-
-### agentic-sdlc analyse
-
-**Arguments:**
-
-- `--type <type>` - Analysis type: bug, debt, doc, security, style (default: all)
-- `--autofix <level>` - Auto-fix severity: none, minor, major, critical
-
-**Examples:**
-
-```bash
-# Run all analysis types in parallel
-agentic-sdlc analyse
-
-# Run security analysis only
-agentic-sdlc analyse --type security
-
-# Run analysis with auto-fix for major issues
-agentic-sdlc analyse --autofix major
-
-# Run specific analysis with auto-fix
-agentic-sdlc analyse --type debt --autofix minor
-```
-
-### agentic-sdlc configure
-
-Interactive configuration wizard. No arguments required.
-
-```bash
-agentic-sdlc configure
-```
-
-### agentic-sdlc config
-
-**Subcommands:**
-
-- `get <key>` - Get configuration value
-- `set <key> <value>` - Set configuration value
-
-**Examples:**
-
-```bash
-# Get a configuration value
-agentic-sdlc config get defaults.maxRetry
-
-# Set a configuration value
-agentic-sdlc config set defaults.maxRetry 5
-agentic-sdlc config set git.mainBranch develop
-agentic-sdlc config set logging.level Warning
-```
-
-### /plan
-
-**Arguments:**
-
-- `--type <type>` - Plan type: feature, bug, chore (default: auto, infers from context)
-- `--template <path>` - Custom template path (optional)
-- `<context>` - Task description or issue reference (required, positional)
-
-**Examples:**
-
-```bash
-# Generate a feature plan (type auto-detected)
-/plan Add user profile page with avatar upload
-
-# Generate a feature plan with explicit type
-/plan --type feature Add user profile page with avatar upload
-
-# Generate a bug fix plan
-/plan --type bug Fix login timeout issue in production
-
-# Generate a chore plan
-/plan --type chore Update all npm dependencies to latest versions
-```
-
-### /build
-
-**Arguments:**
-
-- `--plan <path>` - Path to plan document or plan JSON (optional)
-- `--milestone <n>` - Implement specific milestone only (optional)
-- `--context <text>` - Additional context or instructions (optional)
-
-**Examples:**
-
-```bash
-# Implement all milestones from a plan
-/build --plan agentic/outputs/abc123/plan.md
-
-# Implement specific milestone
-/build --plan plan.md --milestone 2
-
-# Implement with additional context
-/build --plan plan.md --context "Focus on error handling"
-```
-
-### /validate
-
-**Arguments:**
-
-- `--severity <level>` - Minimum severity to report: minor, major, critical
-
-**Examples:**
-
-```bash
-# Run full validation
-/validate
-
-# Report only major and critical issues
-/validate --severity major
-```
-
-### /analyse
-
-The `/analyse` command has type-specific variants: `/analyse-bug`, `/analyse-debt`, `/analyse-doc`, `/analyse-security`, `/analyse-style`.
-
-**Arguments:**
-
-- `[paths]` - Space-separated list of files or directories to analyze (optional)
-
-**Examples:**
-
-```bash
-# Run security analysis on entire codebase
-/analyse-security
-
-# Run code style analysis on specific directory
-/analyse-style src/
-
-# Run bug analysis on specific files
-/analyse-bug src/auth/handler.ts src/auth/session.ts
-
-# Run documentation analysis
-/analyse-doc
-```
-
-### /create-checkpoint
-
-**Arguments:**
-
-- `--step <name>` - Current step name
-- `--status <status>` - Checkpoint status: in_progress, completed
-
-**Examples:**
-
-```bash
-# Create checkpoint for current progress
-/create-checkpoint --step build --status in_progress
-Completed Milestone 1 and 2. Starting Milestone 3.
-
-# Create completion checkpoint
-/create-checkpoint --step validate --status completed
-All validation checks passed.
-```
-
-### /create-log
-
-**Arguments:**
-
-- `--level <level>` - Log level: Critical, Error, Warning, Information
-- `--step <name>` - Step name for context
-
-**Examples:**
-
-```bash
-# Log informational message
-/create-log --level Information --step build
-Completed implementation of authentication module
-
-# Log warning
-/create-log --level Warning --step validate
-Test coverage below 80% threshold
-
-# Log error
-/create-log --level Error --step build
-Failed to compile TypeScript: missing type definitions
-```
-
-### Workflow YAML Structure
-
-**Basic structure:**
-
-```yaml
-name: workflow-name
-version: "1.0"
-description: What this workflow does
-
-settings:
-  max-retry: 3
-  timeout-minutes: 60
-  track-progress: true
-  git:
-    enabled: true
-    auto-commit: true
-    auto-pr: true
-
-variables:
-  - name: task
-    type: string
-    required: true
-    description: Task to complete
-
-steps:
-  - name: step-name
-    type: prompt
-    prompt: |
-      {{ variables.task }}
-    model: sonnet
-```
-
-**Parallel execution:**
-
-```yaml
-steps:
-  - name: parallel-analysis
-    type: parallel
-    merge-strategy: wait-all
-    steps:
-      - name: security
-        type: command
-        command: agentic-sdlc:analyse-security
-      - name: style
-        type: command
-        command: agentic-sdlc:analyse-style
-```
-
-**Conditional execution:**
-
-```yaml
-steps:
-  - name: fix-issues
-    type: conditional
-    condition: "{{ outputs.validate.issues | length > 0 }}"
-    then:
-      - name: apply-fixes
-        type: command
-        command: agentic-sdlc:build
-        args:
-          plan: fix-plan.md
-```
-
-**Ralph Loop (iterative prompt with completion detection):**
-
-````yaml
-steps:
-  - name: implement-iteratively
-    type: ralph-loop
-    prompt: |
-      Follow the plan in agentic/plan.md and implement the next incomplete task.
-      After implementing, mark it complete in the plan.
-
-      When ALL tasks are complete, output:
-      ```json
-      {"ralph_complete": true, "promise": "COMPLETE"}
-      ```
-    max-iterations: 10
-    completion-promise: "COMPLETE"
-    model: sonnet
-````
-
-The Ralph Loop pattern creates a fresh Claude session for each iteration, repeating the same prompt until Claude outputs a JSON completion signal or max iterations is reached. State is tracked in `agentic/outputs/{id}/ralph-{step}.md`.
+See [Contributing](docs/Contributing.md) for development guidelines.

@@ -179,9 +179,30 @@ class ConsoleOutput:
         self._print(f"{err} {message}")
 
     def stream_line(self, line: str) -> None:
-        """Stream a line of output (for 'all' mode)."""
+        """Stream a line of output.
+
+        In ALL mode: prints every line immediately.
+        In BASE mode: overwrites the current line with the new one (displays only the latest message).
+        """
         if self.level == OutputLevel.ALL:
             self._print(line, end="")
+        elif self.level == OutputLevel.BASE:
+            # Show only the last line, overwriting previous output
+            # Use \r to return to start of line, then clear line with spaces
+            # Strip to avoid issues with whitespace, limit length to prevent wrapping
+            clean_line = line.strip()[:150]
+            if clean_line:
+                # Move to start, write the line, clear to end of line
+                self._print(f"\r{clean_line}\033[K", end="")
+
+    def stream_complete(self) -> None:
+        """Called when streaming is complete to finalize output.
+
+        In BASE mode: prints a newline to move past the overwritten line.
+        In ALL mode: no action needed (already printing newlines).
+        """
+        if self.level == OutputLevel.BASE:
+            self._print("")  # Print newline to move past the last streamed line
 
 
 def extract_summary(output: str, max_lines: int = 5, max_chars: int = 500) -> str:

@@ -1,0 +1,99 @@
+name: demo-workflow
+version: "1.0"
+description: Demo workflow to validate agentic-sdlc plugin installation and configuration
+
+settings:
+  track-progress: true
+  terminal-output: all
+  bypass-permissions: false
+  required-tools:
+    - Write
+    - Read
+    - Bash
+  git:
+    enabled: false
+    worktree: false
+
+steps:
+  - name: welcome
+    type: prompt
+    model: haiku
+    prompt: |
+      # Welcome to the agentic-sdlc Demo Workflow
+
+      This is a demonstration workflow that validates your agentic-sdlc plugin installation.
+
+      Please acknowledge this welcome message by saying: "Demo workflow started successfully."
+
+  - name: create-demo-files
+    type: parallel
+    merge-strategy: wait-all
+    merge-mode: independent
+    git:
+      worktree: false
+    steps:
+      - name: create-demo-1
+        type: prompt
+        model: haiku
+        prompt: |
+          Create a file named `demo-1.md` at the repository root.
+
+          The file should contain:
+          ```markdown
+          # Demo File 1
+
+          Created by: agentic-sdlc demo-workflow
+          Timestamp: [current timestamp]
+          Step: create-demo-1
+
+          This file was created to validate the workflow execution.
+          ```
+
+          Use the Write tool to create this file.
+
+          IMPORTANT: If you encounter a permission error when trying to write this file,
+          you MUST stop immediately and report: "PERMISSION ERROR: Unable to write demo-1.md"
+          Do not attempt any workarounds.
+
+      - name: create-demo-2
+        type: prompt
+        model: haiku
+        prompt: |
+          Create a file named `demo-2.md` at the repository root.
+
+          The file should contain:
+          ```markdown
+          # Demo File 2
+
+          Created by: agentic-sdlc demo-workflow
+          Timestamp: [current timestamp]
+          Step: create-demo-2
+
+          This file was created to validate the workflow execution.
+          ```
+
+          Use the Write tool to create this file.
+
+          IMPORTANT: If you encounter a permission error when trying to write this file,
+          you MUST stop immediately and report: "PERMISSION ERROR: Unable to write demo-2.md"
+          Do not attempt any workarounds.
+
+  - name: completion
+    type: prompt
+    model: haiku
+    prompt: |
+      # Demo Workflow Complete
+
+      The agentic-sdlc demo workflow has finished executing.
+
+      Please verify the following:
+      1. Two files were created: demo-1.md and demo-2.md at the repository root
+      2. No permission errors occurred during execution
+
+      If everything succeeded, say:
+      "DEMO WORKFLOW COMPLETED SUCCESSFULLY - Your agentic-sdlc installation is working correctly!"
+
+      Remind the user to delete demo-1.md and demo-2.md after reviewing them.
+
+      IMPORTANT: If any permission issues occurred during this workflow, report them now
+      and end with: "DEMO WORKFLOW COMPLETED WITH ISSUES - Please review the errors above."

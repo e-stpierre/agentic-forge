@@ -16,8 +16,12 @@ package-lock.json
 # Git worktrees
 .worktrees/
 
+# Agentic-SDLC All
+agentic/*
+!agentic/improvements.md
+
 # Agentic-SDLC outputs
+
 agentic/outputs/
 agentic/*.log
 agentic/temp/
-!agentic/workflows/

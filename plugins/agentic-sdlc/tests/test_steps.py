@@ -32,6 +32,7 @@ def step_context(temp_dir: Path) -> StepContext:
         },
         renderer=TemplateRenderer(),
         workflow_settings=WorkflowSettings(),
+        workflow_id="test-workflow-id",
         variables={"test_var": "test_value"},
         outputs={},
     )
@@ -72,14 +73,36 @@ class TestStepContext:
             config={"key": "value"},
             renderer=TemplateRenderer(),
             workflow_settings=WorkflowSettings(),
+            workflow_id="test-workflow-123",
             variables={"var": "val"},
             outputs={"output": "data"},
         )
 
         assert context.repo_root == temp_dir
         assert context.config == {"key": "value"}
+        assert context.workflow_id == "test-workflow-123"
         assert context.variables == {"var": "val"}
         assert context.outputs == {"output": "data"}
+
+    def test_build_template_context_includes_workflow_id(self, temp_dir: Path) -> None:
+        """Test that build_template_context includes workflow_id."""
+        context = StepContext(
+            repo_root=temp_dir,
+            config={"key": "value"},
+            renderer=TemplateRenderer(),
+            workflow_settings=WorkflowSettings(),
+            workflow_id="test-workflow-456",
+            variables={"task": "feature"},
+            outputs={"plan": {"summary": "test"}},
+        )
+
+        template_ctx = context.build_template_context()
+
+        assert template_ctx["workflow_id"] == "test-workflow-456"
+        assert template_ctx["variables"]["task"] == "feature"
+        assert template_ctx["outputs"]["plan"]["summary"] == "test"
+        # Variables should also be spread at top level
+        assert template_ctx["task"] == "feature"
 
 
 class TestStepExecutorBase:

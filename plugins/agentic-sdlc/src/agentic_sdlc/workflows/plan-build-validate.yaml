@@ -40,6 +40,7 @@ steps:
     args:
       type: "{{ variables.type }}"
       context: "{{ variables.task }}"
+      output_dir: "agentic/outputs/{{ workflow_id }}"
     checkpoint: true
 
   - name: implement

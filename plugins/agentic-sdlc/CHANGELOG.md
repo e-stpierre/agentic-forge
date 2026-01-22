@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.2.0] - 2026-01-21
+
+### Added
+
+- `version` command to display installed agentic-sdlc version
+- `release-notes` command to display release notes from CHANGELOG.md
+- `update` command for self-updating from local marketplace
+- `add-improvement` command for tracking improvement suggestions
+- Workflow auto-discovery with search order: project-local, user-global, bundled
+- `--list` flag for `run` command to list all available workflows
+- Demo workflow for showcasing capabilities
+- Documentation restructure with QuickStart, WorkflowBuilder, and Contributing guides
+
+### Fixed
+
+- `list` command now correctly finds workflow progress files in `agentic/outputs/`
+- `update` command uses local marketplace instead of remote sources
+- Workflow logging captures agent messages in both base and terminal-output modes
+- Ralph-loop first iteration template evaluation
+- Plan output when used in workflow context
+- Plan-build-validate build step failures
+- Ralph failure handling improvements
+
 ## [0.1.0] - 2026-01-11
 
 ### Added

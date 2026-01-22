@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agentic_sdlc.console import OutputLevel, extract_summary
+from agentic_sdlc.console import extract_summary
 from agentic_sdlc.progress import WorkflowStatus, update_step_completed, update_step_failed
 from agentic_sdlc.ralph_loop import (
     build_ralph_system_message,
@@ -40,12 +40,9 @@ class RalphLoopStepExecutor(StepExecutor):
         console: ConsoleOutput,
     ) -> StepResult:
         """Execute a Ralph Wiggum loop step."""
-        prompt = step.prompt or ""
+        prompt_template = step.prompt or ""
         completion_promise = step.completion_promise or "COMPLETE"
         template_context = context.build_template_context()
-
-        if context.renderer.has_variables(prompt):
-            prompt = context.renderer.render_string(prompt, template_context)
 
         if context.renderer.has_variables(completion_promise):
             completion_promise = context.renderer.render_string(completion_promise, template_context)
@@ -61,16 +58,8 @@ class RalphLoopStepExecutor(StepExecutor):
         bypass_permissions = context.workflow_settings.bypass_permissions if context.workflow_settings else False
         allowed_tools = context.workflow_settings.required_tools if context.workflow_settings else None
 
-        print_output = console.level == OutputLevel.ALL
-
-        _ralph_state = create_ralph_state(
-            workflow_id=progress.workflow_id,
-            step_name=step.name,
-            prompt=prompt,
-            max_iterations=max_iterations,
-            completion_promise=completion_promise,
-            repo_root=context.repo_root,
-        )
+        # Always enable streaming when console is provided (handles both BASE and ALL modes)
+        print_output = True
 
         logger.info(step.name, f"Starting Ralph loop (max {max_iterations} iterations)")
         console.info(f"Ralph loop starting (max {max_iterations} iterations)")
@@ -79,6 +68,28 @@ class RalphLoopStepExecutor(StepExecutor):
 
         for iteration in range(1, max_iterations + 1):
             logger.info(step.name, f"Ralph loop iteration {iteration}/{max_iterations}")
+
+            # Render prompt with iteration context for each iteration
+            iteration_context = {
+                **template_context,
+                "iteration": iteration,
+                "max_iterations": max_iterations,
+            }
+            if context.renderer.has_variables(prompt_template):
+                prompt = context.renderer.render_string(prompt_template, iteration_context)
+            else:
+                prompt = prompt_template
+
+            # Create ralph state on first iteration (after we have the rendered prompt)
+            if iteration == 1:
+                _ralph_state = create_ralph_state(
+                    workflow_id=progress.workflow_id,
+                    step_name=step.name,
+                    prompt=prompt,
+                    max_iterations=max_iterations,
+                    completion_promise=completion_promise,
+                    repo_root=context.repo_root,
+                )
 
             system_message = build_ralph_system_message(iteration, max_iterations, completion_promise)
             full_prompt = f"{system_message}{prompt}"
@@ -92,6 +103,7 @@ class RalphLoopStepExecutor(StepExecutor):
                 skip_permissions=bypass_permissions,
                 allowed_tools=allowed_tools,
                 console=console,
+                workflow_id=context.workflow_id,
             )
 
             if not result.success:
@@ -116,6 +128,17 @@ class RalphLoopStepExecutor(StepExecutor):
             console.ralph_iteration(step.name, iteration, max_iterations, iteration_summary)
 
             completion_result = detect_completion_promise(result.stdout, completion_promise)
+
+            # Check for failure signal first
+            if completion_result.is_failed:
+                error_msg = f"Ralph loop failed: {completion_result.failure_reason}"
+                logger.error(step.name, error_msg)
+                deactivate_ralph_state(progress.workflow_id, step.name, context.repo_root)
+                combined_output = "\n\n---\n\n".join(all_outputs)
+                console.step_failed(step.name, error_msg)
+                update_step_failed(progress, step.name, error_msg)
+                progress.status = WorkflowStatus.FAILED.value
+                return StepResult(success=False, error=error_msg, full_output=combined_output)
 
             if completion_result.is_complete and completion_result.promise_matched:
                 logger.info(step.name, f"Ralph loop completed at iteration {iteration}")

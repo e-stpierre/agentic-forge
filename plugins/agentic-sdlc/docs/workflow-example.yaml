@@ -1,0 +1,429 @@
+# Annotated Reference Workflow
+# This workflow demonstrates all available configuration options and step types
+# Use this as a template for creating your own workflows
+
+# Required: Unique workflow identifier
+name: complete-workflow-example
+
+# Required: Schema version
+version: "1.0"
+
+# Optional: Human-readable description
+description: |
+  Comprehensive example workflow demonstrating all available features:
+  - All step types (prompt, command, serial, parallel, conditional, ralph-loop, wait-for-human)
+  - Git integration with worktrees
+  - Error handling and retries
+  - Checkpoints and progress tracking
+  - Variable templating with Jinja2
+  - Output generation
+
+# Optional: Workflow-level settings
+settings:
+  # Maximum retry attempts for failed steps (default: 3)
+  max-retry: 3
+
+  # Maximum time for entire workflow in minutes (default: 60)
+  timeout-minutes: 180
+
+  # Track progress in progress.json file (default: true)
+  track-progress: true
+
+  # Auto-fix severity level: none, minor, major, critical (default: none)
+  autofix: "major"
+
+  # Terminal output mode: base (last message), all (stream all) (default: base)
+  terminal-output: "base"
+
+  # Bypass permission prompts - use with caution (default: false)
+  bypass-permissions: false
+
+  # Tools Claude can use without prompting (default: [])
+  required-tools:
+    - "Bash"
+    - "Edit"
+    - "Write"
+    - "Read"
+
+  # Git configuration
+  git:
+    # Enable git operations (default: false)
+    enabled: true
+
+    # Use worktrees for parallel steps (default: false)
+    worktree: true
+
+    # Auto-commit changes after each step (default: true)
+    auto-commit: true
+
+    # Auto-create PR when workflow completes (default: true)
+    auto-pr: false
+
+    # Prefix for branch names (default: "agentic")
+    branch-prefix: "feature"
+
+# Optional: Input variables for the workflow
+variables:
+  # Required string variable
+  - name: task
+    type: string
+    required: true
+    description: Task description for implementation
+
+  # Optional string variable with default
+  - name: plan_type
+    type: string
+    required: false
+    default: "auto"
+    description: Plan type (feature, bug, chore, auto)
+
+  # Optional boolean variable
+  - name: create_pr
+    type: boolean
+    required: false
+    default: true
+    description: Whether to create a pull request
+
+  # Optional number variable
+  - name: max_iterations
+    type: number
+    required: false
+    default: 10
+    description: Maximum iterations for ralph loop
+
+  # Optional severity level
+  - name: fix_severity
+    type: string
+    required: false
+    default: "major"
+    description: Minimum severity for auto-fixing issues
+
+# Required: Workflow steps
+steps:
+  # ==================== PROMPT STEP ====================
+  # Execute a custom prompt in a Claude session
+  - name: analyze-requirements
+    type: prompt
+    prompt: |
+      Analyze the following task and provide a detailed breakdown:
+
+      Task: {{ variables.task }}
+
+      Provide:
+      1. Key requirements
+      2. Potential challenges
+      3. Recommended approach
+
+    # Optional: Model to use (sonnet, haiku, opus)
+    model: sonnet
+
+    # Optional: Timeout for this step (overrides workflow timeout)
+    timeout-minutes: 15
+
+    # Optional: Max retry attempts (overrides workflow setting)
+    max-retry: 2
+
+    # Optional: Error handling strategy (retry, skip, fail)
+    on-error: retry
+
+    # Optional: Create checkpoint after this step completes
+    checkpoint: false
+
+  # ==================== COMMAND STEP ====================
+  # Execute a Claude command with arguments
+  - name: generate-plan
+    type: command
+    # Must use namespace prefix (plugin-name:command-name)
+    command: agentic-sdlc:plan
+    args:
+      type: "{{ variables.plan_type }}"
+      context: "{{ variables.task }}"
+      output_dir: "agentic/outputs/{{ workflow_id }}"
+    checkpoint: true
+    timeout-minutes: 20
+
+  # ==================== SERIAL STEP ====================
+  # Execute nested steps sequentially
+  - name: sequential-implementation
+    type: serial
+    steps:
+      - name: setup-environment
+        type: prompt
+        prompt: "Prepare the development environment for implementation"
+
+      - name: install-dependencies
+        type: prompt
+        prompt: "Install required dependencies"
+
+      - name: create-files
+        type: prompt
+        prompt: "Create necessary files and directory structure"
+
+  # ==================== PARALLEL STEP ====================
+  # Execute nested steps concurrently in git worktrees
+  - name: parallel-analysis
+    type: parallel
+
+    # Merge strategy: wait-all (wait for all steps to complete)
+    merge-strategy: wait-all
+
+    # Merge mode: independent (no merging), merge (merge branches)
+    merge-mode: independent
+
+    # Git configuration for parallel execution
+    git:
+      # Run each parallel step in separate worktree
+      worktree: true
+
+      # Prefix for parallel branch names
+      branch-prefix: "analysis"
+
+    # Parallel steps
+    steps:
+      - name: security-scan
+        type: command
+        command: agentic-sdlc:analyse-security
+        on-error: skip # Don't fail workflow if security scan fails
+
+      - name: style-check
+        type: command
+        command: agentic-sdlc:analyse-style
+        on-error: skip
+
+      - name: bug-detection
+        type: command
+        command: agentic-sdlc:analyse-bug
+        on-error: skip
+
+      - name: debt-analysis
+        type: command
+        command: agentic-sdlc:analyse-debt
+        on-error: skip
+
+  # ==================== RALPH LOOP STEP ====================
+  # Iterative prompt execution with completion detection
+  - name: implement-incrementally
+    type: ralph-loop
+
+    # Prompt executed in each iteration
+    prompt: |
+      ## Ralph Loop Iteration
+
+      Read the implementation plan at agentic/outputs/{{ workflow_id }}/plan.md
+
+      Implement the NEXT INCOMPLETE milestone:
+      1. Read the plan and identify the next incomplete milestone
+      2. Implement all tasks in that milestone
+      3. Run tests to verify your implementation
+      4. Commit your changes with a descriptive message
+      5. Mark the milestone as complete in the plan file
+
+      **IMPORTANT**: When ALL milestones in the plan are marked as complete, output:
+      ```json
+      {"ralph_complete": true, "promise": "ALL_MILESTONES_COMPLETE"}
+      ```
+
+      Do NOT output the completion JSON until every milestone is genuinely finished.
+
+      Current iteration state is tracked in agentic/outputs/{{ workflow_id }}/ralph-implement-incrementally.md
+
+    # Maximum iterations before stopping (can use variable)
+    max-iterations: "{{ variables.max_iterations }}"
+
+    # Completion promise text to match in JSON output
+    completion-promise: "ALL_MILESTONES_COMPLETE"
+
+    # Model to use for each iteration
+    model: sonnet
+
+    # Create checkpoint after loop completes
+    checkpoint: true
+
+    # Timeout for entire loop
+    timeout-minutes: 120
+
+  # ==================== COMMAND STEP (VALIDATION) ====================
+  - name: validate-implementation
+    type: command
+    command: agentic-sdlc:validate
+    args:
+      plan: "agentic/outputs/{{ workflow_id }}/plan.md"
+      severity: minor
+    checkpoint: true
+
+  # ==================== CONDITIONAL STEP ====================
+  # Execute steps based on Jinja2 condition
+  - name: fix-validation-issues
+    type: conditional
+
+    # Jinja2 expression that evaluates to true/false
+    # This checks if there are any issues with severity >= fix_severity
+    condition: "{{ outputs.validate_implementation.issues | selectattr('severity', 'ge', variables.fix_severity) | list | length > 0 }}"
+
+    # Steps to execute if condition is true
+    then:
+      - name: apply-fixes
+        type: prompt
+        prompt: |
+          The validation found issues that need to be fixed.
+
+          Issues to fix (severity {{ variables.fix_severity }} or higher):
+          {{ outputs.validate_implementation.issues | tojson(indent=2) }}
+
+          Please fix these issues and commit your changes.
+        model: sonnet
+        timeout-minutes: 30
+
+      - name: revalidate
+        type: command
+        command: agentic-sdlc:validate
+        args:
+          severity: "{{ variables.fix_severity }}"
+
+    # Steps to execute if condition is false
+    else:
+      - name: log-success
+        type: prompt
+        prompt: "Validation passed! No issues found at severity {{ variables.fix_severity }} or higher."
+
+  # ==================== WAIT FOR HUMAN STEP ====================
+  # Pause workflow and wait for human input
+  - name: request-approval
+    type: wait-for-human
+
+    # Message shown to human
+    message: |
+      Please review the implementation and validation results.
+
+      Review the following:
+      - Implementation plan: agentic/outputs/{{ workflow_id }}/plan.md
+      - Validation results: outputs.validate_implementation
+
+      Respond with:
+      - "approved" to continue and create PR
+      - "rejected" to stop without PR
+      - Provide feedback for additional changes
+
+    # Polling interval in seconds (default: 15)
+    polling-interval: 30
+
+    # Action on timeout: abort (stop workflow), continue (proceed anyway)
+    on-timeout: abort
+
+    # Timeout in minutes (default: 1440 = 24 hours)
+    timeout-minutes: 120
+
+  # ==================== CONDITIONAL STEP (CREATE PR) ====================
+  - name: create-pull-request
+    type: conditional
+    condition: "{{ variables.create_pr and outputs.request_approval.response == 'approved' }}"
+    then:
+      - name: open-pr
+        type: command
+        command: agentic-sdlc:git-pr
+        args:
+          title: "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}"
+          draft: false
+
+  # ==================== FINAL SUMMARY ====================
+  - name: generate-summary
+    type: prompt
+    prompt: |
+      Generate a summary of the workflow execution.
+
+      Include:
+      - Task: {{ variables.task }}
+      - Plan type: {{ variables.plan_type }}
+      - Validation results: {{ outputs.validate_implementation | tojson }}
+      - PR created: {{ outputs.create_pull_request is defined }}
+
+      Save the summary to agentic/outputs/{{ workflow_id }}/summary.md
+
+# Optional: Output artifacts
+outputs:
+  # Generated when workflow completes successfully
+  - name: implementation-report
+    # Jinja2 template file (resolved from workflow dir, agentic/templates/, or bundled templates)
+    template: implementation-report.md.j2
+    # Output file path (relative to workflow directory)
+    path: agentic/outputs/{{ workflow_id }}/report.md
+    # When to generate: completed or failed
+    when: completed
+
+  # Generated when workflow fails
+  - name: error-report
+    template: error-report.md.j2
+    path: agentic/outputs/{{ workflow_id }}/error.md
+    when: failed
+
+# ==================== USAGE EXAMPLES ====================
+#
+# Run with required variable:
+#   agentic-sdlc run workflow-example.yaml --var "task=Add user authentication"
+#
+# Run with custom variables:
+#   agentic-sdlc run workflow-example.yaml \
+#     --var "task=Fix login bug" \
+#     --var "plan_type=bug" \
+#     --var "create_pr=true" \
+#     --var "max_iterations=15"
+#
+# Run with verbose output:
+#   agentic-sdlc run workflow-example.yaml \
+#     --var "task=Implement feature" \
+#     --terminal-output all
+#
+# Resume from specific step:
+#   agentic-sdlc run workflow-example.yaml \
+#     --var "task=Implement feature" \
+#     --from-step validate-implementation
+#
+# Provide human input:
+#   agentic-sdlc input <workflow-id> "approved"
+#
+# Check workflow status:
+#   agentic-sdlc status <workflow-id>
+#
+# ==================== AVAILABLE COMMANDS ====================
+#
+# Commands you can use in command steps (must use namespace prefix):
+#
+# Planning & Implementation:
+#   - agentic-sdlc:plan
+#   - agentic-sdlc:build
+#   - agentic-sdlc:validate
+#
+# Analysis:
+#   - agentic-sdlc:analyse-bug
+#   - agentic-sdlc:analyse-debt
+#   - agentic-sdlc:analyse-doc
+#   - agentic-sdlc:analyse-security
+#   - agentic-sdlc:analyse-style
+#
+# Git Operations:
+#   - agentic-sdlc:git-branch
+#   - agentic-sdlc:git-commit
+#   - agentic-sdlc:git-pr
+#
+# Utilities:
+#   - agentic-sdlc:orchestrate
+#
+# ==================== BUILT-IN VARIABLES ====================
+#
+# Available in all Jinja2 templates:
+#   - {{ workflow_id }}              - Unique workflow execution ID
+#   - {{ workflow_name }}            - Workflow name from YAML
+#   - {{ variables.name }}           - User-defined variables
+#   - {{ outputs.step_name.field }}  - Step outputs
+#
+# ==================== JINJA2 FILTERS ====================
+#
+# Common filters for templating:
+#   - {{ list | length }}            - Get list length
+#   - {{ list | first }}             - Get first item
+#   - {{ list | last }}              - Get last item
+#   - {{ list | selectattr('key', 'eq', 'value') }}  - Filter list
+#   - {{ text | upper }}             - Uppercase
+#   - {{ text | lower }}             - Lowercase
+#   - {{ data | tojson }}            - Convert to JSON
+#   - {{ data | tojson(indent=2) }}  - Pretty JSON

@@ -1,6 +1,6 @@
 """Agentic SDLC - Orchestration framework for Claude Code."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from agentic_sdlc.config import get_default_config, load_config, save_config
 from agentic_sdlc.executor import WorkflowExecutor

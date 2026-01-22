@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 # Import command handlers from extracted modules
@@ -17,9 +16,12 @@ from agentic_sdlc.commands import (
     cmd_input,
     cmd_list,
     cmd_oneshot,
+    cmd_release_notes,
     cmd_resume,
     cmd_run,
     cmd_status,
+    cmd_update,
+    cmd_version,
 )
 
 if TYPE_CHECKING:
@@ -32,11 +34,27 @@ def main() -> None:
         prog="agentic-sdlc",
         description="Agentic workflow orchestration for Claude Code",
     )
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Show version and exit",
+    )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # run command
     run_parser = subparsers.add_parser("run", help="Run a workflow")
-    run_parser.add_argument("workflow", type=Path, help="Path to workflow YAML file")
+    run_parser.add_argument(
+        "workflow",
+        type=str,
+        nargs="?",
+        help="Workflow name or path to YAML file",
+    )
+    run_parser.add_argument(
+        "--list",
+        action="store_true",
+        dest="list_workflows",
+        help="List all available workflows",
+    )
     run_parser.add_argument(
         "--var",
         action="append",
@@ -136,7 +154,36 @@ def main() -> None:
         help="Terminal output granularity",
     )
 
+    # version command
+    subparsers.add_parser("version", help="Show version information")
+
+    # release-notes command
+    release_notes_parser = subparsers.add_parser("release-notes", help="Show release notes from CHANGELOG")
+    release_notes_parser.add_argument(
+        "specific_version",
+        nargs="?",
+        help="Show release notes for a specific version (e.g., 0.1.0)",
+    )
+    release_notes_parser.add_argument(
+        "--latest",
+        action="store_true",
+        help="Show only the most recent version's release notes",
+    )
+
+    # update command
+    update_parser = subparsers.add_parser("update", help="Update agentic-sdlc to the latest version")
+    update_parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check for updates without installing",
+    )
+
     args = parser.parse_args()
+
+    # Handle --version flag
+    if args.version:
+        cmd_version()
+        return
 
     # Dispatch to appropriate command handler
     if args.command == "run":
@@ -161,6 +208,12 @@ def main() -> None:
         cmd_oneshot(args)
     elif args.command == "analyse":
         cmd_analyse(args)
+    elif args.command == "version":
+        cmd_version(args)
+    elif args.command == "release-notes":
+        cmd_release_notes(args)
+    elif args.command == "update":
+        cmd_update(args)
     else:
         parser.print_help()
         sys.exit(1)

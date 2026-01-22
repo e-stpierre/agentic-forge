@@ -26,6 +26,7 @@ class StepContext:
     config: dict[str, Any]
     renderer: TemplateRenderer
     workflow_settings: WorkflowSettings | None
+    workflow_id: str = ""
     variables: dict[str, Any] = field(default_factory=dict)
     outputs: dict[str, Any] = field(default_factory=dict)
     cwd_override: Path | None = None
@@ -35,6 +36,7 @@ class StepContext:
         return {
             "variables": self.variables,
             "outputs": self.outputs,
+            "workflow_id": self.workflow_id,
             **self.variables,
         }
 

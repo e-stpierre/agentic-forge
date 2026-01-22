@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -157,6 +158,7 @@ def run_claude(
     allowed_tools: list[str] | None = None,
     console: ConsoleOutput | None = None,
     append_system_prompt: bool = True,
+    workflow_id: str | None = None,
 ) -> ClaudeResult:
     """Run claude with the given prompt.
 
@@ -170,6 +172,7 @@ def run_claude(
         allowed_tools: List of tools Claude is allowed to use without prompting
         console: Optional console output handler for streaming
         append_system_prompt: Whether to append the agentic system prompt (default True)
+        workflow_id: Optional workflow ID to set as OTEL_RESOURCE_ATTRIBUTE for tracing
 
     Returns:
         ClaudeResult with captured output
@@ -195,6 +198,12 @@ def run_claude(
 
     cwd_str = str(cwd) if cwd else None
 
+    # Set up environment with OTEL tracing if workflow_id is provided
+    env = None
+    if workflow_id:
+        env = os.environ.copy()
+        env["OTEL_RESOURCE_ATTRIBUTE"] = f"session={workflow_id}"
+
     if print_output:
         process = subprocess.Popen(
             cmd,
@@ -203,6 +212,7 @@ def run_claude(
             stderr=subprocess.PIPE,
             text=True,
             cwd=cwd_str,
+            env=env,
             shell=False,
         )
 
@@ -218,6 +228,10 @@ def run_claude(
                 else:
                     print(line, end="", flush=True)
                 stdout_lines.append(line)
+
+        # Signal that streaming is complete
+        if console:
+            console.stream_complete()
 
         try:
             process.wait(timeout=timeout)
@@ -243,6 +257,7 @@ def run_claude(
                 capture_output=True,
                 text=True,
                 cwd=cwd_str,
+                env=env,
                 timeout=timeout,
                 shell=False,
             )
@@ -265,6 +280,24 @@ def run_claude(
             )
 
 
+def _quote_arg_value(value: Any) -> str:
+    """Quote an argument value if it contains spaces or special characters.
+
+    Args:
+        value: The argument value to potentially quote
+
+    Returns:
+        The value as a string, quoted if necessary
+    """
+    value_str = str(value)
+    # Quote values that contain spaces, quotes, or are empty
+    if " " in value_str or '"' in value_str or "'" in value_str or not value_str:
+        # Escape any existing double quotes and wrap in double quotes
+        escaped = value_str.replace('"', '\\"')
+        return f'"{escaped}"'
+    return value_str
+
+
 def run_claude_with_command(
     command: str,
     args: dict[str, Any] | None = None,
@@ -281,7 +314,7 @@ def run_claude_with_command(
     """
     prompt = f"/{command}"
     if args:
-        args_str = " ".join(f"--{k} {v}" for k, v in args.items())
+        args_str = " ".join(f"--{k} {_quote_arg_value(v)}" for k, v in args.items())
         prompt = f"{prompt} {args_str}"
 
     return run_claude(prompt, cwd=cwd, **kwargs)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agentic_sdlc.console import OutputLevel, extract_summary
+from agentic_sdlc.console import extract_summary
 from agentic_sdlc.progress import WorkflowStatus, update_step_completed, update_step_failed
 from agentic_sdlc.runner import run_claude_with_command
 from agentic_sdlc.steps.base import StepContext, StepExecutor, StepResult
@@ -43,7 +43,8 @@ class CommandStepExecutor(StepExecutor):
         bypass_permissions = context.workflow_settings.bypass_permissions if context.workflow_settings else False
         allowed_tools = context.workflow_settings.required_tools if context.workflow_settings else None
 
-        print_output = console.level == OutputLevel.ALL
+        # Always enable streaming when console is provided (handles both BASE and ALL modes)
+        print_output = True
 
         for attempt in range(max_retry + 1):
             result = run_claude_with_command(
@@ -56,6 +57,7 @@ class CommandStepExecutor(StepExecutor):
                 skip_permissions=bypass_permissions,
                 allowed_tools=allowed_tools,
                 console=console,
+                workflow_id=context.workflow_id,
             )
 
             if result.success:

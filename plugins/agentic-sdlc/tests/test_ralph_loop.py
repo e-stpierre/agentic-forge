@@ -340,6 +340,61 @@ Done!
 
         assert result.output == output
 
+    def test_detect_failure_json_block(self) -> None:
+        """Test detecting failure signal in JSON code block."""
+        output = """
+I cannot complete the task due to permission errors.
+
+```json
+{
+  "ralph_failed": true,
+  "reason": "Permission denied: cannot write to file"
+}
+```
+"""
+        result = detect_completion_promise(output, "COMPLETED")
+
+        assert result.is_complete is True
+        assert result.is_failed is True
+        assert result.promise_matched is False
+        assert result.failure_reason == "Permission denied: cannot write to file"
+
+    def test_detect_failure_raw_json(self) -> None:
+        """Test detecting failure signal in raw JSON."""
+        output = 'Cannot proceed. {"ralph_failed": true, "reason": "Access denied"}'
+        result = detect_completion_promise(output, "DONE")
+
+        assert result.is_complete is True
+        assert result.is_failed is True
+        assert result.failure_reason == "Access denied"
+
+    def test_detect_failure_default_reason(self) -> None:
+        """Test failure detection with missing reason field."""
+        output = '{"ralph_failed": true}'
+        result = detect_completion_promise(output, "DONE")
+
+        assert result.is_complete is True
+        assert result.is_failed is True
+        assert result.failure_reason == "Unknown error"
+
+    def test_completion_preferred_over_failure(self) -> None:
+        """Test that completion signal takes precedence if both present."""
+        output = """
+```json
+{"ralph_complete": true, "promise": "DONE"}
+```
+Also has failure:
+```json
+{"ralph_failed": true, "reason": "Some error"}
+```
+"""
+        result = detect_completion_promise(output, "DONE")
+
+        # Completion should be detected first
+        assert result.is_complete is True
+        assert result.promise_matched is True
+        assert result.is_failed is False
+
 
 class TestBuildRalphSystemMessage:
     """Tests for building ralph system message."""
@@ -366,6 +421,14 @@ class TestBuildRalphSystemMessage:
 
         assert "Iteration 10/10" in message
         assert "0 iterations remaining" in message
+
+    def test_build_ralph_system_message_includes_failure_signal(self) -> None:
+        """Test system message includes failure signal instructions."""
+        message = build_ralph_system_message(1, 5, "DONE")
+
+        assert "ralph_failed" in message
+        assert "Failure Signal" in message
+        assert "permission errors" in message.lower()
 
 
 class TestCompletionResult:
@@ -397,3 +460,21 @@ class TestCompletionResult:
         assert result.is_complete is True
         assert result.promise_matched is True
         assert result.promise_value == "DONE"
+        assert result.is_failed is False
+        assert result.failure_reason is None
+
+    def test_completion_result_failure(self) -> None:
+        """Test failure completion result."""
+        result = CompletionResult(
+            is_complete=True,
+            promise_matched=False,
+            promise_value=None,
+            output="failed output",
+            is_failed=True,
+            failure_reason="Permission denied",
+        )
+
+        assert result.is_complete is True
+        assert result.is_failed is True
+        assert result.failure_reason == "Permission denied"
+        assert result.promise_matched is False

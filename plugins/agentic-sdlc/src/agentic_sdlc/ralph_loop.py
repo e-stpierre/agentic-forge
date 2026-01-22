@@ -152,16 +152,28 @@ class CompletionResult:
     promise_matched: bool
     promise_value: str | None
     output: str
+    is_failed: bool = False
+    failure_reason: str | None = None
 
 
 def detect_completion_promise(output: str, expected_promise: str) -> CompletionResult:
-    """Detect completion promise in Claude's JSON output.
+    """Detect completion or failure signal in Claude's JSON output.
 
-    Claude should output a JSON block with the following structure:
+    Claude should output a JSON block with one of these structures:
+
+    Success:
     ```json
     {
       "ralph_complete": true,
       "promise": "COMPLETE"
+    }
+    ```
+
+    Failure:
+    ```json
+    {
+      "ralph_failed": true,
+      "reason": "Description of blocking error"
     }
     ```
 
@@ -170,7 +182,7 @@ def detect_completion_promise(output: str, expected_promise: str) -> CompletionR
         expected_promise: The expected promise text
 
     Returns:
-        CompletionResult indicating whether the promise was matched
+        CompletionResult indicating whether the promise was matched or failure occurred
     """
     # Try to find JSON in the output
     json_patterns = [
@@ -178,8 +190,10 @@ def detect_completion_promise(output: str, expected_promise: str) -> CompletionR
         r"```json\s*\n?(.*?)\n?```",
         # Code block without tag
         r"```\s*\n?(\{.*?\})\n?```",
-        # Raw JSON object (greedy match for nested objects)
+        # Raw JSON object for completion
         r"(\{[^{}]*\"ralph_complete\"[^{}]*\})",
+        # Raw JSON object for failure
+        r"(\{[^{}]*\"ralph_failed\"[^{}]*\})",
     ]
 
     for pattern in json_patterns:
@@ -188,16 +202,29 @@ def detect_completion_promise(output: str, expected_promise: str) -> CompletionR
             try:
                 data = json.loads(match.strip())
                 if isinstance(data, dict):
+                    # Check for completion signal
                     ralph_complete = data.get("ralph_complete", False)
-                    promise_value = data.get("promise", "")
-
                     if ralph_complete:
+                        promise_value = data.get("promise", "")
                         promise_matched = str(promise_value).strip().upper() == str(expected_promise).strip().upper()
                         return CompletionResult(
                             is_complete=True,
                             promise_matched=promise_matched,
                             promise_value=str(promise_value),
                             output=output,
+                        )
+
+                    # Check for failure signal
+                    ralph_failed = data.get("ralph_failed", False)
+                    if ralph_failed:
+                        failure_reason = data.get("reason", "Unknown error")
+                        return CompletionResult(
+                            is_complete=True,
+                            promise_matched=False,
+                            promise_value=None,
+                            output=output,
+                            is_failed=True,
+                            failure_reason=str(failure_reason),
                         )
             except json.JSONDecodeError:
                 continue
@@ -228,10 +255,20 @@ When your task is FULLY complete, output a JSON block:
 }}
 ```
 
+**Failure Signal:**
+If you encounter a BLOCKING error that prevents completion (e.g., missing permissions, cannot write files, access denied), output a failure JSON block:
+```json
+{{
+  "ralph_failed": true,
+  "reason": "<brief description of the blocking error>"
+}}
+```
+
 **IMPORTANT:**
 - Only output the completion JSON when the task is genuinely finished
 - Do not output false promises to exit early
-- If you cannot complete the task, continue working - you have {max_iterations - iteration} iterations remaining
+- Output the FAILURE JSON immediately if you encounter permission errors or other unrecoverable blocking issues - do NOT continue iterating
+- If the task is incomplete but can still progress, continue working - you have {max_iterations - iteration} iterations remaining
 
 ---
 

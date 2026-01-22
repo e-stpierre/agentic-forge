@@ -383,6 +383,48 @@ class TestRunClaudeWithCommand:
         assert "--arg1 value1" in prompt
         assert "--arg2 value2" in prompt
 
+    @patch("agentic_sdlc.runner.run_claude")
+    def test_run_command_with_args_containing_spaces(self, mock_run) -> None:
+        """Test running command with arguments containing spaces."""
+        mock_run.return_value = ClaudeResult(
+            returncode=0,
+            stdout="",
+            stderr="",
+            prompt='/command --context "hello world" --path simple',
+            cwd=None,
+        )
+
+        run_claude_with_command("command", args={"context": "hello world", "path": "simple"})
+
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        prompt = call_args[0][0]
+        assert "/command" in prompt
+        # Values with spaces should be quoted
+        assert '--context "hello world"' in prompt
+        # Values without spaces should not be quoted
+        assert "--path simple" in prompt
+
+    @patch("agentic_sdlc.runner.run_claude")
+    def test_run_command_with_args_containing_quotes(self, mock_run) -> None:
+        """Test running command with arguments containing quotes."""
+        mock_run.return_value = ClaudeResult(
+            returncode=0,
+            stdout="",
+            stderr="",
+            prompt='/command --msg "say \\"hello\\""',
+            cwd=None,
+        )
+
+        run_claude_with_command("command", args={"msg": 'say "hello"'})
+
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        prompt = call_args[0][0]
+        assert "/command" in prompt
+        # Values with quotes should be escaped and wrapped
+        assert '--msg "say \\"hello\\""' in prompt
+
 
 class TestCheckClaudeAvailable:
     """Tests for check_claude_available function."""
