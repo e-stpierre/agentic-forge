@@ -293,15 +293,16 @@ class TestConsoleOutput:
         output = stream.getvalue()
         assert "streaming line" in output
 
-    def test_stream_line_base_mode_silent(self) -> None:
-        """Test stream_line is silent in BASE mode."""
+    def test_stream_line_base_mode_overwrites(self) -> None:
+        """Test stream_line overwrites current line in BASE mode."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
         console.stream_line("streaming line")
 
         output = stream.getvalue()
-        assert output == ""
+        # BASE mode uses \r to return to start and \033[K to clear to end of line
+        assert output == "\rstreaming line\033[K"
 
 
 class TestExtractSummary:
