@@ -356,6 +356,12 @@ def main():
                 )
 
                 run_command(
+                    ["uv", "cache", "clean", "agentic-sdlc"],
+                    "Clean uv cache for agentic-sdlc",
+                    allow_failure=True,
+                )
+
+                run_command(
                     ["uv", "tool", "uninstall", "agentic-sdlc"],
                     "Uninstall agentic-sdlc",
                     allow_failure=True,
