@@ -10,6 +10,9 @@ arguments:
   - name: context
     description: Task description or issue reference
     required: true
+  - name: output_dir
+    description: Directory to write plan.md file (e.g., agentic/outputs/workflow-id)
+    required: false
   - name: template
     description: Custom template path
     required: false
@@ -74,7 +77,7 @@ Create a structured implementation plan for the given task. This command analyze
 2. Use the explorer agent to understand relevant code
 3. Determine plan type if auto
 4. Generate milestones with specific, actionable tasks
-5. Write plan document to workflow directory
+5. Write plan document to `{{ output_dir }}/plan.md` if output_dir is provided, otherwise skip file creation
 6. Return JSON summary
 
 ## Guidelines
@@ -93,6 +96,14 @@ Create a structured implementation plan for the given task. This command analyze
 
 {% if type != "auto" %}
 Plan Type: {{ type }}
+{% endif %}
+
+{% if output_dir %}
+## Output Directory
+
+Write the plan document to: `{{ output_dir }}/plan.md`
+
+IMPORTANT: You MUST create this file. Create the directory if it doesn't exist.
 {% endif %}
 
 ---
