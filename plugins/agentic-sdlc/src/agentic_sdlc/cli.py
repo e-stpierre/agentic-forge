@@ -20,6 +20,7 @@ from agentic_sdlc.commands import (
     cmd_resume,
     cmd_run,
     cmd_status,
+    cmd_version,
 )
 
 if TYPE_CHECKING:
@@ -31,6 +32,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="agentic-sdlc",
         description="Agentic workflow orchestration for Claude Code",
+    )
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Show version and exit",
     )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
@@ -136,7 +142,15 @@ def main() -> None:
         help="Terminal output granularity",
     )
 
+    # version command
+    subparsers.add_parser("version", help="Show version information")
+
     args = parser.parse_args()
+
+    # Handle --version flag
+    if args.version:
+        cmd_version()
+        return
 
     # Dispatch to appropriate command handler
     if args.command == "run":
@@ -161,6 +175,8 @@ def main() -> None:
         cmd_oneshot(args)
     elif args.command == "analyse":
         cmd_analyse(args)
+    elif args.command == "version":
+        cmd_version(args)
     else:
         parser.print_help()
         sys.exit(1)

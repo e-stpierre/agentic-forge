@@ -12,7 +12,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 ## Progress Tracking
 
 - [x] IMP-001: Workflow logging not capturing agent messages
-- [ ] IMP-002: Add version command to CLI
+- [x] IMP-002: Add version command to CLI
 - [ ] IMP-003: Add release-notes command to CLI
 - [ ] IMP-004: Add update command to CLI
 - [ ] IMP-005: Auto-discover workflow files
@@ -58,7 +58,7 @@ List the details of every improvement request, 100 lines maximum per item.
 
 ### IMP-002: Add version command to CLI
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: The `agentic-sdlc` CLI does not have a `version` command to display the current installed version of the plugin. Users need a way to quickly check which version they have installed for troubleshooting and ensuring compatibility.
 
@@ -74,9 +74,9 @@ Running `agentic-sdlc version` or `agentic-sdlc --version` should print the curr
 
 **Acceptance Criteria**:
 
-- [ ] `agentic-sdlc version` command prints the current version (e.g., "agentic-sdlc 0.1.0")
-- [ ] `agentic-sdlc --version` flag also works as an alternative
-- [ ] Version is read from package metadata (not hardcoded) using `importlib.metadata`
+- [x] `agentic-sdlc version` command prints the current version (e.g., "agentic-sdlc 0.1.0")
+- [x] `agentic-sdlc --version` flag also works as an alternative
+- [x] Version is read from package metadata (not hardcoded) using `importlib.metadata`
 
 ---
 
