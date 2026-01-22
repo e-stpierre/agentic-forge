@@ -243,6 +243,7 @@ class WorkflowExecutor:
             config=self.config,
             renderer=self.renderer,
             workflow_settings=self.workflow_settings,
+            workflow_id=progress.workflow_id,
             variables=variables,
             outputs=progress.step_outputs,
         )
