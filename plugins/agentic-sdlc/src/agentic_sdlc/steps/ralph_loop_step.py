@@ -117,6 +117,17 @@ class RalphLoopStepExecutor(StepExecutor):
 
             completion_result = detect_completion_promise(result.stdout, completion_promise)
 
+            # Check for failure signal first
+            if completion_result.is_failed:
+                error_msg = f"Ralph loop failed: {completion_result.failure_reason}"
+                logger.error(step.name, error_msg)
+                deactivate_ralph_state(progress.workflow_id, step.name, context.repo_root)
+                combined_output = "\n\n---\n\n".join(all_outputs)
+                console.step_failed(step.name, error_msg)
+                update_step_failed(progress, step.name, error_msg)
+                progress.status = WorkflowStatus.FAILED.value
+                return StepResult(success=False, error=error_msg, full_output=combined_output)
+
             if completion_result.is_complete and completion_result.promise_matched:
                 logger.info(step.name, f"Ralph loop completed at iteration {iteration}")
                 deactivate_ralph_state(progress.workflow_id, step.name, context.repo_root)

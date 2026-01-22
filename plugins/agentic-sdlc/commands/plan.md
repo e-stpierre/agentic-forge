@@ -99,6 +99,7 @@ Plan Type: {{ type }}
 {% endif %}
 
 {% if output_dir %}
+
 ## Output Directory
 
 Write the plan document to: `{{ output_dir }}/plan.md`
