@@ -23,18 +23,6 @@ steps:
 
       This is a demonstration workflow that validates your agentic-sdlc plugin installation.
 
-      ## What this workflow will do:
-      1. Display this welcome message
-      2. Create two demo files in parallel (demo-1.md and demo-2.md)
-      3. Check for any errors that occurred
-      4. Display a completion message
-
-      ## Important Permission Note
-      If you encounter ANY permission issues during this workflow (such as being unable to
-      write files or access required tools), you MUST immediately stop and report the error.
-      Do NOT attempt to work around permission issues - the purpose of this demo is to
-      validate that permissions are correctly configured.
-
       Please acknowledge this welcome message by saying: "Demo workflow started successfully."
 
   - name: create-demo-files
@@ -89,27 +77,6 @@ steps:
           IMPORTANT: If you encounter a permission error when trying to write this file,
           you MUST stop immediately and report: "PERMISSION ERROR: Unable to write demo-2.md"
           Do not attempt any workarounds.
-
-  - name: handle-errors
-    type: conditional
-    condition: "{{ steps.create-demo-files.status == 'failed' }}"
-    then:
-      - name: report-error
-        type: prompt
-        model: haiku
-        prompt: |
-          An error occurred during the demo workflow execution.
-
-          Please report the following:
-          1. Which step failed (create-demo-1 or create-demo-2)
-          2. The nature of the error
-
-          If this was a permission error, advise the user to:
-          - Check their Claude Code permissions configuration
-          - Ensure the Write tool is allowed for this workflow
-          - Review the agentic-sdlc documentation for permission setup
-
-          End with: "DEMO WORKFLOW FAILED - Please resolve the above issues and try again."
 
   - name: completion
     type: prompt
