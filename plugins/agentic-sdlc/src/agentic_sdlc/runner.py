@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -157,6 +158,7 @@ def run_claude(
     allowed_tools: list[str] | None = None,
     console: ConsoleOutput | None = None,
     append_system_prompt: bool = True,
+    workflow_id: str | None = None,
 ) -> ClaudeResult:
     """Run claude with the given prompt.
 
@@ -170,6 +172,7 @@ def run_claude(
         allowed_tools: List of tools Claude is allowed to use without prompting
         console: Optional console output handler for streaming
         append_system_prompt: Whether to append the agentic system prompt (default True)
+        workflow_id: Optional workflow ID to set as OTEL_RESOURCE_ATTRIBUTE for tracing
 
     Returns:
         ClaudeResult with captured output
@@ -195,6 +198,12 @@ def run_claude(
 
     cwd_str = str(cwd) if cwd else None
 
+    # Set up environment with OTEL tracing if workflow_id is provided
+    env = None
+    if workflow_id:
+        env = os.environ.copy()
+        env["OTEL_RESOURCE_ATTRIBUTE"] = f"session={workflow_id}"
+
     if print_output:
         process = subprocess.Popen(
             cmd,
@@ -203,6 +212,7 @@ def run_claude(
             stderr=subprocess.PIPE,
             text=True,
             cwd=cwd_str,
+            env=env,
             shell=False,
         )
 
@@ -247,6 +257,7 @@ def run_claude(
                 capture_output=True,
                 text=True,
                 cwd=cwd_str,
+                env=env,
                 timeout=timeout,
                 shell=False,
             )

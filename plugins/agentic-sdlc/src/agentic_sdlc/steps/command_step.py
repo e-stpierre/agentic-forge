@@ -57,6 +57,7 @@ class CommandStepExecutor(StepExecutor):
                 skip_permissions=bypass_permissions,
                 allowed_tools=allowed_tools,
                 console=console,
+                workflow_id=context.workflow_id,
             )
 
             if result.success:
