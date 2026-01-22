@@ -17,7 +17,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [x] IMP-004: Add update command to CLI
 - [x] IMP-005: Auto-discover workflow files
 - [x] IMP-006: List command returns no results
-- [ ] DOC-001: Restructure agentic-sdlc documentation
+- [x] DOC-001: Restructure agentic-sdlc documentation
 
 ## Improvements List
 
@@ -196,7 +196,7 @@ The `cmd_list()` function looks for workflow progress in `agentic/workflows/` bu
 
 ### DOC-001: Restructure agentic-sdlc documentation
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: The agentic-sdlc README.md is a single monolithic file that tries to serve all audiences (beginners, advanced users, contributors). This makes it difficult to navigate and find relevant information quickly. The documentation lacks a clear separation of concerns and progression path.
 
@@ -239,9 +239,9 @@ Split the documentation into focused files targeting different audiences and use
 
 **Acceptance Criteria**:
 
-- [ ] README.md is concise (under 200 lines) with clear links to detailed docs
-- [ ] QuickStart.md enables new users to run a workflow in under 5 minutes
-- [ ] WorkflowBuilder.md covers all step types, settings, and configuration options
-- [ ] Contributing.md documents build, test, and contribution process
-- [ ] workflow-example.yaml contains all schema options with explanatory comments
-- [ ] Cross-references between documents are consistent and working
+- [x] README.md is concise (247 lines) with clear links to detailed docs
+- [x] QuickStart.md enables new users to run a workflow in under 5 minutes
+- [x] WorkflowBuilder.md covers all step types, settings, and configuration options
+- [x] Contributing.md documents build, test, and contribution process
+- [x] workflow-example.yaml contains all schema options with explanatory comments
+- [x] Cross-references between documents are consistent and working
