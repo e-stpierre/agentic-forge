@@ -265,6 +265,24 @@ def run_claude(
             )
 
 
+def _quote_arg_value(value: Any) -> str:
+    """Quote an argument value if it contains spaces or special characters.
+
+    Args:
+        value: The argument value to potentially quote
+
+    Returns:
+        The value as a string, quoted if necessary
+    """
+    value_str = str(value)
+    # Quote values that contain spaces, quotes, or are empty
+    if " " in value_str or '"' in value_str or "'" in value_str or not value_str:
+        # Escape any existing double quotes and wrap in double quotes
+        escaped = value_str.replace('"', '\\"')
+        return f'"{escaped}"'
+    return value_str
+
+
 def run_claude_with_command(
     command: str,
     args: dict[str, Any] | None = None,
@@ -281,7 +299,7 @@ def run_claude_with_command(
     """
     prompt = f"/{command}"
     if args:
-        args_str = " ".join(f"--{k} {v}" for k, v in args.items())
+        args_str = " ".join(f"--{k} {_quote_arg_value(v)}" for k, v in args.items())
         prompt = f"{prompt} {args_str}"
 
     return run_claude(prompt, cwd=cwd, **kwargs)
