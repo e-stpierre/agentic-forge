@@ -40,12 +40,9 @@ class RalphLoopStepExecutor(StepExecutor):
         console: ConsoleOutput,
     ) -> StepResult:
         """Execute a Ralph Wiggum loop step."""
-        prompt = step.prompt or ""
+        prompt_template = step.prompt or ""
         completion_promise = step.completion_promise or "COMPLETE"
         template_context = context.build_template_context()
-
-        if context.renderer.has_variables(prompt):
-            prompt = context.renderer.render_string(prompt, template_context)
 
         if context.renderer.has_variables(completion_promise):
             completion_promise = context.renderer.render_string(completion_promise, template_context)
@@ -63,15 +60,6 @@ class RalphLoopStepExecutor(StepExecutor):
 
         print_output = console.level == OutputLevel.ALL
 
-        _ralph_state = create_ralph_state(
-            workflow_id=progress.workflow_id,
-            step_name=step.name,
-            prompt=prompt,
-            max_iterations=max_iterations,
-            completion_promise=completion_promise,
-            repo_root=context.repo_root,
-        )
-
         logger.info(step.name, f"Starting Ralph loop (max {max_iterations} iterations)")
         console.info(f"Ralph loop starting (max {max_iterations} iterations)")
 
@@ -79,6 +67,28 @@ class RalphLoopStepExecutor(StepExecutor):
 
         for iteration in range(1, max_iterations + 1):
             logger.info(step.name, f"Ralph loop iteration {iteration}/{max_iterations}")
+
+            # Render prompt with iteration context for each iteration
+            iteration_context = {
+                **template_context,
+                "iteration": iteration,
+                "max_iterations": max_iterations,
+            }
+            if context.renderer.has_variables(prompt_template):
+                prompt = context.renderer.render_string(prompt_template, iteration_context)
+            else:
+                prompt = prompt_template
+
+            # Create ralph state on first iteration (after we have the rendered prompt)
+            if iteration == 1:
+                _ralph_state = create_ralph_state(
+                    workflow_id=progress.workflow_id,
+                    step_name=step.name,
+                    prompt=prompt,
+                    max_iterations=max_iterations,
+                    completion_promise=completion_promise,
+                    repo_root=context.repo_root,
+                )
 
             system_message = build_ralph_system_message(iteration, max_iterations, completion_promise)
             full_prompt = f"{system_message}{prompt}"
