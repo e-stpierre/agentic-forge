@@ -21,6 +21,7 @@ from agentic_sdlc.commands import (
     cmd_resume,
     cmd_run,
     cmd_status,
+    cmd_update,
     cmd_version,
 )
 
@@ -159,6 +160,14 @@ def main() -> None:
         help="Show only the most recent version's release notes",
     )
 
+    # update command
+    update_parser = subparsers.add_parser("update", help="Update agentic-sdlc to the latest version")
+    update_parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check for updates without installing",
+    )
+
     args = parser.parse_args()
 
     # Handle --version flag
@@ -193,6 +202,8 @@ def main() -> None:
         cmd_version(args)
     elif args.command == "release-notes":
         cmd_release_notes(args)
+    elif args.command == "update":
+        cmd_update(args)
     else:
         parser.print_help()
         sys.exit(1)

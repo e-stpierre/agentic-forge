@@ -14,7 +14,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 - [x] IMP-001: Workflow logging not capturing agent messages
 - [x] IMP-002: Add version command to CLI
 - [x] IMP-003: Add release-notes command to CLI
-- [ ] IMP-004: Add update command to CLI
+- [x] IMP-004: Add update command to CLI
 - [ ] IMP-005: Auto-discover workflow files
 - [ ] IMP-006: List command returns no results
 - [ ] DOC-001: Restructure agentic-sdlc documentation
@@ -107,7 +107,7 @@ Running `agentic-sdlc release-notes` should print the contents of the CHANGELOG.
 
 ### IMP-004: Add update command to CLI
 
-**Status**: Pending
+**Status**: Completed
 
 **Problem**: Users must manually run `uv tool upgrade agentic-sdlc` to update the plugin. A built-in update command would improve UX.
 
@@ -122,11 +122,11 @@ Running `agentic-sdlc update` should update the plugin to the latest version usi
 
 **Acceptance Criteria**:
 
-- [ ] `agentic-sdlc update` checks for and installs the latest version
-- [ ] Displays current version vs available version before updating
-- [ ] `--check` flag to only check for updates without installing
-- [ ] Uses `uv tool upgrade` when uv is available, falls back to pip
-- [ ] Shows success/failure message with new version number
+- [x] `agentic-sdlc update` checks for and installs the latest version
+- [x] Displays current version vs available version before updating
+- [x] `--check` flag to only check for updates without installing
+- [x] Uses `uv tool upgrade` when uv is available, falls back to pip
+- [x] Shows success/failure message with new version number
 
 ---
 
