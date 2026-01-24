@@ -140,14 +140,43 @@ steps:
 
       The agentic-sdlc demo workflow has finished executing.
 
-      Please verify the following:
-      1. Two files were created: demo-1.md and demo-2.md at the repository root
-      2. No permission errors occurred during execution
+      ## Validation Tasks
 
-      If everything succeeded, say:
-      "DEMO WORKFLOW COMPLETED SUCCESSFULLY - Your agentic-sdlc installation is working correctly!"
+      You MUST verify ALL of the following before reporting completion:
 
-      Remind the user to delete demo-1.md and demo-2.md after reviewing them.
+      ### 1. File Validation
+      - Read `demo-1.md` and verify it exists at the repository root
+      - Read `demo-2.md` and verify it exists at the repository root
 
-      IMPORTANT: If any permission issues occurred during this workflow, report them now
-      and end with: "DEMO WORKFLOW COMPLETED WITH ISSUES - Please review the errors above."
+      ### 2. Random Facts Validation
+      - Verify that `demo-1.md` contains a "Random Facts" section with EXACTLY 3 numbered facts
+      - Count the facts to confirm there are 3
+
+      ### 3. Git Branch Validation
+      - Run `git branch --show-current` to check the current branch
+      - Verify the current branch is `demo/random-facts`
+
+      ### 4. Git Commit Validation
+      - Run `git log -1 --oneline` to check the most recent commit
+      - Verify a commit exists with a message containing "demo" or "random facts"
+
+      ## Reporting
+
+      After performing ALL validations, report the results:
+
+      If ALL validations passed, say:
+      "DEMO WORKFLOW COMPLETED SUCCESSFULLY - Your agentic-sdlc installation is working correctly!
+
+      Validation Summary:
+      - demo-1.md: Created with 3 random facts
+      - demo-2.md: Created
+      - Git branch: demo/random-facts
+      - Git commit: [commit message]"
+
+      If ANY validation failed, report which ones and end with:
+      "DEMO WORKFLOW COMPLETED WITH ISSUES - Please review the errors above."
+
+      Remind the user to clean up by running:
+      - `git checkout main`
+      - `git branch -D demo/random-facts`
+      - Delete demo-1.md and demo-2.md
