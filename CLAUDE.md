@@ -67,6 +67,10 @@ The README must also have a complete example section at the end, that covers all
 
 ## Plugin Development Guidelines
 
+### Language Style
+
+Use US English spelling in all code, comments, documentation, and UI strings when a word has both UK and US variants (e.g., "analyze" not "analyse", "color" not "colour", "canceled" not "cancelled").
+
 ### Naming Conventions
 
 - **Commands**: Use kebab-case (e.g., `review-pr.md`, `setup-tests.md`)
