@@ -20,7 +20,7 @@ class WorkflowStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     PAUSED = "paused"
-    CANCELLED = "cancelled"
+    CANCELED = "canceled"
 
 
 class StepStatus(Enum):

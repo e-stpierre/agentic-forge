@@ -21,7 +21,7 @@ def cmd_resume(args: Namespace) -> None:
     if progress.status not in [
         WorkflowStatus.PAUSED.value,
         WorkflowStatus.FAILED.value,
-        WorkflowStatus.CANCELLED.value,
+        WorkflowStatus.CANCELED.value,
     ]:
         print(
             f"Error: Cannot resume workflow in '{progress.status}' status",

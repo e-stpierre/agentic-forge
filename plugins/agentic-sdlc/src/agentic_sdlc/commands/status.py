@@ -66,11 +66,11 @@ def cmd_cancel(args: Namespace) -> None:
         )
         sys.exit(1)
 
-    progress.status = WorkflowStatus.CANCELLED.value
+    progress.status = WorkflowStatus.CANCELED.value
     progress.completed_at = datetime.now(timezone.utc).isoformat()
     save_progress(progress)
 
-    print(f"Workflow cancelled: {args.workflow_id}")
+    print(f"Workflow canceled: {args.workflow_id}")
 
 
 def cmd_list(args: Namespace) -> None:
