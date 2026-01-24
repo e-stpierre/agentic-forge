@@ -1,4 +1,4 @@
-name: demo-workflow
+name: demo
 version: "1.0"
 description: Demo workflow to validate agentic-sdlc plugin installation and configuration
 
@@ -42,7 +42,7 @@ steps:
           ```markdown
           # Demo File 1
 
-          Created by: agentic-sdlc demo-workflow
+          Created by: agentic-sdlc demo
           Timestamp: [current timestamp]
           Step: create-demo-1
 
@@ -65,7 +65,7 @@ steps:
           ```markdown
           # Demo File 2
 
-          Created by: agentic-sdlc demo-workflow
+          Created by: agentic-sdlc demo
           Timestamp: [current timestamp]
           Step: create-demo-2
 
@@ -77,6 +77,60 @@ steps:
           IMPORTANT: If you encounter a permission error when trying to write this file,
           you MUST stop immediately and report: "PERMISSION ERROR: Unable to write demo-2.md"
           Do not attempt any workarounds.
+
+  - name: random-facts-loop
+    type: ralph-loop
+    model: haiku
+    max-iterations: 5
+    completion-promise: THREE_FACTS_WRITTEN
+    prompt: |
+      ## Random Facts Loop - Iteration {{iteration}}/{{max_iterations}}
+
+      You are in a Ralph Wiggum iterative loop adding random knowledge facts to demo-1.md.
+
+      ## Your Task
+      1. Read the file `demo-1.md` at the repository root
+      2. Add ONE new numbered random knowledge fact to the "Random Facts" section
+      3. If the "Random Facts" section does not exist, create it at the end of the file
+      4. Save the file and STOP (exit the session)
+
+      ## Random Facts Section Format
+      ```markdown
+      ## Random Facts
+
+      1. [Your first random fact here]
+      2. [Your second random fact here]
+      ...
+      ```
+
+      ## Exit Instructions
+      - After adding ONE fact, you MUST exit the session immediately
+      - Do NOT add multiple facts in a single iteration
+      - Simply stop working after saving the file - the loop will automatically continue
+
+      ## Completion Condition
+      When the file contains EXACTLY 3 numbered facts in the Random Facts section, output:
+      ```json
+      {"ralph_complete": true, "promise": "THREE_FACTS_WRITTEN"}
+      ```
+
+      **IMPORTANT**:
+      - Count the existing facts BEFORE adding a new one
+      - If there are already 2 facts, add the 3rd fact and THEN output the completion JSON
+      - If there are already 3 or more facts, output the completion JSON immediately without adding more
+      - If there are 0-1 facts, add ONE fact and then STOP (do not output completion JSON yet)
+
+  - name: git-branch
+    type: command
+    command: git-branch
+    args:
+      name: demo/random-facts
+
+  - name: git-commit
+    type: command
+    command: git-commit
+    args:
+      message: "demo: add demo files with random facts"
 
   - name: completion
     type: prompt
