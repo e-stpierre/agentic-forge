@@ -53,26 +53,12 @@
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
       },
+      "homepage": "https://github.com/e-stpierre/agentic-forge",
+      "repository": "https://github.com/e-stpierre/agentic-forge",
       "license": "MIT",
       "keywords": ["beta", "sdlc", "agentic"],
       "category": "agentic",
-      "strict": false,
-      "commands": [
-        "./commands/analyse/analyse-bug.md",
-        "./commands/analyse/analyse-debt.md",
-        "./commands/analyse/analyse-doc.md",
-        "./commands/analyse/analyse-security.md",
-        "./commands/analyse/analyse-style.md",
-        "./commands/build.md",
-        "./commands/orchestrate.md",
-        "./commands/plan.md",
-        "./commands/validate.md",
-        "./commands/git/git-branch.md",
-        "./commands/git/git-commit.md",
-        "./commands/git/git-pr.md"
-      ],
-      "agents": ["./agents/explorer.md", "./agents/reviewer.md"],
-      "skills": ["./skills/create-checkpoint.md", "./skills/create-log.md"]
+      "strict": false
     }
   ]
 }

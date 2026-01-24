@@ -5,8 +5,9 @@
 <h1 align="center">Agentic Forge</h1>
 
 <p align="center">
+  <a href="https://github.com/e-stpierre/agentic-forge/releases"><img src="https://img.shields.io/github/v/release/e-stpierre/agentic-forge?include_prereleases" alt="GitHub release"></a>
   <a href="https://claude.ai/code"><img src="https://img.shields.io/badge/Built%20for-Claude%20Code-orange" alt="Built for Claude Code"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://github.com/e-stpierre/agentic-forge/blob/main/LICENSE"><img src="https://img.shields.io/github/license/e-stpierre/agentic-forge" alt="License"></a>
 </p>
 
 <p align="center">
@@ -33,6 +34,8 @@
    ```
 
 2. Install the plugin(s) you need and refer to their README for usage.
+
+## Plugins
 
 ### Agentic SDLC
 
@@ -74,8 +77,6 @@ agentic-sdlc run ralph-loop.yaml --var "max_iterations=20" \
 agentic-sdlc run plan-build-validate.yaml --var "task=Add dark mode support"
 ```
 
-## Plugins
-
 ### Interactive-SDLC
 
 Interactive SDLC commands for guided development within Claude Code sessions through user questions and feedback.
@@ -112,10 +113,6 @@ The `/experimental-plugins/` directory contains work-in-progress plugins that ar
 ## Contributing
 
 Found a bug or have a suggestion? Please [open an issue](https://github.com/e-stpierre/agentic-forge/issues) on GitHub.
-
-## Credits
-
-- [Geoffrey Huntley - Ralph Wiggum as a "software engineer"](https://ghuntley.com/ralph/)
 
 ## License
 

@@ -1,13 +1,10 @@
+# Node
+node_modules/
+
+# Python
 __pycache__/
-*.py[cod]
-*.class
 .venv/
 venv/
-.idea/
-*.swp
-.DS_Store
-node_modules/
-package-lock.json
 
 # Claude
 .claude/**/*.local.json
@@ -19,9 +16,3 @@ package-lock.json
 # Agentic-SDLC All
 agentic/*
 !agentic/improvements.md
-
-# Agentic-SDLC outputs
-
-agentic/outputs/
-agentic/*.log
-agentic/temp/
