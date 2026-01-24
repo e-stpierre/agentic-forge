@@ -15,4 +15,3 @@ venv/
 
 # Agentic-SDLC All
 agentic/*
-!agentic/improvements.md

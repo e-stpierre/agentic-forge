@@ -11,11 +11,11 @@
 </p>
 
 <p align="center">
-  <strong>Claude Code plugins for interactive and autonomous development workflows</strong>
+  <strong>Claude Code plugins for autonomous development workflows</strong>
 </p>
 
 <p align="center">
-  Interactive commands for guided development | YAML-based agentic workflows | Multi-step task orchestration
+  YAML-based agentic workflows | Multi-step task orchestration | Long-running
 </p>
 
 ## Getting Started
@@ -75,35 +75,6 @@ agentic-sdlc run ralph-loop.yaml --var "max_iterations=20" \
 
 # Run plan-build-validate workflow for full SDLC automation
 agentic-sdlc run plan-build-validate.yaml --var "task=Add dark mode support"
-```
-
-### Interactive-SDLC
-
-Interactive SDLC commands for guided development within Claude Code sessions through user questions and feedback.
-
-**Best for**: Interactive development where you want to be involved in decisions.
-
-#### Installation
-
-1. Install the plugin in Claude Code:
-
-   ```bash
-   /plugin install interactive-sdlc@agentic-forge
-   ```
-
-#### Examples
-
-See [Interactive-SDLC README](plugins/interactive-sdlc/README.md) for all commands and options.
-
-```bash
-# Plan a feature with milestones and implementation steps
-/interactive-sdlc:plan-feature
-
-# Run analysis on your codebase (bugs, docs, debt, style, security)
-/interactive-sdlc:analyse-security
-
-# Full workflow from branch creation to PR with user interaction
-/interactive-sdlc:one-shot
 ```
 
 ## Experimental Plugins

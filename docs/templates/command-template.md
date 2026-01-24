@@ -6,17 +6,18 @@ This template defines the exact structure for Claude Code command prompts.
 REQUIRED FRONTMATTER FIELDS:
 - name: Kebab-case identifier for the command
 - description: One-line description shown in help menus (recommended: under 100 characters)
-- arguments: List of argument definitions with name, description, required, and optional default
-
-OPTIONAL FRONTMATTER FIELDS:
-- argument-hint: Usage pattern hint for interactive commands (e.g., "<type> [context]"). Recommended for commands expected to be used manually in a Claude session, not agentic workflows.
+- argument-hint: Usage pattern hint for interactive commands (e.g., "[type] [context]"). (if command takes arguments)
 
 REQUIRED SECTIONS:
-- Arguments (if command takes arguments)
+- Arguments (only if command takes arguments)
 - Objective
 - Core Principles
 - Instructions
 - Output Guidance
+
+VALIDATION RULES:
+- Arguments section and argument-hint frontmatter are REQUIRED only when the command takes arguments
+- Arguments section and argument-hint should be OMITTED when the command takes no arguments
 
 OPTIONAL SECTIONS:
 - Command-Specific Guidelines (for domain-specific behavioral guidance unique to this command)
@@ -26,8 +27,8 @@ OPTIONAL SECTIONS:
 
 ARGUMENT DESIGN PRINCIPLES:
 - If present, the [context] argument should always come last
-- Commands should NOT support arguments that can be configured in settings.json
-- Instead, provide defaults and read settings.json to override them
+- Commands should NOT support arguments that can be configured in .claude/configs/plugin-name.json
+- Instead, provide defaults and read .claude/configs/plugin-name.json to override them
 - Example: Plan commands should not have --output argument; use default /specs or read interactive-sdlc.planDirectory from settings
 -->
 
@@ -36,12 +37,6 @@ ARGUMENT DESIGN PRINCIPLES:
 name: {{command-name}}
 description: {{command-description}}
 argument-hint: {{argument-pattern}} # Optional: for interactive commands only
-arguments:
-
-- name: {{arg-name}}
-  description: {{arg-description}}
-  required: {{true|false}}
-  default: {{default-value}} # Optional: only if required is false
 
 ---
 
@@ -66,7 +61,7 @@ Instructions:
 - This section documents the arguments defined in the frontmatter for human readers
 - Include default values where applicable
 - If present, the [context] argument should always come last
-- Do NOT add arguments for values that can be configured in settings.json
+- Do NOT add arguments for values that can be configured in .claude/configs/plugin-name.json
 - Omit this section entirely if the command takes no arguments (frontmatter arguments can be empty list)
 -->
 

@@ -49,7 +49,7 @@ NEVER INCLUDE:
 
 <!--
 Instructions:
-- Replace {{plugin_name}} with the plugin name (e.g., "Interactive SDLC Plugin")
+- Replace {{plugin_name}} with the plugin name (e.g., "Agentic SDLC Plugin")
 - Replace {{description_and_philosophy}} with 1-5 sentences that merge:
   - What the plugin does (purpose)
   - The philosophy/approach it takes
