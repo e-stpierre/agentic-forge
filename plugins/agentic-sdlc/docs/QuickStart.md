@@ -37,7 +37,7 @@ This will:
 agentic-sdlc one-shot "Fix the null pointer exception in UserService" --git --pr
 
 # Run security analysis
-agentic-sdlc analyse --type security
+agentic-sdlc analyze --type security
 
 # List available bundled workflows
 agentic-sdlc init --list
@@ -64,7 +64,7 @@ Inside a Claude Code session:
 /validate
 
 # Analyze for bugs
-/analyse-bug
+/analyze-bug
 
 # Create a git commit
 /git-commit
@@ -89,7 +89,7 @@ agentic/
 ├── config.json           # Configuration settings
 ├── workflows/            # Custom workflow YAML files (created with 'init')
 ├── outputs/              # Workflow execution state and progress
-└── analysis/             # Analysis outputs from /analyse commands
+└── analysis/             # Analysis outputs from /analyze commands
 ```
 
 ## Common Workflows
@@ -110,10 +110,10 @@ agentic-sdlc one-shot "Your task description" --git --pr
 
 ```bash
 # All analysis types in parallel
-agentic-sdlc analyse
+agentic-sdlc analyze
 
 # Specific analysis type
-agentic-sdlc analyse --type security --autofix major
+agentic-sdlc analyze --type security --autofix major
 ```
 
 ## Troubleshooting

@@ -1,10 +1,10 @@
 ---
-name: analyse-style
+name: analyze-style
 description: Check code style, consistency, and best practices adherence
 argument-hint: [paths...]
 ---
 
-# Analyse Style
+# analyze Style
 
 ## Overview
 

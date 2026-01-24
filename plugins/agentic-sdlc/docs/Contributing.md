@@ -40,7 +40,7 @@ plugins/agentic-sdlc/
 │   ├── commands/              # CLI command implementations
 │   │   ├── run.py
 │   │   ├── status.py
-│   │   ├── analyse.py
+│   │   ├── analyze.py
 │   │   └── ...
 │   ├── workflows/             # Bundled workflow YAML files
 │   │   ├── plan-build-validate.yaml
@@ -52,7 +52,7 @@ plugins/agentic-sdlc/
 │   ├── plan/
 │   ├── build/
 │   ├── validate/
-│   └── analyse/
+│   └── analyze/
 │
 ├── agents/                    # Claude agent configurations
 │   ├── explorer.md

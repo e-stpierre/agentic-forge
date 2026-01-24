@@ -16,7 +16,7 @@ agentic-sdlc run plan-build-validate.yaml --var "task=Add user authentication"
 agentic-sdlc one-shot "Fix null pointer in UserService" --git --pr
 
 # Run security analysis
-agentic-sdlc analyse --type security --autofix major
+agentic-sdlc analyze --type security --autofix major
 ```
 
 **Inside Claude Code:**
@@ -81,10 +81,10 @@ Complete a task end-to-end with automatic git operations and PR creation.
 
 ```bash
 # Run all analysis types in parallel
-agentic-sdlc analyse
+agentic-sdlc analyze
 
 # Specific analysis with auto-fix
-agentic-sdlc analyse --type security --autofix major
+agentic-sdlc analyze --type security --autofix major
 ```
 
 ## CLI Commands
@@ -93,7 +93,7 @@ agentic-sdlc analyse --type security --autofix major
 | ----------------------- | --------------------------------------------------------- |
 | `run <workflow.yaml>`   | Execute a workflow from YAML file                         |
 | `one-shot <task>`       | Complete a task end-to-end                                |
-| `analyse`               | Run codebase analysis (security, bugs, debt, style, docs) |
+| `analyze`               | Run codebase analysis (security, bugs, debt, style, docs) |
 | `init`                  | Copy bundled workflows locally for customization          |
 | `list`                  | Show workflow execution history                           |
 | `status <id>`           | Check workflow execution status                           |
@@ -115,11 +115,11 @@ Available in Claude Code sessions:
 
 **Analysis:**
 
-- `/analyse-bug` - Find bugs and logic errors
-- `/analyse-debt` - Identify technical debt
-- `/analyse-doc` - Check documentation quality
-- `/analyse-security` - Security vulnerability scan
-- `/analyse-style` - Code style and best practices
+- `/analyze-bug` - Find bugs and logic errors
+- `/analyze-debt` - Identify technical debt
+- `/analyze-doc` - Check documentation quality
+- `/analyze-security` - Security vulnerability scan
+- `/analyze-style` - Code style and best practices
 
 **Git Operations:**
 

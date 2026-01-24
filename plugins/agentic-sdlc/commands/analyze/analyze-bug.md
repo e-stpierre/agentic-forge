@@ -1,10 +1,10 @@
 ---
-name: analyse-bug
+name: analyze-bug
 description: Analyze codebase for bugs, logic errors, and runtime issues
 argument-hint: [paths...]
 ---
 
-# Analyse Bug
+# analyze Bug
 
 ## Overview
 

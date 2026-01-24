@@ -1,10 +1,10 @@
 ---
-name: analyse-debt
+name: analyze-debt
 description: Identify technical debt, optimization opportunities, and refactoring needs
 argument-hint: [paths...]
 ---
 
-# Analyse Debt
+# analyze Debt
 
 ## Overview
 

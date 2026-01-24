@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 # Import command handlers from extracted modules
 from agentic_sdlc.commands import (
-    cmd_analyse,
+    cmd_analyze,
     cmd_cancel,
     cmd_config,
     cmd_configure,
@@ -133,21 +133,21 @@ def main() -> None:
         help="Terminal output granularity",
     )
 
-    # analyse convenience command
-    analyse_parser = subparsers.add_parser("analyse", help="Analyze codebase")
-    analyse_parser.add_argument(
+    # analyze convenience command
+    analyze_parser = subparsers.add_parser("analyze", help="Analyze codebase")
+    analyze_parser.add_argument(
         "--type",
         choices=["bug", "debt", "doc", "security", "style", "all"],
         default="all",
         help="Analysis type",
     )
-    analyse_parser.add_argument(
+    analyze_parser.add_argument(
         "--autofix",
         choices=["none", "minor", "major", "critical"],
         default="none",
         help="Auto-fix severity level",
     )
-    analyse_parser.add_argument(
+    analyze_parser.add_argument(
         "--terminal-output",
         choices=["base", "all"],
         default="base",
@@ -206,8 +206,8 @@ def main() -> None:
         cmd_config(args)
     elif args.command == "one-shot":
         cmd_oneshot(args)
-    elif args.command == "analyse":
-        cmd_analyse(args)
+    elif args.command == "analyze":
+        cmd_analyze(args)
     elif args.command == "version":
         cmd_version(args)
     elif args.command == "release-notes":

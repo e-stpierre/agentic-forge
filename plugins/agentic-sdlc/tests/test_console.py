@@ -148,10 +148,10 @@ class TestConsoleOutput:
         stream = io.StringIO()
         console = ConsoleOutput(stream=stream)
 
-        console.step_start("analyse-bugs", "prompt")
+        console.step_start("analyze-bugs", "prompt")
 
         output = stream.getvalue()
-        assert "analyse-bugs" in output
+        assert "analyze-bugs" in output
         assert "prompt" in output
 
     def test_step_complete(self) -> None:

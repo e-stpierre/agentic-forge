@@ -182,22 +182,22 @@ steps:
     steps:
       - name: security-scan
         type: command
-        command: analyse-security
+        command: analyze-security
         on-error: skip # Don't fail workflow if security scan fails
 
       - name: style-check
         type: command
-        command: analyse-style
+        command: analyze-style
         on-error: skip
 
       - name: bug-detection
         type: command
-        command: analyse-bug
+        command: analyze-bug
         on-error: skip
 
       - name: debt-analysis
         type: command
-        command: analyse-debt
+        command: analyze-debt
         on-error: skip
 
   # ==================== RALPH LOOP STEP ====================
@@ -394,11 +394,11 @@ outputs:
 #   - validate
 #
 # Analysis:
-#   - analyse-bug
-#   - analyse-debt
-#   - analyse-doc
-#   - analyse-security
-#   - analyse-style
+#   - analyze-bug
+#   - analyze-debt
+#   - analyze-doc
+#   - analyze-security
+#   - analyze-style
 #
 # Git Operations:
 #   - git-branch

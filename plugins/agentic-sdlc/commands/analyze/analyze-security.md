@@ -1,10 +1,10 @@
 ---
-name: analyse-security
+name: analyze-security
 description: Scan for security vulnerabilities, unsafe patterns, and dependency issues
 argument-hint: [paths...]
 ---
 
-# Analyse Security
+# analyze Security
 
 ## Overview
 

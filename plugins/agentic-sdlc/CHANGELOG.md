@@ -31,7 +31,7 @@
 - YAML-based workflow orchestration with sequential, parallel, and Ralph loop step types
 - Checkpoint manager for session state tracking
 - Python CLI for workflow management (`agentic-sdlc run`, `agentic-sdlc init`)
-- Core commands: plan, build, validate, analyse, orchestrate
+- Core commands: plan, build, validate, analyze, orchestrate
 - Git commands: git-branch, git-commit, git-pr
 - Explorer and reviewer agents for specialized tasks
 - Skills for checkpoint and logging management

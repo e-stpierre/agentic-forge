@@ -54,28 +54,28 @@ class TemplateRenderer:
 
 
 def _extract_analysis_steps(step_outputs: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Extract analysis steps (analyse-*) from all step outputs.
+    """Extract analysis steps (analyze-*) from all step outputs.
 
     This flattens nested steps into a dictionary keyed by step name,
     making it easier for templates to iterate over analysis results.
 
     Filters to only include actual analysis type steps (bug, debt, doc, security, style),
-    not container steps like 'analyse-and-fix-all'.
+    not container steps like 'analyze-and-fix-all'.
 
     Args:
         step_outputs: Dictionary of all step outputs from the workflow.
 
     Returns:
-        Dictionary containing only analyse-* steps with their data.
+        Dictionary containing only analyze-* steps with their data.
     """
     # Known analysis types that should be included
     analysis_types = ("bug", "debt", "doc", "security", "style")
 
     analysis_steps: dict[str, dict[str, Any]] = {}
     for step_name, step_data in step_outputs.items():
-        if step_name.startswith("analyse-"):
-            # Extract the type after 'analyse-' prefix
-            analysis_type = step_name[len("analyse-") :]
+        if step_name.startswith("analyze-"):
+            # Extract the type after 'analyze-' prefix
+            analysis_type = step_name[len("analyze-") :]
             if analysis_type in analysis_types:
                 analysis_steps[step_name] = step_data
     return analysis_steps

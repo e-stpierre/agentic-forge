@@ -1,29 +1,19 @@
-name: analyse-codebase-merge
+name: analyze-codebase
 version: "1.0"
-description: Run comprehensive codebase analysis with autofix, merge branches, validate, and create PR
+description: Run comprehensive codebase analysis with optional autofix in parallel worktrees
 
 settings:
   max-retry: 2
-  timeout-minutes: 180
+  timeout-minutes: 120
   track-progress: true
   terminal-output: base
-  git:
-    enabled: true
-    worktree: true
-    auto-commit: true
-    branch-prefix: "agentic/analysis"
 
 variables:
   - name: autofix
     type: string
     required: false
-    default: "major"
+    default: "none"
     description: Severity level for automatic fixes (none, minor, major, critical)
-  - name: fix_severity
-    type: string
-    required: false
-    default: "major"
-    description: Minimum severity for validation auto-fix
   - name: paths
     type: string
     required: false
@@ -33,7 +23,7 @@ variables:
     type: boolean
     required: false
     default: true
-    description: Whether to create a PR after all changes are merged
+    description: Whether to create a PR for each analysis branch
   - name: max_fix_iterations
     type: number
     required: false
@@ -41,10 +31,10 @@ variables:
     description: Maximum iterations per analysis type for fixing issues
 
 steps:
-  - name: analyse-and-fix-all
+  - name: analyze-and-fix-all
     type: parallel
     merge-strategy: wait-all
-    merge-mode: merge
+    merge-mode: independent
     git:
       worktree: true
       branch-prefix: "agentic/analysis"
@@ -52,9 +42,9 @@ steps:
       - name: bug-analysis
         type: serial
         steps:
-          - name: analyse-bug
+          - name: analyze-bug
             type: command
-            command: analyse-bug
+            command: analyze-bug
             args:
               paths: "{{ variables.paths }}"
 
@@ -94,12 +84,23 @@ steps:
                   - If an issue cannot be fixed (error, missing data), mark as skipped with reason
                   - Only return completion promise when genuinely done
 
+          - name: create-bug-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-bug-pr
+                type: command
+                command: git-pr
+                args:
+                  title: "[Analysis] Bug analysis and fixes"
+                  draft: false
+
       - name: debt-analysis
         type: serial
         steps:
-          - name: analyse-debt
+          - name: analyze-debt
             type: command
-            command: analyse-debt
+            command: analyze-debt
             args:
               paths: "{{ variables.paths }}"
 
@@ -139,12 +140,23 @@ steps:
                   - If an issue cannot be fixed (error, missing data), mark as skipped with reason
                   - Only return completion promise when genuinely done
 
+          - name: create-debt-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-debt-pr
+                type: command
+                command: git-pr
+                args:
+                  title: "[Analysis] Technical debt analysis and fixes"
+                  draft: false
+
       - name: doc-analysis
         type: serial
         steps:
-          - name: analyse-doc
+          - name: analyze-doc
             type: command
-            command: analyse-doc
+            command: analyze-doc
             args:
               paths: "{{ variables.paths }}"
 
@@ -184,12 +196,23 @@ steps:
                   - If an issue cannot be fixed (error, missing data), mark as skipped with reason
                   - Only return completion promise when genuinely done
 
+          - name: create-doc-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-doc-pr
+                type: command
+                command: git-pr
+                args:
+                  title: "[Analysis] Documentation analysis and fixes"
+                  draft: false
+
       - name: security-analysis
         type: serial
         steps:
-          - name: analyse-security
+          - name: analyze-security
             type: command
-            command: analyse-security
+            command: analyze-security
             args:
               paths: "{{ variables.paths }}"
 
@@ -229,12 +252,23 @@ steps:
                   - If an issue cannot be fixed (error, missing data), mark as skipped with reason
                   - Only return completion promise when genuinely done
 
+          - name: create-security-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-security-pr
+                type: command
+                command: git-pr
+                args:
+                  title: "[Analysis] Security analysis and fixes"
+                  draft: false
+
       - name: style-analysis
         type: serial
         steps:
-          - name: analyse-style
+          - name: analyze-style
             type: command
-            command: analyse-style
+            command: analyze-style
             args:
               paths: "{{ variables.paths }}"
 
@@ -274,69 +308,16 @@ steps:
                   - If an issue cannot be fixed (error, missing data), mark as skipped with reason
                   - Only return completion promise when genuinely done
 
-  - name: validate-merged-changes
-    type: command
-    command: validate
-    args:
-      severity: "{{ variables.fix_severity }}"
-
-  - name: fix-validation-issues
-    type: conditional
-    condition: "variables.fix_severity != 'none'"
-    then:
-      - name: apply-validation-fixes
-        type: ralph-loop
-        max-iterations: "{{ variables.max_fix_iterations }}"
-        completion-promise: "VALIDATION_FIXES_COMPLETE"
-        model: sonnet
-        timeout-minutes: 30
-        prompt: |
-          ## Task
-          Fix validation issues from the merged analysis changes.
-
-          ## Instructions
-          1. Run validation checks (tests, build, lint)
-          2. If all checks pass, return the completion promise
-          3. Pick the NEXT failing check (tests first, then build, then lint)
-          4. Navigate the code to understand the failure
-          5. Implement the fix
-          6. Run the failing check again to verify
-          7. Commit using git-commit with clear message
-          8. End this session (do NOT continue to next issue)
-
-          ## Checks to Run
-          - Run the test suite and fix failing tests
-          - Run the build and fix any build errors
-          - Run linting and fix style issues
-          - Verify all changes follow project conventions
-
-          ## Completion
-          When ALL validation checks pass, output:
-          ```json
-          {"ralph_complete": true, "promise": "VALIDATION_FIXES_COMPLETE"}
-          ```
-
-          IMPORTANT:
-          - Fix only ONE issue per iteration, then end session
-          - If an issue cannot be fixed (error, missing data), mark as skipped with reason
-          - Only return completion promise when genuinely done
-
-      - name: revalidate
-        type: command
-        command: validate
-        args:
-          severity: "{{ variables.fix_severity }}"
-
-  - name: create-pr
-    type: conditional
-    condition: "variables.create_pr"
-    then:
-      - name: open-pr
-        type: command
-        command: git-pr
-        args:
-          title: "[Analysis] Codebase analysis and fixes"
-          draft: false
+          - name: create-style-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-style-pr
+                type: command
+                command: git-pr
+                args:
+                  title: "[Analysis] Style analysis and fixes"
+                  draft: false
 
 outputs:
   - name: analysis-summary
