@@ -1,21 +1,33 @@
 ---
 name: add-improvement
 description: Add a new improvement to the improvements tracking document
-argument-hint: <context> [--explore]
+argument-hint: [--explore] <context>
 ---
 
 # Add Improvement
 
-Add a new improvement entry to the improvements tracking document. This command creates a structured improvement record with progress tracking and detailed description.
+## Overview
+
+Add a new improvement entry to the improvements tracking document. This command creates a structured improvement record with a unique ID, progress tracking checkbox, and detailed description section.
 
 ## Arguments
 
-- **`--explore-codebase`** (optional): When set, analyze the codebase based on the context to add additional technical information to the improvement request. Defaults to `false`.
+- **`[--explore]`** (optional): When set, analyze the codebase to add additional technical information to the improvement request. Defaults to `false`.
 - **`<context>`** (required): Description of the improvement request. Can include problem description, affected areas, or desired outcome.
 
-## Objective
+## Configuration
 
-Create a new improvement entry in the improvements tracking document with a unique ID, progress tracking checkbox, and detailed description section.
+The improvements document path is configured via `agentic-sdlc.improvementsPath` in settings or defaults to `agentic/improvements.md`.
+
+To override in `.claude/settings.json`:
+
+```json
+{
+  "agentic-sdlc": {
+    "improvementsPath": "custom/path/improvements.md"
+  }
+}
+```
 
 ## Core Principles
 
@@ -24,6 +36,8 @@ Create a new improvement entry in the improvements tracking document with a uniq
 - Keep improvement details concise (max 100 lines per entry)
 - Preserve existing improvements when adding new ones
 - Use consistent formatting matching existing entries
+- Use existing ID prefixes when the improvement type is clear (SEC, DEBT, TEST, DOC)
+- Improvement entries should be self-contained and actionable
 
 ## Instructions
 
@@ -45,7 +59,7 @@ Create a new improvement entry in the improvements tracking document with a uniq
      - `DOC-XXX` for documentation improvements
      - `IMP-XXX` for general improvements (default)
 
-4. **Codebase Analysis** (if `--explore-codebase` is set)
+4. **Codebase Analysis** (if `--explore` is set)
    - Analyze the codebase to identify:
      - Relevant files and components affected
      - Existing patterns or implementations related to the improvement
@@ -134,28 +148,6 @@ List the details of every improvement request, 100 lines maximum per item.
 - [ ] First measurable criterion
 - [ ] Second measurable criterion
 ```
-
-## Configuration
-
-The improvements document path is configured via `agentic-sdlc.improvementsPath` in settings or defaults to `agentic/improvements.md` within the configured output directory.
-
-To override in `.claude/settings.json`:
-
-```json
-{
-  "agentic-sdlc": {
-    "improvementsPath": "custom/path/improvements.md"
-  }
-}
-```
-
-## Important Notes
-
-- Keep each improvement entry under 100 lines to maintain readability
-- Use existing ID prefixes when the improvement type is clear (SEC, DEBT, TEST, DOC)
-- Do not modify existing improvements when adding new ones
-- The codebase exploration is optional and adds overhead - use when context is needed
-- Improvement entries should be self-contained and actionable
 
 ---
 

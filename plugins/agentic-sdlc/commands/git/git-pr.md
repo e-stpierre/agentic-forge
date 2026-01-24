@@ -6,18 +6,16 @@ argument-hint: [title] [body] [base] [--draft]
 
 # Git PR Command
 
-Creates a pull request using the GitHub CLI with a descriptive title and appropriately-sized description.
+## Overview
+
+Create a pull request using the GitHub CLI with a descriptive title and appropriately-sized description. The PR description is automatically scaled based on the scope and impact of the changes.
 
 ## Arguments
 
 - **`[title]`** (optional): PR title. Auto-generated if not provided.
 - **`[body]`** (optional): PR body/description. Auto-generated if not provided.
 - **`[base]`** (optional): Target branch for the PR. Defaults to main/master.
-- **`[draft]`** (optional): Create as draft PR. Defaults to false.
-
-## Objective
-
-Create a pull request with a title and description sized appropriately to the scope and impact of the changes.
+- **`[--draft]`** (optional): Create as draft PR. Defaults to false.
 
 ## Core Principles
 

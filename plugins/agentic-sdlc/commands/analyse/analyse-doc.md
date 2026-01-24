@@ -6,15 +6,13 @@ argument-hint: [paths...]
 
 # Analyse Doc
 
-Analyze documentation quality, accuracy, and completeness. Returns structured JSON for workflow integration and generates a markdown report.
+## Overview
+
+Analyze documentation quality, accuracy, and completeness. Compares documentation against actual code implementation to identify outdated, incorrect, or missing information. Returns structured JSON for workflow integration and generates a markdown report.
 
 ## Arguments
 
-- **`[paths]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, all documentation in the codebase is analyzed.
-
-## Objective
-
-Analyze documentation quality, accuracy, and completeness by comparing against actual code implementation and identifying outdated, incorrect, or missing information.
+- **`[paths...]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, all documentation in the codebase is analyzed.
 
 ## Core Principles
 
@@ -24,6 +22,9 @@ Analyze documentation quality, accuracy, and completeness by comparing against a
 - Consider documentation might be ahead of code
 - Different documentation types have different standards
 - Only report UNFIXED issues - if the issue has been resolved, do not include it
+- Apply appropriate standards based on documentation type (user guides vs API references vs internal docs)
+- Consider that documentation may be ahead of code (planned features)
+- If no issues found, return success with zero counts
 
 ## Instructions
 
@@ -57,13 +58,12 @@ Analyze documentation quality, accuracy, and completeness by comparing against a
    - Include date in report header
 
 6. **Return JSON Output**
-   - Return structured JSON with findings summary
 
 ## Output Guidance
 
 Return a JSON object AND save a detailed markdown report.
 
-### JSON Output (Required)
+### JSON Output
 
 ```json
 {
@@ -89,6 +89,8 @@ Return a JSON object AND save a detailed markdown report.
   "document_path": "agentic/analysis/doc.md"
 }
 ```
+
+## Templates
 
 ### Markdown Report Structure
 
@@ -126,35 +128,22 @@ Save to `agentic/analysis/doc.md`:
 [Same format as Critical]
 ```
 
-## Issue Categories
+### Issue Categories
 
-### Critical (Wrong/Misleading)
-
+**Critical (Wrong/Misleading):**
 - Documents non-existent features
 - Wrong API signatures
 - Incorrect behavior descriptions
 - Security-related misinformation
 
-### Major (Outdated/Incomplete)
-
+**Major (Outdated/Incomplete):**
 - Features added but not documented
 - Deprecated features still documented
 - Missing important sections
 - Outdated examples
 
-### Minor (Improvements)
-
+**Minor (Improvements):**
 - Typos and grammar issues
 - Unclear explanations
 - Missing examples
 - Better organization suggestions
-
-## Important Notes
-
-- Focus on real issues - good documentation is a success, not a failure
-- Verify documentation against code before marking it as incorrect
-- Provide correct information when reporting issues
-- Apply appropriate standards based on documentation type (user guides vs API references vs internal docs)
-- Consider that documentation may be ahead of code (planned features)
-- Do NOT include issues that have already been fixed or resolved
-- If no issues found, return success with zero counts

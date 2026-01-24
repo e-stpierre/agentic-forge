@@ -6,47 +6,60 @@ This template defines the exact structure for Claude Code command prompts.
 REQUIRED FRONTMATTER FIELDS:
 - name: Kebab-case identifier for the command
 - description: One-line description shown in help menus (recommended: under 100 characters)
-- argument-hint: Usage pattern hint for interactive commands (e.g., "[type] [context]"). (if command takes arguments)
+- argument-hint: Usage pattern hint (only if command takes arguments)
 
-REQUIRED SECTIONS:
-- Arguments (only if command takes arguments)
-- Objective
-- Core Principles
-- Instructions
-- Output Guidance
+ARGUMENT-HINT CONVENTIONS:
+- Use `<arg>` for required arguments (angle brackets)
+- Use `[arg]` for optional arguments (square brackets)
+- Use `--flag` for boolean flags
+- Use `[arg...]` for variadic arguments (accepts multiple values)
+- The `[context]` argument must ALWAYS come last when present - this is the user-provided prompt context
+- Examples:
+  - `<context>` - required context only
+  - `[type] <context>` - optional type, required context
+  - `[paths...] [context]` - optional paths, optional context
+  - `<context> [--verbose]` - required context with optional flag
+
+REQUIRED SECTIONS (in order):
+1. Overview - Command purpose and objective (combines definition + goal)
+2. Arguments - Only if command takes arguments
+3. Core Principles - Key guidelines, constraints, and important notes
+4. Instructions - Step-by-step execution guide
+5. Output Guidance - Expected output format and content
+
+OPTIONAL SECTIONS (insert in order shown):
+- Configuration - After Arguments, for commands with configurable settings
+- Command-Specific Guidelines - After Core Principles, for domain-specific guidance
+- Templates - After Output Guidance, for structured output templates
+
+SECTION ORDER MUST BE RESPECTED - Follow the order defined above.
 
 VALIDATION RULES:
 - Arguments section and argument-hint frontmatter are REQUIRED only when the command takes arguments
 - Arguments section and argument-hint should be OMITTED when the command takes no arguments
-
-OPTIONAL SECTIONS:
-- Command-Specific Guidelines (for domain-specific behavioral guidance unique to this command)
-- Templates (for commands that generate structured outputs)
-- Configuration (for commands with configurable settings)
-- Important Notes (for critical reminders, constraints, and anti-patterns)
-
-ARGUMENT DESIGN PRINCIPLES:
-- If present, the [context] argument should always come last
-- Commands should NOT support arguments that can be configured in .claude/configs/plugin-name.json
-- Instead, provide defaults and read .claude/configs/plugin-name.json to override them
 -->
 
 ---
 
 name: {{command-name}}
 description: {{command-description}}
-argument-hint: {{argument-pattern}} # Optional: for interactive commands only
+argument-hint: {{argument-pattern}}
 
 ---
 
 # {{command_title}}
 
-{{command_definition}}
+## Overview
+
+{{overview}}
 
 <!--
 Instructions:
-- Replace {{command_definition}} with a brief 1-3 sentence description
-- Explain what the command accomplishes and when to use it
+- Replace {{overview}} with 2-4 sentences describing:
+  - What the command does
+  - When to use it
+  - The primary goal it achieves
+- This section combines the command definition and objective
 -->
 
 ## Arguments
@@ -56,22 +69,24 @@ Instructions:
 <!--
 Instructions:
 - Replace {{arguments}} with a bullet-point list defining each argument
-- Format: **`argument-name`** (required/optional): Description and expected format
-- This section documents the arguments defined in the frontmatter for human readers
+- Format: **`<argument-name>`** (required): Description
+- Format: **`[argument-name]`** (optional): Description. Defaults to `value`.
 - Include default values where applicable
-- If present, the [context] argument should always come last
-- Do NOT add arguments for values that can be configured in .claude/configs/plugin-name.json
-- Omit this section entirely if the command takes no arguments (frontmatter arguments can be empty list)
+- The [context] argument should always come last
+- Omit this section entirely if the command takes no arguments
 -->
 
-## Objective
+## Configuration (optional)
 
-{{objective}}
+{{configuration}}
 
 <!--
 Instructions:
-- Replace {{objective}} with a clear, single statement
-- Define the primary goal the command must achieve
+- Replace {{configuration}} with settings, defaults, and tunables
+- List configurable parameters with their default values
+- Explain when to adjust settings
+- Group related settings together
+- Omit this section if not needed
 -->
 
 ## Core Principles
@@ -81,12 +96,11 @@ Instructions:
 <!--
 Instructions:
 - Replace {{principles}} with bullet points of key guidelines
-- Focus on constraints, quality standards, and behavioral expectations
+- Include constraints, quality standards, and behavioral expectations
 - Include security considerations where relevant
-- Example principles:
-  - Validate input before processing
-  - Preserve existing functionality
-  - Report errors clearly
+- Include critical warnings and important notes
+- Use positive format where possible ("Do X" instead of "Don't do X")
+- Reserve "Don't" for critical warnings where violation would cause serious issues
 -->
 
 ## Command-Specific Guidelines (optional)
@@ -124,10 +138,6 @@ Instructions:
 - Specify output structure (markdown, JSON, plain text, etc.)
 - Define what information must be included
 - Note any formatting requirements
-- Suggested elements (include others as needed):
-  - Output formats and structure
-  - Required content and detail level
-  - Examples of expected output
 -->
 
 ## Templates (optional)
@@ -141,32 +151,4 @@ Instructions:
 - Include placeholders with clear naming (e.g., [Feature Name], {{variable}})
 - Document each section of the template
 - This section is recommended for commands that generate files or structured output
--->
-
-## Configuration (optional)
-
-{{configuration}}
-
-<!--
-Instructions:
-- Replace {{configuration}} with settings, defaults, and tunables
-- List configurable parameters with their default values
-- Explain when to adjust settings
-- Group related settings together
--->
-
-## Important Notes (optional)
-
-{{important_notes}}
-
-<!--
-Instructions:
-- Replace {{important_notes}} with bullet points of critical reminders, constraints, and warnings
-- Use positive format where possible ("Do X" instead of "Don't do X")
-- Reserve "Don't" for critical warnings where violation would cause serious issues
-- Example items:
-  - Plans are read-only - track progress via TodoWrite tool
-  - Ask clarifying questions when requirements are unclear
-  - Don't modify files without user confirmation (critical safety warning)
-  - Run tests frequently to catch issues early
 -->

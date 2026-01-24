@@ -5,11 +5,9 @@ description: Update plugin versions based on changes from main branch
 
 # Update Plugin Version Command
 
-Analyze changes in the current branch compared to main and update plugin versions accordingly.
+## Overview
 
-## Objective
-
-Detect changed plugins, analyze the nature of changes, update CHANGELOGs, and update version numbers appropriately following semantic versioning.
+Analyze changes in the current branch compared to main and update plugin versions accordingly. Detects changed plugins, analyzes the nature of changes, updates CHANGELOGs, and updates version numbers appropriately following semantic versioning.
 
 ## Core Principles
 

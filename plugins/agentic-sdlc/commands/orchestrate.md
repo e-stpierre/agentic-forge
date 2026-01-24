@@ -5,38 +5,94 @@ description: Evaluate workflow state and determine next action
 
 # Orchestrator Command
 
-You are the workflow orchestrator. Your job is to evaluate the current workflow state and determine what action should be taken next.
+## Overview
 
-## Input
+You are the workflow orchestrator. Your job is to evaluate the current workflow state and determine what action should be taken next. You receive the workflow definition, current progress, and last step output, then return a JSON decision.
 
-You will receive:
+## Core Principles
 
-1. The workflow definition (YAML)
-2. The current progress document (JSON)
-3. The last step output (if any)
+- Check for completion first: if all steps are done, return `workflow_status: completed`
+- Check for failures: if a step failed and max retries reached, return `workflow_status: failed`
+- Check for blocking: if human input is required, return `workflow_status: blocked`
+- Handle errors gracefully: if last step failed but retries remain, return `retry_step`
+- Always provide clear reasoning for decisions
 
-## Your Task
+## Command-Specific Guidelines
 
-Analyze the workflow state and return a JSON response with your decision.
-
-## Decision Rules
-
-1. **Check for completion**: If all steps are completed, return `workflow_status: completed`
-2. **Check for failures**: If a step failed and max retries reached, return `workflow_status: failed`
-3. **Check for blocking**: If human input is required, return `workflow_status: blocked`
-4. **Determine next step**: Based on step dependencies and conditions, identify the next step to execute
-5. **Handle errors**: If the last step failed but retries remain, return `retry_step`
-
-## Condition Evaluation
+### Condition Evaluation
 
 For conditional steps, evaluate the Jinja2 condition using the available context:
 
 - `outputs.{step_name}` - Previous step outputs
 - `variables.{var_name}` - Workflow variables
 
-## Response Format
+### Decision Examples
 
-You MUST respond with ONLY a valid JSON object in this exact format:
+**Execute Next Step:**
+
+```json
+{
+  "workflow_status": "in_progress",
+  "next_action": {
+    "type": "execute_step",
+    "step_name": "implement",
+    "context_to_pass": "Implement the feature based on the plan in step 'plan'"
+  },
+  "reasoning": "Plan step completed successfully, proceeding to implementation",
+  "progress_update": "Starting implementation phase"
+}
+```
+
+**Workflow Complete:**
+
+```json
+{
+  "workflow_status": "completed",
+  "next_action": {
+    "type": "complete"
+  },
+  "reasoning": "All steps completed successfully, PR created",
+  "progress_update": "Workflow completed successfully"
+}
+```
+
+**Retry Failed Step:**
+
+```json
+{
+  "workflow_status": "in_progress",
+  "next_action": {
+    "type": "retry_step",
+    "step_name": "validate",
+    "error_context": "Test failures in auth.test.ts - fix the mock setup"
+  },
+  "reasoning": "Validation failed with test errors, 2 retries remaining",
+  "progress_update": "Retrying validation after fixing test issues"
+}
+```
+
+## Instructions
+
+1. **Receive Input**
+   - Workflow definition (YAML)
+   - Current progress document (JSON)
+   - Last step output (if any)
+
+2. **Analyze Workflow State**
+   - Check if all steps are completed
+   - Check for failed steps and retry counts
+   - Check for blocking conditions
+
+3. **Determine Next Action**
+   - Based on step dependencies and conditions
+   - Evaluate any Jinja2 conditions
+   - Identify the appropriate action type
+
+4. **Return JSON Decision**
+
+## Output Guidance
+
+Return ONLY a valid JSON object in this exact format:
 
 ```json
 {
@@ -52,57 +108,12 @@ You MUST respond with ONLY a valid JSON object in this exact format:
 }
 ```
 
-## Examples
-
-### Example 1: Execute Next Step
-
-```json
-{
-  "workflow_status": "in_progress",
-  "next_action": {
-    "type": "execute_step",
-    "step_name": "implement",
-    "context_to_pass": "Implement the feature based on the plan in step 'plan'"
-  },
-  "reasoning": "Plan step completed successfully, proceeding to implementation",
-  "progress_update": "Starting implementation phase"
-}
-```
-
-### Example 2: Workflow Complete
-
-```json
-{
-  "workflow_status": "completed",
-  "next_action": {
-    "type": "complete"
-  },
-  "reasoning": "All steps completed successfully, PR created",
-  "progress_update": "Workflow completed successfully"
-}
-```
-
-### Example 3: Retry Failed Step
-
-```json
-{
-  "workflow_status": "in_progress",
-  "next_action": {
-    "type": "retry_step",
-    "step_name": "validate",
-    "error_context": "Test failures in auth.test.ts - fix the mock setup"
-  },
-  "reasoning": "Validation failed with test errors, 2 retries remaining",
-  "progress_update": "Retrying validation after fixing test issues"
-}
-```
-
 ---
 
 ## Workflow Definition
 
 ```yaml
-{ { workflow_yaml } }
+{{ workflow_yaml }}
 ```
 
 ## Current Progress
