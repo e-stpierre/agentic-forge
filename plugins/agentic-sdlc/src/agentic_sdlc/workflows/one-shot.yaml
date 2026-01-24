@@ -40,7 +40,7 @@ steps:
 
   - name: validate
     type: command
-    command: agentic-sdlc:validate
+    command: validate
     args:
       severity: major
 
@@ -50,6 +50,6 @@ steps:
     then:
       - name: open-pr
         type: command
-        command: agentic-sdlc:git-pr
+        command: git-pr
         args:
           draft: false

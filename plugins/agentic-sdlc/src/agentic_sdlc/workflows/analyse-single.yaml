@@ -36,7 +36,7 @@ steps:
     then:
       - name: analyse-bug
         type: command
-        command: agentic-sdlc:analyse-bug
+        command: analyse-bug
         args:
           paths: "{{ variables.paths }}"
 
@@ -46,7 +46,7 @@ steps:
     then:
       - name: analyse-debt
         type: command
-        command: agentic-sdlc:analyse-debt
+        command: analyse-debt
         args:
           paths: "{{ variables.paths }}"
 
@@ -56,7 +56,7 @@ steps:
     then:
       - name: analyse-doc
         type: command
-        command: agentic-sdlc:analyse-doc
+        command: analyse-doc
         args:
           paths: "{{ variables.paths }}"
 
@@ -66,7 +66,7 @@ steps:
     then:
       - name: analyse-security
         type: command
-        command: agentic-sdlc:analyse-security
+        command: analyse-security
         args:
           paths: "{{ variables.paths }}"
 
@@ -76,7 +76,7 @@ steps:
     then:
       - name: analyse-style
         type: command
-        command: agentic-sdlc:analyse-style
+        command: analyse-style
         args:
           paths: "{{ variables.paths }}"
 
@@ -102,7 +102,7 @@ steps:
           5. Implement the fix
           6. Run build/lint commands and fix any errors
           7. Mark the issue as fixed in the analysis document
-          8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+          8. Commit using git-commit with title starting with issue ID
           9. End this session (do NOT continue to next issue)
 
           ## Completion

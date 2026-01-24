@@ -44,7 +44,7 @@ steps:
         steps:
           - name: analyse-bug
             type: command
-            command: agentic-sdlc:analyse-bug
+            command: analyse-bug
             args:
               paths: "{{ variables.paths }}"
 
@@ -70,7 +70,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -90,7 +90,7 @@ steps:
             then:
               - name: open-bug-pr
                 type: command
-                command: agentic-sdlc:git-pr
+                command: git-pr
                 args:
                   title: "[Analysis] Bug analysis and fixes"
                   draft: false
@@ -100,7 +100,7 @@ steps:
         steps:
           - name: analyse-debt
             type: command
-            command: agentic-sdlc:analyse-debt
+            command: analyse-debt
             args:
               paths: "{{ variables.paths }}"
 
@@ -126,7 +126,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -146,7 +146,7 @@ steps:
             then:
               - name: open-debt-pr
                 type: command
-                command: agentic-sdlc:git-pr
+                command: git-pr
                 args:
                   title: "[Analysis] Technical debt analysis and fixes"
                   draft: false
@@ -156,7 +156,7 @@ steps:
         steps:
           - name: analyse-doc
             type: command
-            command: agentic-sdlc:analyse-doc
+            command: analyse-doc
             args:
               paths: "{{ variables.paths }}"
 
@@ -182,7 +182,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -202,7 +202,7 @@ steps:
             then:
               - name: open-doc-pr
                 type: command
-                command: agentic-sdlc:git-pr
+                command: git-pr
                 args:
                   title: "[Analysis] Documentation analysis and fixes"
                   draft: false
@@ -212,7 +212,7 @@ steps:
         steps:
           - name: analyse-security
             type: command
-            command: agentic-sdlc:analyse-security
+            command: analyse-security
             args:
               paths: "{{ variables.paths }}"
 
@@ -238,7 +238,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -258,7 +258,7 @@ steps:
             then:
               - name: open-security-pr
                 type: command
-                command: agentic-sdlc:git-pr
+                command: git-pr
                 args:
                   title: "[Analysis] Security analysis and fixes"
                   draft: false
@@ -268,7 +268,7 @@ steps:
         steps:
           - name: analyse-style
             type: command
-            command: agentic-sdlc:analyse-style
+            command: analyse-style
             args:
               paths: "{{ variables.paths }}"
 
@@ -294,7 +294,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -314,7 +314,7 @@ steps:
             then:
               - name: open-style-pr
                 type: command
-                command: agentic-sdlc:git-pr
+                command: git-pr
                 args:
                   title: "[Analysis] Style analysis and fixes"
                   draft: false

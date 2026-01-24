@@ -109,7 +109,7 @@ This file tracks improvement opportunities identified during code analysis. Each
 1. **Adding Improvements**: Add a checkbox to the Progress Tracking section (`- [ ] IMP-XXX: Short title`) and a corresponding details section with problem description, files to investigate, and acceptance criteria.
 2. **Working on Improvements**: Mark the item as in-progress by keeping `[ ]` and update the Status in the details section to "In Progress".
 3. **Completing Improvements**: Change `[ ]` to `[x]` and update the Status to "Completed".
-4. **Implementation**: Use `/agentic-sdlc:build` to implement individual improvements.
+4. **Implementation**: Use `/build` to implement individual improvements.
 
 ## Progress Tracking
 

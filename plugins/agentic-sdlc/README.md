@@ -150,7 +150,7 @@ variables:
 steps:
   - name: generate-plan
     type: command
-    command: agentic-sdlc:plan
+    command: plan
     args:
       context: "{{ variables.task }}"
 
@@ -161,7 +161,7 @@ steps:
 
   - name: validate
     type: command
-    command: agentic-sdlc:validate
+    command: validate
 ```
 
 See [Workflow Builder Guide](docs/WorkflowBuilder.md) for complete documentation and [workflow-example.yaml](docs/workflow-example.yaml) for an annotated reference.

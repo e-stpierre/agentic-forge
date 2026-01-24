@@ -186,7 +186,7 @@ Execute a Claude command with arguments.
 steps:
   - name: run-validation
     type: command
-    command: agentic-sdlc:validate # Must use namespace prefix
+    command: validate # Must use namespace prefix
     args:
       plan: "agentic/outputs/{{ workflow_id }}/plan.md"
       severity: minor
@@ -195,17 +195,17 @@ steps:
 
 **Available Commands:**
 
-- `agentic-sdlc:plan` - Generate implementation plan
-- `agentic-sdlc:build` - Implement changes from plan
-- `agentic-sdlc:validate` - Run validation checks
-- `agentic-sdlc:analyse-bug` - Analyze for bugs
-- `agentic-sdlc:analyse-debt` - Find technical debt
-- `agentic-sdlc:analyse-doc` - Check documentation
-- `agentic-sdlc:analyse-security` - Security scan
-- `agentic-sdlc:analyse-style` - Code style check
-- `agentic-sdlc:git-branch` - Create git branch
-- `agentic-sdlc:git-commit` - Create commit
-- `agentic-sdlc:git-pr` - Create pull request
+- `plan` - Generate implementation plan
+- `build` - Implement changes from plan
+- `validate` - Run validation checks
+- `analyse-bug` - Analyze for bugs
+- `analyse-debt` - Find technical debt
+- `analyse-doc` - Check documentation
+- `analyse-security` - Security scan
+- `analyse-style` - Code style check
+- `git-branch` - Create git branch
+- `git-commit` - Create commit
+- `git-pr` - Create pull request
 
 ### Serial Step
 
@@ -226,7 +226,7 @@ steps:
 
       - name: step-3
         type: command
-        command: agentic-sdlc:validate
+        command: validate
 ```
 
 ### Parallel Step
@@ -245,15 +245,15 @@ steps:
     steps:
       - name: security
         type: command
-        command: agentic-sdlc:analyse-security
+        command: analyse-security
 
       - name: style
         type: command
-        command: agentic-sdlc:analyse-style
+        command: analyse-style
 
       - name: bugs
         type: command
-        command: agentic-sdlc:analyse-bug
+        command: analyse-bug
 ```
 
 **Merge Strategies:**
@@ -488,7 +488,7 @@ steps:
 steps:
   - name: flaky-operation
     type: command
-    command: agentic-sdlc:validate
+    command: validate
     max-retry: 5 # Retry up to 5 times
     on-error: retry # retry, skip, or fail
     timeout-minutes: 10
@@ -523,7 +523,7 @@ Create checkpoints to track progress:
 steps:
   - name: critical-step
     type: command
-    command: agentic-sdlc:plan
+    command: plan
     checkpoint: true # Create checkpoint after success
 ```
 
@@ -569,12 +569,12 @@ Templates have access to:
 # Good
 - name: validate-implementation
   type: command
-  command: agentic-sdlc:validate
+  command: validate
 
 # Avoid
 - name: step-1
   type: command
-  command: agentic-sdlc:validate
+  command: validate
 ```
 
 ### 2. Add Checkpoints for Long Workflows
@@ -583,7 +583,7 @@ Templates have access to:
 steps:
   - name: plan
     type: command
-    command: agentic-sdlc:plan
+    command: plan
     checkpoint: true # Can resume from here
 
   - name: implement
@@ -618,7 +618,7 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
 ```yaml
 - name: optional-task
   type: command
-  command: agentic-sdlc:analyse-style
+  command: analyse-style
   on-error: skip # Don't fail workflow if this fails
   max-retry: 1 # Try once, then skip
 ```
@@ -634,11 +634,11 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
   steps:
     - name: security
       type: command
-      command: agentic-sdlc:analyse-security
+      command: analyse-security
 
     - name: bugs
       type: command
-      command: agentic-sdlc:analyse-bug
+      command: analyse-bug
 ```
 
 ### 7. Document with Descriptions

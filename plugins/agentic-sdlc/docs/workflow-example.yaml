@@ -134,7 +134,7 @@ steps:
   - name: generate-plan
     type: command
     # Must use namespace prefix (plugin-name:command-name)
-    command: agentic-sdlc:plan
+    command: plan
     args:
       type: "{{ variables.plan_type }}"
       context: "{{ variables.task }}"
@@ -182,22 +182,22 @@ steps:
     steps:
       - name: security-scan
         type: command
-        command: agentic-sdlc:analyse-security
+        command: analyse-security
         on-error: skip # Don't fail workflow if security scan fails
 
       - name: style-check
         type: command
-        command: agentic-sdlc:analyse-style
+        command: analyse-style
         on-error: skip
 
       - name: bug-detection
         type: command
-        command: agentic-sdlc:analyse-bug
+        command: analyse-bug
         on-error: skip
 
       - name: debt-analysis
         type: command
-        command: agentic-sdlc:analyse-debt
+        command: analyse-debt
         on-error: skip
 
   # ==================== RALPH LOOP STEP ====================
@@ -245,7 +245,7 @@ steps:
   # ==================== COMMAND STEP (VALIDATION) ====================
   - name: validate-implementation
     type: command
-    command: agentic-sdlc:validate
+    command: validate
     args:
       plan: "agentic/outputs/{{ workflow_id }}/plan.md"
       severity: minor
@@ -276,7 +276,7 @@ steps:
 
       - name: revalidate
         type: command
-        command: agentic-sdlc:validate
+        command: validate
         args:
           severity: "{{ variables.fix_severity }}"
 
@@ -320,7 +320,7 @@ steps:
     then:
       - name: open-pr
         type: command
-        command: agentic-sdlc:git-pr
+        command: git-pr
         args:
           title: "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}"
           draft: false
@@ -389,24 +389,24 @@ outputs:
 # Commands you can use in command steps (must use namespace prefix):
 #
 # Planning & Implementation:
-#   - agentic-sdlc:plan
-#   - agentic-sdlc:build
-#   - agentic-sdlc:validate
+#   - plan
+#   - build
+#   - validate
 #
 # Analysis:
-#   - agentic-sdlc:analyse-bug
-#   - agentic-sdlc:analyse-debt
-#   - agentic-sdlc:analyse-doc
-#   - agentic-sdlc:analyse-security
-#   - agentic-sdlc:analyse-style
+#   - analyse-bug
+#   - analyse-debt
+#   - analyse-doc
+#   - analyse-security
+#   - analyse-style
 #
 # Git Operations:
-#   - agentic-sdlc:git-branch
-#   - agentic-sdlc:git-commit
-#   - agentic-sdlc:git-pr
+#   - git-branch
+#   - git-commit
+#   - git-pr
 #
 # Utilities:
-#   - agentic-sdlc:orchestrate
+#   - orchestrate
 #
 # ==================== BUILT-IN VARIABLES ====================
 #

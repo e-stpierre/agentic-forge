@@ -54,7 +54,7 @@ steps:
         steps:
           - name: analyse-bug
             type: command
-            command: agentic-sdlc:analyse-bug
+            command: analyse-bug
             args:
               paths: "{{ variables.paths }}"
 
@@ -80,7 +80,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -99,7 +99,7 @@ steps:
         steps:
           - name: analyse-debt
             type: command
-            command: agentic-sdlc:analyse-debt
+            command: analyse-debt
             args:
               paths: "{{ variables.paths }}"
 
@@ -125,7 +125,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -144,7 +144,7 @@ steps:
         steps:
           - name: analyse-doc
             type: command
-            command: agentic-sdlc:analyse-doc
+            command: analyse-doc
             args:
               paths: "{{ variables.paths }}"
 
@@ -170,7 +170,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -189,7 +189,7 @@ steps:
         steps:
           - name: analyse-security
             type: command
-            command: agentic-sdlc:analyse-security
+            command: analyse-security
             args:
               paths: "{{ variables.paths }}"
 
@@ -215,7 +215,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -234,7 +234,7 @@ steps:
         steps:
           - name: analyse-style
             type: command
-            command: agentic-sdlc:analyse-style
+            command: analyse-style
             args:
               paths: "{{ variables.paths }}"
 
@@ -260,7 +260,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -276,7 +276,7 @@ steps:
 
   - name: validate-merged-changes
     type: command
-    command: agentic-sdlc:validate
+    command: validate
     args:
       severity: "{{ variables.fix_severity }}"
 
@@ -301,7 +301,7 @@ steps:
           4. Navigate the code to understand the failure
           5. Implement the fix
           6. Run the failing check again to verify
-          7. Commit using agentic-sdlc:git-commit with clear message
+          7. Commit using git-commit with clear message
           8. End this session (do NOT continue to next issue)
 
           ## Checks to Run
@@ -323,7 +323,7 @@ steps:
 
       - name: revalidate
         type: command
-        command: agentic-sdlc:validate
+        command: validate
         args:
           severity: "{{ variables.fix_severity }}"
 
@@ -333,7 +333,7 @@ steps:
     then:
       - name: open-pr
         type: command
-        command: agentic-sdlc:git-pr
+        command: git-pr
         args:
           title: "[Analysis] Codebase analysis and fixes"
           draft: false
