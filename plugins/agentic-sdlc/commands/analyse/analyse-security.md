@@ -1,10 +1,7 @@
 ---
 name: analyse-security
 description: Scan for security vulnerabilities, unsafe patterns, and dependency issues
-arguments:
-  - name: paths
-    description: Space-separated list of files or directories to analyze
-    required: false
+argument-hint: [paths...]
 ---
 
 # Analyse Security

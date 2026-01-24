@@ -1,17 +1,7 @@
 ---
 name: git-commit
 description: Create a git commit with structured message
-output: json
-arguments:
-  - name: message
-    description: Commit message (auto-generated if not provided)
-    required: false
-  - name: files
-    description: Specific files to commit (default: all staged)
-    required: false
-  - name: plan_step
-    description: Reference to plan step being completed
-    required: false
+argument-hint: [message] [files] [plan_step]
 ---
 
 # Git Commit Command

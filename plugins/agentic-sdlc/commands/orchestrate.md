@@ -1,8 +1,6 @@
 ---
 name: orchestrate
 description: Evaluate workflow state and determine next action
-output: json
-arguments: []
 ---
 
 # Orchestrator Command

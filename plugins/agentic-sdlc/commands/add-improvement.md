@@ -2,14 +2,6 @@
 name: add-improvement
 description: Add a new improvement to the improvements tracking document
 argument-hint: <context> [--explore]
-arguments:
-  - name: explore-codebase
-    description: Analyze codebase for additional context (boolean flag)
-    required: false
-    default: false
-  - name: context
-    description: Description of the improvement request
-    required: true
 ---
 
 # Add Improvement

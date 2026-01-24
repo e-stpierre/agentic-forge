@@ -1,21 +1,7 @@
 ---
 name: git-pr
 description: Create a pull request with contextual title and description
-output: json
-arguments:
-  - name: title
-    description: PR title (auto-generated if not provided)
-    required: false
-  - name: body
-    description: PR body/description (auto-generated if not provided)
-    required: false
-  - name: base
-    description: Base branch (default: main)
-    required: false
-  - name: draft
-    description: Create as draft PR
-    required: false
-    default: false
+argument-hint: [title] [body] [base] [--draft]
 ---
 
 # Git PR Command

@@ -1,20 +1,17 @@
 ---
 name: validate
 description: Validate implementation against plan and quality standards
-output: json
-arguments:
-  - name: plan
-    description: Path to plan document
-    required: false
-  - name: severity
-    description: Minimum severity to report (minor, major, critical)
-    required: false
-    default: minor
+argument-hint: [plan] [severity]
 ---
 
 # Validate Command
 
 Validate the implementation against the plan and quality standards. Runs tests, checks code quality, and verifies plan compliance.
+
+## Arguments
+
+- **`[plan]`** (optional): Path to plan document.
+- **`[severity]`** (optional): Minimum severity to report. Values: `minor`, `major`, `critical`. Defaults to `minor`.
 
 ## Checks Performed
 

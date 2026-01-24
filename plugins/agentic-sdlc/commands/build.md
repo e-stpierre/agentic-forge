@@ -1,22 +1,18 @@
 ---
 name: build
 description: Implement changes following a plan
-output: json
-arguments:
-  - name: plan
-    description: Path to plan document or plan JSON
-    required: false
-  - name: milestone
-    description: Specific milestone to implement
-    required: false
-  - name: context
-    description: Additional context or instructions
-    required: false
+argument-hint: [plan] [milestone] [context]
 ---
 
 # Build Command
 
 Implement code changes following a plan or direct instructions. This command executes the implementation and tracks progress.
+
+## Arguments
+
+- **`[plan]`** (optional): Path to plan document or plan JSON.
+- **`[milestone]`** (optional): Specific milestone to implement.
+- **`[context]`** (optional): Additional context or instructions.
 
 ## Behavior
 

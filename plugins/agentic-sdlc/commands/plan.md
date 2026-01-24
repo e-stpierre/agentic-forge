@@ -1,26 +1,19 @@
 ---
 name: plan
 description: Create an implementation plan for a task
-output: json
-arguments:
-  - name: type
-    description: Plan type (feature, bug, chore, auto)
-    required: false
-    default: auto
-  - name: context
-    description: Task description or issue reference
-    required: true
-  - name: output_dir
-    description: Directory to write plan.md file (e.g., agentic/outputs/workflow-id)
-    required: false
-  - name: template
-    description: Custom template path
-    required: false
+argument-hint: <context> [type] [output_dir] [template]
 ---
 
 # Plan Command
 
 Create a structured implementation plan for the given task. This command analyzes the codebase and produces a detailed plan with milestones and tasks.
+
+## Arguments
+
+- **`<context>`** (required): Task description or issue reference.
+- **`[type]`** (optional): Plan type. Values: `feature`, `bug`, `chore`, `auto`. Defaults to `auto`.
+- **`[output_dir]`** (optional): Directory to write plan.md file (e.g., `agentic/outputs/workflow-id`).
+- **`[template]`** (optional): Custom template path.
 
 ## Behavior
 

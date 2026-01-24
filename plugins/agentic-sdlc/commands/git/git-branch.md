@@ -1,17 +1,7 @@
 ---
 name: git-branch
 description: Create a git branch following naming convention
-output: json
-arguments:
-  - name: category
-    description: Branch type (poc, feature, fix, chore, doc, refactor). Infer from context if not provided, default to feature
-    required: false
-  - name: name
-    description: Branch name. Infer from context if not provided, default to agentic/<random-id>
-    required: false
-  - name: base
-    description: Base branch to create from. If not provided, branch from current location
-    required: false
+argument-hint: [category] [name] [base]
 ---
 
 # Git Branch Command
