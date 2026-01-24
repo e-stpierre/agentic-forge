@@ -144,24 +144,6 @@ Use the `/normalize` command to validate prompt files against templates:
 /normalize --autofix plugins/my-plugin/
 ```
 
-### Workflow Command Namespacing
-
-Commands referenced in workflow YAML files must use the full plugin namespace to avoid ambiguity when multiple plugins provide commands with the same name.
-
-**Required format in workflows:**
-
-```yaml
-# Correct - explicit namespace
-- type: command
-  command: agentic-sdlc:validate
-
-# Incorrect - ambiguous, could match multiple plugins
-- type: command
-  command: validate
-```
-
-This ensures the correct plugin's command is executed, especially when both `interactive-sdlc` and `agentic-sdlc` provide similar commands (e.g., `analyse-bug`, `validate`, `git-pr`).
-
 ### Code Style and Formatting
 
 CI validates format, lint, and tests on all pull requests. Run locally before opening a pull request:

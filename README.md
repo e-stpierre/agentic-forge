@@ -11,11 +11,11 @@
 </p>
 
 <p align="center">
-  <strong>Claude Code plugins for autonomous development workflows</strong>
+  <strong>Autonomous workflow orchestration for Claude Code</strong>
 </p>
 
 <p align="center">
-  YAML-based agentic workflows | Multi-step task orchestration | Long-running
+  YAML-defined workflows | Multi-step execution | Progress tracking | Error recovery
 </p>
 
 ## Getting Started

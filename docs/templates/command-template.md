@@ -29,7 +29,6 @@ ARGUMENT DESIGN PRINCIPLES:
 - If present, the [context] argument should always come last
 - Commands should NOT support arguments that can be configured in .claude/configs/plugin-name.json
 - Instead, provide defaults and read .claude/configs/plugin-name.json to override them
-- Example: Plan commands should not have --output argument; use default /specs or read interactive-sdlc.planDirectory from settings
 -->
 
 ---
