@@ -170,12 +170,12 @@ Save to `agentic/analysis/{{type}}.md`:
 
 ## Summary
 
-| Severity | Count |
-| -------- | ----- |
+| Severity | Count              |
+| -------- | ------------------ |
 | Critical | {{critical_count}} |
-| High     | {{high_count}} |
-| Medium   | {{medium_count}} |
-| Low      | {{low_count}} |
+| High     | {{high_count}}     |
+| Medium   | {{medium_count}}   |
+| Low      | {{low_count}}      |
 
 ## Critical
 

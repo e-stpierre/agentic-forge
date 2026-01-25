@@ -40,13 +40,13 @@ Execute complete development workflows from planning through implementation to v
 
 ### Analysis (`skills/analyze/`)
 
-| Command              | Description                                                                |
-| -------------------- | -------------------------------------------------------------------------- |
-| `/analyze bug`       | Analyze codebase for bugs, logic errors, and runtime issues                |
-| `/analyze debt`      | Identify technical debt, optimization opportunities, and refactoring needs |
-| `/analyze doc`       | Analyze documentation quality, accuracy, and completeness                  |
-| `/analyze security`  | Scan for security vulnerabilities, unsafe patterns, and dependency issues  |
-| `/analyze style`     | Check code style, consistency, and best practices adherence                |
+| Command             | Description                                                                |
+| ------------------- | -------------------------------------------------------------------------- |
+| `/analyze bug`      | Analyze codebase for bugs, logic errors, and runtime issues                |
+| `/analyze debt`     | Identify technical debt, optimization opportunities, and refactoring needs |
+| `/analyze doc`      | Analyze documentation quality, accuracy, and completeness                  |
+| `/analyze security` | Scan for security vulnerabilities, unsafe patterns, and dependency issues  |
+| `/analyze style`    | Check code style, consistency, and best practices adherence                |
 
 ### Git Operations (`commands/git/`)
 
@@ -65,12 +65,12 @@ Execute complete development workflows from planning through implementation to v
 
 ## Skills
 
-| Skill               | Description                                                       |
-| ------------------- | ----------------------------------------------------------------- |
-| `analyze`           | Analyze codebase for bugs, debt, docs, security, or style issues  |
-| `create-checkpoint` | Create a checkpoint to track progress and share context           |
-| `create-log`        | Add a log entry to the workflow log                               |
-| `fix-analysis`      | Fix issues from an analysis document iteratively                  |
+| Skill               | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| `analyze`           | Analyze codebase for bugs, debt, docs, security, or style issues |
+| `create-checkpoint` | Create a checkpoint to track progress and share context          |
+| `create-log`        | Add a log entry to the workflow log                              |
+| `fix-analysis`      | Fix issues from an analysis document iteratively                 |
 
 ## Installation
 
