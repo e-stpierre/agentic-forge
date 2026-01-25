@@ -198,11 +198,11 @@ steps:
 - `plan` - Generate implementation plan
 - `build` - Implement changes from plan
 - `validate` - Run validation checks
-- `analyze-bug` - Analyze for bugs
-- `analyze-debt` - Find technical debt
-- `analyze-doc` - Check documentation
-- `analyze-security` - Security scan
-- `analyze-style` - Code style check
+- `analyze bug` - Analyze for bugs
+- `analyze debt` - Find technical debt
+- `analyze doc` - Check documentation
+- `analyze security` - Security scan
+- `analyze style` - Code style check
 - `git-branch` - Create git branch
 - `git-commit` - Create commit
 - `git-pr` - Create pull request
@@ -245,15 +245,15 @@ steps:
     steps:
       - name: security
         type: command
-        command: analyze-security
+        command: analyze security
 
       - name: style
         type: command
-        command: analyze-style
+        command: analyze style
 
       - name: bugs
         type: command
-        command: analyze-bug
+        command: analyze bug
 ```
 
 **Merge Strategies:**
@@ -618,7 +618,7 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
 ```yaml
 - name: optional-task
   type: command
-  command: analyze-style
+  command: analyze style
   on-error: skip # Don't fail workflow if this fails
   max-retry: 1 # Try once, then skip
 ```
@@ -634,11 +634,11 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
   steps:
     - name: security
       type: command
-      command: analyze-security
+      command: analyze security
 
     - name: bugs
       type: command
-      command: analyze-bug
+      command: analyze bug
 ```
 
 ### 7. Document with Descriptions

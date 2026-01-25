@@ -54,7 +54,7 @@ steps:
         steps:
           - name: analyze-bug
             type: command
-            command: analyze-bug
+            command: analyze bug
             args:
               paths: "{{ variables.paths }}"
 
@@ -99,7 +99,7 @@ steps:
         steps:
           - name: analyze-debt
             type: command
-            command: analyze-debt
+            command: analyze debt
             args:
               paths: "{{ variables.paths }}"
 
@@ -144,7 +144,7 @@ steps:
         steps:
           - name: analyze-doc
             type: command
-            command: analyze-doc
+            command: analyze doc
             args:
               paths: "{{ variables.paths }}"
 
@@ -189,7 +189,7 @@ steps:
         steps:
           - name: analyze-security
             type: command
-            command: analyze-security
+            command: analyze security
             args:
               paths: "{{ variables.paths }}"
 
@@ -234,7 +234,7 @@ steps:
         steps:
           - name: analyze-style
             type: command
-            command: analyze-style
+            command: analyze style
             args:
               paths: "{{ variables.paths }}"
 

@@ -40,7 +40,7 @@ claude --plugin-dir ./plugins/<plugin-name>
 
 ### Commit Messages
 
-Write clear, concise commit messages that describe the change. For example: `Add retry logic to workflow executor` or `Fix validation error in analyze-bug command`.
+Write clear, concise commit messages that describe the change. For example: `Add retry logic to workflow executor` or `Fix validation error in analyze command`.
 
 ### Code Formatting
 

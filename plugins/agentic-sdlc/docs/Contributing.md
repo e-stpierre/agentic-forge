@@ -51,14 +51,16 @@ plugins/agentic-sdlc/
 ├── commands/                  # Claude command definitions (.md)
 │   ├── plan/
 │   ├── build/
-│   ├── validate/
-│   └── analyze/
+│   └── validate/
 │
 ├── agents/                    # Claude agent configurations
 │   ├── explorer.md
 │   └── reviewer.md
 │
 ├── skills/                    # Claude skill modules
+│   ├── analyze/
+│   │   ├── SKILL.md
+│   │   └── references/
 │   ├── create-checkpoint/
 │   │   └── SKILL.md
 │   ├── create-log/

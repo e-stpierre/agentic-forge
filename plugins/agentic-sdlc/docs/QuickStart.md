@@ -77,7 +77,7 @@ Inside a Claude Code session:
 /validate
 
 # Analyze for bugs
-/analyze-bug
+/analyze bug
 
 # Create a git commit
 /git-commit
@@ -102,7 +102,7 @@ agentic/
 ├── config.json           # Configuration settings
 ├── workflows/            # Custom workflow YAML files (created with 'init')
 ├── outputs/              # Workflow execution state and progress
-└── analysis/             # Analysis outputs from /analyze commands
+└── analysis/             # Analysis outputs from /analyze skill
 ```
 
 ## Common Workflows

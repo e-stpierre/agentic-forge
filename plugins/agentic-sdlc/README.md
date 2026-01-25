@@ -8,7 +8,7 @@ Execute complete development workflows from planning through implementation to v
 
 - `/plan Add user profile with avatar upload` - Generate implementation plan
 - `/validate` - Run validation checks
-- `/analyze-security` - Scan for security vulnerabilities
+- `/analyze security` - Scan for security vulnerabilities
 - `agentic-sdlc run plan-build-validate.yaml --var "task=Add feature"` - Run complete workflow
 
 ### Key Features
@@ -38,15 +38,15 @@ Execute complete development workflows from planning through implementation to v
 | `/orchestrate`     | Evaluate workflow state and determine next action           |
 | `/add-improvement` | Add a new improvement to the improvements tracking document |
 
-### Analysis (`commands/analyze/`)
+### Analysis (`skills/analyze/`)
 
-| Command             | Description                                                                |
-| ------------------- | -------------------------------------------------------------------------- |
-| `/analyze-bug`      | Analyze codebase for bugs, logic errors, and runtime issues                |
-| `/analyze-debt`     | Identify technical debt, optimization opportunities, and refactoring needs |
-| `/analyze-doc`      | Analyze documentation quality, accuracy, and completeness                  |
-| `/analyze-security` | Scan for security vulnerabilities, unsafe patterns, and dependency issues  |
-| `/analyze-style`    | Check code style, consistency, and best practices adherence                |
+| Command              | Description                                                                |
+| -------------------- | -------------------------------------------------------------------------- |
+| `/analyze bug`       | Analyze codebase for bugs, logic errors, and runtime issues                |
+| `/analyze debt`      | Identify technical debt, optimization opportunities, and refactoring needs |
+| `/analyze doc`       | Analyze documentation quality, accuracy, and completeness                  |
+| `/analyze security`  | Scan for security vulnerabilities, unsafe patterns, and dependency issues  |
+| `/analyze style`     | Check code style, consistency, and best practices adherence                |
 
 ### Git Operations (`commands/git/`)
 
@@ -65,11 +65,12 @@ Execute complete development workflows from planning through implementation to v
 
 ## Skills
 
-| Skill               | Description                                             |
-| ------------------- | ------------------------------------------------------- |
-| `create-checkpoint` | Create a checkpoint to track progress and share context |
-| `create-log`        | Add a log entry to the workflow log                     |
-| `fix-analysis`      | Fix issues from an analysis document iteratively        |
+| Skill               | Description                                                       |
+| ------------------- | ----------------------------------------------------------------- |
+| `analyze`           | Analyze codebase for bugs, debt, docs, security, or style issues  |
+| `create-checkpoint` | Create a checkpoint to track progress and share context           |
+| `create-log`        | Add a log entry to the workflow log                               |
+| `fix-analysis`      | Fix issues from an analysis document iteratively                  |
 
 ## Installation
 
@@ -220,25 +221,26 @@ agentic/
 /validate --severity major
 ```
 
-### /analyze-\*
+### /analyze
 
 **Arguments:**
 
+- `<type>` - Analysis type: bug, debt, doc, security, style (required)
 - `[paths...]` - Space-separated list of files or directories to analyze
 
 **Examples:**
 
 ```bash
-# Analyze entire codebase
-/analyze-security
+# Analyze entire codebase for security issues
+/analyze security
 
-# Analyze specific paths
-/analyze-bug src/auth src/api
+# Analyze specific paths for bugs
+/analyze bug src/auth src/api
 
 # Multiple analysis types
-/analyze-debt src/legacy
-/analyze-style src/components
-/analyze-doc docs/
+/analyze debt src/legacy
+/analyze style src/components
+/analyze doc docs/
 ```
 
 ### /git-branch
