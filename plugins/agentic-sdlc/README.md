@@ -1,8 +1,8 @@
 # Agentic SDLC
 
-Agentic SDLC enables Claude Code to execute complex, multi-step tasks autonomously through YAML-based workflow orchestration. The framework provides fully independent operation with built-in resiliency, progress tracking, and error recovery across multi-session workflows.
-
 ## Overview
+
+Agentic SDLC enables Claude Code to execute complex, multi-step tasks autonomously through YAML-based workflow orchestration. The framework provides fully independent operation with built-in resiliency, progress tracking, and error recovery across multi-session workflows.
 
 Execute complete development workflows from planning through implementation to validation, with support for parallel execution, conditional logic, and iterative refinement.
 
@@ -11,49 +11,65 @@ Execute complete development workflows from planning through implementation to v
 - `/validate` - Run validation checks
 - `agentic-sdlc run plan-build-validate.yaml --var "task=Add feature"` - Run complete workflow
 
+### Key Features
+
+- **YAML Workflows**: Define complex multi-step processes with variables, conditions, and loops
+- **Hybrid Orchestration**: Python handles deterministic operations, Claude makes intelligent decisions
+- **Git Worktree Isolation**: Execute parallel tasks in isolated git worktrees
+- **Progress Tracking**: Resume from checkpoints after interruptions or errors
+- **Built-in Commands**: Plan, build, validate, analyze, and git operations
+- **Error Recovery**: Automatic retry with configurable strategies
+
+## Documentation
+
+- **[Quick Start](docs/QuickStart.md)** - Get running in 5 minutes
+- **[Workflow Builder Guide](docs/WorkflowBuilder.md)** - Complete workflow authoring documentation
+- **[Workflow Example](docs/workflow-example.yaml)** - Annotated reference with all options
+- **[Contributing](docs/Contributing.md)** - Development and testing guidelines
+
 ## Commands
 
 ### Planning and Implementation (`commands/`)
 
 | Command | Description |
 |---------|-------------|
-| `/agentic-sdlc:plan` | Create an implementation plan for a task |
-| `/agentic-sdlc:build` | Implement changes following a plan |
-| `/agentic-sdlc:validate` | Validate implementation against plan and quality standards |
-| `/agentic-sdlc:orchestrate` | Evaluate workflow state and determine next action |
-| `/agentic-sdlc:add-improvement` | Add a new improvement to the improvements tracking document |
+| `/plan` | Create an implementation plan for a task |
+| `/build` | Implement changes following a plan |
+| `/validate` | Validate implementation against plan and quality standards |
+| `/orchestrate` | Evaluate workflow state and determine next action |
+| `/add-improvement` | Add a new improvement to the improvements tracking document |
 
 ### Analysis (`commands/analyze/`)
 
 | Command | Description |
 |---------|-------------|
-| `/agentic-sdlc:analyze-bug` | Analyze codebase for bugs, logic errors, and runtime issues |
-| `/agentic-sdlc:analyze-debt` | Identify technical debt, optimization opportunities, and refactoring needs |
-| `/agentic-sdlc:analyze-doc` | Analyze documentation quality, accuracy, and completeness |
-| `/agentic-sdlc:analyze-security` | Scan for security vulnerabilities, unsafe patterns, and dependency issues |
-| `/agentic-sdlc:analyze-style` | Check code style, consistency, and best practices adherence |
+| `/analyze-bug` | Analyze codebase for bugs, logic errors, and runtime issues |
+| `/analyze-debt` | Identify technical debt, optimization opportunities, and refactoring needs |
+| `/analyze-doc` | Analyze documentation quality, accuracy, and completeness |
+| `/analyze-security` | Scan for security vulnerabilities, unsafe patterns, and dependency issues |
+| `/analyze-style` | Check code style, consistency, and best practices adherence |
 
 ### Git Operations (`commands/git/`)
 
 | Command | Description |
 |---------|-------------|
-| `/agentic-sdlc:git-branch` | Create a git branch following naming convention |
-| `/agentic-sdlc:git-commit` | Create a git commit with structured message |
-| `/agentic-sdlc:git-pr` | Create a pull request with contextual title and description |
+| `/git-branch` | Create a git branch following naming convention |
+| `/git-commit` | Create a git commit with structured message |
+| `/git-pr` | Create a pull request with contextual title and description |
 
 ## Agents
 
 | Agent | Description |
 |-------|-------------|
-| `agentic-sdlc:explorer` | Efficiently explores codebase to find relevant files and code |
-| `agentic-sdlc:reviewer` | Reviews code for quality, correctness, and best practices |
+| `explorer` | Efficiently explores codebase to find relevant files and code |
+| `reviewer` | Reviews code for quality, correctness, and best practices |
 
 ## Skills
 
 | Skill | Description |
 |-------|-------------|
-| `agentic-sdlc:create-checkpoint` | Create a checkpoint to track progress and share context |
-| `agentic-sdlc:create-log` | Add a log entry to the workflow log |
+| `create-checkpoint` | Create a checkpoint to track progress and share context |
+| `create-log` | Add a log entry to the workflow log |
 
 ## Installation
 
@@ -166,7 +182,7 @@ agentic/
 
 ## Complete Examples
 
-### /agentic-sdlc:plan
+### /plan
 
 **Arguments:**
 - `[type]` - Plan type: feature, bug, chore, auto (default: auto)
@@ -187,7 +203,7 @@ agentic/
 /plan --output_dir agentic/outputs/workflow-123 Add dark mode toggle
 ```
 
-### /agentic-sdlc:build
+### /build
 
 **Arguments:**
 - `[plan]` - Path to plan document or plan JSON
@@ -207,7 +223,7 @@ agentic/
 /build --plan plan.md Focus on error handling first
 ```
 
-### /agentic-sdlc:validate
+### /validate
 
 **Arguments:**
 - `[plan]` - Path to plan document
@@ -226,7 +242,7 @@ agentic/
 /validate --severity major
 ```
 
-### /agentic-sdlc:analyze-*
+### /analyze-*
 
 **Arguments:**
 - `[paths...]` - Space-separated list of files or directories to analyze
@@ -246,7 +262,7 @@ agentic/
 /analyze-doc docs/
 ```
 
-### /agentic-sdlc:git-branch
+### /git-branch
 
 **Arguments:**
 - `[category]` - Branch type: poc, feature, fix, chore, doc, refactor (default: feature)
@@ -266,7 +282,7 @@ agentic/
 /git-branch feature oauth-integration  # Creates feature/123_oauth-integration if issue #123 mentioned
 ```
 
-### /agentic-sdlc:git-commit
+### /git-commit
 
 **Arguments:**
 - `[message]` - Override commit title
@@ -286,7 +302,7 @@ agentic/
 /git-commit --plan_step "Task 3"
 ```
 
-### /agentic-sdlc:git-pr
+### /git-pr
 
 **Arguments:**
 - `[title]` - PR title (auto-generated if not provided)
