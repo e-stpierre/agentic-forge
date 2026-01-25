@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Claude Code plugins and Python CLI tools for autonomous multi-step workflows, enabling long-running agentic task execution with built-in orchestration and error recovery",
-    "version": "0.4.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {

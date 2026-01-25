@@ -22,7 +22,7 @@ Get started with agentic-sdlc in under 5 minutes.
 
 ## Run Demo Workflow
 
-The demo workflow executes a rapid workflow with demo steps to help you undertand how the tool operate:
+The demo workflow executes a rapid workflow with demo steps to help you understand how the tool operates:
 
 ```bash
 agentic-sdlc run demo.yaml
