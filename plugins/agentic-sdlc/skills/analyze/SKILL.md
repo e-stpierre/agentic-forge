@@ -24,7 +24,7 @@ Analyze codebase for issues across multiple domains: bugs, technical debt, docum
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 

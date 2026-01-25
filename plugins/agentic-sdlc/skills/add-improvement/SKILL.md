@@ -19,7 +19,7 @@ Add a new improvement entry to the improvements tracking document. This skill cr
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Configuration
 

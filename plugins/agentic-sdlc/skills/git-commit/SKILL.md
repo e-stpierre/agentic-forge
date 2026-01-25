@@ -20,7 +20,7 @@ Create a well-structured commit with a concise title and optional bullet-point d
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 

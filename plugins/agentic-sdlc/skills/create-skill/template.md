@@ -100,7 +100,7 @@ Instructions:
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 <!--
 Instructions:

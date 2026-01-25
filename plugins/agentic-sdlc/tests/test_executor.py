@@ -225,6 +225,7 @@ steps:
 
         mock_execute.assert_called()
 
+
 class TestWorkflowExecutorOutputs:
     """Tests for workflow output rendering."""
 

@@ -20,7 +20,7 @@ Add a structured log entry to the workflow's NDJSON log file. Use this skill for
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 

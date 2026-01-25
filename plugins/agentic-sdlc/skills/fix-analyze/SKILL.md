@@ -20,7 +20,7 @@ Iteratively fix issues identified in an analysis document. This skill reads the 
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 

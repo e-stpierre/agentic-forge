@@ -19,7 +19,7 @@ Validate the implementation against the plan and quality standards. This skill r
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 

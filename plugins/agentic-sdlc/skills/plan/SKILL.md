@@ -21,7 +21,7 @@ Create a structured implementation plan for the given task. This skill analyzes 
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 

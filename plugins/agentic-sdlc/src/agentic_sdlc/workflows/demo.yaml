@@ -126,7 +126,7 @@ steps:
 
   - name: git-commit
     type: prompt
-    prompt: /git-commit --message "demo: add demo files with random facts"
+    prompt: /git-commit --message "[Demo] Add demo files with random facts"
 
   - name: completion
     type: prompt

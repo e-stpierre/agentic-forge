@@ -20,7 +20,7 @@ Create a new Claude Code skill following the established guidelines and best pra
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 

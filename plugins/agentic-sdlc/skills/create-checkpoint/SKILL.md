@@ -20,7 +20,7 @@ Record progress and provide context for future sessions or other agents. Use thi
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 

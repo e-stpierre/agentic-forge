@@ -20,7 +20,7 @@ Create and checkout a new git branch following the naming convention: `<category
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 
