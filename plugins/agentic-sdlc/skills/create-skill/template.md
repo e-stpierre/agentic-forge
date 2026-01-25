@@ -40,16 +40,25 @@ Claude Code Specific Fields:
 | hooks                    | No       | Hooks scoped to this skill's lifecycle.                                                     |
 
 ARGUMENT-HINT CONVENTIONS:
-- Use `<arg>` for required arguments (angle brackets)
-- Use `[arg]` for optional arguments (square brackets)
-- Use `--flag` for boolean flags
+- Use `<arg>` for required positional arguments (angle brackets)
+- Use `[arg]` for optional positional arguments (square brackets)
+- Use `[--flag]` for boolean flags (always optional - flags toggle behavior)
 - Use `[arg...]` for variadic arguments (accepts multiple values)
 - The `[context]` argument must ALWAYS come last when present
 - Examples:
   - `<context>` - required context only
   - `[type] <context>` - optional type, required context
   - `[paths...] [context]` - optional paths, optional context
-  - `<context> [--verbose]` - required context with optional flag
+  - `[--verbose] <context>` - boolean flag, required context
+
+ARGUMENT-HINT VALIDATION RULES:
+- Flags MUST be boolean-only (presence/absence toggles)
+- NEVER use `--flag <value>` pattern - flags do not take values
+- For named values, use positional arguments with descriptive names
+- Wrong: `--level <level> --step <name>` (flags with values)
+- Correct: `<level> <step>` (positional arguments)
+- Wrong: `--type critical` (flag taking a value)
+- Correct: `<type>` with valid values documented in Definitions
 
 DYNAMIC CONTEXT INJECTION:
 - Use `!`command`` syntax to run shell commands before skill content is sent to Claude.

@@ -176,7 +176,7 @@ See the type-specific reference file for guidance on what to include.
 
 ### Markdown Report Template
 
-Save to `agentic/analysis/{{type}}.md`:
+Save to `agentic/analysis/<type>.md`:
 
 ```markdown
 # {{type_title}} Analysis Report

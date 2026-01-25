@@ -1,7 +1,7 @@
 ---
 name: create-log
 description: Add a log entry to the workflow log
-argument-hint: --level <level> --step <name> <message>
+argument-hint: <level> <step> <message>
 ---
 
 # Create Log
@@ -14,9 +14,9 @@ Add a structured log entry to the workflow's NDJSON log file. Use this skill for
 
 ### Definitions
 
-- **`--level`** (required): Log level - Critical | Error | Warning | Information
-- **`--step`** (required): Step name for context (e.g., build, validate)
-- **`<message>`** (required): Log message
+- **`<level>`** (required): Log level. Values: `Critical`, `Error`, `Warning`, `Information`.
+- **`<step>`** (required): Step name for context (e.g., build, validate).
+- **`<message>`** (required): Log message.
 
 ### Values
 

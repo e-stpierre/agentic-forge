@@ -1,7 +1,7 @@
 ---
 name: create-checkpoint
 description: Create a checkpoint to track progress and share context
-argument-hint: --step <name> --status <status> <context>
+argument-hint: <step> <status> <context>
 ---
 
 # Create Checkpoint
@@ -14,9 +14,9 @@ Record progress and provide context for future sessions or other agents. Use thi
 
 ### Definitions
 
-- **`--step`** (required): Current step name (e.g., build, validate)
-- **`--status`** (required): Checkpoint status - in_progress | completed
-- **`<context>`** (required): Summary of current situation and progress
+- **`<step>`** (required): Current step name (e.g., build, validate).
+- **`<status>`** (required): Checkpoint status. Values: `in_progress`, `completed`.
+- **`<context>`** (required): Summary of current situation and progress.
 
 ### Values
 

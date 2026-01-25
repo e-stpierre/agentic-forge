@@ -58,18 +58,19 @@ The `SKILL.md` file is required. Supporting files are optional and should be ref
 
 ### Argument-Hint Conventions
 
-- Use `<arg>` for required arguments (angle brackets)
-- Use `[arg]` for optional arguments (square brackets)
-- Use `--flag` for boolean flags
+- Use `<arg>` for required positional arguments (angle brackets)
+- Use `[arg]` for optional positional arguments (square brackets)
+- Use `[--flag]` for boolean flags (always optional - flags toggle behavior)
 - Use `[arg...]` for variadic arguments
 - The `[context]` argument must ALWAYS come last when present
+- Flags MUST be boolean-only - NEVER use `--flag <value>` pattern
 
 Examples:
 
 - `<context>` - required context only
 - `[type] <context>` - optional type, required context
 - `[paths...] [context]` - optional paths, optional context
-- `--verbose [context]` - optional flag, optional context
+- `[--verbose] <context>` - boolean flag, required context
 
 ### When to Use Invocation Controls
 

@@ -1,7 +1,7 @@
 ---
 name: fix-analyze
 description: Fix issues from an analysis document iteratively
-argument-hint: --type <analysis_type> --severity <level> [context]
+argument-hint: <type> <severity> [context]
 ---
 
 # Fix Analysis Issues
@@ -14,9 +14,9 @@ Iteratively fix issues identified in an analysis document. This skill reads the 
 
 ### Definitions
 
-- **`--type`** (required): Analysis type - bug, debt, doc, security, or style
-- **`--severity`** (required): Minimum severity to fix - minor, major, or critical
-- **`[context]`** (optional): Additional context or constraints for the fixes
+- **`<type>`** (required): Analysis type. Values: `bug`, `debt`, `doc`, `security`, `style`.
+- **`<severity>`** (required): Minimum severity to fix. Values: `minor`, `major`, `critical`.
+- **`[context]`** (optional): Additional context or constraints for the fixes.
 
 ### Values
 
