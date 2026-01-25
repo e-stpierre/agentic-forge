@@ -122,10 +122,12 @@ steps:
 
   - name: git-branch
     type: prompt
+    model: haiku
     prompt: /agentic-sdlc:git-branch demo random-facts
 
   - name: git-commit
     type: prompt
+    model: haiku
     prompt: /agentic-sdlc:git-commit "[Demo] Add demo files with random facts"
 
   - name: completion

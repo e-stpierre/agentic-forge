@@ -36,7 +36,6 @@ steps:
       - Make necessary changes following project conventions
       - Write tests for new functionality
       - Commit changes with clear messages
-    model: sonnet
 
   - name: review
     type: prompt

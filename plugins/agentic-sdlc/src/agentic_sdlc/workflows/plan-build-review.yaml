@@ -44,58 +44,100 @@ steps:
     prompt: /agentic-sdlc:plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.explore_agents }} {{ variables.task }}
     checkpoint: true
 
-  - name: review
+  - name: create-branch
     type: prompt
     prompt: /agentic-sdlc:git-branch {{ variables.type }}
 
   - name: implement
     type: ralph-loop
     prompt: |
-      Read the plan at agentic/outputs/{{ workflow_id }}/plan.md and implement the next incomplete milestone.
+      ## Implementation Loop - Iteration {{iteration}}/{{max_iterations}}
 
-      For each milestone:
-      1. Implement all tasks in the milestone
-      2. Run tests to verify your changes
-      3. use the /agentic-sdlc:git-commit skill to commit your changes with a descriptive message
+      You are in an iterative implementation loop. Each iteration starts a fresh session.
+
+      ## Your Task This Iteration
+      Read the plan at agentic/outputs/{{ workflow_id }}/plan.md and implement the NEXT INCOMPLETE milestone.
+
+      ## How Iterations Work
+      - Each iteration is a FRESH SESSION - you have no memory of previous iterations
+      - Work on exactly ONE milestone per iteration, then STOP
+      - The loop automatically starts a new iteration after you stop
+      - You do NOT need to output anything special to end an iteration - just stop working
+
+      ## Instructions for This Iteration
+      1. Read the plan file to find the next incomplete milestone
+      2. Implement all tasks within that single milestone
+      3. Run tests to verify your changes
       4. Mark the milestone as complete in the plan file
+      5. Use /agentic-sdlc:git-commit to commit your changes (including the plan.md if not gitignored)
+      6. STOP - do not continue to the next milestone
 
+      ## Completion Signal
       When ALL milestones are marked complete in the plan, output:
       ```json
       {"ralph_complete": true, "promise": "ALL_MILESTONES_COMPLETE"}
       ```
 
-      Do NOT output the completion JSON until every milestone is genuinely finished.
+      **IMPORTANT**:
+      - Only output the completion JSON when ALL milestones are genuinely finished and every validation completed successfully
+      - Complete ONE milestone per iteration, then STOP
+      - Do NOT try to implement multiple milestones in a single iteration
     max-iterations: 10
     completion-promise: "ALL_MILESTONES_COMPLETE"
-    model: sonnet
     checkpoint: true
 
   - name: review
     type: prompt
     prompt: /agentic-sdlc:review "agentic/outputs/{{ workflow_id }}/plan.md" minor
+    agent: agents/reviewer.md
 
   - name: fix-issues
-    type: conditional
-    condition: "outputs.review.issues | selectattr('severity', 'ge', variables.fix_severity) | list | length > 0"
-    then:
-      - name: apply-fixes
-        type: prompt
-        prompt: |
-          Review the validation results and fix all issues with severity {{ variables.fix_severity }} or higher.
+    type: prompt
+    prompt: |
+      ## Fix Review Issues
 
-          Review output:
-          {{ outputs.review | tojson }}
+      Read the plan file at `agentic/outputs/{{ workflow_id }}/plan.md` and locate the `## Review` section.
 
-          Make the necessary fixes and commit them.
-        agent: agents/reviewer.md
+      ### Task
 
-      - name: re-review
-        type: prompt
-        prompt: /agentic-sdlc:review "" {{ variables.fix_severity }}
+      1. **Parse the Review section** to identify all issues from the Issues table
+      2. **Filter by severity**: Only consider issues with severity `{{ variables.fix_severity }}` or higher
+         - Severity order: minor < major < critical
+      3. **If no issues** at or above `{{ variables.fix_severity }}` severity exist:
+         - Output success and end the session
+         - Return: `{"success": true, "issues_fixed": 0, "issues_remaining": 0}`
+      4. **If issues exist**, attempt to fix each one:
+         - For each issue, make the necessary code changes
+         - Run relevant checks (tests, lint, types, build) to verify the fix
+         - Track which issues were fixed and which could not be fixed
+      5. **After attempting fixes**:
+         - Use /agentic-sdlc:git-commit to commit all fixes
+         - Re-run /agentic-sdlc:review to update the Review section
+
+      ### Critical Requirement
+
+      After fixing, if ANY `major` or `critical` issues remain unfixed, you MUST:
+      - Output an error indicating which issues could not be fixed
+      - Return: `{"success": false, "error": "Unfixable issues remain", "issues_remaining": [...]}`
+
+      This will prevent the workflow from proceeding to the PR step.
+
+      ### Output
+
+      Return JSON with fix results:
+      ```json
+      {
+        "success": {{success}},
+        "issues_fixed": {{count}},
+        "issues_remaining": {{count}},
+        "unfixed_issues": [{{unfixed_issues_if_any}}],
+        "error": "{{error_message_if_failed}}"
+      }
+      ```
 
   - name: create-pr
     type: conditional
-    condition: "variables.create_pr"
+    condition: "variables.create_pr and (outputs.fix_issues.success | default(true))"
     then:
       - name: open-pr
         type: prompt
