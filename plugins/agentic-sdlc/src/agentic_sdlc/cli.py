@@ -8,20 +8,19 @@ from typing import TYPE_CHECKING
 
 # Import command handlers from extracted modules
 from agentic_sdlc.commands import (
-    cmd_analyze,
     cmd_cancel,
     cmd_config,
     cmd_configure,
     cmd_init,
     cmd_input,
     cmd_list,
-    cmd_oneshot,
     cmd_release_notes,
     cmd_resume,
     cmd_run,
     cmd_status,
     cmd_update,
     cmd_version,
+    cmd_workflows,
 )
 
 if TYPE_CHECKING:
@@ -121,39 +120,6 @@ def main() -> None:
     config_set.add_argument("key", help="Configuration key (dot notation)")
     config_set.add_argument("value", help="Value to set")
 
-    # one-shot convenience command
-    oneshot_parser = subparsers.add_parser("one-shot", help="Execute a single task end-to-end")
-    oneshot_parser.add_argument("prompt", help="Task description")
-    oneshot_parser.add_argument("--git", action="store_true", help="Enable git integration")
-    oneshot_parser.add_argument("--pr", action="store_true", help="Create PR on completion")
-    oneshot_parser.add_argument(
-        "--terminal-output",
-        choices=["base", "all"],
-        default="base",
-        help="Terminal output granularity",
-    )
-
-    # analyze convenience command
-    analyze_parser = subparsers.add_parser("analyze", help="Analyze codebase")
-    analyze_parser.add_argument(
-        "--type",
-        choices=["bug", "debt", "doc", "security", "style", "all"],
-        default="all",
-        help="Analysis type",
-    )
-    analyze_parser.add_argument(
-        "--autofix",
-        choices=["none", "minor", "major", "critical"],
-        default="none",
-        help="Auto-fix severity level",
-    )
-    analyze_parser.add_argument(
-        "--terminal-output",
-        choices=["base", "all"],
-        default="base",
-        help="Terminal output granularity",
-    )
-
     # version command
     subparsers.add_parser("version", help="Show version information")
 
@@ -176,6 +142,15 @@ def main() -> None:
         "--check",
         action="store_true",
         help="Check for updates without installing",
+    )
+
+    # workflows command
+    workflows_parser = subparsers.add_parser("workflows", help="List available workflows with descriptions")
+    workflows_parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show workflow variables and full descriptions",
     )
 
     args = parser.parse_args()
@@ -204,16 +179,14 @@ def main() -> None:
         cmd_init(args)
     elif args.command == "config":
         cmd_config(args)
-    elif args.command == "one-shot":
-        cmd_oneshot(args)
-    elif args.command == "analyze":
-        cmd_analyze(args)
     elif args.command == "version":
         cmd_version(args)
     elif args.command == "release-notes":
         cmd_release_notes(args)
     elif args.command == "update":
         cmd_update(args)
+    elif args.command == "workflows":
+        cmd_workflows(args)
     else:
         parser.print_help()
         sys.exit(1)

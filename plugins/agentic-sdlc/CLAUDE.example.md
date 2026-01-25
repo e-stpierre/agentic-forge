@@ -29,7 +29,6 @@ When working in a workflow context, always:
 ### Planning
 
 - `/plan` - Create implementation plans for tasks
-- `/build` - Implement changes following a plan
 - `/validate` - Run validation checks
 
 ### Analysis

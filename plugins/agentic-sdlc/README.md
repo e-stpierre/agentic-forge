@@ -7,8 +7,8 @@ Agentic SDLC enables Claude Code to execute complex, multi-step tasks autonomous
 Execute complete development workflows from planning through implementation to validation, with support for parallel execution, conditional logic, and iterative refinement.
 
 - `/plan Add user profile with avatar upload` - Generate implementation plan
-- `/build --plan plan.md` - Implement the plan
 - `/validate` - Run validation checks
+- `/analyze-security` - Scan for security vulnerabilities
 - `agentic-sdlc run plan-build-validate.yaml --var "task=Add feature"` - Run complete workflow
 
 ### Key Features
@@ -29,12 +29,11 @@ Execute complete development workflows from planning through implementation to v
 
 ## Commands
 
-### Planning and Implementation (`commands/`)
+### Planning and Validation (`commands/`)
 
 | Command            | Description                                                 |
 | ------------------ | ----------------------------------------------------------- |
 | `/plan`            | Create an implementation plan for a task                    |
-| `/build`           | Implement changes following a plan                          |
 | `/validate`        | Validate implementation against plan and quality standards  |
 | `/orchestrate`     | Evaluate workflow state and determine next action           |
 | `/add-improvement` | Add a new improvement to the improvements tracking document |
@@ -70,6 +69,7 @@ Execute complete development workflows from planning through implementation to v
 | ------------------- | ------------------------------------------------------- |
 | `create-checkpoint` | Create a checkpoint to track progress and share context |
 | `create-log`        | Add a log entry to the workflow log                     |
+| `fix-analysis`      | Fix issues from an analysis document iteratively        |
 
 ## Installation
 
@@ -85,27 +85,23 @@ uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdl
 
 ### CLI Commands
 
-| Command                              | Description                                               |
-| ------------------------------------ | --------------------------------------------------------- |
-| `agentic-sdlc run <workflow.yaml>`   | Execute a workflow from YAML file                         |
-| `agentic-sdlc one-shot <task>`       | Complete a task end-to-end                                |
-| `agentic-sdlc analyze`               | Run codebase analysis (security, bugs, debt, style, docs) |
-| `agentic-sdlc init`                  | Copy bundled workflows locally for customization          |
-| `agentic-sdlc list`                  | Show workflow execution history                           |
-| `agentic-sdlc status <id>`           | Check workflow execution status                           |
-| `agentic-sdlc resume <id>`           | Resume a paused or failed workflow                        |
-| `agentic-sdlc input <id> <response>` | Provide human input for wait-for-human steps              |
-| `agentic-sdlc configure`             | Interactive configuration setup                           |
+| Command                              | Description                                      |
+| ------------------------------------ | ------------------------------------------------ |
+| `agentic-sdlc run <workflow.yaml>`   | Execute a workflow from YAML file                |
+| `agentic-sdlc workflows`             | List available workflows with descriptions       |
+| `agentic-sdlc init`                  | Copy bundled workflows locally for customization |
+| `agentic-sdlc list`                  | Show workflow execution history                  |
+| `agentic-sdlc status <id>`           | Check workflow execution status                  |
+| `agentic-sdlc resume <id>`           | Resume a paused or failed workflow               |
+| `agentic-sdlc input <id> <response>` | Provide human input for wait-for-human steps     |
+| `agentic-sdlc configure`             | Interactive configuration setup                  |
 
 ### CLI Options
 
-| Flag                   | Description                                       |
-| ---------------------- | ------------------------------------------------- |
-| `--var key=value`      | Set workflow variables                            |
-| `--git`                | Enable git operations                             |
-| `--pr`                 | Create pull request on completion                 |
-| `--type <type>`        | Analysis type (security, bugs, debt, style, docs) |
-| `--autofix <severity>` | Auto-fix issues at or above severity level        |
+| Flag              | Description            |
+| ----------------- | ---------------------- |
+| `--var key=value` | Set workflow variables |
+| `--verbose, -v`   | Show verbose output    |
 
 ## Configuration
 
@@ -202,27 +198,6 @@ agentic/
 
 # With output directory
 /plan --output_dir agentic/outputs/workflow-123 Add dark mode toggle
-```
-
-### /build
-
-**Arguments:**
-
-- `[plan]` - Path to plan document or plan JSON
-- `[milestone]` - Specific milestone to implement
-- `[context]` - Additional context or instructions
-
-**Examples:**
-
-```bash
-# Build from plan
-/build --plan agentic/outputs/workflow-123/plan.md
-
-# Build specific milestone
-/build --plan plan.md --milestone 2
-
-# Build with additional context
-/build --plan plan.md Focus on error handling first
 ```
 
 ### /validate
@@ -348,42 +323,26 @@ agentic-sdlc run plan-build-validate.yaml --var "task=Add user authentication"
 
 # Run with multiple variables
 agentic-sdlc run workflows/custom.yaml --var "task=Add feature" --var "priority=high"
+
+# Run one-shot workflow for quick task completion
+agentic-sdlc run one-shot.yaml --var "task=Fix null pointer in UserService"
+
+# Run analysis workflow
+agentic-sdlc run analyze-single.yaml --var "analysis_type=security" --var "autofix=major"
 ```
 
-### agentic-sdlc one-shot (Python CLI)
+### agentic-sdlc workflows (Python CLI)
 
 **Options:**
 
-- `<task>` - Task description (required)
-- `--git` - Enable git operations
-- `--pr` - Create pull request on completion
+- `--verbose, -v` - Show workflow variables and full descriptions
 
 **Examples:**
 
 ```bash
-# Quick task
-agentic-sdlc one-shot "Fix null pointer in UserService"
+# List all available workflows
+agentic-sdlc workflows
 
-# With git and PR
-agentic-sdlc one-shot "Add input validation to signup form" --git --pr
-```
-
-### agentic-sdlc analyze (Python CLI)
-
-**Options:**
-
-- `--type <type>` - Analysis type: security, bugs, debt, style, docs (default: all)
-- `--autofix <severity>` - Auto-fix issues at or above severity: minor, major, critical
-
-**Examples:**
-
-```bash
-# Run all analysis types
-agentic-sdlc analyze
-
-# Security analysis only
-agentic-sdlc analyze --type security
-
-# With auto-fix
-agentic-sdlc analyze --type style --autofix major
+# Show detailed information including variables
+agentic-sdlc workflows --verbose
 ```

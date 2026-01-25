@@ -59,30 +59,9 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  ## Task
-                  Fix issues from the bug analysis document.
+                  Use /fix-analysis --type bug --severity {{ variables.autofix }}
 
-                  ## Instructions
-                  1. Read the analysis document at agentic/analysis/bug.md
-                  2. If the document does not exist or has no unfixed issues, return the completion promise
-                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
-                  4. Navigate the code to understand the issue context
-                  5. Implement the fix
-                  6. Run build/lint commands and fix any errors
-                  7. Mark the issue as fixed in the analysis document
-                  8. Commit using git-commit with title starting with issue ID
-                  9. End this session (do NOT continue to next issue)
-
-                  ## Completion
-                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
-                  ```json
-                  {"ralph_complete": true, "promise": "BUG_FIXES_COMPLETE"}
-                  ```
-
-                  IMPORTANT:
-                  - Fix only ONE issue per iteration, then end session
-                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
-                  - Only return completion promise when genuinely done
+                  Return completion promise "BUG_FIXES_COMPLETE" when done.
 
           - name: create-bug-pr
             type: conditional
@@ -115,30 +94,9 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  ## Task
-                  Fix issues from the technical debt analysis document.
+                  Use /fix-analysis --type debt --severity {{ variables.autofix }}
 
-                  ## Instructions
-                  1. Read the analysis document at agentic/analysis/debt.md
-                  2. If the document does not exist or has no unfixed issues, return the completion promise
-                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
-                  4. Navigate the code to understand the issue context
-                  5. Implement the fix
-                  6. Run build/lint commands and fix any errors
-                  7. Mark the issue as fixed in the analysis document
-                  8. Commit using git-commit with title starting with issue ID
-                  9. End this session (do NOT continue to next issue)
-
-                  ## Completion
-                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
-                  ```json
-                  {"ralph_complete": true, "promise": "DEBT_FIXES_COMPLETE"}
-                  ```
-
-                  IMPORTANT:
-                  - Fix only ONE issue per iteration, then end session
-                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
-                  - Only return completion promise when genuinely done
+                  Return completion promise "DEBT_FIXES_COMPLETE" when done.
 
           - name: create-debt-pr
             type: conditional
@@ -171,30 +129,9 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  ## Task
-                  Fix issues from the documentation analysis document.
+                  Use /fix-analysis --type doc --severity {{ variables.autofix }}
 
-                  ## Instructions
-                  1. Read the analysis document at agentic/analysis/doc.md
-                  2. If the document does not exist or has no unfixed issues, return the completion promise
-                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
-                  4. Navigate the code to understand the issue context
-                  5. Implement the fix
-                  6. Run build/lint commands and fix any errors
-                  7. Mark the issue as fixed in the analysis document
-                  8. Commit using git-commit with title starting with issue ID
-                  9. End this session (do NOT continue to next issue)
-
-                  ## Completion
-                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
-                  ```json
-                  {"ralph_complete": true, "promise": "DOC_FIXES_COMPLETE"}
-                  ```
-
-                  IMPORTANT:
-                  - Fix only ONE issue per iteration, then end session
-                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
-                  - Only return completion promise when genuinely done
+                  Return completion promise "DOC_FIXES_COMPLETE" when done.
 
           - name: create-doc-pr
             type: conditional
@@ -227,30 +164,9 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  ## Task
-                  Fix issues from the security analysis document.
+                  Use /fix-analysis --type security --severity {{ variables.autofix }}
 
-                  ## Instructions
-                  1. Read the analysis document at agentic/analysis/security.md
-                  2. If the document does not exist or has no unfixed issues, return the completion promise
-                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
-                  4. Navigate the code to understand the issue context
-                  5. Implement the fix
-                  6. Run build/lint commands and fix any errors
-                  7. Mark the issue as fixed in the analysis document
-                  8. Commit using git-commit with title starting with issue ID
-                  9. End this session (do NOT continue to next issue)
-
-                  ## Completion
-                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
-                  ```json
-                  {"ralph_complete": true, "promise": "SECURITY_FIXES_COMPLETE"}
-                  ```
-
-                  IMPORTANT:
-                  - Fix only ONE issue per iteration, then end session
-                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
-                  - Only return completion promise when genuinely done
+                  Return completion promise "SECURITY_FIXES_COMPLETE" when done.
 
           - name: create-security-pr
             type: conditional
@@ -283,30 +199,9 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  ## Task
-                  Fix issues from the style analysis document.
+                  Use /fix-analysis --type style --severity {{ variables.autofix }}
 
-                  ## Instructions
-                  1. Read the analysis document at agentic/analysis/style.md
-                  2. If the document does not exist or has no unfixed issues, return the completion promise
-                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
-                  4. Navigate the code to understand the issue context
-                  5. Implement the fix
-                  6. Run build/lint commands and fix any errors
-                  7. Mark the issue as fixed in the analysis document
-                  8. Commit using git-commit with title starting with issue ID
-                  9. End this session (do NOT continue to next issue)
-
-                  ## Completion
-                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
-                  ```json
-                  {"ralph_complete": true, "promise": "STYLE_FIXES_COMPLETE"}
-                  ```
-
-                  IMPORTANT:
-                  - Fix only ONE issue per iteration, then end session
-                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
-                  - Only return completion promise when genuinely done
+                  Return completion promise "STYLE_FIXES_COMPLETE" when done.
 
           - name: create-style-pr
             type: conditional

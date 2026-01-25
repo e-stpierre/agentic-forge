@@ -49,14 +49,14 @@ This will:
 ### CLI Commands
 
 ```bash
+# List available workflows
+agentic-sdlc workflows
+
 # Execute a one-shot task (quick task completion)
-agentic-sdlc one-shot "Fix the null pointer exception in UserService" --git --pr
+agentic-sdlc run one-shot.yaml --var "task=Fix the null pointer exception in UserService"
 
-# Run security analysis
-agentic-sdlc analyze --type security
-
-# List available bundled workflows
-agentic-sdlc init --list
+# Run security analysis workflow
+agentic-sdlc run analyze-single.yaml --var "analysis_type=security"
 
 # Check workflow status
 agentic-sdlc list
@@ -72,9 +72,6 @@ Inside a Claude Code session:
 ```bash
 # Generate an implementation plan
 /plan Add user profile page with avatar upload
-
-# Implement changes following a plan
-/build --plan agentic/outputs/abc123/plan.md
 
 # Run validation checks
 /validate
@@ -119,24 +116,24 @@ agentic-sdlc run plan-build-validate.yaml --var "task=Your feature description"
 ### Quick Task Completion
 
 ```bash
-agentic-sdlc one-shot "Your task description" --git --pr
+agentic-sdlc run one-shot.yaml --var "task=Your task description"
 ```
 
 ### Codebase Analysis
 
 ```bash
-# All analysis types in parallel
-agentic-sdlc analyze
+# Run all analysis types
+agentic-sdlc run analyze-codebase.yaml
 
-# Specific analysis type
-agentic-sdlc analyze --type security --autofix major
+# Specific analysis type with auto-fix
+agentic-sdlc run analyze-single.yaml --var "analysis_type=security" --var "autofix=major"
 ```
 
 ## Troubleshooting
 
 **Workflow not found?**
 
-- Use `agentic-sdlc init --list` to see available bundled workflows
+- Use `agentic-sdlc workflows` to see available workflows
 - Bundled workflows work without copying: `agentic-sdlc run plan-build-validate.yaml`
 
 **Need more verbose output?**
