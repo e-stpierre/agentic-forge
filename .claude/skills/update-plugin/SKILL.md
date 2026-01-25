@@ -3,7 +3,7 @@ name: update-plugin
 description: Update plugin versions based on changes from main branch
 ---
 
-# Update Plugin Version Command
+# Update Plugin Version
 
 ## Overview
 

@@ -4,7 +4,7 @@ description: Validate files against prompt reference guidelines
 argument-hint: [--autofix] [paths...]
 ---
 
-# Normalize Command
+# Normalize
 
 ## Overview
 
