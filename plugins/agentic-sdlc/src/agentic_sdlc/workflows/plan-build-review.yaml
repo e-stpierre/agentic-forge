@@ -41,7 +41,7 @@ variables:
 steps:
   - name: plan
     type: prompt
-    prompt: /agentic-sdlc:plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.explore_agents }} {{ variables.task }}
+    prompt: /agentic-sdlc:sdlc-plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.explore_agents }} {{ variables.task }}
     checkpoint: true
 
   - name: create-branch
@@ -88,7 +88,7 @@ steps:
 
   - name: review
     type: prompt
-    prompt: /agentic-sdlc:review "agentic/outputs/{{ workflow_id }}/plan.md" minor
+    prompt: /agentic-sdlc:sdlc-review "agentic/outputs/{{ workflow_id }}/plan.md" minor
     agent: agents/reviewer.md
 
   - name: fix-issues
@@ -112,7 +112,7 @@ steps:
          - Track which issues were fixed and which could not be fixed
       5. **After attempting fixes**:
          - Use /agentic-sdlc:git-commit to commit all fixes
-         - Re-run /agentic-sdlc:review to update the Review section
+         - Re-run /agentic-sdlc:sdlc-review to update the Review section
 
       ### Critical Requirement
 

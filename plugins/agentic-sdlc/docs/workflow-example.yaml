@@ -131,11 +131,11 @@ steps:
 
   # ==================== SKILL INVOCATION ====================
   # Invoke a Claude slash command skill
-  # IMPORTANT: Always use fully qualified skill names in workflows (e.g., /agentic-sdlc:plan)
+  # IMPORTANT: Always use fully qualified skill names in workflows (e.g., /agentic-sdlc:sdlc-plan)
   # to avoid conflicts with skills from other plugins or built-in commands.
   - name: generate-plan
     type: prompt
-    prompt: /agentic-sdlc:plan --type {{ variables.plan_type }} --output_dir "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
+    prompt: /agentic-sdlc:sdlc-plan --type {{ variables.plan_type }} --output_dir "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
     checkpoint: true
     timeout-minutes: 20
 
@@ -242,7 +242,7 @@ steps:
   # ==================== REVIEW STEP ====================
   - name: review-implementation
     type: prompt
-    prompt: /agentic-sdlc:review "agentic/outputs/{{ workflow_id }}/plan.md" minor
+    prompt: /agentic-sdlc:sdlc-review "agentic/outputs/{{ workflow_id }}/plan.md" minor
     checkpoint: true
 
   # ==================== CONDITIONAL STEP ====================
@@ -270,7 +270,7 @@ steps:
 
       - name: re-review
         type: prompt
-        prompt: /agentic-sdlc:review "" {{ variables.fix_severity }}
+        prompt: /agentic-sdlc:sdlc-review "" {{ variables.fix_severity }}
 
     # Steps to execute if condition is false
     else:
@@ -381,8 +381,8 @@ outputs:
 # Skills you can invoke via prompt steps:
 #
 # Planning & Review:
-#   - /agentic-sdlc:plan - Generate implementation plan
-#   - /agentic-sdlc:review - Review implementation quality
+#   - /agentic-sdlc:sdlc-plan - Generate implementation plan
+#   - /agentic-sdlc:sdlc-review - Review implementation quality
 #
 # Analysis:
 #   - /agentic-sdlc:analyze bug - Find bugs and logic errors

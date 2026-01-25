@@ -6,7 +6,7 @@ Agentic SDLC enables Claude Code to execute complex, multi-step tasks autonomous
 
 Execute complete development workflows from planning through implementation to validation, with support for parallel execution, conditional logic, and iterative refinement.
 
-- `/plan Add user profile with avatar upload` - Generate implementation plan
+- `/sdlc-plan Add user profile with avatar upload` - Generate implementation plan
 - `/analyze security` - Scan for security vulnerabilities
 - `agentic-sdlc run plan-build-review.yaml --var "task=Add feature"` - Run complete workflow
 
@@ -28,14 +28,14 @@ Execute complete development workflows from planning through implementation to v
 
 ## Skills
 
-> **Note for Workflow Authors:** When referencing skills in YAML workflow files, always use fully qualified names (e.g., `/agentic-sdlc:plan` instead of `/plan`) to ensure the correct skill is invoked and avoid conflicts with other plugins. See [WorkflowBuilder.md](docs/WorkflowBuilder.md#invoking-skills) for details.
+> **Note for Workflow Authors:** When referencing skills in YAML workflow files, always use fully qualified names (e.g., `/agentic-sdlc:sdlc-plan` instead of `/sdlc-plan`) to ensure the correct skill is invoked and avoid conflicts with other plugins. See [WorkflowBuilder.md](docs/WorkflowBuilder.md#invoking-skills) for details.
 
 ### Planning and Validation
 
 | Skill              | Description                                                 |
 | ------------------ | ----------------------------------------------------------- |
-| `/plan`            | Create an implementation plan for a task                    |
-| `/review`          | Review implementation against plan and quality standards    |
+| `/sdlc-plan`       | Create an implementation plan for a task                    |
+| `/sdlc-review`     | Review implementation against plan and quality standards    |
 | `/orchestrate`     | Evaluate workflow state and determine next action           |
 | `/add-improvement` | Add a new improvement to the improvements tracking document |
 
@@ -180,7 +180,7 @@ agentic/
 
 ## Complete Examples
 
-### /plan
+### /sdlc-plan
 
 **Arguments:**
 
@@ -193,16 +193,16 @@ agentic/
 
 ```bash
 # Auto-detect plan type
-/plan Add user authentication with OAuth support
+/sdlc-plan Add user authentication with OAuth support
 
 # Specify plan type
-/plan bug Fix null pointer exception in UserService
+/sdlc-plan bug Fix null pointer exception in UserService
 
 # With output directory
-/plan --output_dir agentic/outputs/workflow-123 Add dark mode toggle
+/sdlc-plan --output_dir agentic/outputs/workflow-123 Add dark mode toggle
 ```
 
-### /review
+### /sdlc-review
 
 **Arguments:**
 
@@ -213,13 +213,13 @@ agentic/
 
 ```bash
 # Basic validation
-/review
+/sdlc-review
 
 # Review against plan
-/review --plan agentic/outputs/workflow-123/plan.md
+/sdlc-review --plan agentic/outputs/workflow-123/plan.md
 
 # Only report major issues
-/review --severity major
+/sdlc-review --severity major
 ```
 
 ### /analyze

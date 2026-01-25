@@ -1,10 +1,10 @@
 ---
-name: review
+name: sdlc-review
 description: Review implementation quality and plan compliance
 argument-hint: [plan] [severity]
 ---
 
-# Review
+# SDLC Review
 
 ## Overview
 

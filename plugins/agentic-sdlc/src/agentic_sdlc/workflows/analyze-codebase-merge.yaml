@@ -266,7 +266,7 @@ steps:
 
   - name: review-merged-changes
     type: prompt
-    prompt: /agentic-sdlc:review "" {{ variables.fix_severity }}
+    prompt: /agentic-sdlc:sdlc-review "" {{ variables.fix_severity }}
 
   - name: fix-validation-issues
     type: conditional
@@ -311,7 +311,7 @@ steps:
 
       - name: re-review
         type: prompt
-        prompt: /agentic-sdlc:review "" {{ variables.fix_severity }}
+        prompt: /agentic-sdlc:sdlc-review "" {{ variables.fix_severity }}
 
   - name: create-pr
     type: conditional

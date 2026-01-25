@@ -186,16 +186,16 @@ Use prompt steps to invoke slash command skills:
 steps:
   - name: run-review
     type: prompt
-    prompt: /agentic-sdlc:review "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
+    prompt: /agentic-sdlc:sdlc-review "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
     checkpoint: true
 ```
 
-**Always use fully qualified skill names** (e.g., `/agentic-sdlc:plan` instead of `/plan`) in workflow YAML files. This ensures the correct skill is invoked, avoiding conflicts with skills from other plugins or built-in commands.
+**Always use fully qualified skill names** (e.g., `/agentic-sdlc:sdlc-plan` instead of `/sdlc-plan`) in workflow YAML files. This ensures the correct skill is invoked, avoiding conflicts with skills from other plugins or built-in commands.
 
 **Available Skills:**
 
-- `/agentic-sdlc:plan` - Generate implementation plan
-- `/agentic-sdlc:review` - Run review checks
+- `/agentic-sdlc:sdlc-plan` - Generate implementation plan
+- `/agentic-sdlc:sdlc-review` - Run review checks
 - `/agentic-sdlc:analyze bug` - Analyze for bugs
 - `/agentic-sdlc:analyze debt` - Find technical debt
 - `/agentic-sdlc:analyze doc` - Check documentation
@@ -224,7 +224,7 @@ steps:
 
       - name: step-3
         type: prompt
-        prompt: /agentic-sdlc:review
+        prompt: /agentic-sdlc:sdlc-review
 ```
 
 ### Parallel Step
@@ -486,7 +486,7 @@ steps:
 steps:
   - name: flaky-operation
     type: prompt
-    prompt: /agentic-sdlc:review
+    prompt: /agentic-sdlc:sdlc-review
     max-retry: 5 # Retry up to 5 times
     on-error: retry # retry, skip, or fail
     timeout-minutes: 10
@@ -521,7 +521,7 @@ Create checkpoints to track progress:
 steps:
   - name: critical-step
     type: prompt
-    prompt: /agentic-sdlc:plan {{ variables.task }}
+    prompt: /agentic-sdlc:sdlc-plan {{ variables.task }}
     checkpoint: true # Create checkpoint after success
 ```
 
@@ -567,12 +567,12 @@ Templates have access to:
 # Good
 - name: review-implementation
   type: prompt
-  prompt: /review
+  prompt: /sdlc-review
 
 # Avoid
 - name: step-1
   type: prompt
-  prompt: /review
+  prompt: /sdlc-review
 ```
 
 ### 2. Add Checkpoints for Long Workflows
@@ -581,7 +581,7 @@ Templates have access to:
 steps:
   - name: plan
     type: prompt
-    prompt: /plan {{ variables.task }}
+    prompt: /sdlc-plan {{ variables.task }}
     checkpoint: true # Can resume from here
 
   - name: implement

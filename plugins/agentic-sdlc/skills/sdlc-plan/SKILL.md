@@ -1,10 +1,10 @@
 ---
-name: plan
+name: sdlc-plan
 description: Create an implementation plan for a task
 argument-hint: <workflow-id> [type] [output_dir] [explore_agents] <context>
 ---
 
-# Plan
+# SDLC Plan
 
 ## Overview
 
