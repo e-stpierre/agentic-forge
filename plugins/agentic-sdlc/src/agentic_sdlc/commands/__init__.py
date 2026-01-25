@@ -9,6 +9,7 @@ from agentic_sdlc.commands.shortcuts import cmd_input
 from agentic_sdlc.commands.status import cmd_cancel, cmd_list, cmd_status
 from agentic_sdlc.commands.update import cmd_update
 from agentic_sdlc.commands.version import cmd_version
+from agentic_sdlc.commands.workflows import cmd_workflows
 
 __all__ = [
     "cmd_run",
@@ -23,4 +24,5 @@ __all__ = [
     "cmd_version",
     "cmd_release_notes",
     "cmd_update",
+    "cmd_workflows",
 ]

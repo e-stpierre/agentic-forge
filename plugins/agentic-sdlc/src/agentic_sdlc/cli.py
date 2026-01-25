@@ -20,6 +20,7 @@ from agentic_sdlc.commands import (
     cmd_status,
     cmd_update,
     cmd_version,
+    cmd_workflows,
 )
 
 if TYPE_CHECKING:
@@ -143,6 +144,14 @@ def main() -> None:
         help="Check for updates without installing",
     )
 
+    # workflows command
+    workflows_parser = subparsers.add_parser("workflows", help="List available workflows with descriptions")
+    workflows_parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Show workflow variables and full descriptions",
+    )
+
     args = parser.parse_args()
 
     # Handle --version flag
@@ -175,6 +184,8 @@ def main() -> None:
         cmd_release_notes(args)
     elif args.command == "update":
         cmd_update(args)
+    elif args.command == "workflows":
+        cmd_workflows(args)
     else:
         parser.print_help()
         sys.exit(1)
