@@ -3,7 +3,7 @@ name: orchestrate
 description: Evaluate workflow state and determine next action
 ---
 
-# Orchestrator Command
+# Orchestrate
 
 ## Overview
 
@@ -17,7 +17,7 @@ You are the workflow orchestrator. Your job is to evaluate the current workflow 
 - Handle errors gracefully: if last step failed but retries remain, return `retry_step`
 - Always provide clear reasoning for decisions
 
-## Command-Specific Guidelines
+## Skill-Specific Guidelines
 
 ### Condition Evaluation
 
@@ -96,45 +96,25 @@ Return ONLY a valid JSON object in this exact format:
 
 ```json
 {
-  "workflow_status": "in_progress | completed | failed | blocked",
+  "workflow_status": "{{status}}",
   "next_action": {
-    "type": "execute_step | retry_step | wait_for_human | complete | abort",
-    "step_name": "name of step to execute (if applicable)",
-    "context_to_pass": "context string for the step",
-    "error_context": "error details for retry (if retrying)"
+    "type": "{{action_type}}",
+    "step_name": "{{step_name}}",
+    "context_to_pass": "{{context}}",
+    "error_context": "{{error_context}}"
   },
-  "reasoning": "Brief explanation of why this decision was made",
-  "progress_update": "What to record in progress document"
+  "reasoning": "{{reasoning}}",
+  "progress_update": "{{progress_update}}"
 }
 ```
 
----
-
-## Workflow Definition
-
-```yaml
-{ { workflow_yaml } }
-```
-
-## Current Progress
-
-```json
-{{ progress_json }}
-```
-
-{% if last_step_output %}
-
-## Last Step Output
-
-Step: {{ last_step_name }}
-Output:
-
-```
-{{ last_step_output }}
-```
-
-{% endif %}
-
----
-
-Analyze the workflow state and provide your JSON response:
+<!--
+Placeholders:
+- {{status}}: One of in_progress, completed, failed, blocked
+- {{action_type}}: One of execute_step, retry_step, wait_for_human, complete, abort
+- {{step_name}}: Name of step to execute (if applicable, omit otherwise)
+- {{context}}: Context string for the step (if applicable, omit otherwise)
+- {{error_context}}: Error details for retry (if retrying, omit otherwise)
+- {{reasoning}}: Brief explanation of why this decision was made
+- {{progress_update}}: What to record in progress document
+-->

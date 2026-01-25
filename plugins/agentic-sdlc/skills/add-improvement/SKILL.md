@@ -8,7 +8,7 @@ argument-hint: [--explore] <context>
 
 ## Overview
 
-Add a new improvement entry to the improvements tracking document. This command creates a structured improvement record with a unique ID, progress tracking checkbox, and detailed description section.
+Add a new improvement entry to the improvements tracking document. This skill creates a structured improvement record with a unique ID, progress tracking checkbox, and detailed description section.
 
 ## Arguments
 
@@ -89,13 +89,22 @@ Return a JSON object summarizing the action taken:
 ```json
 {
   "success": true,
-  "improvement_id": "IMP-007",
-  "title": "Short descriptive title",
-  "document_path": "agentic/improvements.md",
-  "explored_codebase": false,
-  "files_identified": []
+  "improvement_id": "{{improvement_id}}",
+  "title": "{{title}}",
+  "document_path": "{{document_path}}",
+  "explored_codebase": "{{explored}}",
+  "files_identified": ["{{files_array}}"]
 }
 ```
+
+<!--
+Placeholders:
+- {{improvement_id}}: Generated ID (e.g., IMP-007, SEC-003)
+- {{title}}: Short descriptive title of the improvement
+- {{document_path}}: Path to the improvements document
+- {{explored}}: Boolean indicating if codebase exploration was performed
+- {{files_array}}: Array of file paths identified during exploration (empty if not explored)
+-->
 
 ## Templates
 
@@ -147,16 +156,12 @@ List the details of every improvement request, 100 lines maximum per item.
 - [ ] Second measurable criterion
 ```
 
----
-
-## Improvement Context
-
-{{ context }}
-
-{% if explore_codebase %}
-**Codebase Exploration**: Enabled - analyze codebase for additional context.
-{% endif %}
-
----
-
-Add the improvement to the tracking document and return JSON output.
+<!--
+Template placeholders:
+- ID: The generated improvement ID (e.g., IMP-007)
+- Short descriptive title: Brief title describing the improvement
+- Problem description: What issue needs to be addressed
+- Files to Investigate: Relevant files (discovered via exploration or provided in context)
+- Expected Behavior / Goal: Desired outcome
+- Acceptance Criteria: Measurable completion criteria
+-->

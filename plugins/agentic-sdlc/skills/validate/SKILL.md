@@ -4,11 +4,11 @@ description: Validate implementation against plan and quality standards
 argument-hint: [plan] [severity]
 ---
 
-# Validate Command
+# Validate
 
 ## Overview
 
-Validate the implementation against the plan and quality standards. This command runs tests, checks code quality, verifies plan compliance, and ensures the build succeeds before proceeding.
+Validate the implementation against the plan and quality standards. This skill runs tests, checks code quality, verifies plan compliance, and ensures the build succeeds before proceeding.
 
 ## Arguments
 
@@ -58,53 +58,62 @@ Return JSON with validation details:
   "checks": {
     "plan_compliance": {
       "passed": true,
-      "milestones_complete": 3,
-      "milestones_total": 3
+      "milestones_complete": "{{milestones_complete}}",
+      "milestones_total": "{{milestones_total}}"
     },
     "tests": {
       "passed": true,
-      "total": 45,
-      "passing": 45,
-      "failing": 0,
-      "coverage": 82.5
+      "total": "{{tests_total}}",
+      "passing": "{{tests_passing}}",
+      "failing": "{{tests_failing}}",
+      "coverage": "{{coverage_percent}}"
     },
     "lint": {
       "passed": true,
-      "errors": 0,
-      "warnings": 2
+      "errors": "{{lint_errors}}",
+      "warnings": "{{lint_warnings}}"
     },
     "types": {
       "passed": true,
-      "errors": 0
+      "errors": "{{type_errors}}"
     },
     "build": {
       "passed": true
     }
   },
-  "issues": [
-    {
-      "severity": "minor",
-      "category": "lint",
-      "message": "Unused import in auth.ts",
-      "file": "src/auth.ts",
-      "line": 5
-    }
-  ],
-  "summary": "Validation passed with 2 minor warnings"
+  "issues": ["{{issues_array}}"],
+  "summary": "{{summary}}"
 }
 ```
 
----
+<!--
+Placeholders:
+- {{milestones_complete}}, {{milestones_total}}: Integer counts for plan compliance
+- {{tests_total}}, {{tests_passing}}, {{tests_failing}}: Integer counts for test results
+- {{coverage_percent}}: Code coverage percentage (e.g., 82.5)
+- {{lint_errors}}, {{lint_warnings}}: Integer counts for lint results
+- {{type_errors}}: Integer count for type check errors
+- {{issues_array}}: Array of issue objects with severity, category, message, file, line
+- {{summary}}: Human-readable summary of validation results
+-->
 
-{% if plan %}
+### Issue Schema
 
-## Plan Reference
+```json
+{
+  "severity": "{{severity}}",
+  "category": "{{category}}",
+  "message": "{{message}}",
+  "file": "{{file}}",
+  "line": "{{line}}"
+}
+```
 
-{{ plan }}
-{% endif %}
-
-Severity Threshold: {{ severity }}
-
----
-
-Run validation checks and return JSON output.
+<!--
+Placeholders:
+- {{severity}}: One of minor, major, critical
+- {{category}}: Check category (tests, lint, types, build, plan_compliance)
+- {{message}}: Description of the issue
+- {{file}}: Path to the affected file
+- {{line}}: Line number where issue occurs
+-->
