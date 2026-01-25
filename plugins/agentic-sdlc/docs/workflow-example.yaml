@@ -131,9 +131,11 @@ steps:
 
   # ==================== SKILL INVOCATION ====================
   # Invoke a Claude slash command skill
+  # IMPORTANT: Always use fully qualified skill names in workflows (e.g., /agentic-sdlc:plan)
+  # to avoid conflicts with skills from other plugins or built-in commands.
   - name: generate-plan
     type: prompt
-    prompt: /plan --type {{ variables.plan_type }} --output_dir "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
+    prompt: /agentic-sdlc:plan --type {{ variables.plan_type }} --output_dir "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
     checkpoint: true
     timeout-minutes: 20
 
@@ -177,22 +179,22 @@ steps:
     steps:
       - name: security-scan
         type: prompt
-        prompt: /analyze security
+        prompt: /agentic-sdlc:analyze security
         on-error: skip # Don't fail workflow if security scan fails
 
       - name: style-check
         type: prompt
-        prompt: /analyze style
+        prompt: /agentic-sdlc:analyze style
         on-error: skip
 
       - name: bug-detection
         type: prompt
-        prompt: /analyze bug
+        prompt: /agentic-sdlc:analyze bug
         on-error: skip
 
       - name: debt-analysis
         type: prompt
-        prompt: /analyze debt
+        prompt: /agentic-sdlc:analyze debt
         on-error: skip
 
   # ==================== RALPH LOOP STEP ====================
@@ -240,7 +242,7 @@ steps:
   # ==================== REVIEW STEP ====================
   - name: review-implementation
     type: prompt
-    prompt: /review "agentic/outputs/{{ workflow_id }}/plan.md" minor
+    prompt: /agentic-sdlc:review "agentic/outputs/{{ workflow_id }}/plan.md" minor
     checkpoint: true
 
   # ==================== CONDITIONAL STEP ====================
@@ -268,7 +270,7 @@ steps:
 
       - name: re-review
         type: prompt
-        prompt: /review "" {{ variables.fix_severity }}
+        prompt: /agentic-sdlc:review "" {{ variables.fix_severity }}
 
     # Steps to execute if condition is false
     else:
@@ -310,7 +312,7 @@ steps:
     then:
       - name: open-pr
         type: prompt
-        prompt: /git-pr --title "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}"
+        prompt: /agentic-sdlc:git-pr --title "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}"
 
   # ==================== FINAL SUMMARY ====================
   - name: generate-summary
@@ -373,27 +375,30 @@ outputs:
 #
 # ==================== AVAILABLE SKILLS ====================
 #
+# IMPORTANT: Always use fully qualified skill names in workflows to avoid conflicts
+# with skills from other plugins or built-in commands.
+#
 # Skills you can invoke via prompt steps:
 #
 # Planning & Review:
-#   - /plan - Generate implementation plan
-#   - /review - Review implementation quality
+#   - /agentic-sdlc:plan - Generate implementation plan
+#   - /agentic-sdlc:review - Review implementation quality
 #
 # Analysis:
-#   - /analyze bug - Find bugs and logic errors
-#   - /analyze debt - Identify technical debt
-#   - /analyze doc - Check documentation
-#   - /analyze security - Security scan
-#   - /analyze style - Code style check
+#   - /agentic-sdlc:analyze bug - Find bugs and logic errors
+#   - /agentic-sdlc:analyze debt - Identify technical debt
+#   - /agentic-sdlc:analyze doc - Check documentation
+#   - /agentic-sdlc:analyze security - Security scan
+#   - /agentic-sdlc:analyze style - Code style check
 #
 # Git Operations:
-#   - /git-branch - Create git branch
-#   - /git-commit - Create commit
-#   - /git-pr - Create pull request
+#   - /agentic-sdlc:git-branch - Create git branch
+#   - /agentic-sdlc:git-commit - Create commit
+#   - /agentic-sdlc:git-pr - Create pull request
 #
 # Workflow Support:
-#   - /orchestrate - Workflow state evaluation
-#   - /add-improvement - Track improvements
+#   - /agentic-sdlc:orchestrate - Workflow state evaluation
+#   - /agentic-sdlc:add-improvement - Track improvements
 #
 # ==================== BUILT-IN VARIABLES ====================
 #

@@ -36,7 +36,7 @@ variables:
 steps:
   - name: plan
     type: prompt
-    prompt: /plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
+    prompt: /agentic-sdlc:plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
     checkpoint: true
 
   - name: implement
@@ -63,7 +63,7 @@ steps:
 
   - name: review
     type: prompt
-    prompt: /review "agentic/outputs/{{ workflow_id }}/plan.md" minor
+    prompt: /agentic-sdlc:review "agentic/outputs/{{ workflow_id }}/plan.md" minor
 
   - name: fix-issues
     type: conditional
@@ -82,7 +82,7 @@ steps:
 
       - name: re-review
         type: prompt
-        prompt: /review "" {{ variables.fix_severity }}
+        prompt: /agentic-sdlc:review "" {{ variables.fix_severity }}
 
   - name: create-pr
     type: conditional
@@ -90,7 +90,7 @@ steps:
     then:
       - name: open-pr
         type: prompt
-        prompt: /git-pr "{{ outputs.plan.summary }}"
+        prompt: /agentic-sdlc:git-pr "{{ outputs.plan.summary }}"
 
 outputs:
   - name: implementation-report

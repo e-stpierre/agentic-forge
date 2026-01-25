@@ -32,7 +32,7 @@ variables:
 steps:
   - name: run-analysis
     type: prompt
-    prompt: /analyze {{ variables.analysis_type }} {{ variables.paths }}
+    prompt: /agentic-sdlc:analyze {{ variables.analysis_type }} {{ variables.paths }}
 
   - name: check-autofix
     type: conditional
@@ -45,7 +45,7 @@ steps:
         model: sonnet
         timeout-minutes: 30
         prompt: |
-          Use /fix-analyze {{ variables.analysis_type }} {{ variables.autofix }}
+          Use /agentic-sdlc:fix-analyze {{ variables.analysis_type }} {{ variables.autofix }}
 
           Return completion promise "ANALYSIS_FIXES_COMPLETE" when done.
 

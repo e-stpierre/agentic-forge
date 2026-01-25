@@ -44,7 +44,7 @@ steps:
         steps:
           - name: analyze-bug
             type: prompt
-            prompt: /analyze bug {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze bug {{ variables.paths }}
 
           - name: fix-bug
             type: conditional
@@ -57,7 +57,7 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  Use /fix-analyze bug {{ variables.autofix }}
+                  Use /agentic-sdlc:fix-analyze bug {{ variables.autofix }}
 
                   Return completion promise "BUG_FIXES_COMPLETE" when done.
 
@@ -67,14 +67,14 @@ steps:
             then:
               - name: open-bug-pr
                 type: prompt
-                prompt: /git-pr "[Analysis] Bug analysis and fixes"
+                prompt: /agentic-sdlc:git-pr "[Analysis] Bug analysis and fixes"
 
       - name: debt-analysis
         type: serial
         steps:
           - name: analyze-debt
             type: prompt
-            prompt: /analyze debt {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze debt {{ variables.paths }}
 
           - name: fix-debt
             type: conditional
@@ -87,7 +87,7 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  Use /fix-analyze debt {{ variables.autofix }}
+                  Use /agentic-sdlc:fix-analyze debt {{ variables.autofix }}
 
                   Return completion promise "DEBT_FIXES_COMPLETE" when done.
 
@@ -97,14 +97,14 @@ steps:
             then:
               - name: open-debt-pr
                 type: prompt
-                prompt: /git-pr "[Analysis] Technical debt analysis and fixes"
+                prompt: /agentic-sdlc:git-pr "[Analysis] Technical debt analysis and fixes"
 
       - name: doc-analysis
         type: serial
         steps:
           - name: analyze-doc
             type: prompt
-            prompt: /analyze doc {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze doc {{ variables.paths }}
 
           - name: fix-doc
             type: conditional
@@ -117,7 +117,7 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  Use /fix-analyze doc {{ variables.autofix }}
+                  Use /agentic-sdlc:fix-analyze doc {{ variables.autofix }}
 
                   Return completion promise "DOC_FIXES_COMPLETE" when done.
 
@@ -127,14 +127,14 @@ steps:
             then:
               - name: open-doc-pr
                 type: prompt
-                prompt: /git-pr "[Analysis] Documentation analysis and fixes"
+                prompt: /agentic-sdlc:git-pr "[Analysis] Documentation analysis and fixes"
 
       - name: security-analysis
         type: serial
         steps:
           - name: analyze-security
             type: prompt
-            prompt: /analyze security {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze security {{ variables.paths }}
 
           - name: fix-security
             type: conditional
@@ -147,7 +147,7 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  Use /fix-analyze security {{ variables.autofix }}
+                  Use /agentic-sdlc:fix-analyze security {{ variables.autofix }}
 
                   Return completion promise "SECURITY_FIXES_COMPLETE" when done.
 
@@ -157,14 +157,14 @@ steps:
             then:
               - name: open-security-pr
                 type: prompt
-                prompt: /git-pr "[Analysis] Security analysis and fixes"
+                prompt: /agentic-sdlc:git-pr "[Analysis] Security analysis and fixes"
 
       - name: style-analysis
         type: serial
         steps:
           - name: analyze-style
             type: prompt
-            prompt: /analyze style {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze style {{ variables.paths }}
 
           - name: fix-style
             type: conditional
@@ -177,7 +177,7 @@ steps:
                 model: sonnet
                 timeout-minutes: 30
                 prompt: |
-                  Use /fix-analyze style {{ variables.autofix }}
+                  Use /agentic-sdlc:fix-analyze style {{ variables.autofix }}
 
                   Return completion promise "STYLE_FIXES_COMPLETE" when done.
 
@@ -187,7 +187,7 @@ steps:
             then:
               - name: open-style-pr
                 type: prompt
-                prompt: /git-pr "[Analysis] Style analysis and fixes"
+                prompt: /agentic-sdlc:git-pr "[Analysis] Style analysis and fixes"
 
 outputs:
   - name: analysis-summary

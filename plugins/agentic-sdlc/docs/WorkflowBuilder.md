@@ -186,22 +186,24 @@ Use prompt steps to invoke slash command skills:
 steps:
   - name: run-review
     type: prompt
-    prompt: /review "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
+    prompt: /agentic-sdlc:review "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
     checkpoint: true
 ```
 
+**Always use fully qualified skill names** (e.g., `/agentic-sdlc:plan` instead of `/plan`) in workflow YAML files. This ensures the correct skill is invoked, avoiding conflicts with skills from other plugins or built-in commands.
+
 **Available Skills:**
 
-- `/plan` - Generate implementation plan
-- `/review` - Run review checks
-- `/analyze bug` - Analyze for bugs
-- `/analyze debt` - Find technical debt
-- `/analyze doc` - Check documentation
-- `/analyze security` - Security scan
-- `/analyze style` - Code style check
-- `/git-branch` - Create git branch
-- `/git-commit` - Create commit
-- `/git-pr` - Create pull request
+- `/agentic-sdlc:plan` - Generate implementation plan
+- `/agentic-sdlc:review` - Run review checks
+- `/agentic-sdlc:analyze bug` - Analyze for bugs
+- `/agentic-sdlc:analyze debt` - Find technical debt
+- `/agentic-sdlc:analyze doc` - Check documentation
+- `/agentic-sdlc:analyze security` - Security scan
+- `/agentic-sdlc:analyze style` - Code style check
+- `/agentic-sdlc:git-branch` - Create git branch
+- `/agentic-sdlc:git-commit` - Create commit
+- `/agentic-sdlc:git-pr` - Create pull request
 
 ### Serial Step
 
@@ -222,7 +224,7 @@ steps:
 
       - name: step-3
         type: prompt
-        prompt: /review
+        prompt: /agentic-sdlc:review
 ```
 
 ### Parallel Step
@@ -241,15 +243,15 @@ steps:
     steps:
       - name: security
         type: prompt
-        prompt: /analyze security
+        prompt: /agentic-sdlc:analyze security
 
       - name: style
         type: prompt
-        prompt: /analyze style
+        prompt: /agentic-sdlc:analyze style
 
       - name: bugs
         type: prompt
-        prompt: /analyze bug
+        prompt: /agentic-sdlc:analyze bug
 ```
 
 **Merge Strategies:**
@@ -484,7 +486,7 @@ steps:
 steps:
   - name: flaky-operation
     type: prompt
-    prompt: /review
+    prompt: /agentic-sdlc:review
     max-retry: 5 # Retry up to 5 times
     on-error: retry # retry, skip, or fail
     timeout-minutes: 10
@@ -519,7 +521,7 @@ Create checkpoints to track progress:
 steps:
   - name: critical-step
     type: prompt
-    prompt: /plan {{ variables.task }}
+    prompt: /agentic-sdlc:plan {{ variables.task }}
     checkpoint: true # Create checkpoint after success
 ```
 
@@ -614,7 +616,7 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
 ```yaml
 - name: optional-task
   type: prompt
-  prompt: /analyze style
+  prompt: /agentic-sdlc:analyze style
   on-error: skip # Don't fail workflow if this fails
   max-retry: 1 # Try once, then skip
 ```
@@ -630,11 +632,11 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
   steps:
     - name: security
       type: prompt
-      prompt: /analyze security
+      prompt: /agentic-sdlc:analyze security
 
     - name: bugs
       type: prompt
-      prompt: /analyze bug
+      prompt: /agentic-sdlc:analyze bug
 ```
 
 ### 7. Document with Descriptions

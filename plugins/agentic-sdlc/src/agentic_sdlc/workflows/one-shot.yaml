@@ -40,7 +40,7 @@ steps:
 
   - name: review
     type: prompt
-    prompt: /review "" major
+    prompt: /agentic-sdlc:review "" major
 
   - name: create-pr
     type: conditional
@@ -48,4 +48,4 @@ steps:
     then:
       - name: open-pr
         type: prompt
-        prompt: /git-pr
+        prompt: /agentic-sdlc:git-pr

@@ -28,6 +28,8 @@ Execute complete development workflows from planning through implementation to v
 
 ## Skills
 
+> **Note for Workflow Authors:** When referencing skills in YAML workflow files, always use fully qualified names (e.g., `/agentic-sdlc:plan` instead of `/plan`) to ensure the correct skill is invoked and avoid conflicts with other plugins. See [WorkflowBuilder.md](docs/WorkflowBuilder.md#invoking-skills) for details.
+
 ### Planning and Validation
 
 | Skill              | Description                                                 |

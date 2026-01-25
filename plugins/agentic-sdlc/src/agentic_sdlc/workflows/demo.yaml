@@ -122,11 +122,11 @@ steps:
 
   - name: git-branch
     type: prompt
-    prompt: /git-branch demo random-facts
+    prompt: /agentic-sdlc:git-branch demo random-facts
 
   - name: git-commit
     type: prompt
-    prompt: /git-commit "[Demo] Add demo files with random facts"
+    prompt: /agentic-sdlc:git-commit "[Demo] Add demo files with random facts"
 
   - name: completion
     type: prompt

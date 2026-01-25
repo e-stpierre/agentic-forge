@@ -54,7 +54,7 @@ steps:
         steps:
           - name: analyze-bug
             type: prompt
-            prompt: /analyze bug {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze bug {{ variables.paths }}
 
           - name: fix-bug
             type: conditional
@@ -97,7 +97,7 @@ steps:
         steps:
           - name: analyze-debt
             type: prompt
-            prompt: /analyze debt {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze debt {{ variables.paths }}
 
           - name: fix-debt
             type: conditional
@@ -140,7 +140,7 @@ steps:
         steps:
           - name: analyze-doc
             type: prompt
-            prompt: /analyze doc {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze doc {{ variables.paths }}
 
           - name: fix-doc
             type: conditional
@@ -183,7 +183,7 @@ steps:
         steps:
           - name: analyze-security
             type: prompt
-            prompt: /analyze security {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze security {{ variables.paths }}
 
           - name: fix-security
             type: conditional
@@ -226,7 +226,7 @@ steps:
         steps:
           - name: analyze-style
             type: prompt
-            prompt: /analyze style {{ variables.paths }}
+            prompt: /agentic-sdlc:analyze style {{ variables.paths }}
 
           - name: fix-style
             type: conditional
@@ -266,7 +266,7 @@ steps:
 
   - name: review-merged-changes
     type: prompt
-    prompt: /review "" {{ variables.fix_severity }}
+    prompt: /agentic-sdlc:review "" {{ variables.fix_severity }}
 
   - name: fix-validation-issues
     type: conditional
@@ -311,7 +311,7 @@ steps:
 
       - name: re-review
         type: prompt
-        prompt: /review "" {{ variables.fix_severity }}
+        prompt: /agentic-sdlc:review "" {{ variables.fix_severity }}
 
   - name: create-pr
     type: conditional
@@ -319,7 +319,7 @@ steps:
     then:
       - name: open-pr
         type: prompt
-        prompt: /git-pr "[Analysis] Codebase analysis and fixes"
+        prompt: /agentic-sdlc:git-pr "[Analysis] Codebase analysis and fixes"
 
 outputs:
   - name: analysis-summary
