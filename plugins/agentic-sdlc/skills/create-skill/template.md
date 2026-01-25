@@ -6,21 +6,38 @@ This template defines the exact structure for Claude Code skill prompts.
 FILE SIZE LIMIT:
 - Keep SKILL.md under 500 lines. Move detailed reference material to separate files.
 
+DIRECTORY STRUCTURE:
+A skill is a directory containing at minimum a SKILL.md file. Optional directories:
+- scripts/   - Executable code that agents can run (Python, Bash, JavaScript)
+- references/ - Additional documentation (REFERENCE.md, domain-specific files)
+- assets/    - Static resources (templates, images, data files, schemas)
+
+Keep file references one level deep from SKILL.md. Avoid deeply nested reference chains.
+
 YAML FRONTMATTER:
 Every skill requires YAML frontmatter between `---` markers at the top of SKILL.md.
 
-| Field                    | Required    | Description                                                                                 |
-| ------------------------ | ----------- | ------------------------------------------------------------------------------------------- |
-| name                     | No          | Display name (kebab-case, max 64 chars). Defaults to directory name.                        |
-| description              | Recommended | What the skill does (max 200 chars). Claude uses this to decide when to apply it.           |
-| argument-hint            | No          | Hint for expected arguments (e.g., `[issue-number]`, `[filename] [format]`)                 |
-| disable-model-invocation | No          | Set `true` to prevent Claude from auto-loading. Use for side-effect skills. Default: false. |
-| user-invocable           | No          | Set `false` to hide from / menu. Use for background knowledge. Default: true.               |
-| allowed-tools            | No          | Tools Claude can use without permission when skill is active.                               |
-| model                    | No          | Model to use when this skill is active.                                                     |
-| context                  | No          | Set to `fork` to run in a forked subagent context (no conversation history).                |
-| agent                    | No          | Which subagent type to use when `context: fork` is set.                                     |
-| hooks                    | No          | Hooks scoped to this skill's lifecycle.                                                     |
+Agent Skills Standard Fields:
+| Field         | Required | Description                                                                                 |
+| ------------- | -------- | ------------------------------------------------------------------------------------------- |
+| name          | Yes      | Max 64 chars. Lowercase letters, numbers, hyphens only. Must match parent directory name.   |
+|               |          | Must not start/end with hyphen or contain consecutive hyphens (--).                         |
+| description   | Yes      | Max 1024 chars. Describes what the skill does and when to use it.                           |
+| license       | No       | License name or reference to a bundled license file (e.g., `Apache-2.0`, `LICENSE.txt`).    |
+| compatibility | No       | Max 500 chars. Environment requirements (system packages, network access, etc.).            |
+| metadata      | No       | Arbitrary key-value mapping for additional properties (author, version, etc.).              |
+| allowed-tools | No       | Space-delimited list of pre-approved tools the skill may use.                               |
+
+Claude Code Specific Fields:
+| Field                    | Required | Description                                                                                 |
+| ------------------------ | -------- | ------------------------------------------------------------------------------------------- |
+| argument-hint            | No       | Hint for expected arguments (e.g., `[issue-number]`, `[filename] [format]`)                 |
+| disable-model-invocation | No       | Set `true` to prevent Claude from auto-loading. Use for side-effect skills. Default: false. |
+| user-invocable           | No       | Set `false` to hide from / menu. Use for background knowledge. Default: true.               |
+| model                    | No       | Model to use when this skill is active.                                                     |
+| context                  | No       | Set to `fork` to run in a forked subagent context (no conversation history).                |
+| agent                    | No       | Which subagent type to use when `context: fork` is set.                                     |
+| hooks                    | No       | Hooks scoped to this skill's lifecycle.                                                     |
 
 ARGUMENT-HINT CONVENTIONS:
 - Use `<arg>` for required arguments (angle brackets)

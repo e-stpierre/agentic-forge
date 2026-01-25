@@ -94,7 +94,7 @@ Placeholders:
 - {{document_path}}: Path to generated plan.md file
 -->
 
-## Type-Specific References
+## Additional Resources
 
 Load ONE of these based on the `[type]` argument (or detected type if auto):
 

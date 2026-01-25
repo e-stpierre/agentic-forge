@@ -230,7 +230,7 @@ Structure:
 - Omit empty severity sections
 -->
 
-## Type-Specific References
+## Additional Resources
 
 Load ONE of these based on the `<type>` argument:
 

@@ -90,8 +90,8 @@ steps:
     condition: "variables.run_tests"
     then:
       - name: run-tests
-        type: command
-        command: test-runner
+        type: prompt
+        prompt: "Run tests"
     else:
       - name: skip-tests
         type: prompt

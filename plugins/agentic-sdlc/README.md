@@ -56,20 +56,21 @@ Execute complete development workflows from planning through implementation to v
 | `/git-commit` | Create a git commit with structured message                 |
 | `/git-pr`     | Create a pull request with contextual title and description |
 
+### Workflow Support
+
+| Skill                | Description                                             |
+| -------------------- | ------------------------------------------------------- |
+| `/create-checkpoint` | Create a checkpoint to track progress and share context |
+| `/create-log`        | Add a log entry to the workflow log                     |
+| `/fix-analyze`       | Fix issues from an analysis document iteratively        |
+| `/create-skill`      | Create a new Claude Code skill following best practices |
+
 ## Agents
 
 | Agent      | Description                                                   |
 | ---------- | ------------------------------------------------------------- |
 | `explorer` | Efficiently explores codebase to find relevant files and code |
 | `reviewer` | Reviews code for quality, correctness, and best practices     |
-
-### Workflow Support Skills
-
-| Skill               | Description                                             |
-| ------------------- | ------------------------------------------------------- |
-| `create-checkpoint` | Create a checkpoint to track progress and share context |
-| `create-log`        | Add a log entry to the workflow log                     |
-| `fix-analyze`       | Fix issues from an analysis document iteratively        |
 
 ## Installation
 
