@@ -1,7 +1,7 @@
 ---
 name: plan
 description: Create an implementation plan for a task
-argument-hint: [type] [output_dir] <context>
+argument-hint: <workflow-id> [type] [output_dir] <context>
 ---
 
 # Plan
@@ -14,6 +14,7 @@ Create a structured implementation plan for the given task. This skill analyzes 
 
 ### Definitions
 
+- **`<workflow-id>`** (required): The workflow identifier for output organization.
 - **`[type]`** (optional): Plan type. Values: `feature`, `bug`, `chore`, `auto`. Defaults to `auto`.
 - **`[output_dir]`** (optional): Directory to write plan.md file (default to `agentic/outputs/<workflow-id>`).
 - **`<context>`** (required): Task description or issue reference.
@@ -43,7 +44,7 @@ Load ONE of these based on the `[type]` argument (or detected type if auto):
 ## Instructions
 
 1. **Parse Arguments**
-   - Extract type, output_dir, template, and context from arguments
+   - Extract workflow-id, type, output_dir, and context from arguments
    - Default type to `auto` if not specified
 
 2. **Detect Plan Type** (if type=auto)

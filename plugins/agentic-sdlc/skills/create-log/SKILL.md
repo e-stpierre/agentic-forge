@@ -1,7 +1,7 @@
 ---
 name: create-log
 description: Add a log entry to the workflow log
-argument-hint: <level> <step> <message>
+argument-hint: <workflow-id> <level> <step> <message>
 ---
 
 # Create Log
@@ -14,6 +14,7 @@ Add a structured log entry to the workflow's NDJSON log file. Use this skill for
 
 ### Definitions
 
+- **`<workflow-id>`** (required): The workflow identifier for output organization.
 - **`<level>`** (required): Log level. Values: `Critical`, `Error`, `Warning`, `Information`.
 - **`<step>`** (required): Step name for context (e.g., build, validate).
 - **`<message>`** (required): Log message.
@@ -40,12 +41,11 @@ Add a structured log entry to the workflow's NDJSON log file. Use this skill for
 
 ## Instructions
 
-1. Identify the current workflow ID from context
-2. Parse the level, step, and message
-3. Generate timestamp in ISO 8601 format
-4. Create NDJSON log entry
-5. Append to `agentic/outputs/{workflow-id}/logs.ndjson`
-6. Return confirmation with entry details
+1. Parse the workflow-id, level, step, and message
+2. Generate timestamp in ISO 8601 format
+3. Create NDJSON log entry
+4. Append to `agentic/outputs/{workflow-id}/logs.ndjson`
+5. Return confirmation with entry details
 
 ## Output Guidance
 

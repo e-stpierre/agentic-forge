@@ -1,7 +1,7 @@
 ---
 name: create-checkpoint
 description: Create a checkpoint to track progress and share context
-argument-hint: <step> <status> <context>
+argument-hint: <workflow-id> <step> <status> <context>
 ---
 
 # Create Checkpoint
@@ -14,6 +14,7 @@ Record progress and provide context for future sessions or other agents. Use thi
 
 ### Definitions
 
+- **`<workflow-id>`** (required): The workflow identifier for output organization.
 - **`<step>`** (required): Current step name (e.g., build, validate).
 - **`<status>`** (required): Checkpoint status. Values: `in_progress`, `completed`.
 - **`<context>`** (required): Summary of current situation and progress.
@@ -31,16 +32,15 @@ Record progress and provide context for future sessions or other agents. Use thi
 
 ## Instructions
 
-1. Identify the current workflow ID from context
-2. Parse the step name and status
-3. Generate checkpoint ID (chk-NNN)
-4. Create checkpoint entry with:
+1. Parse the workflow-id, step name, and status
+2. Generate checkpoint ID (chk-NNN)
+3. Create checkpoint entry with:
    - Context summary
    - Progress checklist
    - Notes for next session
    - Issues discovered
-5. Save to `agentic/outputs/{workflow-id}/checkpoint.md`
-6. Return confirmation with checkpoint ID
+4. Save to `agentic/outputs/{workflow-id}/checkpoint.md`
+5. Return confirmation with checkpoint ID
 
 ## Output Guidance
 

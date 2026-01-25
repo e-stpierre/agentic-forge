@@ -44,12 +44,14 @@ ARGUMENT-HINT CONVENTIONS:
 - Use `[arg]` for optional positional arguments (square brackets)
 - Use `[--flag]` for boolean flags (always optional - flags toggle behavior)
 - Use `[arg...]` for variadic arguments (accepts multiple values)
+- The `<workflow-id>` argument must ALWAYS come first when required (for skills that write to workflow outputs)
 - The `[context]` argument must ALWAYS come last when present
 - Examples:
   - `<context>` - required context only
   - `[type] <context>` - optional type, required context
   - `[paths...] [context]` - optional paths, optional context
   - `[--verbose] <context>` - boolean flag, required context
+  - `<workflow-id> <step> <context>` - workflow-id first, then other args
 
 ARGUMENT-HINT VALIDATION RULES:
 - Flags MUST be boolean-only (presence/absence toggles)
