@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.0] - 2026-01-24
+
+### Added
+
+- `fix-analysis` skill for iteratively fixing issues from analysis documents
+- `workflows` CLI command to list available workflows with descriptions
+
+### Removed
+
+- `/build` command (use workflows for implementation)
+- `one-shot` CLI command (use `agentic-sdlc run one-shot.yaml` instead)
+- `analyze` CLI command (use `agentic-sdlc run analyze-single.yaml` instead)
+
+### Changed
+
+- Refactored analyze workflows to use the new `fix-analysis` skill
+- Updated documentation to reflect CLI changes
+
 ## [0.3.0] - 2026-01-24
 
 ### Changed
