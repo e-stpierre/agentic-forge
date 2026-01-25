@@ -48,7 +48,6 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 
    **Pass 1: Gather all markdown files using broad patterns**
    - `plugins/**/*.md` - All markdown files in plugins
-   - `experimental-plugins/**/*.md` - All markdown files in experimental plugins
    - `.claude/commands/*.md` - Repository-level commands
    - `.claude/skills/*.md` - Repository-level skills
 

@@ -61,10 +61,7 @@ uv run pytest       # Python tests (for plugins with Python code)
 
 ### Structure
 
-Each plugin lives in its own directory:
-
-- `/plugins/` - Official, stable plugins
-- `/experimental-plugins/` - Work-in-progress plugins that may have breaking changes
+All plugins live in the `/plugins/` directory:
 
 ```
 plugins/<plugin-name>/

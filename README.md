@@ -77,10 +77,6 @@ agentic-sdlc run ralph-loop.yaml --var "max_iterations=20" \
 agentic-sdlc run plan-build-validate.yaml --var "task=Add dark mode support"
 ```
 
-## Experimental Plugins
-
-The `/experimental-plugins/` directory contains work-in-progress plugins that are not yet officially released. These may have breaking changes and are available for testing and feedback.
-
 ## Contributing
 
 Found a bug or have a suggestion? Please [open an issue](https://github.com/e-stpierre/agentic-forge/issues) on GitHub.
