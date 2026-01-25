@@ -18,6 +18,10 @@
 - Refactored analyze workflows to use the new `fix-analysis` skill
 - Updated documentation to reflect CLI changes
 
+### Fixed
+
+- `git-pr` command now fetches and compares against remote base branch to avoid stale local branch issues
+
 ## [0.3.0] - 2026-01-24
 
 ### Changed
