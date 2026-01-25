@@ -1,7 +1,7 @@
 ---
 name: plan
 description: Create an implementation plan for a task
-argument-hint: <workflow-id> [type] [output_dir] <context>
+argument-hint: <workflow-id> [type] [output_dir] [explore_agents] <context>
 ---
 
 # Plan
@@ -17,6 +17,7 @@ Create a structured implementation plan for the given task. This skill analyzes 
 - **`<workflow-id>`** (required): The workflow identifier for output organization.
 - **`[type]`** (optional): Plan type. Values: `feature`, `bug`, `chore`, `auto`. Defaults to `auto`.
 - **`[output_dir]`** (optional): Directory to write plan.md file (default to `agentic/outputs/<workflow-id>`).
+- **`[explore_agents]`** (optional): Number of explore agents for codebase analysis. Defaults to `0`.
 - **`<context>`** (required): Task description or issue reference.
 
 ### Values
@@ -44,8 +45,9 @@ Load ONE of these based on the `[type]` argument (or detected type if auto):
 ## Instructions
 
 1. **Parse Arguments**
-   - Extract workflow-id, type, output_dir, and context from arguments
+   - Extract workflow-id, type, output_dir, explore_agents, and context from arguments
    - Default type to `auto` if not specified
+   - Default explore_agents to `0` if not specified
 
 2. **Detect Plan Type** (if type=auto)
    - Analyze the context to determine type:
@@ -61,7 +63,8 @@ Load ONE of these based on the `[type]` argument (or detected type if auto):
    - `chore` -> Read [references/chore.md](references/chore.md)
 
 4. **Analyze Codebase**
-   - Use the explorer agent to understand relevant code
+   - If `explore_agents` is 0: Perform a quick codebase exploration in the main session using Glob, Grep, and Read tools
+   - If `explore_agents` is 1+: Launch that many explorer agents (Task tool with subagent_type=Explore) for in-depth parallel analysis
    - Identify files and components relevant to the task
    - Understand existing patterns and conventions
    - Map dependencies and impact areas

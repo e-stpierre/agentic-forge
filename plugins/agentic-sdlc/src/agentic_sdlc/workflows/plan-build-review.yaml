@@ -27,6 +27,11 @@ variables:
     required: false
     default: "major"
     description: Minimum severity for auto-fix
+  - name: explore_agents
+    type: integer
+    required: false
+    default: 0
+    description: Number of explore agents for codebase analysis (0=quick main session, 1+=parallel agents)
   - name: create_pr
     type: boolean
     required: false
@@ -36,7 +41,7 @@ variables:
 steps:
   - name: plan
     type: prompt
-    prompt: /agentic-sdlc:plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
+    prompt: /agentic-sdlc:plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.explore_agents }} {{ variables.task }}
     checkpoint: true
 
   - name: review
