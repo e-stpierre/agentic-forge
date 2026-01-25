@@ -48,18 +48,18 @@ The `SKILL.md` file is required. Supporting files are optional and should be ref
 
 Every skill requires YAML frontmatter between `---` markers. Supported fields:
 
-| Field                    | Required    | Description                                                                                      |
-| ------------------------ | ----------- | ------------------------------------------------------------------------------------------------ |
-| name                     | No          | Display name (kebab-case, max 64 chars). Defaults to directory name.                            |
-| description              | Recommended | What the skill does. Claude uses this to decide when to apply it.                               |
-| argument-hint            | No          | Hint for expected arguments (e.g., `[issue-number]`, `[filename] [format]`)                     |
-| disable-model-invocation | No          | Set `true` to prevent Claude from auto-loading. Use for side-effect skills. Default: false.     |
-| user-invocable           | No          | Set `false` to hide from / menu. Use for background knowledge. Default: true.                   |
-| allowed-tools            | No          | Tools Claude can use without permission when skill is active.                                   |
-| model                    | No          | Model to use when this skill is active.                                                         |
-| context                  | No          | Set to `fork` to run in a forked subagent context.                                              |
-| agent                    | No          | Which subagent type to use when `context: fork` is set.                                         |
-| hooks                    | No          | Hooks scoped to this skill's lifecycle.                                                         |
+| Field                    | Required    | Description                                                                                 |
+| ------------------------ | ----------- | ------------------------------------------------------------------------------------------- |
+| name                     | No          | Display name (kebab-case, max 64 chars). Defaults to directory name.                        |
+| description              | Recommended | What the skill does. Claude uses this to decide when to apply it.                           |
+| argument-hint            | No          | Hint for expected arguments (e.g., `[issue-number]`, `[filename] [format]`)                 |
+| disable-model-invocation | No          | Set `true` to prevent Claude from auto-loading. Use for side-effect skills. Default: false. |
+| user-invocable           | No          | Set `false` to hide from / menu. Use for background knowledge. Default: true.               |
+| allowed-tools            | No          | Tools Claude can use without permission when skill is active.                               |
+| model                    | No          | Model to use when this skill is active.                                                     |
+| context                  | No          | Set to `fork` to run in a forked subagent context.                                          |
+| agent                    | No          | Which subagent type to use when `context: fork` is set.                                     |
+| hooks                    | No          | Hooks scoped to this skill's lifecycle.                                                     |
 
 ### Argument-Hint Conventions
 
@@ -70,6 +70,7 @@ Every skill requires YAML frontmatter between `---` markers. Supported fields:
 - The `[context]` argument must ALWAYS come last when present
 
 Examples:
+
 - `<context>` - required context only
 - `[type] <context>` - optional type, required context
 - `[paths...] [context]` - optional paths, optional context
@@ -78,11 +79,13 @@ Examples:
 ### When to Use Invocation Controls
 
 **disable-model-invocation: true** - Only you can invoke:
+
 - Skills with side effects (commit, deploy, send-message)
 - Skills where timing matters
 - Skills that should not run automatically
 
 **user-invocable: false** - Only Claude can invoke:
+
 - Background knowledge skills
 - Context skills that aren't actionable commands
 - Skills like `legacy-system-context` that explain how things work

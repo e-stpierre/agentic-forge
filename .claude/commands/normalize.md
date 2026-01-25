@@ -61,13 +61,13 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 
    Determine the file type by checking if the file path contains these directory patterns:
 
-   | Path Contains              | Type    | Template to Read                                    |
-   | -------------------------- | ------- | --------------------------------------------------- |
-   | `/commands/` or `commands` | Command | `docs/templates/command-template.md`                |
-   | `/agents/` or `agents`     | Agent   | `docs/templates/agent-template.md`                  |
+   | Path Contains              | Type    | Template to Read                                       |
+   | -------------------------- | ------- | ------------------------------------------------------ |
+   | `/commands/` or `commands` | Command | `docs/templates/command-template.md`                   |
+   | `/agents/` or `agents`     | Agent   | `docs/templates/agent-template.md`                     |
    | `/skills/` or `skills`     | Skill   | `plugins/agentic-sdlc/skills/create-skill/template.md` |
-   | `/hooks/` or `hooks`       | Hook    | (no template - skip validation)                     |
-   | Filename is `README.md`    | README  | `docs/templates/readme-template.md`                 |
+   | `/hooks/` or `hooks`       | Hook    | (no template - skip validation)                        |
+   | Filename is `README.md`    | README  | `docs/templates/readme-template.md`                    |
 
    **Classification rules:**
    - Check path segments, not substrings (e.g., `/commands/` not just `command`)
