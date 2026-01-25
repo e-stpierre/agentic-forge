@@ -8,7 +8,7 @@ Execute complete development workflows from planning through implementation to v
 
 - `/plan Add user profile with avatar upload` - Generate implementation plan
 - `/analyze security` - Scan for security vulnerabilities
-- `agentic-sdlc run plan-build-validate.yaml --var "task=Add feature"` - Run complete workflow
+- `agentic-sdlc run plan-build-review.yaml --var "task=Add feature"` - Run complete workflow
 
 ### Key Features
 
@@ -16,7 +16,7 @@ Execute complete development workflows from planning through implementation to v
 - **Hybrid Orchestration**: Python handles deterministic operations, Claude makes intelligent decisions
 - **Git Worktree Isolation**: Execute parallel tasks in isolated git worktrees
 - **Progress Tracking**: Resume from checkpoints after interruptions or errors
-- **Built-in Skills**: Plan, build, validate, analyze, and git operations
+- **Built-in Skills**: Plan, build, review, analyze, and git operations
 - **Error Recovery**: Automatic retry with configurable strategies
 
 ## Documentation
@@ -33,7 +33,7 @@ Execute complete development workflows from planning through implementation to v
 | Skill              | Description                                                 |
 | ------------------ | ----------------------------------------------------------- |
 | `/plan`            | Create an implementation plan for a task                    |
-| `/validate`        | Validate implementation against plan and quality standards  |
+| `/review`          | Review implementation against plan and quality standards    |
 | `/orchestrate`     | Evaluate workflow state and determine next action           |
 | `/add-improvement` | Add a new improvement to the improvements tracking document |
 
@@ -200,7 +200,7 @@ agentic/
 /plan --output_dir agentic/outputs/workflow-123 Add dark mode toggle
 ```
 
-### /validate
+### /review
 
 **Arguments:**
 
@@ -211,13 +211,13 @@ agentic/
 
 ```bash
 # Basic validation
-/validate
+/review
 
-# Validate against plan
-/validate --plan agentic/outputs/workflow-123/plan.md
+# Review against plan
+/review --plan agentic/outputs/workflow-123/plan.md
 
 # Only report major issues
-/validate --severity major
+/review --severity major
 ```
 
 ### /analyze
@@ -320,7 +320,7 @@ agentic/
 
 ```bash
 # Run feature workflow
-agentic-sdlc run plan-build-validate.yaml --var "task=Add user authentication"
+agentic-sdlc run plan-build-review.yaml --var "task=Add user authentication"
 
 # Run with multiple variables
 agentic-sdlc run workflows/custom.yaml --var "task=Add feature" --var "priority=high"

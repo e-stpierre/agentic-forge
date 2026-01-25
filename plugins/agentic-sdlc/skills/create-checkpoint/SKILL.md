@@ -15,7 +15,7 @@ Record progress and provide context for future sessions or other agents. Use thi
 ### Definitions
 
 - **`<workflow-id>`** (required): The workflow identifier for output organization.
-- **`<step>`** (required): Current step name (e.g., build, validate).
+- **`<step>`** (required): Current step name (e.g., analyze, plan, review).
 - **`<status>`** (required): Checkpoint status. Values: `in_progress`, `completed`.
 - **`<context>`** (required): Summary of current situation and progress.
 

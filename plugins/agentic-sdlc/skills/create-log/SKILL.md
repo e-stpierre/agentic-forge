@@ -16,7 +16,7 @@ Add a structured log entry to the workflow's NDJSON log file. Use this skill for
 
 - **`<workflow-id>`** (required): The workflow identifier for output organization.
 - **`<level>`** (required): Log level. Values: `Critical`, `Error`, `Warning`, `Information`.
-- **`<step>`** (required): Step name for context (e.g., build, validate).
+- **`<step>`** (required): Step name for context (e.g., analyze, plan, review).
 - **`<message>`** (required): Log message.
 
 ### Values

@@ -80,7 +80,7 @@ This will:
 
 1. Generate an implementation plan
 2. Implement the changes
-3. Validate with tests and code review
+3. Review changes with tests and code review
 4. Create a pull request
 
 ## Directory Structure
@@ -106,7 +106,7 @@ agentic/
 **Workflow not found?**
 
 - Use `agentic-sdlc workflows` to see available workflows
-- Bundled workflows work without copying: `agentic-sdlc run plan-build-validate.yaml`
+- Bundled workflows work without copying: `agentic-sdlc run plan-build-review.yaml`
 
 **Need more verbose output?**
 

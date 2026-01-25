@@ -184,16 +184,16 @@ Use prompt steps to invoke slash command skills:
 
 ```yaml
 steps:
-  - name: run-validation
+  - name: run-review
     type: prompt
-    prompt: /validate --plan "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
+    prompt: /review "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
     checkpoint: true
 ```
 
 **Available Skills:**
 
 - `/plan` - Generate implementation plan
-- `/validate` - Run validation checks
+- `/review` - Run review checks
 - `/analyze bug` - Analyze for bugs
 - `/analyze debt` - Find technical debt
 - `/analyze doc` - Check documentation
@@ -222,7 +222,7 @@ steps:
 
       - name: step-3
         type: prompt
-        prompt: /validate
+        prompt: /review
 ```
 
 ### Parallel Step
@@ -270,7 +270,7 @@ steps:
   - name: fix-if-needed
     type: conditional
     # Jinja2 condition expression
-    condition: "{{ outputs.validate.issues | length > 0 }}"
+    condition: "{{ outputs.review.issues | length > 0 }}"
     then:
       - name: apply-fixes
         type: prompt
@@ -288,13 +288,13 @@ steps:
 condition: "{{ variables.create_pr }}"
 
 # Check output property
-condition: "{{ outputs.validate.passed }}"
+condition: "{{ outputs.review.passed }}"
 
 # Check list length
-condition: "{{ outputs.validate.issues | length > 0 }}"
+condition: "{{ outputs.review.issues | length > 0 }}"
 
 # Filter and count
-condition: "{{ outputs.validate.issues | selectattr('severity', 'eq', 'critical') | list | length > 0 }}"
+condition: "{{ outputs.review.issues | selectattr('severity', 'eq', 'critical') | list | length > 0 }}"
 
 # Compare values
 condition: "{{ variables.severity == 'major' }}"
@@ -391,10 +391,10 @@ Workflows use Jinja2 templating for dynamic content.
 {{ outputs.plan.summary }}
 
 # Nested field access
-{{ outputs.validate.issues[0].severity }}
+{{ outputs.review.issues[0].severity }}
 
 # Check if field exists
-{% if outputs.validate.passed %}
+{% if outputs.review.passed %}
 ```
 
 ### Filters
@@ -484,7 +484,7 @@ steps:
 steps:
   - name: flaky-operation
     type: prompt
-    prompt: /validate
+    prompt: /review
     max-retry: 5 # Retry up to 5 times
     on-error: retry # retry, skip, or fail
     timeout-minutes: 10
@@ -563,14 +563,14 @@ Templates have access to:
 
 ```yaml
 # Good
-- name: validate-implementation
+- name: review-implementation
   type: prompt
-  prompt: /validate
+  prompt: /review
 
 # Avoid
 - name: step-1
   type: prompt
-  prompt: /validate
+  prompt: /review
 ```
 
 ### 2. Add Checkpoints for Long Workflows
@@ -640,12 +640,12 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
 ### 7. Document with Descriptions
 
 ```yaml
-name: plan-build-validate
+name: plan-build-review
 description: |
   Complete SDLC workflow:
   1. Generate implementation plan
   2. Implement changes incrementally
-  3. Validate with tests and code review
+  3. Review with tests and code review
   4. Create pull request
 
 variables:

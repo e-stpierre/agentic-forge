@@ -63,7 +63,7 @@ For conditional steps, evaluate the Jinja2 condition using the available context
   "workflow_status": "in_progress",
   "next_action": {
     "type": "retry_step",
-    "step_name": "validate",
+    "step_name": "review",
     "error_context": "Test failures in auth.test.ts - fix the mock setup"
   },
   "reasoning": "Validation failed with test errors, 2 retries remaining",

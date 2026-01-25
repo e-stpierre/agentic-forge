@@ -109,10 +109,10 @@ Instructions:
 - If skills are organized in subfolders, use ### sub-sections matching folder structure
 - Example:
 
-| Skill | Description |
-|-------|-------------|
-| `plugin:parse-logs` | Parse and analyze log files |
-| `plugin:validate-config` | Validate configuration files |
+| Skill                | Description                    |
+|----------------------|--------------------------------|
+| `/parse-logs`        | Parse and analyze log files    |
+| `/validate-config`   | Validate configuration files   |
 -->
 
 ## Agents
@@ -127,10 +127,10 @@ Instructions:
 - If agents are organized in subfolders, use ### sub-sections matching folder structure
 - Example:
 
-| Agent | Description |
-|-------|-------------|
-| `plugin:code-reviewer` | Reviews code for bugs and security issues |
-| `plugin:architect` | Designs system architecture |
+| Agent                    | Description                               |
+|--------------------------|-------------------------------------------|
+| `plugin:code-reviewer`   | Reviews code for bugs and security issues |
+| `plugin:architect`       | Designs system architecture               |
 -->
 
 ## Hooks
@@ -144,10 +144,10 @@ Instructions:
 - Always use tables with | Hook | Trigger | Description | format
 - Example:
 
-| Hook | Trigger | Description |
-|------|---------|-------------|
-| `pre-commit` | Before git commit | Runs linting and tests |
-| `session-start` | Session initialization | Loads project context |
+| Hook              | Trigger                  | Description              |
+|-------------------|--------------------------|--------------------------|
+| `pre-commit`      | Before git commit        | Runs linting and tests   |
+| `session-start`   | Session initialization   | Loads project context    |
 -->
 
 ## Dependencies
@@ -197,15 +197,15 @@ Instructions:
 
 ### CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `cli-command` | What it does |
+| Command         | Description    |
+|-----------------|----------------|
+| `cli-command`   | What it does   |
 
 ### CLI Options
 
-| Flag | Description |
-|------|-------------|
-| `--flag` | What it controls |
+| Flag       | Description        |
+|------------|--------------------|
+| `--flag`   | What it controls   |
 
 ### Library Usage
 
