@@ -1,0 +1,19 @@
+# Virtual environments
+.venv/
+venv/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Cache
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Local environment
+.env
+
+# Lock file (generated)
+uv.lock

@@ -1,0 +1,117 @@
+name: security-analysis
+type: analysis
+version: "1.0"
+description: Security analysis with multiple expert agents
+
+settings:
+  human_in_loop: true
+  max_retries: 2
+  timeout_minutes: 45
+
+agents:
+  - name: security-researcher
+    provider: claude
+    model: sonnet
+    persona: |
+      You are a security researcher. Analyze systems for:
+      - Threat vectors and attack surfaces
+      - Security architecture weaknesses
+      - Compliance requirements
+      - Risk assessment
+
+  - name: pentester
+    provider: claude
+    model: sonnet
+    persona: |
+      You are a penetration tester. Focus on:
+      - Vulnerability identification
+      - Exploitation paths
+      - CWE/CVE mapping
+      - Proof of concept development
+
+  - name: appsec-developer
+    provider: claude
+    model: sonnet
+    persona: |
+      You are an application security developer. Focus on:
+      - Secure coding practices
+      - Remediation recommendations
+      - Security controls implementation
+      - Code fixes and mitigations
+
+inputs:
+  - name: codebase
+    type: codebase
+    source: "{{ target_path }}"
+    glob: "**/*.{py,ts,js,go,java}"
+
+  - name: docs
+    type: file
+    source: "{{ docs_path }}"
+    required: false
+
+steps:
+  - name: threat-model
+    agent: security-researcher
+    task:
+      description: Perform threat modeling
+      prompt: |
+        Analyze the following codebase for security threats:
+
+        {{ inputs.codebase | truncate_lines(200) }}
+
+        {% if inputs.docs %}
+        Documentation:
+        {{ inputs.docs | truncate_lines(50) }}
+        {% endif %}
+
+        Provide:
+        1. Attack surface analysis
+        2. Threat vectors
+        3. Trust boundaries
+        4. Data flow risks
+    checkpoint: true
+    human_approval: true
+
+  - name: vulnerability-scan
+    agent: pentester
+    task:
+      description: Identify vulnerabilities
+      prompt: |
+        Based on the threat model:
+        {{ outputs.threat-model | truncate_lines(100) }}
+
+        And codebase:
+        {{ inputs.codebase | truncate_lines(150) }}
+
+        Identify:
+        1. Specific vulnerabilities
+        2. CWE/CVE references
+        3. Severity ratings
+        4. Exploitation potential
+    conditions:
+      requires:
+        - threat-model
+
+  - name: remediation
+    agent: appsec-developer
+    task:
+      description: Create remediation plan
+      prompt: |
+        Based on the vulnerabilities identified:
+        {{ outputs.vulnerability-scan | truncate_lines(150) }}
+
+        Create:
+        1. Prioritized fix recommendations
+        2. Code-level mitigations
+        3. Security control additions
+        4. Testing requirements
+    conditions:
+      requires:
+        - vulnerability-scan
+
+outputs:
+  - name: security-report
+    type: file
+    path: .agentic/security-report.md
+    template: security-report.md
