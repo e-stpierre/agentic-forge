@@ -255,17 +255,15 @@ Instructions:
 - OMIT THIS SECTION ENTIRELY if plugin is not configurable
 - Include if plugin has:
   - A /plugin:configure command
-  - Settings that can be added to .claude/settings.json
+  - Settings that can be added to .claude/configs/plugin-name.json
   - Instructions for CLAUDE.md customization
 - Show example configuration with all options
 - Example:
-  Configure in `.claude/settings.json`:
+  Configure in `.claude/configs/plugin-name.json`:
   ```json
   {
-    "plugin-name": {
-      "option1": "value",
-      "option2": true
-    }
+    "option1": "value",
+    "option2": true
   }
   ```
 -->

@@ -4,7 +4,7 @@ description: Check code style, consistency, and best practices adherence
 argument-hint: [paths...]
 ---
 
-# analyze Style
+# Analyze Style
 
 ## Overview
 

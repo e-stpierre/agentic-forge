@@ -4,7 +4,7 @@ description: Analyze documentation quality, accuracy, and completeness
 argument-hint: [paths...]
 ---
 
-# analyze Doc
+# Analyze Doc
 
 ## Overview
 

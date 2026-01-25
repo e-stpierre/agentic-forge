@@ -4,7 +4,7 @@ description: Identify technical debt, optimization opportunities, and refactorin
 argument-hint: [paths...]
 ---
 
-# analyze Debt
+# Analyze Debt
 
 ## Overview
 

@@ -4,7 +4,7 @@ description: Analyze codebase for bugs, logic errors, and runtime issues
 argument-hint: [paths...]
 ---
 
-# analyze Bug
+# Analyze Bug
 
 ## Overview
 

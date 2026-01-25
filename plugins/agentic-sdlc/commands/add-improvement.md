@@ -17,15 +17,13 @@ Add a new improvement entry to the improvements tracking document. This command 
 
 ## Configuration
 
-The improvements document path is configured via `agentic-sdlc.improvementsPath` in settings or defaults to `agentic/improvements.md`.
+The improvements document path is configured via `improvementsPath` in settings or defaults to `agentic/improvements.md`.
 
-To override in `.claude/settings.json`:
+To override in `.claude/configs/agentic-sdlc.json`:
 
 ```json
 {
-  "agentic-sdlc": {
-    "improvementsPath": "custom/path/improvements.md"
-  }
+  "improvementsPath": "custom/path/improvements.md"
 }
 ```
 

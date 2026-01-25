@@ -4,7 +4,7 @@ description: Scan for security vulnerabilities, unsafe patterns, and dependency 
 argument-hint: [paths...]
 ---
 
-# analyze Security
+# Analyze Security
 
 ## Overview
 
