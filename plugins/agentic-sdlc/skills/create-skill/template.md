@@ -3,10 +3,24 @@ SKILL PROMPT TEMPLATE
 
 This template defines the exact structure for Claude Code skill prompts.
 
-REQUIRED FRONTMATTER FIELDS:
-- name: Kebab-case identifier for the skill (or use directory name)
-- description: One-line description shown in help menus (recommended: under 100 characters)
-- argument-hint: Usage pattern hint (only if skill takes arguments)
+FILE SIZE LIMIT:
+- Keep SKILL.md under 500 lines. Move detailed reference material to separate files.
+
+YAML FRONTMATTER:
+Every skill requires YAML frontmatter between `---` markers at the top of SKILL.md.
+
+| Field                    | Required    | Description                                                                                 |
+| ------------------------ | ----------- | ------------------------------------------------------------------------------------------- |
+| name                     | No          | Display name (kebab-case, max 64 chars). Defaults to directory name.                        |
+| description              | Recommended | What the skill does (max 200 chars). Claude uses this to decide when to apply it.           |
+| argument-hint            | No          | Hint for expected arguments (e.g., `[issue-number]`, `[filename] [format]`)                 |
+| disable-model-invocation | No          | Set `true` to prevent Claude from auto-loading. Use for side-effect skills. Default: false. |
+| user-invocable           | No          | Set `false` to hide from / menu. Use for background knowledge. Default: true.               |
+| allowed-tools            | No          | Tools Claude can use without permission when skill is active.                               |
+| model                    | No          | Model to use when this skill is active.                                                     |
+| context                  | No          | Set to `fork` to run in a forked subagent context (no conversation history).                |
+| agent                    | No          | Which subagent type to use when `context: fork` is set.                                     |
+| hooks                    | No          | Hooks scoped to this skill's lifecycle.                                                     |
 
 ARGUMENT-HINT CONVENTIONS:
 - Use `<arg>` for required arguments (angle brackets)
@@ -20,21 +34,16 @@ ARGUMENT-HINT CONVENTIONS:
   - `[paths...] [context]` - optional paths, optional context
   - `<context> [--verbose]` - required context with optional flag
 
-OPTIONAL FRONTMATTER FIELDS:
-- disable-model-invocation: Set `true` to prevent Claude auto-loading (default: false)
-- user-invocable: Set `false` to hide from / menu (default: true)
-- allowed-tools: Tools Claude can use without permission
-- model: Model to use when skill is active
-- context: Set to `fork` for isolated subagent execution
-- agent: Subagent type when context: fork is set
-- hooks: Hooks scoped to this skill's lifecycle
+DYNAMIC CONTEXT INJECTION:
+- Use `!`command`` syntax to run shell commands before skill content is sent to Claude.
+- The command output replaces the placeholder. Example: `!`git status`` inserts current git status.
 
 REQUIRED SECTIONS (in order):
 1. Overview - Skill purpose and objective (combines definition + goal)
-2. Arguments - Only if skill takes arguments
+2. Arguments - Only if skill takes arguments (must include Definitions and Values subsections)
 3. Core Principles - Key guidelines, constraints, and important notes
 4. Instructions - Step-by-step execution guide
-5. Output Guidance - Expected output format and content
+5. Output Guidance - Expected output format (must be JSON)
 
 OPTIONAL SECTIONS (insert in order shown):
 - Configuration - After Arguments, for skills with configurable settings
@@ -47,6 +56,7 @@ SECTION ORDER MUST BE RESPECTED - Follow the order defined above.
 VALIDATION RULES:
 - Arguments section and argument-hint frontmatter are REQUIRED only when the skill takes arguments
 - Arguments section and argument-hint should be OMITTED when the skill takes no arguments
+- Skills must always output a JSON object as final output when the session ends
 -->
 
 ---
@@ -74,16 +84,29 @@ Instructions:
 
 ## Arguments
 
-{{arguments}}
+### Definitions
+
+{{argument_definitions}}
 
 <!--
 Instructions:
-- Replace {{arguments}} with a bullet-point list defining each argument
+- Replace {{argument_definitions}} with a bullet-point list defining each argument
 - Format: **`<argument-name>`** (required): Description
 - Format: **`[argument-name]`** (optional): Description. Defaults to `value`.
 - Include default values where applicable
 - The [context] argument should always come last
 - Omit this section entirely if the skill takes no arguments
+-->
+
+### Values
+
+$ARGUMENTS
+
+<!--
+Instructions:
+- The $ARGUMENTS placeholder is automatically replaced with all arguments passed when invoking the skill
+- If $ARGUMENTS is not present in the content, arguments are appended as `ARGUMENTS: <value>`
+- Do not modify this subsection
 -->
 
 ## Configuration (optional)
@@ -145,9 +168,10 @@ Instructions:
 <!--
 Instructions:
 - Replace {{output}} with expected output format and content definition
-- Specify output structure (markdown, JSON, plain text, etc.)
-- Define what information must be included
-- Note any formatting requirements
+- Skills must always return a JSON object as final output when the session ends
+- Skills may also produce additional outputs (e.g., create files, write markdown) during execution
+- Define the JSON structure with required fields for this skill
+- Leave the specific JSON schema to each skill's needs
 -->
 
 ## Templates (optional)

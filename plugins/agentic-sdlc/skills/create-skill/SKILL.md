@@ -13,8 +13,14 @@ Create a new Claude Code skill following the established guidelines and best pra
 
 ## Arguments
 
+### Definitions
+
 - **`<skill-name>`** (required): The name for the new skill in kebab-case (e.g., `review-code`, `analyze-deps`)
 - **`[context]`** (optional): Additional context about what the skill should do
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 
@@ -23,7 +29,9 @@ Create a new Claude Code skill following the established guidelines and best pra
 - Use the template at `plugins/agentic-sdlc/skills/create-skill/template.md` as the base
 - Follow the exact section order defined in the template
 - Use US English spelling in all content
-- Keep descriptions concise (under 100 characters recommended)
+- Keep descriptions concise (max 200 characters)
+- Keep SKILL.md under 500 lines; move detailed reference material to separate files
+- See template.md for complete YAML frontmatter field reference
 - Code files must use ASCII only; markdown files may use minimal functional emojis
 
 ## Skill-Specific Guidelines
@@ -43,23 +51,6 @@ skills/
 ```
 
 The `SKILL.md` file is required. Supporting files are optional and should be referenced from SKILL.md so Claude knows when to load them.
-
-### YAML Frontmatter
-
-Every skill requires YAML frontmatter between `---` markers. Supported fields:
-
-| Field                    | Required    | Description                                                                                 |
-| ------------------------ | ----------- | ------------------------------------------------------------------------------------------- |
-| name                     | No          | Display name (kebab-case, max 64 chars). Defaults to directory name.                        |
-| description              | Recommended | What the skill does. Claude uses this to decide when to apply it.                           |
-| argument-hint            | No          | Hint for expected arguments (e.g., `[issue-number]`, `[filename] [format]`)                 |
-| disable-model-invocation | No          | Set `true` to prevent Claude from auto-loading. Use for side-effect skills. Default: false. |
-| user-invocable           | No          | Set `false` to hide from / menu. Use for background knowledge. Default: true.               |
-| allowed-tools            | No          | Tools Claude can use without permission when skill is active.                               |
-| model                    | No          | Model to use when this skill is active.                                                     |
-| context                  | No          | Set to `fork` to run in a forked subagent context.                                          |
-| agent                    | No          | Which subagent type to use when `context: fork` is set.                                     |
-| hooks                    | No          | Hooks scoped to this skill's lifecycle.                                                     |
 
 ### Argument-Hint Conventions
 
@@ -120,7 +111,7 @@ Add `context: fork` when a skill should run in isolation without conversation hi
    - Ensure all required sections are present
    - Verify frontmatter fields are correct
    - Check that argument-hint matches Arguments section
-   - Confirm description is under 100 characters
+   - Confirm description is under 200 characters
 
 6. **Add supporting files (if needed)**
    - Create reference.md for detailed documentation
@@ -129,27 +120,28 @@ Add `context: fork` when a skill should run in isolation without conversation hi
 
 ## Output Guidance
 
-After creating the skill, report:
+After creating the skill, output a JSON object:
 
-```markdown
-## Skill Created
-
-- **Location**: `plugins/<plugin>/skills/<skill-name>/SKILL.md`
-- **Name**: <skill-name>
-- **Description**: <description>
-- **Invocation**: `/<skill-name>` or automatic based on context
-
-### Files Created
-
-- `SKILL.md` - Main skill definition
-- `reference.md` - (if applicable)
-- `examples.md` - (if applicable)
-
-### Next Steps
-
-1. Test the skill with `/<skill-name>`
-2. Verify Claude loads it appropriately
-3. Add to plugin README if user-facing
+```json
+{
+  "status": "created",
+  "skill": {
+    "name": "<skill-name>",
+    "location": "plugins/<plugin>/skills/<skill-name>/SKILL.md",
+    "description": "<description>",
+    "invocation": "/<skill-name>"
+  },
+  "files_created": [
+    "SKILL.md",
+    "reference.md (if applicable)",
+    "examples.md (if applicable)"
+  ],
+  "next_steps": [
+    "Test the skill with /<skill-name>",
+    "Verify Claude loads it appropriately",
+    "Add to plugin README if user-facing"
+  ]
+}
 ```
 
 ## Additional Resources
