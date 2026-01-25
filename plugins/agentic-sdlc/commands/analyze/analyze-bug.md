@@ -1,23 +1,18 @@
 ---
-name: analyse-bug
+name: analyze-bug
 description: Analyze codebase for bugs, logic errors, and runtime issues
-arguments:
-  - name: paths
-    description: Space-separated list of files or directories to analyze
-    required: false
+argument-hint: [paths...]
 ---
 
-# Analyse Bug
+# Analyze Bug
 
-Analyze codebase for bugs, logic errors, and runtime issues. Returns structured JSON for workflow integration and generates a markdown report.
+## Overview
+
+Analyze codebase for bugs, logic errors, and runtime issues. Categorizes findings by criticality with specific file locations and actionable fix suggestions. Returns structured JSON for workflow integration and generates a markdown report.
 
 ## Arguments
 
-- **`[paths]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, the entire codebase is analyzed.
-
-## Objective
-
-Analyze codebase for real bugs, logic errors, and runtime issues, categorizing findings by criticality with specific file locations and actionable fix suggestions.
+- **`[paths...]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, the entire codebase is analyzed.
 
 ## Core Principles
 
@@ -27,6 +22,9 @@ Analyze codebase for real bugs, logic errors, and runtime issues, categorizing f
 - Avoid false positives by considering framework conventions
 - Focus on bugs that will actually cause problems, not theoretical concerns
 - Only report UNFIXED issues - if the issue has been resolved, do not include it
+- Check if apparent issues are handled elsewhere before flagging
+- Recognize test-specific patterns and intentional design choices
+- If no issues found, return success with zero counts
 
 ## Instructions
 
@@ -56,13 +54,12 @@ Analyze codebase for real bugs, logic errors, and runtime issues, categorizing f
    - Include date in report header
 
 5. **Return JSON Output**
-   - Return structured JSON with findings summary
 
 ## Output Guidance
 
 Return a JSON object AND save a detailed markdown report.
 
-### JSON Output (Required)
+### JSON Output
 
 ```json
 {
@@ -89,6 +86,8 @@ Return a JSON object AND save a detailed markdown report.
   "document_path": "agentic/analysis/bug.md"
 }
 ```
+
+## Templates
 
 ### Markdown Report Structure
 
@@ -130,13 +129,3 @@ Save to `agentic/analysis/bug.md`:
 
 [Same format as Critical]
 ```
-
-## Important Notes
-
-- Only report real bugs, not theoretical concerns
-- Check if apparent issues are handled elsewhere before flagging
-- Understand framework conventions that handle common issues
-- Include exact file location, line number, and fix approach for each finding
-- Recognize test-specific patterns and intentional design choices
-- Do NOT include issues that have already been fixed or resolved
-- If no issues found, return success with zero counts

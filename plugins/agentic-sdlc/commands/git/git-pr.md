@@ -1,37 +1,21 @@
 ---
 name: git-pr
 description: Create a pull request with contextual title and description
-output: json
-arguments:
-  - name: title
-    description: PR title (auto-generated if not provided)
-    required: false
-  - name: body
-    description: PR body/description (auto-generated if not provided)
-    required: false
-  - name: base
-    description: Base branch (default: main)
-    required: false
-  - name: draft
-    description: Create as draft PR
-    required: false
-    default: false
+argument-hint: [title] [body] [base] [--draft]
 ---
 
 # Git PR Command
 
-Creates a pull request using the GitHub CLI with a descriptive title and appropriately-sized description.
+## Overview
+
+Create a pull request using the GitHub CLI with a descriptive title and appropriately-sized description. The PR description is automatically scaled based on the scope and impact of the changes.
 
 ## Arguments
 
 - **`[title]`** (optional): PR title. Auto-generated if not provided.
 - **`[body]`** (optional): PR body/description. Auto-generated if not provided.
 - **`[base]`** (optional): Target branch for the PR. Defaults to main/master.
-- **`[draft]`** (optional): Create as draft PR. Defaults to false.
-
-## Objective
-
-Create a pull request with a title and description sized appropriately to the scope and impact of the changes.
+- **`[--draft]`** (optional): Create as draft PR. Defaults to false.
 
 ## Core Principles
 
@@ -59,7 +43,7 @@ Create a pull request with a title and description sized appropriately to the sc
    ```
    gh pr create --title "Fix typo in README" --body "Corrects spelling error
 
-   Generated with [Claude Code](https://claude.com/claude-code)"
+   🤖 Generated with [Claude Code](https://claude.com/product/claude-code)"
    ```
 
    **Medium/Large**: Structured description with attribution
@@ -72,7 +56,7 @@ Create a pull request with a title and description sized appropriately to the sc
    - <Key change 1 with context>
    - <Key change 2 with context>
 
-   Generated with [Claude Code](https://claude.com/claude-code)"
+   🤖 Generated with [Claude Code](https://claude.com/product/claude-code)"
    ```
 
 7. Execute `gh pr create` with constructed content

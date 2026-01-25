@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0] - 2026-01-24
+
+### Changed
+
+- Renamed `analyse` commands to `analyze` for US English spelling consistency
+- Renamed workflow files from `analyse-*.yaml` to `analyze-*.yaml`
+- Renamed `demo-workflow.yaml` to `demo.yaml`
+- Updated documentation and command prompts for clarity
+
 ## [0.2.0] - 2026-01-21
 
 ### Added
@@ -31,7 +40,7 @@
 - YAML-based workflow orchestration with sequential, parallel, and Ralph loop step types
 - Checkpoint manager for session state tracking
 - Python CLI for workflow management (`agentic-sdlc run`, `agentic-sdlc init`)
-- Core commands: plan, build, validate, analyse, orchestrate
+- Core commands: plan, build, validate, analyze, orchestrate
 - Git commands: git-branch, git-commit, git-pr
 - Explorer and reviewer agents for specialized tasks
 - Skills for checkpoint and logging management

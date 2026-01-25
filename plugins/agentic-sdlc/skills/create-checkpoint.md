@@ -6,19 +6,15 @@ argument-hint: "--step <name> --status <status> <context>"
 
 # Create Checkpoint
 
-## Definition
+## Overview
 
-Record progress and provide context for future sessions or other agents. Use this skill when completing milestones, handing off work, encountering issues, or reaching natural pause points.
+Record progress and provide context for future sessions or other agents. Use this skill when completing milestones, handing off work, encountering issues, or reaching natural pause points. Creates a checkpoint entry that captures the current workflow state for resumption or handoff.
 
 ## Arguments
 
 - **`--step`** (required): Current step name (e.g., build, validate)
 - **`--status`** (required): Checkpoint status - in_progress | completed
 - **`<context>`** (required): Summary of current situation and progress
-
-## Objective
-
-Create a checkpoint entry that captures the current workflow state for resumption or handoff.
 
 ## Core Principles
 

@@ -1,32 +1,20 @@
 ---
 name: git-commit
 description: Create a git commit with structured message
-output: json
-arguments:
-  - name: message
-    description: Commit message (auto-generated if not provided)
-    required: false
-  - name: files
-    description: Specific files to commit (default: all staged)
-    required: false
-  - name: plan_step
-    description: Reference to plan step being completed
-    required: false
+argument-hint: [message] [files] [plan_step]
 ---
 
 # Git Commit Command
 
-Commits staged changes with a structured message.
+## Overview
+
+Create a well-structured commit with a concise title and optional bullet-point description. Commits staged changes with proper formatting and AI attribution.
 
 ## Arguments
 
 - **`[message]`** (optional): Override commit title. If not provided, auto-generate from changes.
 - **`[files]`** (optional): Specific files to commit. Default: all staged.
 - **`[plan_step]`** (optional): Reference to plan step being completed.
-
-## Objective
-
-Create a well-structured commit with a concise title and optional bullet-point description.
 
 ## Core Principles
 

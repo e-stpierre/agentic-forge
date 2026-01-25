@@ -1,30 +1,28 @@
 ---
 name: normalize
 description: Validate files against prompt reference guidelines
-argument-hint: [--autofix] [file-or-directory...]
+argument-hint: [--autofix] [paths...]
 ---
 
 # Normalize Command
 
-Validate that prompt files and plugin READMEs conform to the exact structure defined in the template files:
+## Overview
+
+Validate that prompt files and plugin READMEs conform to the exact structure defined in the template files. Ensures all prompt files exactly match the structure, section names, and content requirements defined in their respective templates.
+
+Templates used for validation:
 
 - `docs/templates/command-template.md` for commands
 - `docs/templates/agent-template.md` for agents
 - `docs/templates/skill-template.md` for skills
 - `docs/templates/readme-template.md` for plugin READMEs
 
-**Template Convention:**
-
 All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`) with HTML comment instructions. See `CLAUDE.md` section "Prompt Template Convention" for complete details.
 
 ## Arguments
 
-- **`--autofix`** (optional): Automatically modify files to make them compliant with the templates. Without this flag, only reports issues.
-- **`file-or-directory`** (optional): One or more paths to files or directories to validate. If omitted, validates all prompt files and READMEs in the repository.
-
-## Objective
-
-Ensure all prompt files and plugin READMEs exactly match the structure, section names, and content requirements defined in their respective template files.
+- **`[--autofix]`** (optional): Automatically modify files to make them compliant with the templates. Without this flag, only reports issues.
+- **`[paths...]`** (optional): One or more paths to files or directories to validate. If omitted, validates all prompt files and READMEs in the repository.
 
 ## Core Principles
 
@@ -119,9 +117,6 @@ Ensure all prompt files and plugin READMEs exactly match the structure, section 
 6. **Validate Section Content**
 
    Based on template HTML comments, validate content patterns:
-   - **Instructions section**: Should contain numbered list (1. 2. 3. etc.)
-   - **Core Principles section**: Should contain bullet points
-   - **Arguments section**: Should contain bullet points with argument formatting
    - Check for ASCII-only content (no special Unicode characters)
    - Verify `{{placeholders}}` are replaced with actual values
    - Verify HTML comments from template are removed

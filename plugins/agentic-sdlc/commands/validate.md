@@ -1,43 +1,55 @@
 ---
 name: validate
 description: Validate implementation against plan and quality standards
-output: json
-arguments:
-  - name: plan
-    description: Path to plan document
-    required: false
-  - name: severity
-    description: Minimum severity to report (minor, major, critical)
-    required: false
-    default: minor
+argument-hint: [plan] [severity]
 ---
 
 # Validate Command
 
-Validate the implementation against the plan and quality standards. Runs tests, checks code quality, and verifies plan compliance.
+## Overview
 
-## Checks Performed
+Validate the implementation against the plan and quality standards. This command runs tests, checks code quality, verifies plan compliance, and ensures the build succeeds before proceeding.
 
-1. **Plan Compliance**:
-   - All milestones completed
-   - All tasks marked done
-   - No scope creep (extra unplanned changes)
+## Arguments
 
-2. **Test Validation**:
-   - All tests pass
-   - New code has test coverage
-   - No regression in existing tests
+- **`[plan]`** (optional): Path to plan document.
+- **`[severity]`** (optional): Minimum severity to report. Values: `minor`, `major`, `critical`. Defaults to `minor`.
 
-3. **Code Quality**:
-   - No linting errors
-   - Type checking passes
-   - No security vulnerabilities introduced
+## Core Principles
 
-4. **Build Verification**:
-   - Project builds successfully
-   - No new build warnings
+- All tests must pass before validation succeeds
+- Code quality checks (lint, types) must pass
+- Plan compliance is verified when a plan is provided
+- Report issues with accurate severity levels
+- Build must complete without errors
 
-## Output Format
+## Instructions
+
+1. **Load Plan** (if provided)
+   - Read and parse the plan document
+   - Prepare for compliance verification
+
+2. **Run Validation Checks**
+   - **Test Suite**: Run all tests, verify coverage
+   - **Linter**: Check for linting errors
+   - **Type Checker**: Verify type correctness
+   - **Build**: Ensure project builds successfully
+
+3. **Check Plan Compliance** (if plan provided)
+   - Verify all milestones completed
+   - Verify all tasks marked done
+   - Check for scope creep (unplanned changes)
+
+4. **Aggregate Results**
+   - Collect all check results
+   - Filter issues by severity threshold
+   - Generate summary
+
+5. **Return JSON Output**
+
+## Output Guidance
+
+Return JSON with validation details:
 
 ```json
 {
@@ -81,17 +93,6 @@ Validate the implementation against the plan and quality standards. Runs tests, 
   "summary": "Validation passed with 2 minor warnings"
 }
 ```
-
-## Process
-
-1. Load plan if provided
-2. Run test suite
-3. Run linter
-4. Run type checker
-5. Run build
-6. Check plan compliance
-7. Aggregate results
-8. Return JSON summary
 
 ---
 

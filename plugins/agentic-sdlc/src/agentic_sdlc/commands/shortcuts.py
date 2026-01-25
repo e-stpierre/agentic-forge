@@ -1,4 +1,4 @@
-"""Shortcut command handlers (one-shot, analyse, input)."""
+"""Shortcut command handlers (one-shot, analyze, input)."""
 
 from __future__ import annotations
 
@@ -67,22 +67,22 @@ def cmd_oneshot(args: Namespace) -> None:
         sys.exit(1)
 
 
-def cmd_analyse(args: Namespace) -> None:
-    """Analyze codebase using the analyse-codebase workflow."""
+def cmd_analyze(args: Namespace) -> None:
+    """Analyze codebase using the analyze-codebase workflow."""
     from agentic_sdlc.executor import WorkflowExecutor
     from agentic_sdlc.parser import WorkflowParseError, WorkflowParser
 
     bundled_dir = get_bundled_workflows_dir()
 
     if args.type != "all":
-        workflow_path = bundled_dir / "analyse-single.yaml"
+        workflow_path = bundled_dir / "analyze-single.yaml"
         variables = {
             "analysis_type": args.type,
             "autofix": args.autofix,
         }
         print(f"Running {args.type} analysis...")
     else:
-        workflow_path = bundled_dir / "analyse-codebase.yaml"
+        workflow_path = bundled_dir / "analyze-codebase.yaml"
         variables = {
             "autofix": args.autofix,
         }

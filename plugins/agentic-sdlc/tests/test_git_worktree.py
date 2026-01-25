@@ -272,13 +272,13 @@ class TestCreateWorktree:
 
         worktree = create_worktree(
             workflow_name="test-workflow",
-            step_name="analyse-bugs",
+            step_name="analyze-bugs",
             repo_root=temp_dir,
         )
 
         assert worktree.base_branch == "main"
         assert "test-workflow" in worktree.path.name.lower()
-        assert "analyse-bugs" in worktree.path.name.lower()
+        assert "analyze-bugs" in worktree.path.name.lower()
         assert worktree.branch.startswith("agentic/")
 
     @patch("agentic_sdlc.git.worktree._run_git")

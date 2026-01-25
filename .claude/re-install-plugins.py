@@ -16,7 +16,6 @@ Usage:
 
     Reinstall specific plugins only:
     uv run .claude/re-install-plugins.py agentic-sdlc
-    uv run .claude/re-install-plugins.py interactive-sdlc agentic-sdlc
 """
 
 import argparse
@@ -244,8 +243,8 @@ Supported plugins:
   Python CLI tools:    {", ".join(PYTHON_TOOLS)}
 
 Examples:
-  %(prog)s                           # Reinstall everything
-  %(prog)s agentic-core              # Reinstall only agentic-core
+  %(prog)s                      # Reinstall everything
+  %(prog)s agentic-core         # Reinstall only agentic-core
   %(prog)s agentic-sdlc         # Reinstall only agentic-sdlc
 """,
     )

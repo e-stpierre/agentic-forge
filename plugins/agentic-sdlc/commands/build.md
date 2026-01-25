@@ -1,42 +1,55 @@
 ---
 name: build
 description: Implement changes following a plan
-output: json
-arguments:
-  - name: plan
-    description: Path to plan document or plan JSON
-    required: false
-  - name: milestone
-    description: Specific milestone to implement
-    required: false
-  - name: context
-    description: Additional context or instructions
-    required: false
+argument-hint: [plan] [milestone] [context]
 ---
 
 # Build Command
 
-Implement code changes following a plan or direct instructions. This command executes the implementation and tracks progress.
+## Overview
 
-## Behavior
+Implement code changes following a plan or direct instructions. This command executes the implementation phase of the development workflow, tracking progress and creating commits at logical checkpoints.
 
-1. **Plan Loading**:
+## Arguments
+
+- **`[plan]`** (optional): Path to plan document or plan JSON.
+- **`[milestone]`** (optional): Specific milestone to implement.
+- **`[context]`** (optional): Additional context or instructions.
+
+## Core Principles
+
+- Follow existing code patterns and conventions
+- Write tests for new functionality
+- Make atomic commits with clear messages
+- Stop and checkpoint if hitting context limits
+- Do not introduce security vulnerabilities
+
+## Instructions
+
+1. **Load Plan**
    - If plan path provided, read and parse the plan
    - Identify current milestone or specified milestone
    - Load any existing checkpoints
 
-2. **Implementation**:
+2. **Implement Tasks**
    - Execute tasks in order within the milestone
    - Make code changes following project conventions
    - Run tests after significant changes
    - Create commits at logical checkpoints
 
-3. **Progress Tracking**:
+3. **Track Progress**
    - Update plan document with completed tasks
    - Create checkpoint if approaching context limit
    - Record files changed and tests run
 
-## Output Format
+4. **Complete**
+   - Commit changes at milestone completion
+   - Update plan with progress
+   - Return JSON summary
+
+## Output Guidance
+
+Return JSON with implementation details:
 
 ```json
 {
@@ -66,25 +79,6 @@ Implement code changes following a plan or direct instructions. This command exe
   "checkpoint_created": false
 }
 ```
-
-## Process
-
-1. Load plan and identify work to do
-2. For each task:
-   - Read relevant files
-   - Make required changes
-   - Run related tests
-3. Commit changes at milestone completion
-4. Update plan with progress
-5. Return JSON summary
-
-## Guidelines
-
-- Follow existing code patterns and conventions
-- Write tests for new functionality
-- Make atomic commits with clear messages
-- Stop and checkpoint if hitting context limits
-- Do not introduce security vulnerabilities
 
 ---
 

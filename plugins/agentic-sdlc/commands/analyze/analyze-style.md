@@ -1,23 +1,18 @@
 ---
-name: analyse-style
+name: analyze-style
 description: Check code style, consistency, and best practices adherence
-arguments:
-  - name: paths
-    description: Space-separated list of files or directories to analyze
-    required: false
+argument-hint: [paths...]
 ---
 
-# Analyse Style
+# Analyze Style
 
-Check code style, consistency, and best practices adherence. Returns structured JSON for workflow integration and generates a markdown report.
+## Overview
+
+Check code style, consistency, and best practices adherence. Identifies inconsistent patterns and recommends normalizing the codebase to use ONE way of doing things. Returns structured JSON for workflow integration and generates a markdown report.
 
 ## Arguments
 
-- **`[paths]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, the entire codebase is analyzed.
-
-## Objective
-
-Check code style, consistency, and best practices adherence by identifying inconsistent patterns and normalizing the codebase to use ONE way of doing things.
+- **`[paths...]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, the entire codebase is analyzed.
 
 ## Core Principles
 
@@ -27,6 +22,9 @@ Check code style, consistency, and best practices adherence by identifying incon
 - Automated tools first - focus on what automation misses
 - Some inconsistency is acceptable for legacy code or external dependencies
 - Only report UNFIXED issues - if the issue has been resolved, do not include it
+- Focus on actual inconsistencies, not stylistic preferences
+- Recognize that external dependencies may require certain patterns
+- If no issues found, return success with zero counts
 
 ## Instructions
 
@@ -74,13 +72,12 @@ Check code style, consistency, and best practices adherence by identifying incon
    - Group by category
 
 6. **Return JSON Output**
-   - Return structured JSON with findings summary
 
 ## Output Guidance
 
 Return a JSON object AND save a detailed markdown report.
 
-### JSON Output (Required)
+### JSON Output
 
 ```json
 {
@@ -111,6 +108,8 @@ Return a JSON object AND save a detailed markdown report.
   "document_path": "agentic/analysis/style.md"
 }
 ```
+
+## Templates
 
 ### Markdown Report Structure
 
@@ -152,9 +151,9 @@ Based on analysis, the established patterns are:
 [Same format as Major]
 ```
 
-## What to Check
+### What to Check
 
-### Naming Conventions
+**Naming Conventions:**
 
 | Pattern    | Variations to Detect                                |
 | ---------- | --------------------------------------------------- |
@@ -164,7 +163,7 @@ Based on analysis, the established patterns are:
 | Components | `UserCard` vs `userCard` vs `User_Card`             |
 | Files      | `UserCard.tsx` vs `user-card.tsx` vs `userCard.tsx` |
 
-### Patterns
+**Patterns:**
 
 | Area           | Variations to Detect                      |
 | -------------- | ----------------------------------------- |
@@ -173,13 +172,3 @@ Based on analysis, the established patterns are:
 | State updates  | setState vs reducer vs signals            |
 | Props          | destructuring vs props.x                  |
 | Exports        | named vs default vs barrel files          |
-
-## Important Notes
-
-- Work with existing codebase patterns - identify the dominant style and normalize to it
-- Focus on issues that automated tools miss - ESLint/Prettier handle formatting
-- Consider context before normalizing legacy code
-- Focus on actual inconsistencies, not stylistic preferences
-- Recognize that external dependencies may require certain patterns
-- Do NOT include issues that have already been fixed or resolved
-- If no issues found, return success with zero counts

@@ -40,7 +40,7 @@ claude --plugin-dir ./plugins/<plugin-name>
 
 ### Commit Messages
 
-Write clear, concise commit messages that describe the change. For example: `Add retry logic to workflow executor` or `Fix validation error in analyse-bug command`.
+Write clear, concise commit messages that describe the change. For example: `Add retry logic to workflow executor` or `Fix validation error in analyze-bug command`.
 
 ### Code Formatting
 
@@ -50,6 +50,12 @@ Run format, lint, and test checks locally before submitting a PR:
 pnpm check          # Format and lint
 uv run pytest       # Python tests (for plugins with Python code)
 ```
+
+## Internal Tools
+
+- **`/normalize`** - Validate prompt files and READMEs against templates. Use `--autofix` to auto-fix issues.
+- **`/update-plugin`** - Analyze branch changes and update plugin versions following semantic versioning.
+- **`uv run .claude/re-install-plugins.py`** - Reinstall all plugins from the local marketplace (or specify plugin names to reinstall specific ones).
 
 ## Plugin Development
 

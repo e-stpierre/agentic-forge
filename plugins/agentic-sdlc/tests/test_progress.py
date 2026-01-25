@@ -34,7 +34,7 @@ class TestWorkflowStatus:
         assert WorkflowStatus.COMPLETED.value == "completed"
         assert WorkflowStatus.FAILED.value == "failed"
         assert WorkflowStatus.PAUSED.value == "paused"
-        assert WorkflowStatus.CANCELLED.value == "cancelled"
+        assert WorkflowStatus.CANCELED.value == "canceled"
 
 
 class TestStepStatus:

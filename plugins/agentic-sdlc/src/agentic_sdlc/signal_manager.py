@@ -62,7 +62,7 @@ def handle_graceful_shutdown(
     logger: WorkflowLogger,
     repo_root: Path,
 ) -> None:
-    """Handle graceful shutdown by cancelling workflow and cleaning up.
+    """Handle graceful shutdown by canceling workflow and cleaning up.
 
     Args:
         progress: Current workflow progress
@@ -73,7 +73,7 @@ def handle_graceful_shutdown(
     from agentic_sdlc.progress import WorkflowStatus
 
     logger.info("orchestrator", "Performing graceful shutdown")
-    progress.status = WorkflowStatus.CANCELLED.value
+    progress.status = WorkflowStatus.CANCELED.value
 
     # Clean up any orphaned worktrees
     prune_orphaned(repo_root)

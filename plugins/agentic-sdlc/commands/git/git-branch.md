@@ -1,32 +1,20 @@
 ---
 name: git-branch
 description: Create a git branch following naming convention
-output: json
-arguments:
-  - name: category
-    description: Branch type (poc, feature, fix, chore, doc, refactor). Infer from context if not provided, default to feature
-    required: false
-  - name: name
-    description: Branch name. Infer from context if not provided, default to agentic/<random-id>
-    required: false
-  - name: base
-    description: Base branch to create from. If not provided, branch from current location
-    required: false
+argument-hint: [category] [name] [base]
 ---
 
 # Git Branch Command
 
-Creates a new git branch following the naming convention: `<category>/<issue-id>_<branch-name>` or `<category>/<branch-name>` when no issue ID is provided.
+## Overview
+
+Create and checkout a new git branch following the naming convention: `<category>/<issue-id>_<branch-name>` or `<category>/<branch-name>` when no issue ID is provided. Links to issue tracking when available.
 
 ## Arguments
 
-- **`[category]`** (optional): Branch type. Common values: poc, feature, fix, chore, doc, refactor. Accepts any value. Defaults to `feature`
-- **`<name>`** (optional): Short kebab-case description of the work. Infer from context if not provided, default to `agentic/<random-id>`
-- **`[base]`** (optional): Base branch to create from. If not provided, branch from current location
-
-## Objective
-
-Create and checkout a new branch with consistent naming that links to issue tracking when available.
+- **`[category]`** (optional): Branch type. Common values: poc, feature, fix, chore, doc, refactor. Accepts any value. Defaults to `feature`.
+- **`[name]`** (optional): Short kebab-case description of the work. Infer from context if not provided, default to `agentic/<random-id>`.
+- **`[base]`** (optional): Base branch to create from. If not provided, branch from current location.
 
 ## Core Principles
 

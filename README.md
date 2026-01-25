@@ -5,16 +5,17 @@
 <h1 align="center">Agentic Forge</h1>
 
 <p align="center">
+  <a href="https://github.com/e-stpierre/agentic-forge/releases"><img src="https://img.shields.io/github/v/release/e-stpierre/agentic-forge?include_prereleases" alt="GitHub release"></a>
   <a href="https://claude.ai/code"><img src="https://img.shields.io/badge/Built%20for-Claude%20Code-orange" alt="Built for Claude Code"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://github.com/e-stpierre/agentic-forge/blob/main/LICENSE"><img src="https://img.shields.io/github/license/e-stpierre/agentic-forge" alt="License"></a>
 </p>
 
 <p align="center">
-  <strong>Claude Code plugins for interactive and autonomous development workflows</strong>
+  <strong>Autonomous workflow orchestration for Claude Code</strong>
 </p>
 
 <p align="center">
-  Interactive commands for guided development | YAML-based agentic workflows | Multi-step task orchestration
+  YAML-defined workflows | Multi-step execution | Progress tracking | Error recovery
 </p>
 
 ## Getting Started
@@ -33,6 +34,8 @@
    ```
 
 2. Install the plugin(s) you need and refer to their README for usage.
+
+## Plugins
 
 ### Agentic SDLC
 
@@ -74,37 +77,6 @@ agentic-sdlc run ralph-loop.yaml --var "max_iterations=20" \
 agentic-sdlc run plan-build-validate.yaml --var "task=Add dark mode support"
 ```
 
-## Plugins
-
-### Interactive-SDLC
-
-Interactive SDLC commands for guided development within Claude Code sessions through user questions and feedback.
-
-**Best for**: Interactive development where you want to be involved in decisions.
-
-#### Installation
-
-1. Install the plugin in Claude Code:
-
-   ```bash
-   /plugin install interactive-sdlc@agentic-forge
-   ```
-
-#### Examples
-
-See [Interactive-SDLC README](plugins/interactive-sdlc/README.md) for all commands and options.
-
-```bash
-# Plan a feature with milestones and implementation steps
-/interactive-sdlc:plan-feature
-
-# Run analysis on your codebase (bugs, docs, debt, style, security)
-/interactive-sdlc:analyse-security
-
-# Full workflow from branch creation to PR with user interaction
-/interactive-sdlc:one-shot
-```
-
 ## Experimental Plugins
 
 The `/experimental-plugins/` directory contains work-in-progress plugins that are not yet officially released. These may have breaking changes and are available for testing and feedback.
@@ -112,10 +84,6 @@ The `/experimental-plugins/` directory contains work-in-progress plugins that ar
 ## Contributing
 
 Found a bug or have a suggestion? Please [open an issue](https://github.com/e-stpierre/agentic-forge/issues) on GitHub.
-
-## Credits
-
-- [Geoffrey Huntley - Ralph Wiggum as a "software engineer"](https://ghuntley.com/ralph/)
 
 ## License
 

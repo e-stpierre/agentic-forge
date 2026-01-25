@@ -1,23 +1,18 @@
 ---
-name: analyse-security
+name: analyze-security
 description: Scan for security vulnerabilities, unsafe patterns, and dependency issues
-arguments:
-  - name: paths
-    description: Space-separated list of files or directories to analyze
-    required: false
+argument-hint: [paths...]
 ---
 
-# Analyse Security
+# Analyze Security
 
-Scan for security vulnerabilities, unsafe patterns, and dependency issues. Returns structured JSON for workflow integration and generates a markdown report.
+## Overview
+
+Scan for security vulnerabilities, unsafe patterns, and dependency issues. Checks for injection flaws, authentication issues, data exposure, and configuration problems. Returns structured JSON for workflow integration and generates a markdown report.
 
 ## Arguments
 
-- **`[paths]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, the entire codebase is analyzed.
-
-## Objective
-
-Scan for security vulnerabilities, unsafe patterns, and dependency issues by checking for injection flaws, authentication issues, data exposure, and configuration problems.
+- **`[paths...]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, the entire codebase is analyzed.
 
 ## Core Principles
 
@@ -27,6 +22,9 @@ Scan for security vulnerabilities, unsafe patterns, and dependency issues by che
 - Prioritize correctly - not everything is critical
 - This complements but doesn't replace SAST tools and security audits
 - Only report UNFIXED issues - if the issue has been resolved, do not include it
+- Check if framework features mitigate the issue before reporting
+- Consider defense in depth when assessing severity
+- If no issues found, return success with zero counts
 
 ## Instructions
 
@@ -81,13 +79,12 @@ Scan for security vulnerabilities, unsafe patterns, and dependency issues by che
    - Include remediation steps
 
 5. **Return JSON Output**
-   - Return structured JSON with findings summary
 
 ## Output Guidance
 
 Return a JSON object AND save a detailed markdown report.
 
-### JSON Output (Required)
+### JSON Output
 
 ```json
 {
@@ -115,6 +112,8 @@ Return a JSON object AND save a detailed markdown report.
   "document_path": "agentic/analysis/security.md"
 }
 ```
+
+## Templates
 
 ### Markdown Report Structure
 
@@ -160,7 +159,7 @@ Save to `agentic/analysis/security.md`:
 [Same format as Critical]
 ```
 
-## OWASP Top 10 Coverage
+### OWASP Top 10 Coverage
 
 | Category                           | What to Check                                    |
 | ---------------------------------- | ------------------------------------------------ |
@@ -174,13 +173,3 @@ Save to `agentic/analysis/security.md`:
 | A08:2021 Data Integrity Failures   | Insecure deserialization, unsigned data          |
 | A09:2021 Logging Failures          | Missing logs, sensitive data in logs             |
 | A10:2021 SSRF                      | Server-side request forgery                      |
-
-## Important Notes
-
-- Verify exploitability before flagging critical/high severity issues
-- Include exact file location, line number, and exploitation scenario for each finding
-- Prioritize correctly - consider defense in depth when assessing severity
-- Check if framework features mitigate the issue before reporting
-- This analysis complements but does not replace SAST tools, dependency scanners, or security audits
-- Do NOT include issues that have already been fixed or resolved
-- If no issues found, return success with zero counts

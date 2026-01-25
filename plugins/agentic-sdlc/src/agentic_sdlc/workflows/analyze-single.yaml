@@ -1,4 +1,4 @@
-name: analyse-single
+name: analyze-single
 version: "1.0"
 description: Run a single type of codebase analysis with optional autofix
 
@@ -34,9 +34,9 @@ steps:
     type: conditional
     condition: "variables.analysis_type == 'bug'"
     then:
-      - name: analyse-bug
+      - name: analyze-bug
         type: command
-        command: agentic-sdlc:analyse-bug
+        command: analyze-bug
         args:
           paths: "{{ variables.paths }}"
 
@@ -44,9 +44,9 @@ steps:
     type: conditional
     condition: "variables.analysis_type == 'debt'"
     then:
-      - name: analyse-debt
+      - name: analyze-debt
         type: command
-        command: agentic-sdlc:analyse-debt
+        command: analyze-debt
         args:
           paths: "{{ variables.paths }}"
 
@@ -54,9 +54,9 @@ steps:
     type: conditional
     condition: "variables.analysis_type == 'doc'"
     then:
-      - name: analyse-doc
+      - name: analyze-doc
         type: command
-        command: agentic-sdlc:analyse-doc
+        command: analyze-doc
         args:
           paths: "{{ variables.paths }}"
 
@@ -64,9 +64,9 @@ steps:
     type: conditional
     condition: "variables.analysis_type == 'security'"
     then:
-      - name: analyse-security
+      - name: analyze-security
         type: command
-        command: agentic-sdlc:analyse-security
+        command: analyze-security
         args:
           paths: "{{ variables.paths }}"
 
@@ -74,9 +74,9 @@ steps:
     type: conditional
     condition: "variables.analysis_type == 'style'"
     then:
-      - name: analyse-style
+      - name: analyze-style
         type: command
-        command: agentic-sdlc:analyse-style
+        command: analyze-style
         args:
           paths: "{{ variables.paths }}"
 
@@ -102,7 +102,7 @@ steps:
           5. Implement the fix
           6. Run build/lint commands and fix any errors
           7. Mark the issue as fixed in the analysis document
-          8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+          8. Commit using git-commit with title starting with issue ID
           9. End this session (do NOT continue to next issue)
 
           ## Completion

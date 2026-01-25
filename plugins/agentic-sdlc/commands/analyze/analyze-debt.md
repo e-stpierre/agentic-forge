@@ -1,23 +1,18 @@
 ---
-name: analyse-debt
+name: analyze-debt
 description: Identify technical debt, optimization opportunities, and refactoring needs
-arguments:
-  - name: paths
-    description: Space-separated list of files or directories to analyze
-    required: false
+argument-hint: [paths...]
 ---
 
-# Analyse Debt
+# Analyze Debt
 
-Identify technical debt, optimization opportunities, and refactoring needs. Returns structured JSON for workflow integration and generates a markdown report.
+## Overview
+
+Identify technical debt, optimization opportunities, and refactoring needs. Analyzes architecture, code quality, patterns, and performance issues. Returns structured JSON for workflow integration and generates a markdown report.
 
 ## Arguments
 
-- **`[paths]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, the entire codebase is analyzed.
-
-## Objective
-
-Identify technical debt, optimization opportunities, and refactoring needs by analyzing architecture, code quality, patterns, and performance issues.
+- **`[paths...]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, the entire codebase is analyzed.
 
 ## Core Principles
 
@@ -27,6 +22,9 @@ Identify technical debt, optimization opportunities, and refactoring needs by an
 - Prioritize by impact - frequently touched code > rarely touched
 - Avoid over-engineering and premature abstractions
 - Only report UNFIXED issues - if the issue has been resolved, do not include it
+- Understand why patterns exist before flagging them - some "debt" is intentional
+- Base recommendations on concrete requirements, not hypothetical future needs
+- If no issues found, return success with zero counts
 
 ## Instructions
 
@@ -73,13 +71,12 @@ Identify technical debt, optimization opportunities, and refactoring needs by an
    - Group by category
 
 5. **Return JSON Output**
-   - Return structured JSON with findings summary
 
 ## Output Guidance
 
 Return a JSON object AND save a detailed markdown report.
 
-### JSON Output (Required)
+### JSON Output
 
 ```json
 {
@@ -107,6 +104,8 @@ Return a JSON object AND save a detailed markdown report.
   "document_path": "agentic/analysis/debt.md"
 }
 ```
+
+## Templates
 
 ### Markdown Report Structure
 
@@ -147,7 +146,7 @@ Save to `agentic/analysis/debt.md`:
 [Same format as Architecture]
 ```
 
-## Effort Estimation
+### Effort Estimation
 
 **Low Effort:**
 
@@ -169,13 +168,3 @@ Save to `agentic/analysis/debt.md`:
 - Major refactoring
 - Database schema changes
 - API redesign
-
-## Important Notes
-
-- Focus on real debt - working code has value
-- Understand why patterns exist before flagging them - some "debt" is intentional
-- Avoid suggesting premature abstractions or over-engineering
-- Prioritize frequently-used code over rarely-touched code
-- Base recommendations on concrete requirements, not hypothetical future needs
-- Do NOT include issues that have already been fixed or resolved
-- If no issues found, return success with zero counts

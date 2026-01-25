@@ -26,7 +26,7 @@
         "completed",
         "failed",
         "paused",
-        "cancelled"
+        "canceled"
       ],
       "description": "Current workflow status"
     },

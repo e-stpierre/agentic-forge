@@ -1,4 +1,4 @@
-name: analyse-codebase-merge
+name: analyze-codebase-merge
 version: "1.0"
 description: Run comprehensive codebase analysis with autofix, merge branches, validate, and create PR
 
@@ -41,7 +41,7 @@ variables:
     description: Maximum iterations per analysis type for fixing issues
 
 steps:
-  - name: analyse-and-fix-all
+  - name: analyze-and-fix-all
     type: parallel
     merge-strategy: wait-all
     merge-mode: merge
@@ -52,9 +52,9 @@ steps:
       - name: bug-analysis
         type: serial
         steps:
-          - name: analyse-bug
+          - name: analyze-bug
             type: command
-            command: agentic-sdlc:analyse-bug
+            command: analyze-bug
             args:
               paths: "{{ variables.paths }}"
 
@@ -80,7 +80,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -97,9 +97,9 @@ steps:
       - name: debt-analysis
         type: serial
         steps:
-          - name: analyse-debt
+          - name: analyze-debt
             type: command
-            command: agentic-sdlc:analyse-debt
+            command: analyze-debt
             args:
               paths: "{{ variables.paths }}"
 
@@ -125,7 +125,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -142,9 +142,9 @@ steps:
       - name: doc-analysis
         type: serial
         steps:
-          - name: analyse-doc
+          - name: analyze-doc
             type: command
-            command: agentic-sdlc:analyse-doc
+            command: analyze-doc
             args:
               paths: "{{ variables.paths }}"
 
@@ -170,7 +170,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -187,9 +187,9 @@ steps:
       - name: security-analysis
         type: serial
         steps:
-          - name: analyse-security
+          - name: analyze-security
             type: command
-            command: agentic-sdlc:analyse-security
+            command: analyze-security
             args:
               paths: "{{ variables.paths }}"
 
@@ -215,7 +215,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -232,9 +232,9 @@ steps:
       - name: style-analysis
         type: serial
         steps:
-          - name: analyse-style
+          - name: analyze-style
             type: command
-            command: agentic-sdlc:analyse-style
+            command: analyze-style
             args:
               paths: "{{ variables.paths }}"
 
@@ -260,7 +260,7 @@ steps:
                   5. Implement the fix
                   6. Run build/lint commands and fix any errors
                   7. Mark the issue as fixed in the analysis document
-                  8. Commit using agentic-sdlc:git-commit with title starting with issue ID
+                  8. Commit using git-commit with title starting with issue ID
                   9. End this session (do NOT continue to next issue)
 
                   ## Completion
@@ -276,7 +276,7 @@ steps:
 
   - name: validate-merged-changes
     type: command
-    command: agentic-sdlc:validate
+    command: validate
     args:
       severity: "{{ variables.fix_severity }}"
 
@@ -301,7 +301,7 @@ steps:
           4. Navigate the code to understand the failure
           5. Implement the fix
           6. Run the failing check again to verify
-          7. Commit using agentic-sdlc:git-commit with clear message
+          7. Commit using git-commit with clear message
           8. End this session (do NOT continue to next issue)
 
           ## Checks to Run
@@ -323,7 +323,7 @@ steps:
 
       - name: revalidate
         type: command
-        command: agentic-sdlc:validate
+        command: validate
         args:
           severity: "{{ variables.fix_severity }}"
 
@@ -333,7 +333,7 @@ steps:
     then:
       - name: open-pr
         type: command
-        command: agentic-sdlc:git-pr
+        command: git-pr
         args:
           title: "[Analysis] Codebase analysis and fixes"
           draft: false

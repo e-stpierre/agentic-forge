@@ -6,19 +6,15 @@ argument-hint: "--level <level> --step <name> <message>"
 
 # Create Log
 
-## Definition
+## Overview
 
-Add a structured log entry to the workflow's NDJSON log file. Use this skill for progress milestones, errors, warnings, decisions, and context that should be recorded.
+Add a structured log entry to the workflow's NDJSON log file. Use this skill for progress milestones, errors, warnings, decisions, and context that should be recorded. Creates a structured log entry in the workflow's log file for tracking and debugging.
 
 ## Arguments
 
 - **`--level`** (required): Log level - Critical | Error | Warning | Information
 - **`--step`** (required): Step name for context (e.g., build, validate)
 - **`<message>`** (required): Log message
-
-## Objective
-
-Create a structured log entry in the workflow's log file for tracking and debugging.
 
 ## Core Principles
 

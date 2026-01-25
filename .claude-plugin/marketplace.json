@@ -5,74 +5,25 @@
     "email": "me@estpierre.dev"
   },
   "metadata": {
-    "description": "Claude Code plugins featuring interactive commands for guided development and Python-based agentic workflows with YAML orchestration for autonomous multi-step tasks",
-    "version": "0.2.0"
+    "description": "Claude Code plugins and Python CLI tools for autonomous multi-step workflows, enabling long-running agentic task execution with built-in orchestration and error recovery",
+    "version": "0.3.0"
   },
   "plugins": [
-    {
-      "name": "interactive-sdlc",
-      "source": "./plugins/interactive-sdlc",
-      "description": "[Beta] Interactive SDLC commands for guided development within Claude Code sessions",
-      "version": "0.1.0",
-      "author": {
-        "name": "Étienne St-Pierre",
-        "email": "me@estpierre.dev"
-      },
-      "license": "MIT",
-      "keywords": ["beta", "sdlc", "interactive"],
-      "category": "interactive",
-      "strict": false,
-      "commands": [
-        "./commands/configure.md",
-        "./commands/plan/plan-chore.md",
-        "./commands/plan/plan-bug.md",
-        "./commands/plan/plan-feature.md",
-        "./commands/dev/build.md",
-        "./commands/dev/validate.md",
-        "./commands/dev/document.md",
-        "./commands/workflows/one-shot.md",
-        "./commands/workflows/plan-build-validate.md",
-        "./commands/analyse/analyse-bug.md",
-        "./commands/analyse/analyse-doc.md",
-        "./commands/analyse/analyse-debt.md",
-        "./commands/analyse/analyse-style.md",
-        "./commands/analyse/analyse-security.md",
-        "./commands/git/git-branch.md",
-        "./commands/git/git-commit.md",
-        "./commands/git/git-pr.md",
-        "./commands/github/create-gh-issue.md",
-        "./commands/github/read-gh-issue.md"
-      ]
-    },
     {
       "name": "agentic-sdlc",
       "source": "./plugins/agentic-sdlc",
       "description": "[Beta] YAML-based workflow orchestration with parallel execution, conditional logic, and retry mechanisms for complex multi-step tasks",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": {
         "name": "Étienne St-Pierre",
         "email": "me@estpierre.dev"
       },
+      "homepage": "https://github.com/e-stpierre/agentic-forge",
+      "repository": "https://github.com/e-stpierre/agentic-forge",
       "license": "MIT",
       "keywords": ["beta", "sdlc", "agentic"],
       "category": "agentic",
-      "strict": false,
-      "commands": [
-        "./commands/analyse/analyse-bug.md",
-        "./commands/analyse/analyse-debt.md",
-        "./commands/analyse/analyse-doc.md",
-        "./commands/analyse/analyse-security.md",
-        "./commands/analyse/analyse-style.md",
-        "./commands/build.md",
-        "./commands/orchestrate.md",
-        "./commands/plan.md",
-        "./commands/validate.md",
-        "./commands/git/git-branch.md",
-        "./commands/git/git-commit.md",
-        "./commands/git/git-pr.md"
-      ],
-      "agents": ["./agents/explorer.md", "./agents/reviewer.md"],
-      "skills": ["./skills/create-checkpoint.md", "./skills/create-log.md"]
+      "strict": false
     }
   ]
 }

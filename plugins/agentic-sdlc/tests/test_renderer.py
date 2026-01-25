@@ -168,32 +168,32 @@ class TestExtractAnalysisSteps:
     def test_extract_analysis_steps_basic(self) -> None:
         """Test extracting analysis steps from outputs."""
         step_outputs = {
-            "analyse-bug": {"issues": 5},
-            "analyse-debt": {"issues": 3},
-            "analyse-security": {"issues": 2},
+            "analyze-bug": {"issues": 5},
+            "analyze-debt": {"issues": 3},
+            "analyze-security": {"issues": 2},
             "other-step": {"data": "ignored"},
         }
 
         result = _extract_analysis_steps(step_outputs)
 
-        assert "analyse-bug" in result
-        assert "analyse-debt" in result
-        assert "analyse-security" in result
+        assert "analyze-bug" in result
+        assert "analyze-debt" in result
+        assert "analyze-security" in result
         assert "other-step" not in result
 
     def test_extract_analysis_steps_filters_invalid(self) -> None:
         """Test that invalid analysis types are filtered."""
         step_outputs = {
-            "analyse-bug": {"issues": 5},
-            "analyse-invalid": {"issues": 3},
-            "analyse-and-fix-all": {"container": True},
+            "analyze-bug": {"issues": 5},
+            "analyze-invalid": {"issues": 3},
+            "analyze-and-fix-all": {"container": True},
         }
 
         result = _extract_analysis_steps(step_outputs)
 
-        assert "analyse-bug" in result
-        assert "analyse-invalid" not in result
-        assert "analyse-and-fix-all" not in result
+        assert "analyze-bug" in result
+        assert "analyze-invalid" not in result
+        assert "analyze-and-fix-all" not in result
 
     def test_extract_analysis_steps_empty(self) -> None:
         """Test extracting from empty outputs."""
@@ -203,11 +203,11 @@ class TestExtractAnalysisSteps:
     def test_extract_analysis_steps_all_types(self) -> None:
         """Test all analysis types are recognized."""
         step_outputs = {
-            "analyse-bug": {"type": "bug"},
-            "analyse-debt": {"type": "debt"},
-            "analyse-doc": {"type": "doc"},
-            "analyse-security": {"type": "security"},
-            "analyse-style": {"type": "style"},
+            "analyze-bug": {"type": "bug"},
+            "analyze-debt": {"type": "debt"},
+            "analyze-doc": {"type": "doc"},
+            "analyze-security": {"type": "security"},
+            "analyze-style": {"type": "style"},
         }
 
         result = _extract_analysis_steps(step_outputs)
@@ -270,7 +270,7 @@ class TestBuildTemplateContext:
             started_at="",
             completed_at=None,
             step_outputs={
-                "analyse-bug": {"issues": 5},
+                "analyze-bug": {"issues": 5},
                 "other-step": {"data": "ignored"},
             },
             files_changed=[],
@@ -279,7 +279,7 @@ class TestBuildTemplateContext:
             inputs={},
         )
 
-        assert "analyse-bug" in context["analysis_steps"]
+        assert "analyze-bug" in context["analysis_steps"]
         assert "other-step" not in context["analysis_steps"]
 
     def test_build_template_context_extracts_fixes(self) -> None:

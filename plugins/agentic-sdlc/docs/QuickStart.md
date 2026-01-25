@@ -4,12 +4,28 @@ Get started with agentic-sdlc in under 5 minutes.
 
 ## Installation
 
-```bash
-# Windows (PowerShell)
-uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
+1. Install the plugin in Claude Code:
 
-# macOS/Linux
-uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
+   ```bash
+   /plugin install agentic-sdlc@agentic-forge
+   ```
+
+2. Install the python CLI tools:
+
+   ```bash
+   # Windows (PowerShell)
+   uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
+
+   # macOS/Linux
+   uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
+   ```
+
+## Run Demo Workflow
+
+The demo workflow executes a rapid workflow with demo steps to help you understand how the tool operates:
+
+```bash
+agentic-sdlc run demo.yaml
 ```
 
 ## Run Your First Workflow
@@ -18,7 +34,7 @@ Bundled workflows work immediately without any setup:
 
 ```bash
 # Run the complete plan-build-validate workflow
-agentic-sdlc run plan-build-validate.yaml --var "task=Add a login button to the homepage"
+agentic-sdlc run plan-build-validate.yaml --var "task=Update the README documentation to add two new section, one about coding standard and one about this project architecture"
 ```
 
 This will:
@@ -37,7 +53,7 @@ This will:
 agentic-sdlc one-shot "Fix the null pointer exception in UserService" --git --pr
 
 # Run security analysis
-agentic-sdlc analyse --type security
+agentic-sdlc analyze --type security
 
 # List available bundled workflows
 agentic-sdlc init --list
@@ -64,7 +80,7 @@ Inside a Claude Code session:
 /validate
 
 # Analyze for bugs
-/analyse-bug
+/analyze-bug
 
 # Create a git commit
 /git-commit
@@ -89,7 +105,7 @@ agentic/
 ├── config.json           # Configuration settings
 ├── workflows/            # Custom workflow YAML files (created with 'init')
 ├── outputs/              # Workflow execution state and progress
-└── analysis/             # Analysis outputs from /analyse commands
+└── analysis/             # Analysis outputs from /analyze commands
 ```
 
 ## Common Workflows
@@ -110,10 +126,10 @@ agentic-sdlc one-shot "Your task description" --git --pr
 
 ```bash
 # All analysis types in parallel
-agentic-sdlc analyse
+agentic-sdlc analyze
 
 # Specific analysis type
-agentic-sdlc analyse --type security --autofix major
+agentic-sdlc analyze --type security --autofix major
 ```
 
 ## Troubleshooting
