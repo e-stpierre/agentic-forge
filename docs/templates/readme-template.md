@@ -97,33 +97,22 @@ Instructions:
   - **[Contributing](docs/Contributing.md)** - Development guidelines
 -->
 
-## Commands
+## Skills
 
-{{commands_content}}
+{{skills_content}}
 
 <!--
 Instructions:
-- OMIT THIS SECTION ENTIRELY if plugin has no commands
-- Replace {{commands_content}} with command tables
-- Always use tables with | Command | Description | format
-- If commands are organized in subfolders, use ### sub-sections matching folder structure
-- Example structure for subfolder-organized commands:
+- OMIT THIS SECTION ENTIRELY if plugin has no skills
+- Replace {{skills_content}} with skill tables
+- Always use tables with | Skill | Description | format
+- If skills are organized in subfolders, use ### sub-sections matching folder structure
+- Example:
 
-### Planning (`commands/plan/`)
-
-| Command | Description |
-|---------|-------------|
-| `/plugin:plan-feature` | Generate a feature implementation plan |
-| `/plugin:plan-bug` | Generate a bug fix plan |
-
-### Development (`commands/dev/`)
-
-| Command | Description |
-|---------|-------------|
-| `/plugin:build` | Implement a plan file |
-| `/plugin:validate` | Run validation checks |
-
-- For flat command structure, use a single table without sub-sections
+| Skill | Description |
+|-------|-------------|
+| `plugin:parse-logs` | Parse and analyze log files |
+| `plugin:validate-config` | Validate configuration files |
 -->
 
 ## Agents
@@ -142,24 +131,6 @@ Instructions:
 |-------|-------------|
 | `plugin:code-reviewer` | Reviews code for bugs and security issues |
 | `plugin:architect` | Designs system architecture |
--->
-
-## Skills
-
-{{skills_content}}
-
-<!--
-Instructions:
-- OMIT THIS SECTION ENTIRELY if plugin has no skills
-- Replace {{skills_content}} with skill tables
-- Always use tables with | Skill | Description | format
-- If skills are organized in subfolders, use ### sub-sections matching folder structure
-- Example:
-
-| Skill | Description |
-|-------|-------------|
-| `plugin:parse-logs` | Parse and analyze log files |
-| `plugin:validate-config` | Validate configuration files |
 -->
 
 ## Hooks

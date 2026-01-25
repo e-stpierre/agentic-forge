@@ -237,10 +237,10 @@ steps:
     # Timeout for entire loop
     timeout-minutes: 120
 
-  # ==================== VALIDATION STEP ====================
-  - name: validate-implementation
+  # ==================== REVIEW STEP ====================
+  - name: review-implementation
     type: prompt
-    prompt: /validate --plan "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
+    prompt: /review "agentic/outputs/{{ workflow_id }}/plan.md" minor
     checkpoint: true
 
   # ==================== CONDITIONAL STEP ====================
@@ -250,7 +250,7 @@ steps:
 
     # Jinja2 expression that evaluates to true/false
     # This checks if there are any issues with severity >= fix_severity
-    condition: "{{ outputs.validate_implementation.issues | selectattr('severity', 'ge', variables.fix_severity) | list | length > 0 }}"
+    condition: "{{ outputs.review_implementation.issues | selectattr('severity', 'ge', variables.fix_severity) | list | length > 0 }}"
 
     # Steps to execute if condition is true
     then:
@@ -260,15 +260,15 @@ steps:
           The validation found issues that need to be fixed.
 
           Issues to fix (severity {{ variables.fix_severity }} or higher):
-          {{ outputs.validate_implementation.issues | tojson(indent=2) }}
+          {{ outputs.review_implementation.issues | tojson(indent=2) }}
 
           Please fix these issues and commit your changes.
         model: sonnet
         timeout-minutes: 30
 
-      - name: revalidate
+      - name: re-review
         type: prompt
-        prompt: /validate --severity {{ variables.fix_severity }}
+        prompt: /review "" {{ variables.fix_severity }}
 
     # Steps to execute if condition is false
     else:
@@ -287,7 +287,7 @@ steps:
 
       Review the following:
       - Implementation plan: agentic/outputs/{{ workflow_id }}/plan.md
-      - Validation results: outputs.validate_implementation
+      - Review results: outputs.review_implementation
 
       Respond with:
       - "approved" to continue and create PR
@@ -321,7 +321,7 @@ steps:
       Include:
       - Task: {{ variables.task }}
       - Plan type: {{ variables.plan_type }}
-      - Validation results: {{ outputs.validate_implementation | tojson }}
+      - Review results: {{ outputs.review_implementation | tojson }}
       - PR created: {{ outputs.create_pull_request is defined }}
 
       Save the summary to agentic/outputs/{{ workflow_id }}/summary.md
@@ -363,7 +363,7 @@ outputs:
 # Resume from specific step:
 #   agentic-sdlc run workflow-example.yaml \
 #     --var "task=Implement feature" \
-#     --from-step validate-implementation
+#     --from-step review-implementation
 #
 # Provide human input:
 #   agentic-sdlc input <workflow-id> "approved"
@@ -375,9 +375,9 @@ outputs:
 #
 # Skills you can invoke via prompt steps:
 #
-# Planning & Validation:
+# Planning & Review:
 #   - /plan - Generate implementation plan
-#   - /validate - Run validation checks
+#   - /review - Review implementation quality
 #
 # Analysis:
 #   - /analyze bug - Find bugs and logic errors

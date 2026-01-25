@@ -1,6 +1,6 @@
-name: plan-build-validate
+name: plan-build-review
 version: "1.0"
-description: Full SDLC workflow with planning, implementation, and validation
+description: Full SDLC workflow with planning, implementation, and review
 
 settings:
   max-retry: 3
@@ -61,28 +61,28 @@ steps:
     model: sonnet
     checkpoint: true
 
-  - name: validate
+  - name: review
     type: prompt
-    prompt: /validate "agentic/outputs/{{ workflow_id }}/plan.md" minor
+    prompt: /review "agentic/outputs/{{ workflow_id }}/plan.md" minor
 
   - name: fix-issues
     type: conditional
-    condition: "outputs.validate.issues | selectattr('severity', 'ge', variables.fix_severity) | list | length > 0"
+    condition: "outputs.review.issues | selectattr('severity', 'ge', variables.fix_severity) | list | length > 0"
     then:
       - name: apply-fixes
         type: prompt
         prompt: |
           Review the validation results and fix all issues with severity {{ variables.fix_severity }} or higher.
 
-          Validation output:
-          {{ outputs.validate | tojson }}
+          Review output:
+          {{ outputs.review | tojson }}
 
           Make the necessary fixes and commit them.
         agent: agents/reviewer.md
 
-      - name: revalidate
+      - name: re-review
         type: prompt
-        prompt: /validate "" {{ variables.fix_severity }}
+        prompt: /review "" {{ variables.fix_severity }}
 
   - name: create-pr
     type: conditional

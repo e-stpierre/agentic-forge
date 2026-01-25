@@ -20,7 +20,46 @@ Get started with agentic-sdlc in under 5 minutes.
    uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
    ```
 
-## Run Demo Workflow
+## Running Your First Workflow
+
+### Help
+
+Help arguments can give you important information about the plugins and supported commands and arguments:
+
+```bash
+agentic-sdlc --help
+
+agentic-sdlc run --help
+```
+
+### Initialize
+
+Running the init command will copy the default workflows yaml file in your current directory, for easier edit:
+
+```bash
+agentic-sdlc init
+```
+
+### List Workflows
+
+You can see available workflows with the list command:
+
+```bash
+# List available workflows
+agentic-sdlc workflows
+```
+
+You can run bundled workflow or local workflow that you can create or edit:
+
+```bash
+# Run bundle workflow, located in the plugin directory
+agentic-sdlc run demo.yaml
+
+# Run local workflow, located in your current directory
+agentic-sdlc run agentic/workflows/demo.yaml
+```
+
+### Run Demo Workflow
 
 The demo workflow executes a rapid workflow with demo steps to help you understand how the tool operates:
 
@@ -28,13 +67,13 @@ The demo workflow executes a rapid workflow with demo steps to help you understa
 agentic-sdlc run demo.yaml
 ```
 
-## Run Your First Workflow
+### Plan Build Review
 
 Bundled workflows work immediately without any setup:
 
 ```bash
-# Run the complete plan-build-validate workflow
-agentic-sdlc run plan-build-validate.yaml --var "task=Update the README documentation to add two new section, one about coding standard and one about this project architecture"
+# Run the complete plan-build-review workflow
+agentic-sdlc run plan-build-review.yaml --var "task=Update the README documentation to add two new section, one about coding standard and one about this project architecture"
 ```
 
 This will:
@@ -43,55 +82,6 @@ This will:
 2. Implement the changes
 3. Validate with tests and code review
 4. Create a pull request
-
-## Common Commands Cheat Sheet
-
-### CLI Commands
-
-```bash
-# List available workflows
-agentic-sdlc workflows
-
-# Execute a one-shot task (quick task completion)
-agentic-sdlc run one-shot.yaml --var "task=Fix the null pointer exception in UserService"
-
-# Run security analysis workflow
-agentic-sdlc run analyze-single.yaml --var "analysis_type=security"
-
-# Check workflow status
-agentic-sdlc list
-
-# Resume a paused workflow
-agentic-sdlc resume <workflow-id>
-```
-
-### Claude Commands
-
-Inside a Claude Code session:
-
-```bash
-# Generate an implementation plan
-/plan Add user profile page with avatar upload
-
-# Run validation checks
-/validate
-
-# Analyze for bugs
-/analyze bug
-
-# Create a git commit
-/git-commit
-
-# Create a pull request
-/git-pr
-```
-
-## Next Steps
-
-- **Customize workflows**: Run `agentic-sdlc init` to copy bundled workflows locally, then edit them in `agentic/workflows/`
-- **Learn workflow syntax**: See [WorkflowBuilder.md](./WorkflowBuilder.md) for complete workflow authoring guide
-- **Configure settings**: Run `agentic-sdlc configure` for interactive setup
-- **View full command reference**: See [README.md](../README.md) for detailed documentation
 
 ## Directory Structure
 
@@ -105,29 +95,11 @@ agentic/
 └── analysis/             # Analysis outputs from /analyze skill
 ```
 
-## Common Workflows
+## Next Steps
 
-### Plan -> Build -> Validate -> PR
-
-```bash
-agentic-sdlc run plan-build-validate.yaml --var "task=Your feature description"
-```
-
-### Quick Task Completion
-
-```bash
-agentic-sdlc run one-shot.yaml --var "task=Your task description"
-```
-
-### Codebase Analysis
-
-```bash
-# Run all analysis types
-agentic-sdlc run analyze-codebase.yaml
-
-# Specific analysis type with auto-fix
-agentic-sdlc run analyze-single.yaml --var "analysis_type=security" --var "autofix=major"
-```
+- **Learn workflow syntax**: See [WorkflowBuilder.md](./WorkflowBuilder.md) for complete workflow authoring guide
+- **Configure settings**: Run `agentic-sdlc configure` for interactive setup
+- **View full command reference**: See [README.md](../README.md) for detailed documentation
 
 ## Troubleshooting
 

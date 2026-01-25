@@ -43,15 +43,10 @@ plugins/agentic-sdlc/
 │   │   ├── analyze.py
 │   │   └── ...
 │   ├── workflows/             # Bundled workflow YAML files
-│   │   ├── plan-build-validate.yaml
+│   │   ├── plan-build-review.yaml
 │   │   ├── one-shot.yaml
 │   │   └── ...
 │   └── templates/             # Jinja2 templates for outputs
-│
-├── commands/                  # Claude command definitions (.md)
-│   ├── plan/
-│   ├── build/
-│   └── validate/
 │
 ├── agents/                    # Claude agent configurations
 │   ├── explorer.md
@@ -68,8 +63,9 @@ plugins/agentic-sdlc/
 │   ├── create-skill/
 │   │   ├── SKILL.md
 │   │   └── template.md
-│   └── fix-analyze/
-│       └── SKILL.md
+│   ├── fix-analyze/
+│   │   └── SKILL.md
+│   └── ...
 │
 ├── schemas/                   # JSON schemas
 │   ├── workflow.schema.json

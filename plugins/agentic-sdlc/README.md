@@ -7,7 +7,6 @@ Agentic SDLC enables Claude Code to execute complex, multi-step tasks autonomous
 Execute complete development workflows from planning through implementation to validation, with support for parallel execution, conditional logic, and iterative refinement.
 
 - `/plan Add user profile with avatar upload` - Generate implementation plan
-- `/validate` - Run validation checks
 - `/analyze security` - Scan for security vulnerabilities
 - `agentic-sdlc run plan-build-validate.yaml --var "task=Add feature"` - Run complete workflow
 

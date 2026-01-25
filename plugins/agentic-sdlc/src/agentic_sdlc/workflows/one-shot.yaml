@@ -38,9 +38,9 @@ steps:
       - Commit changes with clear messages
     model: sonnet
 
-  - name: validate
+  - name: review
     type: prompt
-    prompt: /validate "" major
+    prompt: /review "" major
 
   - name: create-pr
     type: conditional

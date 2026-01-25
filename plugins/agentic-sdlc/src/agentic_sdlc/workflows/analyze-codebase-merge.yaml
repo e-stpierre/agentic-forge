@@ -1,6 +1,6 @@
 name: analyze-codebase-merge
 version: "1.0"
-description: Run comprehensive codebase analysis with autofix, merge branches, validate, and create PR
+description: Run comprehensive codebase analysis with autofix, merge branches, review, and create PR
 
 settings:
   max-retry: 2
@@ -264,9 +264,9 @@ steps:
                   - If an issue cannot be fixed (error, missing data), mark as skipped with reason
                   - Only return completion promise when genuinely done
 
-  - name: validate-merged-changes
+  - name: review-merged-changes
     type: prompt
-    prompt: /validate "" {{ variables.fix_severity }}
+    prompt: /review "" {{ variables.fix_severity }}
 
   - name: fix-validation-issues
     type: conditional
@@ -309,9 +309,9 @@ steps:
           - If an issue cannot be fixed (error, missing data), mark as skipped with reason
           - Only return completion promise when genuinely done
 
-      - name: revalidate
+      - name: re-review
         type: prompt
-        prompt: /validate "" {{ variables.fix_severity }}
+        prompt: /review "" {{ variables.fix_severity }}
 
   - name: create-pr
     type: conditional

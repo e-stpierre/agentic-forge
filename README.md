@@ -66,8 +66,8 @@ YAML-based workflow orchestration for autonomous task execution with parallel ex
 See [Agentic-SDLC README](plugins/agentic-sdlc/README.md) for all skills and workflow options.
 
 ```bash
-# Run plan-build-validate workflow for full SDLC automation
-agentic-sdlc run plan-build-validate.yaml --var "task=Add dark mode support"
+# Run plan-build-review workflow for full SDLC automation
+agentic-sdlc run plan-build-review.yaml --var "task=Add dark mode support"
 
 # Complete a task end-to-end autonomously
 agentic-sdlc run one-shot.yaml --var "task=Add user authentication"
