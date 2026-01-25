@@ -6,7 +6,7 @@ This script:
 1. Creates a staged copy of the repo (excluding node_modules, .git, etc.)
 2. Updates the marketplace from the staged copy
 3. Reinstalls all plugins defined in marketplace.json
-4. Force reinstalls the Python tools (agentic-core, agentic-sdlc)
+4. Force reinstalls the Python tools (agentic-sdlc)
 
 Usage:
     uv run .claude/re-install-plugins.py
@@ -244,7 +244,6 @@ Supported plugins:
 
 Examples:
   %(prog)s                      # Reinstall everything
-  %(prog)s agentic-core         # Reinstall only agentic-core
   %(prog)s agentic-sdlc         # Reinstall only agentic-sdlc
 """,
     )
