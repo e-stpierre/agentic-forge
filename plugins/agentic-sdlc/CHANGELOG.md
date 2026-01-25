@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0] - 2026-01-24
+
+### Changed
+
+- Renamed `analyse` commands to `analyze` for US English spelling consistency
+- Renamed workflow files from `analyse-*.yaml` to `analyze-*.yaml`
+- Renamed `demo-workflow.yaml` to `demo.yaml`
+- Updated documentation and command prompts for clarity
+
 ## [0.2.0] - 2026-01-21
 
 ### Added
