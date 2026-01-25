@@ -43,7 +43,7 @@ Create a pull request using the GitHub CLI with a descriptive title and appropri
    ```
    gh pr create --title "Fix typo in README" --body "Corrects spelling error
 
-   Generated with [Claude Code](https://claude.com/claude-code)"
+   🤖 Generated with [Claude Code](https://claude.com/product/claude-code)"
    ```
 
    **Medium/Large**: Structured description with attribution
@@ -56,7 +56,7 @@ Create a pull request using the GitHub CLI with a descriptive title and appropri
    - <Key change 1 with context>
    - <Key change 2 with context>
 
-   Generated with [Claude Code](https://claude.com/claude-code)"
+   🤖 Generated with [Claude Code](https://claude.com/product/claude-code)"
    ```
 
 7. Execute `gh pr create` with constructed content
