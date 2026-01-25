@@ -31,45 +31,45 @@ Execute complete development workflows from planning through implementation to v
 
 ### Planning and Implementation (`commands/`)
 
-| Command | Description |
-|---------|-------------|
-| `/plan` | Create an implementation plan for a task |
-| `/build` | Implement changes following a plan |
-| `/validate` | Validate implementation against plan and quality standards |
-| `/orchestrate` | Evaluate workflow state and determine next action |
+| Command            | Description                                                 |
+| ------------------ | ----------------------------------------------------------- |
+| `/plan`            | Create an implementation plan for a task                    |
+| `/build`           | Implement changes following a plan                          |
+| `/validate`        | Validate implementation against plan and quality standards  |
+| `/orchestrate`     | Evaluate workflow state and determine next action           |
 | `/add-improvement` | Add a new improvement to the improvements tracking document |
 
 ### Analysis (`commands/analyze/`)
 
-| Command | Description |
-|---------|-------------|
-| `/analyze-bug` | Analyze codebase for bugs, logic errors, and runtime issues |
-| `/analyze-debt` | Identify technical debt, optimization opportunities, and refactoring needs |
-| `/analyze-doc` | Analyze documentation quality, accuracy, and completeness |
-| `/analyze-security` | Scan for security vulnerabilities, unsafe patterns, and dependency issues |
-| `/analyze-style` | Check code style, consistency, and best practices adherence |
+| Command             | Description                                                                |
+| ------------------- | -------------------------------------------------------------------------- |
+| `/analyze-bug`      | Analyze codebase for bugs, logic errors, and runtime issues                |
+| `/analyze-debt`     | Identify technical debt, optimization opportunities, and refactoring needs |
+| `/analyze-doc`      | Analyze documentation quality, accuracy, and completeness                  |
+| `/analyze-security` | Scan for security vulnerabilities, unsafe patterns, and dependency issues  |
+| `/analyze-style`    | Check code style, consistency, and best practices adherence                |
 
 ### Git Operations (`commands/git/`)
 
-| Command | Description |
-|---------|-------------|
-| `/git-branch` | Create a git branch following naming convention |
-| `/git-commit` | Create a git commit with structured message |
-| `/git-pr` | Create a pull request with contextual title and description |
+| Command       | Description                                                 |
+| ------------- | ----------------------------------------------------------- |
+| `/git-branch` | Create a git branch following naming convention             |
+| `/git-commit` | Create a git commit with structured message                 |
+| `/git-pr`     | Create a pull request with contextual title and description |
 
 ## Agents
 
-| Agent | Description |
-|-------|-------------|
+| Agent      | Description                                                   |
+| ---------- | ------------------------------------------------------------- |
 | `explorer` | Efficiently explores codebase to find relevant files and code |
-| `reviewer` | Reviews code for quality, correctness, and best practices |
+| `reviewer` | Reviews code for quality, correctness, and best practices     |
 
 ## Skills
 
-| Skill | Description |
-|-------|-------------|
+| Skill               | Description                                             |
+| ------------------- | ------------------------------------------------------- |
 | `create-checkpoint` | Create a checkpoint to track progress and share context |
-| `create-log` | Add a log entry to the workflow log |
+| `create-log`        | Add a log entry to the workflow log                     |
 
 ## Installation
 
@@ -85,27 +85,27 @@ uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdl
 
 ### CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `agentic-sdlc run <workflow.yaml>` | Execute a workflow from YAML file |
-| `agentic-sdlc one-shot <task>` | Complete a task end-to-end |
-| `agentic-sdlc analyze` | Run codebase analysis (security, bugs, debt, style, docs) |
-| `agentic-sdlc init` | Copy bundled workflows locally for customization |
-| `agentic-sdlc list` | Show workflow execution history |
-| `agentic-sdlc status <id>` | Check workflow execution status |
-| `agentic-sdlc resume <id>` | Resume a paused or failed workflow |
-| `agentic-sdlc input <id> <response>` | Provide human input for wait-for-human steps |
-| `agentic-sdlc configure` | Interactive configuration setup |
+| Command                              | Description                                               |
+| ------------------------------------ | --------------------------------------------------------- |
+| `agentic-sdlc run <workflow.yaml>`   | Execute a workflow from YAML file                         |
+| `agentic-sdlc one-shot <task>`       | Complete a task end-to-end                                |
+| `agentic-sdlc analyze`               | Run codebase analysis (security, bugs, debt, style, docs) |
+| `agentic-sdlc init`                  | Copy bundled workflows locally for customization          |
+| `agentic-sdlc list`                  | Show workflow execution history                           |
+| `agentic-sdlc status <id>`           | Check workflow execution status                           |
+| `agentic-sdlc resume <id>`           | Resume a paused or failed workflow                        |
+| `agentic-sdlc input <id> <response>` | Provide human input for wait-for-human steps              |
+| `agentic-sdlc configure`             | Interactive configuration setup                           |
 
 ### CLI Options
 
-| Flag | Description |
-|------|-------------|
-| `--var key=value` | Set workflow variables |
-| `--git` | Enable git operations |
-| `--pr` | Create pull request on completion |
-| `--type <type>` | Analysis type (security, bugs, debt, style, docs) |
-| `--autofix <severity>` | Auto-fix issues at or above severity level |
+| Flag                   | Description                                       |
+| ---------------------- | ------------------------------------------------- |
+| `--var key=value`      | Set workflow variables                            |
+| `--git`                | Enable git operations                             |
+| `--pr`                 | Create pull request on completion                 |
+| `--type <type>`        | Analysis type (security, bugs, debt, style, docs) |
+| `--autofix <severity>` | Auto-fix issues at or above severity level        |
 
 ## Configuration
 
@@ -185,6 +185,7 @@ agentic/
 ### /plan
 
 **Arguments:**
+
 - `[type]` - Plan type: feature, bug, chore, auto (default: auto)
 - `[output_dir]` - Directory to write plan.md file
 - `[template]` - Custom template path
@@ -206,6 +207,7 @@ agentic/
 ### /build
 
 **Arguments:**
+
 - `[plan]` - Path to plan document or plan JSON
 - `[milestone]` - Specific milestone to implement
 - `[context]` - Additional context or instructions
@@ -226,6 +228,7 @@ agentic/
 ### /validate
 
 **Arguments:**
+
 - `[plan]` - Path to plan document
 - `[severity]` - Minimum severity to report: minor, major, critical (default: minor)
 
@@ -242,9 +245,10 @@ agentic/
 /validate --severity major
 ```
 
-### /analyze-*
+### /analyze-\*
 
 **Arguments:**
+
 - `[paths...]` - Space-separated list of files or directories to analyze
 
 **Examples:**
@@ -265,6 +269,7 @@ agentic/
 ### /git-branch
 
 **Arguments:**
+
 - `[category]` - Branch type: poc, feature, fix, chore, doc, refactor (default: feature)
 - `[name]` - Short kebab-case description
 - `[base]` - Base branch to create from
@@ -285,6 +290,7 @@ agentic/
 ### /git-commit
 
 **Arguments:**
+
 - `[message]` - Override commit title
 - `[files]` - Specific files to commit
 - `[plan_step]` - Reference to plan step being completed
@@ -305,6 +311,7 @@ agentic/
 ### /git-pr
 
 **Arguments:**
+
 - `[title]` - PR title (auto-generated if not provided)
 - `[body]` - PR body/description (auto-generated if not provided)
 - `[base]` - Target branch (default: main)
@@ -329,6 +336,7 @@ agentic/
 ### agentic-sdlc run (Python CLI)
 
 **Options:**
+
 - `<workflow.yaml>` - Path to workflow file (required)
 - `--var key=value` - Set workflow variables (repeatable)
 
@@ -345,6 +353,7 @@ agentic-sdlc run workflows/custom.yaml --var "task=Add feature" --var "priority=
 ### agentic-sdlc one-shot (Python CLI)
 
 **Options:**
+
 - `<task>` - Task description (required)
 - `--git` - Enable git operations
 - `--pr` - Create pull request on completion
@@ -362,6 +371,7 @@ agentic-sdlc one-shot "Add input validation to signup form" --git --pr
 ### agentic-sdlc analyze (Python CLI)
 
 **Options:**
+
 - `--type <type>` - Analysis type: security, bugs, debt, style, docs (default: all)
 - `--autofix <severity>` - Auto-fix issues at or above severity: minor, major, critical
 

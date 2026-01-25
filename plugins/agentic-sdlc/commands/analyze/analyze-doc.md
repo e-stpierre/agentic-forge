@@ -131,18 +131,21 @@ Save to `agentic/analysis/doc.md`:
 ### Issue Categories
 
 **Critical (Wrong/Misleading):**
+
 - Documents non-existent features
 - Wrong API signatures
 - Incorrect behavior descriptions
 - Security-related misinformation
 
 **Major (Outdated/Incomplete):**
+
 - Features added but not documented
 - Deprecated features still documented
 - Missing important sections
 - Outdated examples
 
 **Minor (Improvements):**
+
 - Typos and grammar issues
 - Unclear explanations
 - Missing examples

@@ -113,7 +113,7 @@ Return ONLY a valid JSON object in this exact format:
 ## Workflow Definition
 
 ```yaml
-{{ workflow_yaml }}
+{ { workflow_yaml } }
 ```
 
 ## Current Progress

@@ -149,18 +149,21 @@ Save to `agentic/analysis/debt.md`:
 ### Effort Estimation
 
 **Low Effort:**
+
 - Simple refactoring
 - Renaming for clarity
 - Extracting small functions
 - Adding types/documentation
 
 **Medium Effort:**
+
 - Extracting modules/classes
 - Refactoring patterns
 - Adding caching
 - Query optimization
 
 **High Effort:**
+
 - Architectural changes
 - Major refactoring
 - Database schema changes
