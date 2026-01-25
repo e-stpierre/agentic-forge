@@ -1,6 +1,6 @@
 # Agentic SDLC Integration
 
-The following sections are optional and can be added in `CLAUDE.md` to improve it's integration with the `agenti-sdlc` plugin.
+The following sections are optional and can be added in `CLAUDE.md` to improve its integration with the `agentic-sdlc` plugin.
 
 ## Checkpoint Guidelines
 

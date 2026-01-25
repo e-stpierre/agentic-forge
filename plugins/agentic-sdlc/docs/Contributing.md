@@ -233,22 +233,24 @@ elif args.command == 'your-command':
 
 4. Add tests in `tests/test_your_command.py`
 
-### Adding a New Claude Command
+### Adding a New Skill
 
-1. Create markdown file in appropriate directory:
+Skill can be created manually or by using the `create-skill` skill.
+
+1. Create skill directory with `SKILL.md` file:
 
 ```
-commands/
-└── your-category/
-    └── your-command.md
+skills/
+└── your-skill/
+    └── SKILL.md
 ```
 
-2. Follow the command template structure (see `docs/templates/command-template.md`)
+2. Follow the template in `skills/create-skill/template.md`
 
 3. Validate with `/normalize`:
 
 ```bash
-/normalize plugins/agentic-sdlc/commands/your-category/
+/normalize plugins/agentic-sdlc/skills/your-skill/
 ```
 
 ### Adding a New Workflow Step Type
