@@ -1,7 +1,7 @@
 ---
 name: create-log
 description: Add a log entry to the workflow log
-argument-hint: "--level <level> --step <name> <message>"
+argument-hint: --level <level> --step <name> <message>
 ---
 
 # Create Log
@@ -56,6 +56,8 @@ Return JSON confirmation:
   }
 }
 ```
+
+## Templates
 
 ### Log File Format
 

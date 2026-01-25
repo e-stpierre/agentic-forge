@@ -1,7 +1,7 @@
 ---
 name: create-checkpoint
 description: Create a checkpoint to track progress and share context
-argument-hint: "--step <name> --status <status> <context>"
+argument-hint: --step <name> --status <status> <context>
 ---
 
 # Create Checkpoint
@@ -47,6 +47,8 @@ Return JSON confirmation:
   "workflow_id": "abc123"
 }
 ```
+
+## Templates
 
 ### Checkpoint File Format
 

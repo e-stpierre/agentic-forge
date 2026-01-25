@@ -4,7 +4,7 @@ SKILL PROMPT TEMPLATE
 This template defines the exact structure for Claude Code skill prompts.
 
 REQUIRED FRONTMATTER FIELDS:
-- name: Kebab-case identifier for the skill
+- name: Kebab-case identifier for the skill (or use directory name)
 - description: One-line description shown in help menus (recommended: under 100 characters)
 - argument-hint: Usage pattern hint (only if skill takes arguments)
 
@@ -13,12 +13,21 @@ ARGUMENT-HINT CONVENTIONS:
 - Use `[arg]` for optional arguments (square brackets)
 - Use `--flag` for boolean flags
 - Use `[arg...]` for variadic arguments (accepts multiple values)
-- The `[context]` argument must ALWAYS come last when present - this is the user-provided prompt context
+- The `[context]` argument must ALWAYS come last when present
 - Examples:
   - `<context>` - required context only
   - `[type] <context>` - optional type, required context
   - `[paths...] [context]` - optional paths, optional context
   - `<context> [--verbose]` - required context with optional flag
+
+OPTIONAL FRONTMATTER FIELDS:
+- disable-model-invocation: Set `true` to prevent Claude auto-loading (default: false)
+- user-invocable: Set `false` to hide from / menu (default: true)
+- allowed-tools: Tools Claude can use without permission
+- model: Model to use when skill is active
+- context: Set to `fork` for isolated subagent execution
+- agent: Subagent type when context: fork is set
+- hooks: Hooks scoped to this skill's lifecycle
 
 REQUIRED SECTIONS (in order):
 1. Overview - Skill purpose and objective (combines definition + goal)
@@ -31,6 +40,7 @@ OPTIONAL SECTIONS (insert in order shown):
 - Configuration - After Arguments, for skills with configurable settings
 - Skill-Specific Guidelines - After Core Principles, for domain-specific guidance
 - Templates - After Output Guidance, for structured output templates
+- Additional Resources - At the end, for links to supporting files
 
 SECTION ORDER MUST BE RESPECTED - Follow the order defined above.
 
@@ -151,4 +161,16 @@ Instructions:
 - Include placeholders with clear naming (e.g., [Feature Name], {{variable}})
 - Document each section of the template
 - This section is recommended for skills that generate files or structured output
+-->
+
+## Additional Resources (optional)
+
+{{additional_resources}}
+
+<!--
+Instructions:
+- Replace {{additional_resources}} with links to supporting files
+- Format: - For <purpose>, see [filename.md](filename.md)
+- Use for reference docs, examples, or scripts in the skill directory
+- Omit this section if skill has no supporting files
 -->

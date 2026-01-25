@@ -69,7 +69,7 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 - **Commands**: Use kebab-case (e.g., `review-pr.md`, `setup-tests.md`)
 - **Agents**: Use descriptive names with domain prefix (e.g., `devops-agent.md`, `test-agent.md`)
-- **Skills**: Use verb-noun format (e.g., `parse-logs`, `validate-config`)
+- **Skills**: Directory name in kebab-case with `SKILL.md` inside (e.g., `parse-logs/SKILL.md`, `validate-config/SKILL.md`)
 - **Hooks**: Include event name (e.g., `session-start-hook.sh`, `tool-call-hook.sh`)
 - **Templates**: Use project type (e.g., `nodejs-template`, `python-template`)
 
@@ -86,17 +86,17 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 - **Commands**: Markdown (`.md`) files in `plugins/<plugin-name>/commands/`
 - **Agents**: Markdown (`.md`) files in `plugins/<plugin-name>/agents/`
-- **Skills**: Markdown (`.md`) files with structured prompts in `plugins/<plugin-name>/skills/`
+- **Skills**: `SKILL.md` files in skill directories: `plugins/<plugin-name>/skills/<skill-name>/SKILL.md`
 - **Hooks**: Shell scripts (`.sh`) or executable programs in `plugins/<plugin-name>/hooks/`
 - **Python Tools**: Python packages in `plugins/<plugin-name>/src/` with `pyproject.toml`
 
 ### Prompt Template Convention
 
-All prompt files (commands, agents, skills) and plugin READMEs must follow the exact structure defined in the template files located in `docs/templates/`:
+All prompt files (commands, agents, skills) and plugin READMEs must follow the exact structure defined in their respective template files:
 
 - `docs/templates/command-template.md` - Structure for command prompts
 - `docs/templates/agent-template.md` - Structure for agent prompts
-- `docs/templates/skill-template.md` - Structure for skill prompts
+- `plugins/agentic-sdlc/skills/create-skill/template.md` - Structure for skill prompts
 - `docs/templates/readme-template.md` - Structure for plugin README files
 
 **Placeholder Convention:**

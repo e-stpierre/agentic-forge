@@ -59,8 +59,15 @@ plugins/agentic-sdlc/
 │   └── reviewer.md
 │
 ├── skills/                    # Claude skill modules
-│   ├── create-checkpoint.md
-│   └── create-log.md
+│   ├── create-checkpoint/
+│   │   └── SKILL.md
+│   ├── create-log/
+│   │   └── SKILL.md
+│   ├── create-skill/
+│   │   ├── SKILL.md
+│   │   └── template.md
+│   └── fix-analyze/
+│       └── SKILL.md
 │
 ├── schemas/                   # JSON schemas
 │   ├── workflow.schema.json
