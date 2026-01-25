@@ -35,12 +35,8 @@ variables:
 
 steps:
   - name: plan
-    type: command
-    command: plan
-    args:
-      type: "{{ variables.type }}"
-      context: "{{ variables.task }}"
-      output_dir: "agentic/outputs/{{ workflow_id }}"
+    type: prompt
+    prompt: /plan --type {{ variables.type }} --output_dir "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
     checkpoint: true
 
   - name: implement
@@ -66,11 +62,8 @@ steps:
     checkpoint: true
 
   - name: validate
-    type: command
-    command: validate
-    args:
-      plan: "agentic/outputs/{{ workflow_id }}/plan.md"
-      severity: minor
+    type: prompt
+    prompt: /validate --plan "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
 
   - name: fix-issues
     type: conditional
@@ -88,21 +81,16 @@ steps:
         agent: agents/reviewer.md
 
       - name: revalidate
-        type: command
-        command: validate
-        args:
-          severity: "{{ variables.fix_severity }}"
+        type: prompt
+        prompt: /validate --severity {{ variables.fix_severity }}
 
   - name: create-pr
     type: conditional
     condition: "variables.create_pr"
     then:
       - name: open-pr
-        type: command
-        command: git-pr
-        args:
-          title: "{{ outputs.plan.summary }}"
-          draft: false
+        type: prompt
+        prompt: /git-pr --title "{{ outputs.plan.summary }}"
 
 outputs:
   - name: implementation-report

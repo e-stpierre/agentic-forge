@@ -39,17 +39,13 @@ steps:
     model: sonnet
 
   - name: validate
-    type: command
-    command: validate
-    args:
-      severity: major
+    type: prompt
+    prompt: /validate --severity major
 
   - name: create-pr
     type: conditional
     condition: "variables.create_pr"
     then:
       - name: open-pr
-        type: command
-        command: git-pr
-        args:
-          draft: false
+        type: prompt
+        prompt: /git-pr

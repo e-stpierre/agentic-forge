@@ -11,7 +11,7 @@ version: "1.0"
 # Optional: Human-readable description
 description: |
   Comprehensive example workflow demonstrating all available features:
-  - All step types (prompt, command, serial, parallel, conditional, ralph-loop, wait-for-human)
+  - All step types (prompt, serial, parallel, conditional, ralph-loop, wait-for-human)
   - Git integration with worktrees
   - Error handling and retries
   - Checkpoints and progress tracking
@@ -129,16 +129,11 @@ steps:
     # Optional: Create checkpoint after this step completes
     checkpoint: false
 
-  # ==================== COMMAND STEP ====================
-  # Execute a Claude command with arguments
+  # ==================== SKILL INVOCATION ====================
+  # Invoke a Claude slash command skill
   - name: generate-plan
-    type: command
-    # Must use namespace prefix (plugin-name:command-name)
-    command: plan
-    args:
-      type: "{{ variables.plan_type }}"
-      context: "{{ variables.task }}"
-      output_dir: "agentic/outputs/{{ workflow_id }}"
+    type: prompt
+    prompt: /plan --type {{ variables.plan_type }} --output_dir "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
     checkpoint: true
     timeout-minutes: 20
 
@@ -181,23 +176,23 @@ steps:
     # Parallel steps
     steps:
       - name: security-scan
-        type: command
-        command: analyze security
+        type: prompt
+        prompt: /analyze security
         on-error: skip # Don't fail workflow if security scan fails
 
       - name: style-check
-        type: command
-        command: analyze style
+        type: prompt
+        prompt: /analyze style
         on-error: skip
 
       - name: bug-detection
-        type: command
-        command: analyze bug
+        type: prompt
+        prompt: /analyze bug
         on-error: skip
 
       - name: debt-analysis
-        type: command
-        command: analyze debt
+        type: prompt
+        prompt: /analyze debt
         on-error: skip
 
   # ==================== RALPH LOOP STEP ====================
@@ -242,13 +237,10 @@ steps:
     # Timeout for entire loop
     timeout-minutes: 120
 
-  # ==================== COMMAND STEP (VALIDATION) ====================
+  # ==================== VALIDATION STEP ====================
   - name: validate-implementation
-    type: command
-    command: validate
-    args:
-      plan: "agentic/outputs/{{ workflow_id }}/plan.md"
-      severity: minor
+    type: prompt
+    prompt: /validate --plan "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
     checkpoint: true
 
   # ==================== CONDITIONAL STEP ====================
@@ -275,10 +267,8 @@ steps:
         timeout-minutes: 30
 
       - name: revalidate
-        type: command
-        command: validate
-        args:
-          severity: "{{ variables.fix_severity }}"
+        type: prompt
+        prompt: /validate --severity {{ variables.fix_severity }}
 
     # Steps to execute if condition is false
     else:
@@ -319,11 +309,8 @@ steps:
     condition: "{{ variables.create_pr and outputs.request_approval.response == 'approved' }}"
     then:
       - name: open-pr
-        type: command
-        command: git-pr
-        args:
-          title: "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}"
-          draft: false
+        type: prompt
+        prompt: /git-pr --title "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}"
 
   # ==================== FINAL SUMMARY ====================
   - name: generate-summary
@@ -384,29 +371,29 @@ outputs:
 # Check workflow status:
 #   agentic-sdlc status <workflow-id>
 #
-# ==================== AVAILABLE COMMANDS ====================
+# ==================== AVAILABLE SKILLS ====================
 #
-# Commands you can use in command steps (must use namespace prefix):
+# Skills you can invoke via prompt steps:
 #
-# Planning & Implementation:
-#   - plan
-#   - build
-#   - validate
+# Planning & Validation:
+#   - /plan - Generate implementation plan
+#   - /validate - Run validation checks
 #
 # Analysis:
-#   - analyze bug
-#   - analyze debt
-#   - analyze doc
-#   - analyze security
-#   - analyze style
+#   - /analyze bug - Find bugs and logic errors
+#   - /analyze debt - Identify technical debt
+#   - /analyze doc - Check documentation
+#   - /analyze security - Security scan
+#   - /analyze style - Code style check
 #
 # Git Operations:
-#   - git-branch
-#   - git-commit
-#   - git-pr
+#   - /git-branch - Create git branch
+#   - /git-commit - Create commit
+#   - /git-pr - Create pull request
 #
-# Utilities:
-#   - orchestrate
+# Workflow Support:
+#   - /orchestrate - Workflow state evaluation
+#   - /add-improvement - Track improvements
 #
 # ==================== BUILT-IN VARIABLES ====================
 #

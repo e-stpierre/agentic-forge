@@ -121,16 +121,12 @@ steps:
       - If there are 0-1 facts, add ONE fact and then STOP (do not output completion JSON yet)
 
   - name: git-branch
-    type: command
-    command: git-branch
-    args:
-      name: demo/random-facts
+    type: prompt
+    prompt: /git-branch --name demo/random-facts
 
   - name: git-commit
-    type: command
-    command: git-commit
-    args:
-      message: "demo: add demo files with random facts"
+    type: prompt
+    prompt: /git-commit --message "demo: add demo files with random facts"
 
   - name: completion
     type: prompt

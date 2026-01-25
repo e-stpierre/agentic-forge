@@ -63,7 +63,7 @@ YAML-based workflow orchestration for autonomous task execution with parallel ex
 
 #### Examples
 
-See [Agentic-SDLC README](plugins/agentic-sdlc/README.md) for all commands and workflow options.
+See [Agentic-SDLC README](plugins/agentic-sdlc/README.md) for all skills and workflow options.
 
 ```bash
 # Run plan-build-validate workflow for full SDLC automation

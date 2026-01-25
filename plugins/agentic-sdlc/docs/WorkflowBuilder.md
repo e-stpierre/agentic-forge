@@ -178,34 +178,30 @@ steps:
     checkpoint: true # Optional: create checkpoint after step
 ```
 
-### Command Step
+### Invoking Skills
 
-Execute a Claude command with arguments.
+Use prompt steps to invoke slash command skills:
 
 ```yaml
 steps:
   - name: run-validation
-    type: command
-    command: validate # Must use namespace prefix
-    args:
-      plan: "agentic/outputs/{{ workflow_id }}/plan.md"
-      severity: minor
+    type: prompt
+    prompt: /validate --plan "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
     checkpoint: true
 ```
 
-**Available Commands:**
+**Available Skills:**
 
-- `plan` - Generate implementation plan
-- `build` - Implement changes from plan
-- `validate` - Run validation checks
-- `analyze bug` - Analyze for bugs
-- `analyze debt` - Find technical debt
-- `analyze doc` - Check documentation
-- `analyze security` - Security scan
-- `analyze style` - Code style check
-- `git-branch` - Create git branch
-- `git-commit` - Create commit
-- `git-pr` - Create pull request
+- `/plan` - Generate implementation plan
+- `/validate` - Run validation checks
+- `/analyze bug` - Analyze for bugs
+- `/analyze debt` - Find technical debt
+- `/analyze doc` - Check documentation
+- `/analyze security` - Security scan
+- `/analyze style` - Code style check
+- `/git-branch` - Create git branch
+- `/git-commit` - Create commit
+- `/git-pr` - Create pull request
 
 ### Serial Step
 
@@ -225,8 +221,8 @@ steps:
         prompt: "Second task (runs after step-1)"
 
       - name: step-3
-        type: command
-        command: validate
+        type: prompt
+        prompt: /validate
 ```
 
 ### Parallel Step
@@ -244,16 +240,16 @@ steps:
       branch-prefix: "analysis"
     steps:
       - name: security
-        type: command
-        command: analyze security
+        type: prompt
+        prompt: /analyze security
 
       - name: style
-        type: command
-        command: analyze style
+        type: prompt
+        prompt: /analyze style
 
       - name: bugs
-        type: command
-        command: analyze bug
+        type: prompt
+        prompt: /analyze bug
 ```
 
 **Merge Strategies:**
@@ -487,8 +483,8 @@ steps:
 ```yaml
 steps:
   - name: flaky-operation
-    type: command
-    command: validate
+    type: prompt
+    prompt: /validate
     max-retry: 5 # Retry up to 5 times
     on-error: retry # retry, skip, or fail
     timeout-minutes: 10
@@ -522,8 +518,8 @@ Create checkpoints to track progress:
 ```yaml
 steps:
   - name: critical-step
-    type: command
-    command: plan
+    type: prompt
+    prompt: /plan {{ variables.task }}
     checkpoint: true # Create checkpoint after success
 ```
 
@@ -568,13 +564,13 @@ Templates have access to:
 ```yaml
 # Good
 - name: validate-implementation
-  type: command
-  command: validate
+  type: prompt
+  prompt: /validate
 
 # Avoid
 - name: step-1
-  type: command
-  command: validate
+  type: prompt
+  prompt: /validate
 ```
 
 ### 2. Add Checkpoints for Long Workflows
@@ -582,8 +578,8 @@ Templates have access to:
 ```yaml
 steps:
   - name: plan
-    type: command
-    command: plan
+    type: prompt
+    prompt: /plan {{ variables.task }}
     checkpoint: true # Can resume from here
 
   - name: implement
@@ -617,8 +613,8 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
 
 ```yaml
 - name: optional-task
-  type: command
-  command: analyze style
+  type: prompt
+  prompt: /analyze style
   on-error: skip # Don't fail workflow if this fails
   max-retry: 1 # Try once, then skip
 ```
@@ -633,12 +629,12 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
     worktree: true
   steps:
     - name: security
-      type: command
-      command: analyze security
+      type: prompt
+      prompt: /analyze security
 
     - name: bugs
-      type: command
-      command: analyze bug
+      type: prompt
+      prompt: /analyze bug
 ```
 
 ### 7. Document with Descriptions

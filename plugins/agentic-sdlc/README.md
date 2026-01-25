@@ -17,7 +17,7 @@ Execute complete development workflows from planning through implementation to v
 - **Hybrid Orchestration**: Python handles deterministic operations, Claude makes intelligent decisions
 - **Git Worktree Isolation**: Execute parallel tasks in isolated git worktrees
 - **Progress Tracking**: Resume from checkpoints after interruptions or errors
-- **Built-in Commands**: Plan, build, validate, analyze, and git operations
+- **Built-in Skills**: Plan, build, validate, analyze, and git operations
 - **Error Recovery**: Automatic retry with configurable strategies
 
 ## Documentation
@@ -27,20 +27,20 @@ Execute complete development workflows from planning through implementation to v
 - **[Workflow Example](docs/workflow-example.yaml)** - Annotated reference with all options
 - **[Contributing](docs/Contributing.md)** - Development and testing guidelines
 
-## Commands
+## Skills
 
-### Planning and Validation (`commands/`)
+### Planning and Validation
 
-| Command            | Description                                                 |
+| Skill              | Description                                                 |
 | ------------------ | ----------------------------------------------------------- |
 | `/plan`            | Create an implementation plan for a task                    |
 | `/validate`        | Validate implementation against plan and quality standards  |
 | `/orchestrate`     | Evaluate workflow state and determine next action           |
 | `/add-improvement` | Add a new improvement to the improvements tracking document |
 
-### Analysis (`skills/analyze/`)
+### Analysis
 
-| Command             | Description                                                                |
+| Skill               | Description                                                                |
 | ------------------- | -------------------------------------------------------------------------- |
 | `/analyze bug`      | Analyze codebase for bugs, logic errors, and runtime issues                |
 | `/analyze debt`     | Identify technical debt, optimization opportunities, and refactoring needs |
@@ -48,9 +48,9 @@ Execute complete development workflows from planning through implementation to v
 | `/analyze security` | Scan for security vulnerabilities, unsafe patterns, and dependency issues  |
 | `/analyze style`    | Check code style, consistency, and best practices adherence                |
 
-### Git Operations (`commands/git/`)
+### Git Operations
 
-| Command       | Description                                                 |
+| Skill         | Description                                                 |
 | ------------- | ----------------------------------------------------------- |
 | `/git-branch` | Create a git branch following naming convention             |
 | `/git-commit` | Create a git commit with structured message                 |
@@ -63,14 +63,13 @@ Execute complete development workflows from planning through implementation to v
 | `explorer` | Efficiently explores codebase to find relevant files and code |
 | `reviewer` | Reviews code for quality, correctness, and best practices     |
 
-## Skills
+### Workflow Support Skills
 
-| Skill               | Description                                                      |
-| ------------------- | ---------------------------------------------------------------- |
-| `analyze`           | Analyze codebase for bugs, debt, docs, security, or style issues |
-| `create-checkpoint` | Create a checkpoint to track progress and share context          |
-| `create-log`        | Add a log entry to the workflow log                              |
-| `fix-analysis`      | Fix issues from an analysis document iteratively                 |
+| Skill               | Description                                             |
+| ------------------- | ------------------------------------------------------- |
+| `create-checkpoint` | Create a checkpoint to track progress and share context |
+| `create-log`        | Add a log entry to the workflow log                     |
+| `fix-analyze`       | Fix issues from an analysis document iteratively        |
 
 ## Installation
 

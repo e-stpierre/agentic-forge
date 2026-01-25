@@ -43,10 +43,8 @@ steps:
         type: serial
         steps:
           - name: analyze-bug
-            type: command
-            command: analyze bug
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /analyze bug {{ variables.paths }}
 
           - name: fix-bug
             type: conditional
@@ -68,20 +66,15 @@ steps:
             condition: "variables.create_pr"
             then:
               - name: open-bug-pr
-                type: command
-                command: git-pr
-                args:
-                  title: "[Analysis] Bug analysis and fixes"
-                  draft: false
+                type: prompt
+                prompt: /git-pr --title "[Analysis] Bug analysis and fixes"
 
       - name: debt-analysis
         type: serial
         steps:
           - name: analyze-debt
-            type: command
-            command: analyze debt
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /analyze debt {{ variables.paths }}
 
           - name: fix-debt
             type: conditional
@@ -103,20 +96,15 @@ steps:
             condition: "variables.create_pr"
             then:
               - name: open-debt-pr
-                type: command
-                command: git-pr
-                args:
-                  title: "[Analysis] Technical debt analysis and fixes"
-                  draft: false
+                type: prompt
+                prompt: /git-pr --title "[Analysis] Technical debt analysis and fixes"
 
       - name: doc-analysis
         type: serial
         steps:
           - name: analyze-doc
-            type: command
-            command: analyze doc
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /analyze doc {{ variables.paths }}
 
           - name: fix-doc
             type: conditional
@@ -138,20 +126,15 @@ steps:
             condition: "variables.create_pr"
             then:
               - name: open-doc-pr
-                type: command
-                command: git-pr
-                args:
-                  title: "[Analysis] Documentation analysis and fixes"
-                  draft: false
+                type: prompt
+                prompt: /git-pr --title "[Analysis] Documentation analysis and fixes"
 
       - name: security-analysis
         type: serial
         steps:
           - name: analyze-security
-            type: command
-            command: analyze security
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /analyze security {{ variables.paths }}
 
           - name: fix-security
             type: conditional
@@ -173,20 +156,15 @@ steps:
             condition: "variables.create_pr"
             then:
               - name: open-security-pr
-                type: command
-                command: git-pr
-                args:
-                  title: "[Analysis] Security analysis and fixes"
-                  draft: false
+                type: prompt
+                prompt: /git-pr --title "[Analysis] Security analysis and fixes"
 
       - name: style-analysis
         type: serial
         steps:
           - name: analyze-style
-            type: command
-            command: analyze style
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /analyze style {{ variables.paths }}
 
           - name: fix-style
             type: conditional
@@ -208,11 +186,8 @@ steps:
             condition: "variables.create_pr"
             then:
               - name: open-style-pr
-                type: command
-                command: git-pr
-                args:
-                  title: "[Analysis] Style analysis and fixes"
-                  draft: false
+                type: prompt
+                prompt: /git-pr --title "[Analysis] Style analysis and fixes"
 
 outputs:
   - name: analysis-summary

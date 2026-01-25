@@ -31,10 +31,8 @@ variables:
 
 steps:
   - name: run-analysis
-    type: command
-    command: analyze {{ variables.analysis_type }}
-    args:
-      paths: "{{ variables.paths }}"
+    type: prompt
+    prompt: /analyze {{ variables.analysis_type }} {{ variables.paths }}
 
   - name: check-autofix
     type: conditional

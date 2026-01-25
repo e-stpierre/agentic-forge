@@ -12,7 +12,6 @@ Validate that prompt files and plugin READMEs conform to the exact structure def
 
 Templates used for validation:
 
-- `docs/templates/command-template.md` for commands
 - `docs/templates/agent-template.md` for agents
 - `plugins/agentic-sdlc/skills/create-skill/template.md` for skills
 - `docs/templates/readme-template.md` for plugin READMEs
@@ -48,8 +47,7 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 
    **Pass 1: Gather all markdown files using broad patterns**
    - `plugins/**/*.md` - All markdown files in plugins
-   - `.claude/commands/*.md` - Repository-level commands
-   - `.claude/skills/**/SKILL.md` - Repository-level skills (new directory-based structure)
+   - `.claude/skills/**/SKILL.md` - Repository-level skills
 
    **Pass 2: Filter and classify discovered files**
    - Exclude non-prompt files: `CHANGELOG.md`, `CLAUDE.example.md`, and similar
@@ -61,16 +59,15 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 
    Determine the file type by checking if the file path contains these directory patterns:
 
-   | Path Contains              | Type    | Template to Read                                       |
-   | -------------------------- | ------- | ------------------------------------------------------ |
-   | `/commands/` or `commands` | Command | `docs/templates/command-template.md`                   |
-   | `/agents/` or `agents`     | Agent   | `docs/templates/agent-template.md`                     |
-   | `/skills/` or `skills`     | Skill   | `plugins/agentic-sdlc/skills/create-skill/template.md` |
-   | `/hooks/` or `hooks`       | Hook    | (no template - skip validation)                        |
-   | Filename is `README.md`    | README  | `docs/templates/readme-template.md`                    |
+   | Path Contains           | Type   | Template to Read                                       |
+   | ----------------------- | ------ | ------------------------------------------------------ |
+   | `/agents/` or `agents`  | Agent  | `docs/templates/agent-template.md`                     |
+   | `/skills/` or `skills`  | Skill  | `plugins/agentic-sdlc/skills/create-skill/template.md` |
+   | `/hooks/` or `hooks`    | Hook   | (no template - skip validation)                        |
+   | Filename is `README.md` | README | `docs/templates/readme-template.md`                    |
 
    **Classification rules:**
-   - Check path segments, not substrings (e.g., `/commands/` not just `command`)
+   - Check path segments, not substrings (e.g., `/agents/` not just `agent`)
    - README.md files in plugin roots are validated; README.md in subdirectories are skipped
    - Files like CHANGELOG.md, CLAUDE.example.md are skipped (not prompts)
    - If a file cannot be classified, skip it and note in the report
@@ -86,7 +83,7 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 
 4. **Validate Frontmatter**
 
-   For prompt files (commands, agents, skills):
+   For prompt files (agents, skills):
    - Parse the YAML frontmatter from the file being validated
    - Compare against frontmatter fields defined in the template
    - Validate:
@@ -176,15 +173,14 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 ### File Discovery
 
 - Files found: 35
-- Commands: 27
 - Agents: 2
-- Skills: 4
+- Skills: 31
 - READMEs: 2
 - Skipped (non-prompt): 3 (CHANGELOG.md, CLAUDE.example.md, etc.)
 
-### path/to/file.md (Command)
+### path/to/skill/SKILL.md (Skill)
 
-Template: docs/templates/command-template.md
+Template: plugins/agentic-sdlc/skills/create-skill/template.md
 
 **Frontmatter:**
 
@@ -226,12 +222,12 @@ Template: docs/templates/readme-template.md
 ### File Discovery
 
 - Files found: 35
-- Commands: 27, Agents: 2, Skills: 4, READMEs: 2
+- Agents: 2, Skills: 31, READMEs: 2
 - Skipped: 3
 
-### path/to/file.md (Command)
+### path/to/skill/SKILL.md (Skill)
 
-Template: docs/templates/command-template.md
+Template: plugins/agentic-sdlc/skills/create-skill/template.md
 
 - [FIXED] Added missing section: "Output Guidance"
 - [FIXED] Renamed section: "## arguments" -> "## Arguments"
@@ -239,10 +235,10 @@ Template: docs/templates/command-template.md
 
 ## Summary
 
-- Files checked: 32
+- Files checked: 35
 - Files modified: 2
 - Issues auto-fixed: 4
-- Files now passing: 31
+- Files now passing: 34
 ```
 
 If all files pass validation:
@@ -253,8 +249,8 @@ If all files pass validation:
 ### File Discovery
 
 - Files found: 35
-- Commands: 27, Agents: 2, Skills: 4, READMEs: 2
+- Agents: 2, Skills: 31, READMEs: 2
 - Skipped: 3
 
-All 32 files pass validation - 100% compliant with templates.
+All 35 files pass validation - 100% compliant with templates.
 ```
