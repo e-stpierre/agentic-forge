@@ -79,7 +79,7 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 - **Avoid duplication**: Do not repeat information from the root README (installation, marketplace setup, contributing guidelines, license, support)
 - **CHANGELOGs should be brief**: Focus on what changed, not detailed explanations
 - **Link to root docs**: Reference the root README or `/docs/` for general information
-- **ASCII only**: Use only valid ASCII characters in all files to avoid encoding issues across platforms
+- **Character encoding**: Code files must use ASCII only. Documentation and markdown files (skills, agents, commands, READMEs) may use minimal emojis where they add clarity (e.g., checkmarks, robot emoji for Claude attribution). Avoid decorative emoji use.
 - **Workflow diagrams**: Use arrow notation (`->`) for workflow documentation instead of long multi-line ASCII boxes. Example: `Plan -> Implement -> Validate -> Output` is preferred over complex box diagrams
 
 ### File Formats

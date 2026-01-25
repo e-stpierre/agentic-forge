@@ -24,7 +24,7 @@ Create a new Claude Code skill following the established guidelines and best pra
 - Follow the exact section order defined in the template
 - Use US English spelling in all content
 - Keep descriptions concise (under 100 characters recommended)
-- Use ASCII-only characters in all files
+- Code files must use ASCII only; markdown files may use minimal functional emojis
 
 ## Skill-Specific Guidelines
 

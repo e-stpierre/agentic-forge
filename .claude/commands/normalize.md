@@ -116,7 +116,7 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 6. **Validate Section Content**
 
    Based on template HTML comments, validate content patterns:
-   - Check for ASCII-only content (no special Unicode characters)
+   - Check character encoding (code files: ASCII only; markdown files: ASCII plus minimal functional emojis allowed)
    - Verify `{{placeholders}}` are replaced with actual values
    - Verify HTML comments from template are removed
 
