@@ -4,7 +4,7 @@ description: Create a git branch following naming convention
 argument-hint: [category] [name] [base]
 ---
 
-# Git Branch Command
+# Git Branch
 
 ## Overview
 
@@ -49,9 +49,17 @@ Return JSON with branch creation details:
 ```json
 {
   "success": true,
-  "branch": "feature/123_add-user-auth",
-  "base": "main",
-  "category": "feature",
-  "issue_id": "123"
+  "branch": "{{branch}}",
+  "base": "{{base}}",
+  "category": "{{category}}",
+  "issue_id": "{{issue_id}}"
 }
 ```
+
+<!--
+Placeholders:
+- {{branch}}: Full branch name created (e.g., feature/123_add-user-auth)
+- {{base}}: Base branch it was created from
+- {{category}}: Branch category used (feature, fix, chore, etc.)
+- {{issue_id}}: Issue ID if present, otherwise omit this field
+-->

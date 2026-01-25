@@ -20,12 +20,14 @@ A feature plan should include:
 Capture both types of requirements:
 
 **Functional Requirements**:
+
 - What the feature should do
 - User interactions and flows
 - Input/output specifications
 - Edge cases and error handling
 
 **Non-Functional Requirements**:
+
 - Performance expectations
 - Security considerations
 - Scalability needs
@@ -54,6 +56,7 @@ Break features into logical milestones:
 - Typically 2-5 milestones per feature
 
 **Common milestone patterns**:
+
 1. Core infrastructure/data models
 2. Basic functionality (happy path)
 3. Edge cases and error handling

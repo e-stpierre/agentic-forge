@@ -4,7 +4,7 @@ description: Create a pull request with contextual title and description
 argument-hint: [title] [body] [base] [--draft]
 ---
 
-# Git PR Command
+# Git PR
 
 ## Overview
 
@@ -70,11 +70,21 @@ Return JSON with PR details:
 ```json
 {
   "success": true,
-  "pr_number": 42,
-  "url": "https://github.com/owner/repo/pull/42",
-  "title": "Implement OAuth authentication",
-  "base": "main",
-  "head": "feature/oauth-auth",
-  "draft": false
+  "pr_number": "{{pr_number}}",
+  "url": "{{url}}",
+  "title": "{{title}}",
+  "base": "{{base}}",
+  "head": "{{head}}",
+  "draft": "{{draft}}"
 }
 ```
+
+<!--
+Placeholders:
+- {{pr_number}}: PR number assigned by GitHub
+- {{url}}: Full URL to the PR
+- {{title}}: PR title used
+- {{base}}: Target branch (e.g., main)
+- {{head}}: Source branch name
+- {{draft}}: Boolean indicating if created as draft
+-->

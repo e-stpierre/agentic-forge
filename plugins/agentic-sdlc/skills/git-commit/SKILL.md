@@ -4,7 +4,7 @@ description: Create a git commit with structured message
 argument-hint: [message] [files] [plan_step]
 ---
 
-# Git Commit Command
+# Git Commit
 
 ## Overview
 
@@ -23,9 +23,7 @@ Create a well-structured commit with a concise title and optional bullet-point d
 - Description uses 1-5 bullet points for larger commits highlighting important aspects
 - Always include AI attribution with your model name: `Co-Authored-By: Claude <model> <noreply@anthropic.com>`
 
-## Command-Specific Guidelines
-
-### Plan Step Reference
+## Plan Step Reference
 
 When following a plan (implementation plan, milestone plan, etc.), include the current step reference at the start of the commit title in brackets:
 
@@ -79,13 +77,23 @@ Return JSON with commit details:
 ```json
 {
   "success": true,
-  "commit_hash": "abc1234",
-  "message": "Implement OAuth callback handler",
-  "files_committed": ["src/auth/callback.ts", "src/auth/callback.test.ts"],
+  "commit_hash": "{{commit_hash}}",
+  "message": "{{message}}",
+  "files_committed": ["{{files}}"],
   "stats": {
-    "files_changed": 2,
-    "insertions": 145,
-    "deletions": 23
+    "files_changed": "{{files_changed}}",
+    "insertions": "{{insertions}}",
+    "deletions": "{{deletions}}"
   }
 }
 ```
+
+<!--
+Placeholders:
+- {{commit_hash}}: Short commit hash (e.g., abc1234)
+- {{message}}: Commit title/message
+- {{files}}: Array of committed file paths
+- {{files_changed}}: Number of files changed
+- {{insertions}}: Lines added
+- {{deletions}}: Lines removed
+-->
