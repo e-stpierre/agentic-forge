@@ -22,6 +22,10 @@ Create a new Claude Code skill following the established guidelines and best pra
 
 \$ARGUMENTS
 
+## Additional Resources
+
+- For the skill template structure, see [template.md](template.md)
+
 ## Core Principles
 
 - Every skill must be a `SKILL.md` file wrapped in a directory
@@ -143,7 +147,3 @@ After creating the skill, output a JSON object:
   ]
 }
 ```
-
-## Additional Resources
-
-- For the skill template structure, see [template.md](template.md)

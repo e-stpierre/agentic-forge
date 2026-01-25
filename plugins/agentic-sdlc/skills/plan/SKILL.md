@@ -1,7 +1,7 @@
 ---
 name: plan
 description: Create an implementation plan for a task
-argument-hint: [type] [output_dir] [template] <context>
+argument-hint: [type] [output_dir] <context>
 ---
 
 # Plan
@@ -15,13 +15,20 @@ Create a structured implementation plan for the given task. This skill analyzes 
 ### Definitions
 
 - **`[type]`** (optional): Plan type. Values: `feature`, `bug`, `chore`, `auto`. Defaults to `auto`.
-- **`[output_dir]`** (optional): Directory to write plan.md file (e.g., `agentic/outputs/workflow-id`).
-- **`[template]`** (optional): Custom template path.
+- **`[output_dir]`** (optional): Directory to write plan.md file (default to `agentic/outputs/<workflow-id>`).
 - **`<context>`** (required): Task description or issue reference.
 
 ### Values
 
 \$ARGUMENTS
+
+## Additional Resources
+
+Load ONE of these based on the `[type]` argument (or detected type if auto):
+
+- For feature plans, see [references/feature.md](references/feature.md)
+- For bug fix plans, see [references/bug.md](references/bug.md)
+- For chore plans, see [references/chore.md](references/chore.md)
 
 ## Core Principles
 
@@ -65,7 +72,7 @@ Create a structured implementation plan for the given task. This skill analyzes 
    - Estimate complexity (low, medium, high)
 
 6. **Write Output**
-   - Write plan document to `{{ output_dir }}/plan.md` if output_dir is provided
+   - Write plan document as .md format to the output_dir.
    - Return JSON summary
 
 ## Output Guidance
@@ -93,34 +100,3 @@ Placeholders:
 - {{complexity}}: Overall complexity (low, medium, high)
 - {{document_path}}: Path to generated plan.md file
 -->
-
-## Additional Resources
-
-Load ONE of these based on the `[type]` argument (or detected type if auto):
-
-- For feature plans, see [references/feature.md](references/feature.md)
-- For bug fix plans, see [references/bug.md](references/bug.md)
-- For chore plans, see [references/chore.md](references/chore.md)
-
----
-
-## Task Context
-
-{{ context }}
-
-{% if type != "auto" %}
-Plan Type: {{ type }}
-{% endif %}
-
-{% if output_dir %}
-
-## Output Directory
-
-Write the plan document to: `{{ output_dir }}/plan.md`
-
-IMPORTANT: You MUST create this file. Create the directory if it doesn't exist.
-{% endif %}
-
----
-
-Generate the implementation plan and return JSON output.

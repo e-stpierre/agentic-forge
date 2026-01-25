@@ -26,6 +26,16 @@ Analyze codebase for issues across multiple domains: bugs, technical debt, docum
 
 \$ARGUMENTS
 
+## Additional Resources
+
+Load ONE of these based on the `<type>` argument:
+
+- For bug analysis, see [references/bug.md](references/bug.md)
+- For debt analysis, see [references/debt.md](references/debt.md)
+- For doc analysis, see [references/doc.md](references/doc.md)
+- For security analysis, see [references/security.md](references/security.md)
+- For style analysis, see [references/style.md](references/style.md)
+
 ## Core Principles
 
 - Only report REAL issues - quality over quantity
@@ -229,13 +239,3 @@ Structure:
 - Add horizontal rule (---) between findings
 - Omit empty severity sections
 -->
-
-## Additional Resources
-
-Load ONE of these based on the `<type>` argument:
-
-- For bug analysis, see [references/bug.md](references/bug.md)
-- For debt analysis, see [references/debt.md](references/debt.md)
-- For doc analysis, see [references/doc.md](references/doc.md)
-- For security analysis, see [references/security.md](references/security.md)
-- For style analysis, see [references/style.md](references/style.md)

@@ -63,10 +63,10 @@ REQUIRED SECTIONS (in order):
 5. Output Guidance - Expected output format (must be JSON)
 
 OPTIONAL SECTIONS (insert in order shown):
-- Configuration - After Arguments, for skills with configurable settings
+- Additional Resources - After Arguments, for links to supporting files
+- Configuration - After Additional Resources, for skills with configurable settings
 - Skill-Specific Guidelines - After Core Principles, for domain-specific guidance
 - Templates - After Output Guidance, for structured output templates
-- Additional Resources - At the end, for links to supporting files
 
 SECTION ORDER MUST BE RESPECTED - Follow the order defined above.
 
@@ -124,6 +124,18 @@ Instructions:
 - The $ARGUMENTS placeholder is automatically replaced with all arguments passed when invoking the skill
 - If $ARGUMENTS is not present in the content, arguments are appended as `ARGUMENTS: <value>`
 - Do not modify this subsection
+-->
+
+## Additional Resources (optional)
+
+{{additional_resources}}
+
+<!--
+Instructions:
+- Replace {{additional_resources}} with links to supporting files
+- Format: - For <purpose>, see [filename.md](filename.md)
+- Use for reference docs, examples, or scripts in the skill directory
+- Omit this section if skill has no supporting files
 -->
 
 ## Configuration (optional)
@@ -202,16 +214,4 @@ Instructions:
 - Include placeholders with clear naming (e.g., [Feature Name], {{variable}})
 - Document each section of the template
 - This section is recommended for skills that generate files or structured output
--->
-
-## Additional Resources (optional)
-
-{{additional_resources}}
-
-<!--
-Instructions:
-- Replace {{additional_resources}} with links to supporting files
-- Format: - For <purpose>, see [filename.md](filename.md)
-- Use for reference docs, examples, or scripts in the skill directory
-- Omit this section if skill has no supporting files
 -->
