@@ -91,6 +91,31 @@ This project follows strict coding standards to ensure consistency and quality:
 
 See [CLAUDE.md](CLAUDE.md) for complete guidelines and [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 
+## Architecture
+
+This repository is organized as a **plugin marketplace** for Claude Code, where each plugin extends Claude's capabilities through modular components:
+
+**Repository Structure:**
+
+- `/plugins/` - Self-contained plugin directories with standardized structure
+- `/docs/` - Templates and development documentation
+- `/.claude/` - Claude Code configuration for marketplace integration
+
+**Plugin Anatomy:**
+
+Each plugin (`/plugins/<plugin-name>/`) contains:
+
+- `agents/` - Specialized agents for autonomous task execution
+- `skills/` - Slash commands that extend Claude Code's functionality
+- `hooks/` - Event-driven scripts (session start, tool calls, etc.)
+- `src/` - Optional Python CLI tools for workflow orchestration
+
+**Integration Flow:**
+
+Plugin Installation -> Component Loading -> Claude Code Integration -> Task Execution
+
+The `agentic-sdlc` plugin demonstrates this architecture with YAML-based workflow orchestration, combining skills, agents, and CLI tools for autonomous development workflows.
+
 ## Contributing
 
 Found a bug or have a suggestion? Please [open an issue](https://github.com/e-stpierre/agentic-forge/issues) on GitHub.
