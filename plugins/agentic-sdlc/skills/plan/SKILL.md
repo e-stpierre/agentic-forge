@@ -12,10 +12,16 @@ Create a structured implementation plan for the given task. This skill analyzes 
 
 ## Arguments
 
+### Definitions
+
 - **`[type]`** (optional): Plan type. Values: `feature`, `bug`, `chore`, `auto`. Defaults to `auto`.
 - **`[output_dir]`** (optional): Directory to write plan.md file (e.g., `agentic/outputs/workflow-id`).
 - **`[template]`** (optional): Custom template path.
 - **`<context>`** (required): Task description or issue reference.
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 

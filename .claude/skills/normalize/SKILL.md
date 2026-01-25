@@ -20,8 +20,14 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 
 ## Arguments
 
+### Definitions
+
 - **`[--autofix]`** (optional): Automatically modify files to make them compliant with the templates. Without this flag, only reports issues.
 - **`[paths...]`** (optional): One or more paths to files or directories to validate. If omitted, validates all prompt files and READMEs in the repository.
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 

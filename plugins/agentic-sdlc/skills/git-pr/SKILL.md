@@ -12,10 +12,16 @@ Create a pull request using the GitHub CLI with a descriptive title and appropri
 
 ## Arguments
 
+### Definitions
+
 - **`[title]`** (optional): PR title. Auto-generated if not provided.
 - **`[body]`** (optional): PR body/description. Auto-generated if not provided.
 - **`[base]`** (optional): Target branch for the PR. Defaults to main/master.
 - **`[--draft]`** (optional): Create as draft PR. Defaults to false.
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 

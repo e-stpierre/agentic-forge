@@ -12,8 +12,14 @@ Add a new improvement entry to the improvements tracking document. This skill cr
 
 ## Arguments
 
+### Definitions
+
 - **`[--explore]`** (optional): When set, analyze the codebase to add additional technical information to the improvement request. Defaults to `false`.
 - **`<context>`** (required): Description of the improvement request. Can include problem description, affected areas, or desired outcome.
+
+### Values
+
+$ARGUMENTS
 
 ## Configuration
 

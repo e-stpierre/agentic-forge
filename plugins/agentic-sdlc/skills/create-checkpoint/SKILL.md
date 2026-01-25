@@ -12,9 +12,15 @@ Record progress and provide context for future sessions or other agents. Use thi
 
 ## Arguments
 
+### Definitions
+
 - **`--step`** (required): Current step name (e.g., build, validate)
 - **`--status`** (required): Checkpoint status - in_progress | completed
 - **`<context>`** (required): Summary of current situation and progress
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 

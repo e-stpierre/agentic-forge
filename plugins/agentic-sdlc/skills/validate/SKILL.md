@@ -12,8 +12,14 @@ Validate the implementation against the plan and quality standards. This skill r
 
 ## Arguments
 
+### Definitions
+
 - **`[plan]`** (optional): Path to plan document.
 - **`[severity]`** (optional): Minimum severity to report. Values: `minor`, `major`, `critical`. Defaults to `minor`.
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 

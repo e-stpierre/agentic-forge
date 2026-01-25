@@ -12,9 +12,15 @@ Add a structured log entry to the workflow's NDJSON log file. Use this skill for
 
 ## Arguments
 
+### Definitions
+
 - **`--level`** (required): Log level - Critical | Error | Warning | Information
 - **`--step`** (required): Step name for context (e.g., build, validate)
 - **`<message>`** (required): Log message
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 

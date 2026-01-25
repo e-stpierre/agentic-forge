@@ -12,9 +12,15 @@ Create and checkout a new git branch following the naming convention: `<category
 
 ## Arguments
 
+### Definitions
+
 - **`[category]`** (optional): Branch type. Common values: poc, feature, fix, chore, doc, refactor. Accepts any value. Defaults to `feature`.
 - **`[name]`** (optional): Short kebab-case description of the work. Infer from context if not provided, default to `agentic/<random-id>`.
 - **`[base]`** (optional): Base branch to create from. If not provided, branch from current location.
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 

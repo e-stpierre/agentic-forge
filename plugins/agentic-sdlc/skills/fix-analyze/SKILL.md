@@ -12,9 +12,15 @@ Iteratively fix issues identified in an analysis document. This skill reads the 
 
 ## Arguments
 
+### Definitions
+
 - **`--type`** (required): Analysis type - bug, debt, doc, security, or style
 - **`--severity`** (required): Minimum severity to fix - minor, major, or critical
 - **`[context]`** (optional): Additional context or constraints for the fixes
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 

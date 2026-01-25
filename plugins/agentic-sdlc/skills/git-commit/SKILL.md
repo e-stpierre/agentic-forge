@@ -12,9 +12,15 @@ Create a well-structured commit with a concise title and optional bullet-point d
 
 ## Arguments
 
+### Definitions
+
 - **`[message]`** (optional): Override commit title. If not provided, auto-generate from changes.
 - **`[files]`** (optional): Specific files to commit. Default: all staged.
 - **`[plan_step]`** (optional): Reference to plan step being completed.
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 

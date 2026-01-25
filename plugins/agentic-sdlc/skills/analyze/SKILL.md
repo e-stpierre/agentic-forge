@@ -12,6 +12,8 @@ Analyze codebase for issues across multiple domains: bugs, technical debt, docum
 
 ## Arguments
 
+### Definitions
+
 - **`<type>`** (required): Analysis type to perform. Must be one of:
   - `bug` - Logic errors, runtime errors, and edge cases
   - `debt` - Technical debt, architecture, and performance issues
@@ -19,6 +21,10 @@ Analyze codebase for issues across multiple domains: bugs, technical debt, docum
   - `security` - Vulnerabilities, unsafe patterns, and dependency issues
   - `style` - Code style, consistency, and best practices
 - **`[paths...]`** (optional): Space-separated list of files or directories to analyze. When provided, only these paths are analyzed. Otherwise, the entire codebase is analyzed.
+
+### Values
+
+$ARGUMENTS
 
 ## Core Principles
 
