@@ -147,7 +147,8 @@ def main() -> None:
     # workflows command
     workflows_parser = subparsers.add_parser("workflows", help="List available workflows with descriptions")
     workflows_parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Show workflow variables and full descriptions",
     )
