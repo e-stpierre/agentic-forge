@@ -19,12 +19,6 @@ The agentic-forge repository aims to:
 Comprehensive documentation for plugin development and usage.
 This directory also contains template files for agent, command and skill. These templates must be respected when creating a new prompt.
 
-### `/experimental-plugins/`
-
-Root directory containing all experimental plugins. These plugins are not yet officially released. These plugins should also not be explicitely documented in the repository root README.md, but the directory can be mention and the plugins can be used in examples, such as uv tool installation. Breaking changes are accepted in experimental-plugins.
-
-**Important**: Experimental plugins must NOT have a `CHANGELOG.md` file. The changelog is only added once the plugin becomes officially supported, moves to version 0.1.x+, and is relocated to the `/plugins/` directory.
-
 ### `/plugins/`
 
 Root directory containing all plugins. Each plugin is self-contained within its own subdirectory.
@@ -81,7 +75,6 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 ### Documentation Guidelines
 
-- **Root README should not list experimental plugins**: The root README should not list or mention any plugin that are experimental (in the /experimental-plugins) directory.
 - **Keep READMEs concise**: Plugin READMEs should only contain plugin-specific information
 - **Avoid duplication**: Do not repeat information from the root README (installation, marketplace setup, contributing guidelines, license, support)
 - **CHANGELOGs should be brief**: Focus on what changed, not detailed explanations
