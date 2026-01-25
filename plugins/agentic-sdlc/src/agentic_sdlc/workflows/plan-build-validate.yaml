@@ -36,7 +36,7 @@ variables:
 steps:
   - name: plan
     type: prompt
-    prompt: /plan --type {{ variables.type }} --output_dir "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
+    prompt: /plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
     checkpoint: true
 
   - name: implement
@@ -63,7 +63,7 @@ steps:
 
   - name: validate
     type: prompt
-    prompt: /validate --plan "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
+    prompt: /validate "agentic/outputs/{{ workflow_id }}/plan.md" minor
 
   - name: fix-issues
     type: conditional
@@ -82,7 +82,7 @@ steps:
 
       - name: revalidate
         type: prompt
-        prompt: /validate --severity {{ variables.fix_severity }}
+        prompt: /validate "" {{ variables.fix_severity }}
 
   - name: create-pr
     type: conditional
@@ -90,7 +90,7 @@ steps:
     then:
       - name: open-pr
         type: prompt
-        prompt: /git-pr --title "{{ outputs.plan.summary }}"
+        prompt: /git-pr "{{ outputs.plan.summary }}"
 
 outputs:
   - name: implementation-report

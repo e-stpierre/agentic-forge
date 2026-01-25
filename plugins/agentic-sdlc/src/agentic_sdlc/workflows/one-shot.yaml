@@ -40,7 +40,7 @@ steps:
 
   - name: validate
     type: prompt
-    prompt: /validate --severity major
+    prompt: /validate "" major
 
   - name: create-pr
     type: conditional

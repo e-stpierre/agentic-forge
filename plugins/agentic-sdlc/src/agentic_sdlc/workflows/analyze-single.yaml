@@ -45,7 +45,7 @@ steps:
         model: sonnet
         timeout-minutes: 30
         prompt: |
-          Use /fix-analyze --type {{ variables.analysis_type }} --severity {{ variables.autofix }}
+          Use /fix-analyze {{ variables.analysis_type }} {{ variables.autofix }}
 
           Return completion promise "ANALYSIS_FIXES_COMPLETE" when done.
 

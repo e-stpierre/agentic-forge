@@ -266,7 +266,7 @@ steps:
 
   - name: validate-merged-changes
     type: prompt
-    prompt: /validate --severity {{ variables.fix_severity }}
+    prompt: /validate "" {{ variables.fix_severity }}
 
   - name: fix-validation-issues
     type: conditional
@@ -311,7 +311,7 @@ steps:
 
       - name: revalidate
         type: prompt
-        prompt: /validate --severity {{ variables.fix_severity }}
+        prompt: /validate "" {{ variables.fix_severity }}
 
   - name: create-pr
     type: conditional
@@ -319,7 +319,7 @@ steps:
     then:
       - name: open-pr
         type: prompt
-        prompt: /git-pr --title "[Analysis] Codebase analysis and fixes"
+        prompt: /git-pr "[Analysis] Codebase analysis and fixes"
 
 outputs:
   - name: analysis-summary

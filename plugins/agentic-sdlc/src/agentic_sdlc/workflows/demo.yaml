@@ -122,11 +122,11 @@ steps:
 
   - name: git-branch
     type: prompt
-    prompt: /git-branch --name demo/random-facts
+    prompt: /git-branch demo random-facts
 
   - name: git-commit
     type: prompt
-    prompt: /git-commit --message "[Demo] Add demo files with random facts"
+    prompt: /git-commit "[Demo] Add demo files with random facts"
 
   - name: completion
     type: prompt
