@@ -19,7 +19,7 @@ Review the implementation against quality standards and optionally against a pla
 
 ### Values
 
-$ARGUMENTS
+\$ARGUMENTS
 
 ## Core Principles
 
@@ -156,13 +156,13 @@ When a plan document is provided, append a `## Review` section to the plan file 
 
 ### Checks
 
-| Check | Status | Details |
-|-------|--------|---------|
-| Plan Compliance | {{plan_compliance_status}} | {{milestones_complete}}/{{milestones_total}} milestones |
-| Tests | {{tests_status}} | {{tests_passing}}/{{tests_total}} passing ({{coverage_percent}}% coverage) |
-| Lint | {{lint_status}} | {{lint_errors}} errors, {{lint_warnings}} warnings |
-| Types | {{types_status}} | {{type_errors}} errors |
-| Build | {{build_status}} | {{build_details}} |
+| Check           | Status                     | Details                                                                    |
+| --------------- | -------------------------- | -------------------------------------------------------------------------- |
+| Plan Compliance | {{plan_compliance_status}} | {{milestones_complete}}/{{milestones_total}} milestones                    |
+| Tests           | {{tests_status}}           | {{tests_passing}}/{{tests_total}} passing ({{coverage_percent}}% coverage) |
+| Lint            | {{lint_status}}            | {{lint_errors}} errors, {{lint_warnings}} warnings                         |
+| Types           | {{types_status}}           | {{type_errors}} errors                                                     |
+| Build           | {{build_status}}           | {{build_details}}                                                          |
 
 ### Issues
 
