@@ -80,6 +80,17 @@ agentic-sdlc run ralph-loop.yaml --var "max_iterations=20" \
   --var "task=Follow the improvement plan. Each iteration: read plan, implement next task, commit, STOP."
 ```
 
+## Coding Standards
+
+This project follows strict coding standards to ensure consistency and quality:
+
+- **Language**: US English spelling for all code, comments, and documentation (e.g., "analyze", "color", "canceled")
+- **Naming**: Kebab-case for skills/hooks, descriptive names with domain prefix for agents
+- **Validation**: Use `/normalize` to validate prompt files against templates
+- **Formatting**: Run `pnpm check` for format/lint and `uv run pytest` for Python tests before PRs
+
+See [CLAUDE.md](CLAUDE.md) for complete guidelines and [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
+
 ## Contributing
 
 Found a bug or have a suggestion? Please [open an issue](https://github.com/e-stpierre/agentic-forge/issues) on GitHub.
