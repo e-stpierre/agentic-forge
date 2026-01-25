@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agentic_sdlc.console import extract_summary
+from agentic_sdlc.console import extract_json, extract_summary
 from agentic_sdlc.progress import WorkflowStatus, update_step_completed, update_step_failed
 from agentic_sdlc.runner import run_claude
 from agentic_sdlc.steps.base import StepContext, StepExecutor, StepResult
@@ -73,7 +73,14 @@ class PromptStepExecutor(StepExecutor):
                         logger.info(step.name, f"Session ID: {session_out.session_id}")
                 else:
                     output_summary = extract_summary(result.stdout) if result.stdout else ""
-                update_step_completed(progress, step.name, output_summary, result.stdout)
+
+                # Try to extract structured JSON from skill output for workflow variable access
+                # Falls back to raw output if no valid JSON block found
+                step_output = extract_json(result.stdout) if result.stdout else None
+                if step_output is None:
+                    step_output = result.stdout
+
+                update_step_completed(progress, step.name, output_summary, step_output)
                 console.step_complete(step.name, output_summary)
                 logger.info(step.name, "Step completed successfully")
                 return StepResult(success=True, output_summary=output_summary, full_output=result.stdout)

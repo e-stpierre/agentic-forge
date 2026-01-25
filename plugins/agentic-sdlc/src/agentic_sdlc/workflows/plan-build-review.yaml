@@ -39,6 +39,10 @@ steps:
     prompt: /agentic-sdlc:plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
     checkpoint: true
 
+  - name: review
+    type: prompt
+    prompt: /agentic-sdlc:git-branch {{ variables.type }}
+
   - name: implement
     type: ralph-loop
     prompt: |
@@ -47,7 +51,7 @@ steps:
       For each milestone:
       1. Implement all tasks in the milestone
       2. Run tests to verify your changes
-      3. Commit your changes with a descriptive message
+      3. use the /agentic-sdlc:git-commit skill to commit your changes with a descriptive message
       4. Mark the milestone as complete in the plan file
 
       When ALL milestones are marked complete in the plan, output:

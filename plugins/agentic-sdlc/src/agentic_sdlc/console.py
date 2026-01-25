@@ -205,6 +205,41 @@ class ConsoleOutput:
             self._print("")  # Print newline to move past the last streamed line
 
 
+def extract_json(output: str) -> dict | None:
+    """Extract and parse JSON from Claude's output.
+
+    Looks for the last JSON code block (```json ... ```) in the output
+    and parses it. Skills are expected to output a JSON block as their
+    final structured output.
+
+    Args:
+        output: Full output text from Claude
+
+    Returns:
+        Parsed JSON as dict, or None if no valid JSON found
+    """
+    import json
+    import re
+
+    if not output:
+        return None
+
+    # Find all JSON code blocks
+    pattern = r"```json\s*([\s\S]*?)```"
+    matches = re.findall(pattern, output)
+
+    if not matches:
+        return None
+
+    # Use the last JSON block (skills output their final JSON at the end)
+    json_str = matches[-1].strip()
+
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
+        return None
+
+
 def extract_summary(output: str, max_lines: int = 5, max_chars: int = 500) -> str:
     """Extract a concise summary from Claude's output.
 

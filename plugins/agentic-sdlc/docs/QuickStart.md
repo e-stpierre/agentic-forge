@@ -73,7 +73,7 @@ Bundled workflows work immediately without any setup:
 
 ```bash
 # Run the complete plan-build-review workflow
-agentic-sdlc run plan-build-review.yaml --var "task=Update the README documentation to add two new section, one about coding standard and one about this project architecture"
+agentic-sdlc run plan-build-review.yaml --var "type=chore" --var "task=Update the README documentation to add two new section, one about coding standard and one about this project architecture"
 ```
 
 This will:
