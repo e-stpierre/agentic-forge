@@ -46,6 +46,7 @@ steps:
 
   - name: create-branch
     type: prompt
+    model: haiku
     prompt: /agentic-sdlc:git-branch {{ variables.type }}
 
   - name: implement
@@ -137,7 +138,7 @@ steps:
 
   - name: create-pr
     type: conditional
-    condition: "variables.create_pr and (outputs.fix_issues.success | default(true))"
+    condition: "variables.create_pr"
     then:
       - name: open-pr
         type: prompt
