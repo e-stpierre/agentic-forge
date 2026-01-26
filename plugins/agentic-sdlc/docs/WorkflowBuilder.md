@@ -178,34 +178,32 @@ steps:
     checkpoint: true # Optional: create checkpoint after step
 ```
 
-### Command Step
+### Invoking Skills
 
-Execute a Claude command with arguments.
+Use prompt steps to invoke slash command skills:
 
 ```yaml
 steps:
-  - name: run-validation
-    type: command
-    command: validate # Must use namespace prefix
-    args:
-      plan: "agentic/outputs/{{ workflow_id }}/plan.md"
-      severity: minor
+  - name: run-review
+    type: prompt
+    prompt: /agentic-sdlc:sdlc-review "agentic/outputs/{{ workflow_id }}/plan.md" --severity minor
     checkpoint: true
 ```
 
-**Available Commands:**
+**Always use fully qualified skill names** (e.g., `/agentic-sdlc:sdlc-plan` instead of `/sdlc-plan`) in workflow YAML files. This ensures the correct skill is invoked, avoiding conflicts with skills from other plugins or built-in commands.
 
-- `plan` - Generate implementation plan
-- `build` - Implement changes from plan
-- `validate` - Run validation checks
-- `analyze-bug` - Analyze for bugs
-- `analyze-debt` - Find technical debt
-- `analyze-doc` - Check documentation
-- `analyze-security` - Security scan
-- `analyze-style` - Code style check
-- `git-branch` - Create git branch
-- `git-commit` - Create commit
-- `git-pr` - Create pull request
+**Available Skills:**
+
+- `/agentic-sdlc:sdlc-plan` - Generate implementation plan
+- `/agentic-sdlc:sdlc-review` - Run review checks
+- `/agentic-sdlc:analyze bug` - Analyze for bugs
+- `/agentic-sdlc:analyze debt` - Find technical debt
+- `/agentic-sdlc:analyze doc` - Check documentation
+- `/agentic-sdlc:analyze security` - Security scan
+- `/agentic-sdlc:analyze style` - Code style check
+- `/agentic-sdlc:git-branch` - Create git branch
+- `/agentic-sdlc:git-commit` - Create commit
+- `/agentic-sdlc:git-pr` - Create pull request
 
 ### Serial Step
 
@@ -225,8 +223,8 @@ steps:
         prompt: "Second task (runs after step-1)"
 
       - name: step-3
-        type: command
-        command: validate
+        type: prompt
+        prompt: /agentic-sdlc:sdlc-review
 ```
 
 ### Parallel Step
@@ -244,16 +242,16 @@ steps:
       branch-prefix: "analysis"
     steps:
       - name: security
-        type: command
-        command: analyze-security
+        type: prompt
+        prompt: /agentic-sdlc:analyze security
 
       - name: style
-        type: command
-        command: analyze-style
+        type: prompt
+        prompt: /agentic-sdlc:analyze style
 
       - name: bugs
-        type: command
-        command: analyze-bug
+        type: prompt
+        prompt: /agentic-sdlc:analyze bug
 ```
 
 **Merge Strategies:**
@@ -274,7 +272,7 @@ steps:
   - name: fix-if-needed
     type: conditional
     # Jinja2 condition expression
-    condition: "{{ outputs.validate.issues | length > 0 }}"
+    condition: "{{ outputs.review.issues | length > 0 }}"
     then:
       - name: apply-fixes
         type: prompt
@@ -292,13 +290,13 @@ steps:
 condition: "{{ variables.create_pr }}"
 
 # Check output property
-condition: "{{ outputs.validate.passed }}"
+condition: "{{ outputs.review.passed }}"
 
 # Check list length
-condition: "{{ outputs.validate.issues | length > 0 }}"
+condition: "{{ outputs.review.issues | length > 0 }}"
 
 # Filter and count
-condition: "{{ outputs.validate.issues | selectattr('severity', 'eq', 'critical') | list | length > 0 }}"
+condition: "{{ outputs.review.issues | selectattr('severity', 'eq', 'critical') | list | length > 0 }}"
 
 # Compare values
 condition: "{{ variables.severity == 'major' }}"
@@ -395,10 +393,10 @@ Workflows use Jinja2 templating for dynamic content.
 {{ outputs.plan.summary }}
 
 # Nested field access
-{{ outputs.validate.issues[0].severity }}
+{{ outputs.review.issues[0].severity }}
 
 # Check if field exists
-{% if outputs.validate.passed %}
+{% if outputs.review.passed %}
 ```
 
 ### Filters
@@ -487,8 +485,8 @@ steps:
 ```yaml
 steps:
   - name: flaky-operation
-    type: command
-    command: validate
+    type: prompt
+    prompt: /agentic-sdlc:sdlc-review
     max-retry: 5 # Retry up to 5 times
     on-error: retry # retry, skip, or fail
     timeout-minutes: 10
@@ -522,8 +520,8 @@ Create checkpoints to track progress:
 ```yaml
 steps:
   - name: critical-step
-    type: command
-    command: plan
+    type: prompt
+    prompt: /agentic-sdlc:sdlc-plan {{ variables.task }}
     checkpoint: true # Create checkpoint after success
 ```
 
@@ -567,14 +565,14 @@ Templates have access to:
 
 ```yaml
 # Good
-- name: validate-implementation
-  type: command
-  command: validate
+- name: review-implementation
+  type: prompt
+  prompt: /sdlc-review
 
 # Avoid
 - name: step-1
-  type: command
-  command: validate
+  type: prompt
+  prompt: /sdlc-review
 ```
 
 ### 2. Add Checkpoints for Long Workflows
@@ -582,8 +580,8 @@ Templates have access to:
 ```yaml
 steps:
   - name: plan
-    type: command
-    command: plan
+    type: prompt
+    prompt: /sdlc-plan {{ variables.task }}
     checkpoint: true # Can resume from here
 
   - name: implement
@@ -617,8 +615,8 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
 
 ```yaml
 - name: optional-task
-  type: command
-  command: analyze-style
+  type: prompt
+  prompt: /agentic-sdlc:analyze style
   on-error: skip # Don't fail workflow if this fails
   max-retry: 1 # Try once, then skip
 ```
@@ -633,23 +631,23 @@ prompt: "Fix issues with severity {{ variables.severity }} or higher"
     worktree: true
   steps:
     - name: security
-      type: command
-      command: analyze-security
+      type: prompt
+      prompt: /agentic-sdlc:analyze security
 
     - name: bugs
-      type: command
-      command: analyze-bug
+      type: prompt
+      prompt: /agentic-sdlc:analyze bug
 ```
 
 ### 7. Document with Descriptions
 
 ```yaml
-name: plan-build-validate
+name: plan-build-review
 description: |
   Complete SDLC workflow:
   1. Generate implementation plan
   2. Implement changes incrementally
-  3. Validate with tests and code review
+  3. Review with tests and code review
   4. Create pull request
 
 variables:

@@ -84,7 +84,7 @@ def generate_workflow_id(workflow_name: str) -> str:
         workflow_name: Name of the workflow from the YAML definition.
 
     Returns:
-        Workflow ID like "20260111-143052-plan-build-validate"
+        Workflow ID like "20260111-143052-plan-build-review"
     """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     # Sanitize workflow name for filesystem safety

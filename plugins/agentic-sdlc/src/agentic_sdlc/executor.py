@@ -25,7 +25,6 @@ from agentic_sdlc.renderer import (
     render_workflow_output,
 )
 from agentic_sdlc.steps.base import StepContext
-from agentic_sdlc.steps.command_step import CommandStepExecutor
 from agentic_sdlc.steps.conditional_step import ConditionalStepExecutor
 from agentic_sdlc.steps.parallel_step import BranchStepExecutor, ParallelStepExecutor
 from agentic_sdlc.steps.prompt_step import PromptStepExecutor
@@ -53,14 +52,12 @@ class WorkflowExecutor:
         """Initialize all step executors with proper dependencies."""
         # Create simple executors first
         self.prompt_executor = PromptStepExecutor()
-        self.command_executor = CommandStepExecutor()
         self.ralph_loop_executor = RalphLoopStepExecutor()
 
         # Create branch executor for nested steps
         self.branch_executor = BranchStepExecutor(
             {
                 StepType.PROMPT.value: self.prompt_executor,
-                StepType.COMMAND.value: self.command_executor,
                 StepType.RALPH_LOOP.value: self.ralph_loop_executor,
             }
         )
@@ -77,7 +74,6 @@ class WorkflowExecutor:
         # Map step types to executors
         self.executors = {
             StepType.PROMPT: self.prompt_executor,
-            StepType.COMMAND: self.command_executor,
             StepType.PARALLEL: self.parallel_executor,
             StepType.SERIAL: self.serial_executor,
             StepType.CONDITIONAL: self.conditional_executor,

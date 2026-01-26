@@ -40,7 +40,7 @@ claude --plugin-dir ./plugins/<plugin-name>
 
 ### Commit Messages
 
-Write clear, concise commit messages that describe the change. For example: `Add retry logic to workflow executor` or `Fix validation error in analyze-bug command`.
+Write clear, concise commit messages that describe the change. For example: `Add retry logic to workflow executor` or `Fix validation error in analyze skill`.
 
 ### Code Formatting
 
@@ -65,9 +65,10 @@ All plugins live in the `/plugins/` directory:
 
 ```
 plugins/<plugin-name>/
-├── commands/       # Slash commands (.md)
 ├── agents/         # Sub-agent definitions (.md)
-├── skills/         # Reusable skill modules (.md)
+├── skills/         # Skill directories with SKILL.md files
+│   └── skill-name/
+│       └── SKILL.md
 ├── hooks/          # Runtime hooks (.sh)
 ├── src/            # Python source code (optional)
 ├── CHANGELOG.md    # Version history (official plugins only)
@@ -76,9 +77,8 @@ plugins/<plugin-name>/
 
 ### Naming Conventions
 
-- **Commands**: kebab-case (`review-pr.md`, `setup-tests.md`)
 - **Agents**: descriptive with domain prefix (`devops-agent.md`, `test-agent.md`)
-- **Skills**: verb-noun format (`parse-logs`, `validate-config`)
+- **Skills**: directory name in kebab-case with `SKILL.md` inside (`parse-logs/SKILL.md`, `validate-config/SKILL.md`)
 - **Hooks**: include event name (`session-start-hook.sh`)
 
 ### Prompt Templates

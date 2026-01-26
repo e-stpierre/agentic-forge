@@ -63,7 +63,6 @@ steps:
       - Simply STOP after completing your iteration - no special output needed
     max-iterations: "{{ variables.max_iterations }}"
     completion-promise: "{{ variables.completion_promise }}"
-    model: sonnet
     timeout-minutes: 30
 
 outputs:

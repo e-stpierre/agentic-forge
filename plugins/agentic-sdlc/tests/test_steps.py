@@ -12,7 +12,6 @@ from agentic_sdlc.parser import StepDefinition, StepType, WorkflowSettings
 from agentic_sdlc.progress import WorkflowProgress, create_progress
 from agentic_sdlc.renderer import TemplateRenderer
 from agentic_sdlc.steps.base import StepContext, StepExecutor
-from agentic_sdlc.steps.command_step import CommandStepExecutor
 from agentic_sdlc.steps.conditional_step import ConditionalStepExecutor
 from agentic_sdlc.steps.prompt_step import PromptStepExecutor
 from agentic_sdlc.steps.serial_step import SerialStepExecutor
@@ -191,82 +190,6 @@ class TestPromptStepExecutor:
         call_args = mock_run.call_args
         prompt_arg = call_args.args[0] if call_args.args else call_args.kwargs.get("prompt", "")
         assert "test_value" in prompt_arg
-
-
-class TestCommandStepExecutor:
-    """Tests for CommandStepExecutor."""
-
-    def test_command_step_executor_init(self) -> None:
-        """Test CommandStepExecutor initialization."""
-        executor = CommandStepExecutor()
-        assert executor is not None
-
-    @patch("agentic_sdlc.steps.command_step.run_claude_with_command")
-    def test_execute_basic_command(
-        self,
-        mock_run,
-        step_context: StepContext,
-        workflow_progress: WorkflowProgress,
-        mock_logger: MagicMock,
-        mock_console: ConsoleOutput,
-    ) -> None:
-        """Test executing basic command step."""
-        mock_run.return_value = MagicMock(
-            success=True,
-            stdout="Output",
-            stderr="",
-            session_output=MagicMock(
-                is_success=True,
-                context="Done",
-            ),
-        )
-
-        step = StepDefinition(
-            name="test-command",
-            type=StepType.COMMAND,
-            command="test-cmd",
-        )
-
-        executor = CommandStepExecutor()
-        executor.execute(step, workflow_progress, step_context, mock_logger, mock_console)
-
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args
-        command_arg = call_args.args[0] if call_args.args else call_args.kwargs.get("command", "")
-        assert command_arg == "test-cmd"
-
-    @patch("agentic_sdlc.steps.command_step.run_claude_with_command")
-    def test_execute_command_with_args(
-        self,
-        mock_run,
-        step_context: StepContext,
-        workflow_progress: WorkflowProgress,
-        mock_logger: MagicMock,
-        mock_console: ConsoleOutput,
-    ) -> None:
-        """Test executing command with arguments."""
-        mock_run.return_value = MagicMock(
-            success=True,
-            stdout="Output",
-            stderr="",
-            session_output=MagicMock(
-                is_success=True,
-                context="Done",
-            ),
-        )
-
-        step = StepDefinition(
-            name="test-command",
-            type=StepType.COMMAND,
-            command="test-cmd",
-            args={"arg1": "value1", "arg2": "value2"},
-        )
-
-        executor = CommandStepExecutor()
-        executor.execute(step, workflow_progress, step_context, mock_logger, mock_console)
-
-        call_kwargs = mock_run.call_args.kwargs
-        assert call_kwargs.get("args") == {"arg1": "value1", "arg2": "value2"}
 
 
 class TestConditionalStepExecutor:

@@ -17,7 +17,7 @@ variables:
     type: string
     required: false
     default: "none"
-    description: Severity level for automatic fixes (none, minor, major, critical)
+    description: Severity level for automatic fixes (none, low, medium, high, critical)
   - name: paths
     type: string
     required: false
@@ -30,55 +30,9 @@ variables:
     description: Maximum iterations for fixing issues
 
 steps:
-  - name: run-bug-analysis
-    type: conditional
-    condition: "variables.analysis_type == 'bug'"
-    then:
-      - name: analyze-bug
-        type: command
-        command: analyze-bug
-        args:
-          paths: "{{ variables.paths }}"
-
-  - name: run-debt-analysis
-    type: conditional
-    condition: "variables.analysis_type == 'debt'"
-    then:
-      - name: analyze-debt
-        type: command
-        command: analyze-debt
-        args:
-          paths: "{{ variables.paths }}"
-
-  - name: run-doc-analysis
-    type: conditional
-    condition: "variables.analysis_type == 'doc'"
-    then:
-      - name: analyze-doc
-        type: command
-        command: analyze-doc
-        args:
-          paths: "{{ variables.paths }}"
-
-  - name: run-security-analysis
-    type: conditional
-    condition: "variables.analysis_type == 'security'"
-    then:
-      - name: analyze-security
-        type: command
-        command: analyze-security
-        args:
-          paths: "{{ variables.paths }}"
-
-  - name: run-style-analysis
-    type: conditional
-    condition: "variables.analysis_type == 'style'"
-    then:
-      - name: analyze-style
-        type: command
-        command: analyze-style
-        args:
-          paths: "{{ variables.paths }}"
+  - name: run-analysis
+    type: prompt
+    prompt: /agentic-sdlc:analyze {{ variables.analysis_type }} {{ variables.paths }}
 
   - name: check-autofix
     type: conditional
@@ -91,7 +45,7 @@ steps:
         model: sonnet
         timeout-minutes: 30
         prompt: |
-          Use /fix-analysis --type {{ variables.analysis_type }} --severity {{ variables.autofix }}
+          Use /agentic-sdlc:fix-analyze {{ variables.analysis_type }} {{ variables.autofix }}
 
           Return completion promise "ANALYSIS_FIXES_COMPLETE" when done.
 

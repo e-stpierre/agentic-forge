@@ -14,7 +14,6 @@ class StepType(Enum):
     """Types of workflow steps."""
 
     PROMPT = "prompt"
-    COMMAND = "command"
     PARALLEL = "parallel"
     SERIAL = "serial"
     CONDITIONAL = "conditional"
@@ -75,8 +74,6 @@ class StepDefinition:
     type: StepType
     prompt: str | None = None
     agent: str | None = None
-    command: str | None = None
-    args: dict[str, Any] = field(default_factory=dict)
     steps: list[StepDefinition] = field(default_factory=list)
     merge_strategy: str = "wait-all"
     merge_mode: str = "independent"
@@ -234,9 +231,6 @@ class WorkflowParser:
         if step_type == StepType.PROMPT:
             step.prompt = data.get("prompt")
             step.agent = data.get("agent")
-        elif step_type == StepType.COMMAND:
-            step.command = data.get("command")
-            step.args = data.get("args", {})
         elif step_type == StepType.PARALLEL:
             step.steps = [self._parse_step(s, parent_is_parallel=True) for s in data.get("steps", [])]
             step.merge_strategy = data.get("merge-strategy", "wait-all")

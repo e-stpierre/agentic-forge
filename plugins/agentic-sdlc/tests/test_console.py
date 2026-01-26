@@ -9,6 +9,7 @@ from agentic_sdlc.console import (
     ConsoleOutput,
     OutputLevel,
     _colorize,
+    extract_json,
     extract_summary,
 )
 
@@ -420,3 +421,130 @@ Line 3
 
         # Should have content
         assert "Line" in summary
+
+
+class TestExtractJson:
+    """Tests for extract_json function."""
+
+    def test_extract_json_basic(self) -> None:
+        """Test extracting basic JSON from output."""
+        output = """
+Some text before.
+
+```json
+{"success": true, "summary": "Task completed"}
+```
+
+Some text after.
+"""
+        result = extract_json(output)
+
+        assert result is not None
+        assert result["success"] is True
+        assert result["summary"] == "Task completed"
+
+    def test_extract_json_nested_object(self) -> None:
+        """Test extracting nested JSON objects."""
+        output = """
+```json
+{
+  "success": true,
+  "plan_type": "feature",
+  "checks": {
+    "tests": {"passed": true},
+    "lint": {"passed": true}
+  }
+}
+```
+"""
+        result = extract_json(output)
+
+        assert result is not None
+        assert result["success"] is True
+        assert result["checks"]["tests"]["passed"] is True
+
+    def test_extract_json_array(self) -> None:
+        """Test extracting JSON with arrays."""
+        output = """
+```json
+{
+  "issues": [
+    {"severity": "major", "message": "Issue 1"},
+    {"severity": "minor", "message": "Issue 2"}
+  ]
+}
+```
+"""
+        result = extract_json(output)
+
+        assert result is not None
+        assert len(result["issues"]) == 2
+        assert result["issues"][0]["severity"] == "major"
+
+    def test_extract_json_multiple_blocks_uses_last(self) -> None:
+        """Test that multiple JSON blocks returns the last one."""
+        output = """
+First block:
+```json
+{"version": 1, "status": "started"}
+```
+
+Second block:
+```json
+{"version": 2, "status": "completed"}
+```
+"""
+        result = extract_json(output)
+
+        assert result is not None
+        assert result["version"] == 2
+        assert result["status"] == "completed"
+
+    def test_extract_json_empty_input(self) -> None:
+        """Test extracting from empty input."""
+        assert extract_json("") is None
+        assert extract_json("   ") is None
+
+    def test_extract_json_no_json_block(self) -> None:
+        """Test extracting when no JSON block exists."""
+        output = """
+Some text without JSON.
+More text.
+"""
+        assert extract_json(output) is None
+
+    def test_extract_json_invalid_json(self) -> None:
+        """Test extracting invalid JSON returns None."""
+        output = """
+```json
+{invalid json: not valid}
+```
+"""
+        assert extract_json(output) is None
+
+    def test_extract_json_skill_output_format(self) -> None:
+        """Test extracting JSON in typical skill output format."""
+        output = """
+I have completed the analysis. Here are the results:
+
+```json
+{
+  "success": true,
+  "plan_type": "chore",
+  "summary": "Update README with documentation",
+  "milestone_count": 2,
+  "task_count": 5,
+  "complexity": "medium",
+  "document_path": "agentic/outputs/workflow-123/plan.md"
+}
+```
+
+The plan has been saved to the output directory.
+"""
+        result = extract_json(output)
+
+        assert result is not None
+        assert result["success"] is True
+        assert result["plan_type"] == "chore"
+        assert result["summary"] == "Update README with documentation"
+        assert result["milestone_count"] == 2

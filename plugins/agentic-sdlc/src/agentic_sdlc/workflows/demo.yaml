@@ -121,16 +121,14 @@ steps:
       - If there are 0-1 facts, add ONE fact and then STOP (do not output completion JSON yet)
 
   - name: git-branch
-    type: command
-    command: git-branch
-    args:
-      name: demo/random-facts
+    type: prompt
+    model: haiku
+    prompt: /agentic-sdlc:git-branch demo random-facts
 
   - name: git-commit
-    type: command
-    command: git-commit
-    args:
-      message: "demo: add demo files with random facts"
+    type: prompt
+    model: haiku
+    prompt: /agentic-sdlc:git-commit "[Demo] Add demo files with random facts"
 
   - name: completion
     type: prompt

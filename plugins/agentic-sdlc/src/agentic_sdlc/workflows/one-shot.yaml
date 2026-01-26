@@ -24,6 +24,11 @@ variables:
     description: Whether to create a PR
 
 steps:
+  - name: create-branch
+    type: prompt
+    model: haiku
+    prompt: /agentic-sdlc:git-branch {{ variables.type }}
+
   - name: execute-task
     type: prompt
     prompt: |
@@ -34,22 +39,16 @@ steps:
       Guidelines:
       - Analyze the codebase to understand context
       - Make necessary changes following project conventions
-      - Write tests for new functionality
-      - Commit changes with clear messages
-    model: sonnet
+      - Use /agentic-sdlc:git-commit to commit changes
 
-  - name: validate
-    type: command
-    command: validate
-    args:
-      severity: major
+  - name: review
+    type: prompt
+    prompt: /agentic-sdlc:sdlc-review "" major
 
   - name: create-pr
     type: conditional
     condition: "variables.create_pr"
     then:
       - name: open-pr
-        type: command
-        command: git-pr
-        args:
-          draft: false
+        type: prompt
+        prompt: /agentic-sdlc:git-pr

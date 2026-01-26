@@ -280,46 +280,6 @@ def run_claude(
             )
 
 
-def _quote_arg_value(value: Any) -> str:
-    """Quote an argument value if it contains spaces or special characters.
-
-    Args:
-        value: The argument value to potentially quote
-
-    Returns:
-        The value as a string, quoted if necessary
-    """
-    value_str = str(value)
-    # Quote values that contain spaces, quotes, or are empty
-    if " " in value_str or '"' in value_str or "'" in value_str or not value_str:
-        # Escape any existing double quotes and wrap in double quotes
-        escaped = value_str.replace('"', '\\"')
-        return f'"{escaped}"'
-    return value_str
-
-
-def run_claude_with_command(
-    command: str,
-    args: dict[str, Any] | None = None,
-    cwd: Path | None = None,
-    **kwargs: Any,
-) -> ClaudeResult:
-    """Run a Claude slash command with arguments.
-
-    Args:
-        command: The slash command name (without /)
-        args: Command arguments as key-value pairs
-        cwd: Working directory
-        **kwargs: Additional arguments passed to run_claude
-    """
-    prompt = f"/{command}"
-    if args:
-        args_str = " ".join(f"--{k} {_quote_arg_value(v)}" for k, v in args.items())
-        prompt = f"{prompt} {args_str}"
-
-    return run_claude(prompt, cwd=cwd, **kwargs)
-
-
 def check_claude_available() -> bool:
     """Check if the claude CLI is available.
 

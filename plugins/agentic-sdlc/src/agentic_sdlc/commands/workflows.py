@@ -144,4 +144,4 @@ def cmd_workflows(args: Namespace) -> None:
     print("Examples:")
     print('  agentic-sdlc run one-shot --var task="Add login button"')
     print("  agentic-sdlc run analyze-single --var analysis_type=bug")
-    print('  agentic-sdlc run plan-build-validate --var task="Refactor auth"')
+    print('  agentic-sdlc run plan-build-review --var task="Refactor auth"')

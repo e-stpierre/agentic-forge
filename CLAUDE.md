@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository is a collection of modular extensions for Claude Code. It serves as a centralized hub for reusable commands, agents, skills, hooks, configuration templates and Python automation that enhance Claude Code's capabilities across various development scenarios.
+This repository is a collection of modular extensions for Claude Code. It serves as a centralized hub for reusable agents, skills, hooks, configuration templates and Python automation that enhance Claude Code's capabilities across various development scenarios.
 
 ## Purpose
 
@@ -17,7 +17,7 @@ The agentic-forge repository aims to:
 ### `/docs/`
 
 Comprehensive documentation for plugin development and usage.
-This directory also contains template files for agent, command and skill. These templates must be respected when creating a new prompt.
+This directory also contains template files for agent and skill. These templates must be respected when creating a new prompt.
 
 ### `/plugins/`
 
@@ -25,11 +25,7 @@ Root directory containing all plugins. Each plugin is self-contained within its 
 
 ### `/plugins/<plugin-name>/`
 
-Individual plugin directory structure that is organized with one directory per prompt type. Sub-directories can be used within a prompt type to organize it's content.
-
-#### `commands/`
-
-Slash command definitions (`.md` files) that users can invoke directly in Claude Code sessions or can be invoked in python workflows.
+Individual plugin directory structure that is organized with one directory per prompt type. Sub-directories can be used within a prompt type to organize its content.
 
 #### `agents/`
 
@@ -37,7 +33,7 @@ Sub-agent configurations for specialized, autonomous task execution. Agents shou
 
 #### `skills/`
 
-Reusable skill modules that provide composable functionality.
+Reusable skill modules that provide composable functionality. Skills are the primary way to extend Claude Code with custom slash commands.
 
 #### `hooks/`
 
@@ -67,9 +63,8 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 ### Naming Conventions
 
-- **Commands**: Use kebab-case (e.g., `review-pr.md`, `setup-tests.md`)
 - **Agents**: Use descriptive names with domain prefix (e.g., `devops-agent.md`, `test-agent.md`)
-- **Skills**: Use verb-noun format (e.g., `parse-logs`, `validate-config`)
+- **Skills**: Directory name in kebab-case with `SKILL.md` inside (e.g., `parse-logs/SKILL.md`, `validate-config/SKILL.md`)
 - **Hooks**: Include event name (e.g., `session-start-hook.sh`, `tool-call-hook.sh`)
 - **Templates**: Use project type (e.g., `nodejs-template`, `python-template`)
 
@@ -79,24 +74,22 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 - **Avoid duplication**: Do not repeat information from the root README (installation, marketplace setup, contributing guidelines, license, support)
 - **CHANGELOGs should be brief**: Focus on what changed, not detailed explanations
 - **Link to root docs**: Reference the root README or `/docs/` for general information
-- **ASCII only**: Use only valid ASCII characters in all files to avoid encoding issues across platforms
-- **Workflow diagrams**: Use arrow notation (`->`) for workflow documentation instead of long multi-line ASCII boxes. Example: `Plan -> Implement -> Validate -> Output` is preferred over complex box diagrams
+- **Character encoding**: Code files must use ASCII only. Documentation and markdown files (skills, agents, READMEs) may use minimal emojis where they add clarity (e.g., checkmarks, robot emoji for Claude attribution). Avoid decorative emoji use.
+- **Workflow diagrams**: Use arrow notation (`->`) for workflow documentation instead of long multi-line ASCII boxes. Example: `Plan -> Implement -> Review -> Output` is preferred over complex box diagrams
 
 ### File Formats
 
-- **Commands**: Markdown (`.md`) files in `plugins/<plugin-name>/commands/`
 - **Agents**: Markdown (`.md`) files in `plugins/<plugin-name>/agents/`
-- **Skills**: Markdown (`.md`) files with structured prompts in `plugins/<plugin-name>/skills/`
+- **Skills**: `SKILL.md` files in skill directories: `plugins/<plugin-name>/skills/<skill-name>/SKILL.md`
 - **Hooks**: Shell scripts (`.sh`) or executable programs in `plugins/<plugin-name>/hooks/`
 - **Python Tools**: Python packages in `plugins/<plugin-name>/src/` with `pyproject.toml`
 
 ### Prompt Template Convention
 
-All prompt files (commands, agents, skills) and plugin READMEs must follow the exact structure defined in the template files located in `docs/templates/`:
+All prompt files (agents, skills) and plugin READMEs must follow the exact structure defined in their respective template files:
 
-- `docs/templates/command-template.md` - Structure for command prompts
 - `docs/templates/agent-template.md` - Structure for agent prompts
-- `docs/templates/skill-template.md` - Structure for skill prompts
+- `plugins/agentic-sdlc/skills/create-skill/template.md` - Structure for skill prompts
 - `docs/templates/readme-template.md` - Structure for plugin README files
 
 **Placeholder Convention:**
@@ -135,7 +128,7 @@ Use the `/normalize` command to validate prompt files against templates:
 /normalize
 
 # Validate specific files or directories
-/normalize plugins/my-plugin/commands/
+/normalize plugins/my-plugin/skills/
 
 # Auto-fix non-compliant files
 /normalize --autofix plugins/my-plugin/

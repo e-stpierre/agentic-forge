@@ -6,10 +6,9 @@ Agentic SDLC enables Claude Code to execute complex, multi-step tasks autonomous
 
 Execute complete development workflows from planning through implementation to validation, with support for parallel execution, conditional logic, and iterative refinement.
 
-- `/plan Add user profile with avatar upload` - Generate implementation plan
-- `/validate` - Run validation checks
-- `/analyze-security` - Scan for security vulnerabilities
-- `agentic-sdlc run plan-build-validate.yaml --var "task=Add feature"` - Run complete workflow
+- `/sdlc-plan Add user profile with avatar upload` - Generate implementation plan
+- `/analyze security` - Scan for security vulnerabilities
+- `agentic-sdlc run plan-build-review.yaml --var "task=Add feature"` - Run complete workflow
 
 ### Key Features
 
@@ -17,7 +16,7 @@ Execute complete development workflows from planning through implementation to v
 - **Hybrid Orchestration**: Python handles deterministic operations, Claude makes intelligent decisions
 - **Git Worktree Isolation**: Execute parallel tasks in isolated git worktrees
 - **Progress Tracking**: Resume from checkpoints after interruptions or errors
-- **Built-in Commands**: Plan, build, validate, analyze, and git operations
+- **Built-in Skills**: Plan, build, review, analyze, and git operations
 - **Error Recovery**: Automatic retry with configurable strategies
 
 ## Documentation
@@ -27,34 +26,45 @@ Execute complete development workflows from planning through implementation to v
 - **[Workflow Example](docs/workflow-example.yaml)** - Annotated reference with all options
 - **[Contributing](docs/Contributing.md)** - Development and testing guidelines
 
-## Commands
+## Skills
 
-### Planning and Validation (`commands/`)
+> **Note for Workflow Authors:** When referencing skills in YAML workflow files, always use fully qualified names (e.g., `/agentic-sdlc:sdlc-plan` instead of `/sdlc-plan`) to ensure the correct skill is invoked and avoid conflicts with other plugins. See [WorkflowBuilder.md](docs/WorkflowBuilder.md#invoking-skills) for details.
 
-| Command            | Description                                                 |
+### Planning and Validation
+
+| Skill              | Description                                                 |
 | ------------------ | ----------------------------------------------------------- |
-| `/plan`            | Create an implementation plan for a task                    |
-| `/validate`        | Validate implementation against plan and quality standards  |
+| `/sdlc-plan`       | Create an implementation plan for a task                    |
+| `/sdlc-review`     | Review implementation against plan and quality standards    |
 | `/orchestrate`     | Evaluate workflow state and determine next action           |
 | `/add-improvement` | Add a new improvement to the improvements tracking document |
 
-### Analysis (`commands/analyze/`)
+### Analysis
 
-| Command             | Description                                                                |
+| Skill               | Description                                                                |
 | ------------------- | -------------------------------------------------------------------------- |
-| `/analyze-bug`      | Analyze codebase for bugs, logic errors, and runtime issues                |
-| `/analyze-debt`     | Identify technical debt, optimization opportunities, and refactoring needs |
-| `/analyze-doc`      | Analyze documentation quality, accuracy, and completeness                  |
-| `/analyze-security` | Scan for security vulnerabilities, unsafe patterns, and dependency issues  |
-| `/analyze-style`    | Check code style, consistency, and best practices adherence                |
+| `/analyze bug`      | Analyze codebase for bugs, logic errors, and runtime issues                |
+| `/analyze debt`     | Identify technical debt, optimization opportunities, and refactoring needs |
+| `/analyze doc`      | Analyze documentation quality, accuracy, and completeness                  |
+| `/analyze security` | Scan for security vulnerabilities, unsafe patterns, and dependency issues  |
+| `/analyze style`    | Check code style, consistency, and best practices adherence                |
 
-### Git Operations (`commands/git/`)
+### Git Operations
 
-| Command       | Description                                                 |
+| Skill         | Description                                                 |
 | ------------- | ----------------------------------------------------------- |
 | `/git-branch` | Create a git branch following naming convention             |
 | `/git-commit` | Create a git commit with structured message                 |
 | `/git-pr`     | Create a pull request with contextual title and description |
+
+### Workflow Support
+
+| Skill                | Description                                             |
+| -------------------- | ------------------------------------------------------- |
+| `/create-checkpoint` | Create a checkpoint to track progress and share context |
+| `/create-log`        | Add a log entry to the workflow log                     |
+| `/fix-analyze`       | Fix issues from an analysis document iteratively        |
+| `/create-skill`      | Create a new Claude Code skill following best practices |
 
 ## Agents
 
@@ -62,14 +72,6 @@ Execute complete development workflows from planning through implementation to v
 | ---------- | ------------------------------------------------------------- |
 | `explorer` | Efficiently explores codebase to find relevant files and code |
 | `reviewer` | Reviews code for quality, correctness, and best practices     |
-
-## Skills
-
-| Skill               | Description                                             |
-| ------------------- | ------------------------------------------------------- |
-| `create-checkpoint` | Create a checkpoint to track progress and share context |
-| `create-log`        | Add a log entry to the workflow log                     |
-| `fix-analysis`      | Fix issues from an analysis document iteratively        |
 
 ## Installation
 
@@ -178,7 +180,7 @@ agentic/
 
 ## Complete Examples
 
-### /plan
+### /sdlc-plan
 
 **Arguments:**
 
@@ -191,16 +193,16 @@ agentic/
 
 ```bash
 # Auto-detect plan type
-/plan Add user authentication with OAuth support
+/sdlc-plan Add user authentication with OAuth support
 
 # Specify plan type
-/plan bug Fix null pointer exception in UserService
+/sdlc-plan bug Fix null pointer exception in UserService
 
 # With output directory
-/plan --output_dir agentic/outputs/workflow-123 Add dark mode toggle
+/sdlc-plan --output_dir agentic/outputs/workflow-123 Add dark mode toggle
 ```
 
-### /validate
+### /sdlc-review
 
 **Arguments:**
 
@@ -211,34 +213,35 @@ agentic/
 
 ```bash
 # Basic validation
-/validate
+/sdlc-review
 
-# Validate against plan
-/validate --plan agentic/outputs/workflow-123/plan.md
+# Review against plan
+/sdlc-review --plan agentic/outputs/workflow-123/plan.md
 
 # Only report major issues
-/validate --severity major
+/sdlc-review --severity major
 ```
 
-### /analyze-\*
+### /analyze
 
 **Arguments:**
 
+- `<type>` - Analysis type: bug, debt, doc, security, style (required)
 - `[paths...]` - Space-separated list of files or directories to analyze
 
 **Examples:**
 
 ```bash
-# Analyze entire codebase
-/analyze-security
+# Analyze entire codebase for security issues
+/analyze security
 
-# Analyze specific paths
-/analyze-bug src/auth src/api
+# Analyze specific paths for bugs
+/analyze bug src/auth src/api
 
 # Multiple analysis types
-/analyze-debt src/legacy
-/analyze-style src/components
-/analyze-doc docs/
+/analyze debt src/legacy
+/analyze style src/components
+/analyze doc docs/
 ```
 
 ### /git-branch
@@ -319,7 +322,7 @@ agentic/
 
 ```bash
 # Run feature workflow
-agentic-sdlc run plan-build-validate.yaml --var "task=Add user authentication"
+agentic-sdlc run plan-build-review.yaml --var "task=Add user authentication"
 
 # Run with multiple variables
 agentic-sdlc run workflows/custom.yaml --var "task=Add feature" --var "priority=high"

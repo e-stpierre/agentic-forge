@@ -27,7 +27,6 @@ class TestWorkflowExecutor:
         executor = WorkflowExecutor(repo_root=temp_dir)
 
         assert StepType.PROMPT in executor.executors
-        assert StepType.COMMAND in executor.executors
         assert StepType.PARALLEL in executor.executors
         assert StepType.SERIAL in executor.executors
         assert StepType.CONDITIONAL in executor.executors
@@ -215,28 +214,6 @@ steps:
   - name: test-prompt
     type: prompt
     prompt: "Test"
-"""
-        mock_execute.return_value = None
-
-        parser = WorkflowParser()
-        workflow = parser.parse_string(workflow_yaml)
-
-        executor = WorkflowExecutor(repo_root=temp_dir)
-        executor.run(workflow)
-
-        mock_execute.assert_called()
-
-    @patch("agentic_sdlc.steps.command_step.CommandStepExecutor.execute")
-    def test_dispatch_command_step(self, mock_execute, temp_dir: Path) -> None:
-        """Test dispatching command step to correct executor."""
-        workflow_yaml = """
-name: command-dispatch
-version: "1.0"
-description: Test command dispatch
-steps:
-  - name: test-command
-    type: command
-    command: test-cmd
 """
         mock_execute.return_value = None
 

@@ -1,6 +1,6 @@
 name: analyze-codebase-merge
 version: "1.0"
-description: Run comprehensive codebase analysis with autofix, merge branches, validate, and create PR
+description: Run comprehensive codebase analysis with autofix, merge branches, review, and create PR
 
 settings:
   max-retry: 2
@@ -53,10 +53,8 @@ steps:
         type: serial
         steps:
           - name: analyze-bug
-            type: command
-            command: analyze-bug
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /agentic-sdlc:analyze bug {{ variables.paths }}
 
           - name: fix-bug
             type: conditional
@@ -98,10 +96,8 @@ steps:
         type: serial
         steps:
           - name: analyze-debt
-            type: command
-            command: analyze-debt
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /agentic-sdlc:analyze debt {{ variables.paths }}
 
           - name: fix-debt
             type: conditional
@@ -143,10 +139,8 @@ steps:
         type: serial
         steps:
           - name: analyze-doc
-            type: command
-            command: analyze-doc
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /agentic-sdlc:analyze doc {{ variables.paths }}
 
           - name: fix-doc
             type: conditional
@@ -188,10 +182,8 @@ steps:
         type: serial
         steps:
           - name: analyze-security
-            type: command
-            command: analyze-security
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /agentic-sdlc:analyze security {{ variables.paths }}
 
           - name: fix-security
             type: conditional
@@ -233,10 +225,8 @@ steps:
         type: serial
         steps:
           - name: analyze-style
-            type: command
-            command: analyze-style
-            args:
-              paths: "{{ variables.paths }}"
+            type: prompt
+            prompt: /agentic-sdlc:analyze style {{ variables.paths }}
 
           - name: fix-style
             type: conditional
@@ -274,11 +264,9 @@ steps:
                   - If an issue cannot be fixed (error, missing data), mark as skipped with reason
                   - Only return completion promise when genuinely done
 
-  - name: validate-merged-changes
-    type: command
-    command: validate
-    args:
-      severity: "{{ variables.fix_severity }}"
+  - name: review-merged-changes
+    type: prompt
+    prompt: /agentic-sdlc:sdlc-review "" {{ variables.fix_severity }}
 
   - name: fix-validation-issues
     type: conditional
@@ -321,22 +309,17 @@ steps:
           - If an issue cannot be fixed (error, missing data), mark as skipped with reason
           - Only return completion promise when genuinely done
 
-      - name: revalidate
-        type: command
-        command: validate
-        args:
-          severity: "{{ variables.fix_severity }}"
+      - name: re-review
+        type: prompt
+        prompt: /agentic-sdlc:sdlc-review "" {{ variables.fix_severity }}
 
   - name: create-pr
     type: conditional
     condition: "variables.create_pr"
     then:
       - name: open-pr
-        type: command
-        command: git-pr
-        args:
-          title: "[Analysis] Codebase analysis and fixes"
-          draft: false
+        type: prompt
+        prompt: /agentic-sdlc:git-pr "[Analysis] Codebase analysis and fixes"
 
 outputs:
   - name: analysis-summary
