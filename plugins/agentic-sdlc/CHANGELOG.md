@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.5.0] - 2026-01-25
+
+### Added
+
+- `create-skill` skill for generating new skills from templates
+- `sdlc-plan` skill (converted from plan command)
+- `sdlc-review` skill (renamed from validate command)
+- Explore agent count configuration in plan skill
+- Workflow-id argument support across skills
+
+### Changed
+
+- Converted all commands to skills for consistency
+- Renamed `validate` command to `sdlc-review` skill
+- Prefixed plan and review skills with `sdlc-` to avoid conflicts
+- Updated skill template to Agent Skills standard
+- Improved plan-build-review workflow
+- Updated one-shot workflow
+
+### Fixed
+
+- Step output and reference handling
+- Full skill name usage in workflows to avoid conflicts
+
 ## [0.4.0] - 2026-01-24
 
 ### Added
