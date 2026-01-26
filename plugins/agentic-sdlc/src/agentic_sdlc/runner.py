@@ -64,29 +64,44 @@ def parse_stream_json_line(line: str) -> dict[str, Any] | None:
         return None
 
 
-def extract_text_from_message(data: dict[str, Any]) -> Generator[str, None, None]:
+def extract_text_from_message(data: dict[str, Any]) -> Generator[tuple[int, str], None, None]:
     """Extract text content from an assistant message.
 
-    Handles the stream-json format where assistant messages contain
-    content arrays with text blocks.
+    Handles two stream-json formats:
+    1. Verbose format: {"type": "assistant", "message": {"content": [...]}}
+    2. Stream event format: {"type": "stream_event", "event": {"type": "content_block_delta", ...}}
 
     Args:
         data: Parsed JSON from stream-json output
 
     Yields:
-        Text content strings from the message
+        Tuple of (content_block_index, text) for tracking cumulative updates
     """
-    if data.get("type") != "assistant":
-        return
+    msg_type = data.get("type")
 
-    message = data.get("message", {})
-    content = message.get("content", [])
+    # Handle verbose format: complete assistant messages
+    if msg_type == "assistant":
+        message = data.get("message", {})
+        content = message.get("content", [])
 
-    for block in content:
-        if isinstance(block, dict) and block.get("type") == "text":
-            text = block.get("text", "")
-            if text:
-                yield text
+        for idx, block in enumerate(content):
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = block.get("text", "")
+                if text:
+                    yield (idx, text)
+
+    # Handle stream event format: incremental deltas
+    elif msg_type == "stream_event":
+        event = data.get("event", {})
+        event_type = event.get("type")
+
+        if event_type == "content_block_delta":
+            idx = event.get("index", 0)
+            delta = event.get("delta", {})
+            if delta.get("type") == "text_delta":
+                text = delta.get("text", "")
+                if text:
+                    yield (idx, text)
 
 
 def extract_user_text(data: dict[str, Any]) -> str | None:
@@ -319,6 +334,9 @@ def run_claude(
         # Collect all text for final result
         collected_text: list[str] = []
         result_text: str | None = None
+        # Track accumulated text per content block to compute deltas
+        # stream-json with --verbose provides cumulative text, not deltas
+        accumulated_text: dict[int, str] = {}
 
         if process.stdout:
             for line in process.stdout:
@@ -333,12 +351,27 @@ def run_claude(
                     console.stream_text(user_text, role="user")
 
                 # Extract text from assistant messages for streaming
-                for text in extract_text_from_message(data):
-                    if console:
-                        console.stream_text(text, role="assistant")
+                # Verbose format provides cumulative text, stream_event provides deltas
+                msg_type = data.get("type")
+                is_stream_event = msg_type == "stream_event"
+
+                for idx, text in extract_text_from_message(data):
+                    if is_stream_event:
+                        # Stream events are already deltas, use directly
+                        delta = text
                     else:
-                        print(text, end="", flush=True)
-                    collected_text.append(text)
+                        # Verbose format: compute delta from cumulative text
+                        prev_text = accumulated_text.get(idx, "")
+                        # New text is what wasn't there before, or full text if it's a new block
+                        delta = text[len(prev_text) :] if text.startswith(prev_text) else text
+                        accumulated_text[idx] = text
+
+                    if delta:
+                        if console:
+                            console.stream_text(delta, role="assistant")
+                        else:
+                            print(delta, end="", flush=True)
+                        collected_text.append(delta)
 
                 # Capture final result
                 result = extract_result_text(data)

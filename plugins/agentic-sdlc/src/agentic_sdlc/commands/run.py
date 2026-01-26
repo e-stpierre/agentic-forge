@@ -211,11 +211,19 @@ def cmd_run(args: Namespace) -> None:
 
     executor = WorkflowExecutor()
     try:
+        # Resolve terminal_output: CLI override > workflow settings > default "base"
+        if args.terminal_output is not None:
+            terminal_output = args.terminal_output
+        elif workflow.settings and workflow.settings.terminal_output:
+            terminal_output = workflow.settings.terminal_output
+        else:
+            terminal_output = "base"
+
         progress = executor.run(
             workflow=workflow,
             variables=variables,
             from_step=args.from_step,
-            terminal_output=args.terminal_output,
+            terminal_output=terminal_output,
         )
         print(f"\nWorkflow {progress.status}: {progress.workflow_id}")
         if progress.errors:

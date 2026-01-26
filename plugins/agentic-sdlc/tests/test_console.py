@@ -319,7 +319,7 @@ class TestConsoleOutput:
         # BASE mode shows only the last non-empty line
         assert "Third line" in output
         assert "\r" in output  # Uses carriage return
-        assert "\033[K" in output  # Clears to end of line
+        assert "\033[2K" in output  # Clears entire line
 
     def test_stream_text_base_mode_skips_empty_lines(self) -> None:
         """Test stream_text skips empty lines when finding last line in BASE mode."""
@@ -354,6 +354,34 @@ class TestConsoleOutput:
         assert "Line 1" in output
         assert "Line 2" in output
         assert "Line 3" in output
+
+    def test_stream_text_base_mode_clears_line(self) -> None:
+        """Test stream_text uses proper line clearing in BASE mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        console.stream_text("First message")
+        console.stream_text("Second message")
+
+        output = stream.getvalue()
+        # Should use \033[2K to clear entire line
+        assert "\033[2K" in output
+        assert "Second message" in output
+
+    def test_stream_text_all_mode_multiple_messages(self) -> None:
+        """Test stream_text handles multiple messages in ALL mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
+
+        console.stream_text("First response", role="assistant")
+        console.stream_text("Second response", role="assistant")
+
+        output = stream.getvalue()
+        # Each message should be on its own line with bullet
+        assert "First response" in output
+        assert "Second response" in output
+        # Count blank lines - should have at least 2 (one before each message)
+        assert output.count("\n\n") >= 1 or output.count("\n*") >= 2
 
 
 class TestExtractSummary:

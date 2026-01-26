@@ -108,8 +108,8 @@ class TestExtractTextFromMessage:
                 ]
             },
         }
-        texts = list(extract_text_from_message(data))
-        assert texts == ["Hello, world!", "More text"]
+        results = list(extract_text_from_message(data))
+        assert results == [(0, "Hello, world!"), (1, "More text")]
 
     def test_extract_text_skips_non_text_blocks(self) -> None:
         """Test that non-text blocks are skipped."""
@@ -123,26 +123,27 @@ class TestExtractTextFromMessage:
                 ]
             },
         }
-        texts = list(extract_text_from_message(data))
-        assert texts == ["Text content", "More text"]
+        results = list(extract_text_from_message(data))
+        # Index 1 is tool_use which is skipped, so second text is at index 2
+        assert results == [(0, "Text content"), (2, "More text")]
 
     def test_extract_text_non_assistant_returns_empty(self) -> None:
-        """Test that non-assistant messages return empty."""
+        """Test that non-assistant/non-stream_event messages return empty."""
         data = {"type": "result", "result": "some result"}
-        texts = list(extract_text_from_message(data))
-        assert texts == []
+        results = list(extract_text_from_message(data))
+        assert results == []
 
     def test_extract_text_empty_content(self) -> None:
         """Test handling of empty content array."""
         data = {"type": "assistant", "message": {"content": []}}
-        texts = list(extract_text_from_message(data))
-        assert texts == []
+        results = list(extract_text_from_message(data))
+        assert results == []
 
     def test_extract_text_missing_message(self) -> None:
         """Test handling of missing message key."""
         data = {"type": "assistant"}
-        texts = list(extract_text_from_message(data))
-        assert texts == []
+        results = list(extract_text_from_message(data))
+        assert results == []
 
     def test_extract_text_skips_empty_text(self) -> None:
         """Test that empty text blocks are skipped."""
@@ -155,8 +156,46 @@ class TestExtractTextFromMessage:
                 ]
             },
         }
-        texts = list(extract_text_from_message(data))
-        assert texts == ["Non-empty"]
+        results = list(extract_text_from_message(data))
+        assert results == [(1, "Non-empty")]
+
+    def test_extract_text_from_stream_event(self) -> None:
+        """Test extracting text from stream_event format."""
+        data = {
+            "type": "stream_event",
+            "event": {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {"type": "text_delta", "text": "Hello"},
+            },
+        }
+        results = list(extract_text_from_message(data))
+        assert results == [(0, "Hello")]
+
+    def test_extract_text_stream_event_non_text_delta(self) -> None:
+        """Test that non-text deltas in stream events are skipped."""
+        data = {
+            "type": "stream_event",
+            "event": {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {"type": "input_json_delta", "partial_json": "{}"},
+            },
+        }
+        results = list(extract_text_from_message(data))
+        assert results == []
+
+    def test_extract_text_stream_event_other_event_type(self) -> None:
+        """Test that non-delta stream events are skipped."""
+        data = {
+            "type": "stream_event",
+            "event": {
+                "type": "message_start",
+                "message": {},
+            },
+        }
+        results = list(extract_text_from_message(data))
+        assert results == []
 
 
 class TestExtractUserText:

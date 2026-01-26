@@ -6,6 +6,7 @@ step results, errors, and summaries.
 
 from __future__ import annotations
 
+import shutil
 import sys
 from dataclasses import dataclass
 from enum import Enum
@@ -64,6 +65,7 @@ class ConsoleOutput:
 
     level: OutputLevel = OutputLevel.BASE
     stream: TextIO = sys.stdout
+    _last_base_line_len: int = 0  # Track length of last BASE mode line for clearing
 
     def _print(self, message: str, end: str = "\n") -> None:
         """Print message to stream."""
@@ -185,7 +187,7 @@ class ConsoleOutput:
         In BASE mode: shows only the last line, overwriting previous output.
 
         Args:
-            text: Text content extracted from stream-json message
+            text: Text content extracted from stream-json message (delta only)
             role: Message role - "user" or "assistant"
         """
         if self.level == OutputLevel.ALL:
@@ -220,11 +222,18 @@ class ConsoleOutput:
             last_line = ""
             for line in reversed(lines):
                 if line.strip():
-                    last_line = line.strip()[:150]
+                    last_line = line.strip()
                     break
             if last_line:
-                # Move to start, write the line, clear to end of line
-                self._print(f"\r{last_line}\033[K", end="")
+                # Truncate to terminal width to prevent wrapping
+                # (wrapping breaks the \r carriage return behavior)
+                term_width = shutil.get_terminal_size().columns
+                if len(last_line) > term_width - 1:
+                    last_line = last_line[: term_width - 4] + "..."
+                # Clear entire line first, then write new content
+                # \033[2K clears the entire line, \r moves cursor to start
+                self._print(f"\033[2K\r{last_line}", end="")
+                self._last_base_line_len = len(last_line)
 
     def stream_complete(self) -> None:
         """Called when streaming is complete to finalize output.
