@@ -89,6 +89,33 @@ def extract_text_from_message(data: dict[str, Any]) -> Generator[str, None, None
                 yield text
 
 
+def extract_user_text(data: dict[str, Any]) -> str | None:
+    """Extract text content from a user message.
+
+    Args:
+        data: Parsed JSON from stream-json output
+
+    Returns:
+        User message text, or None if not a user message
+    """
+    if data.get("type") != "user":
+        return None
+
+    message = data.get("message", {})
+    content = message.get("content", [])
+
+    texts = []
+    for block in content:
+        if isinstance(block, dict) and block.get("type") == "text":
+            text = block.get("text", "")
+            if text:
+                texts.append(text)
+        elif isinstance(block, str):
+            texts.append(block)
+
+    return "\n".join(texts) if texts else None
+
+
 def extract_result_text(data: dict[str, Any]) -> str | None:
     """Extract the final result text from a result message.
 
@@ -285,6 +312,10 @@ def run_claude(
             process.stdin.write(prompt)
             process.stdin.close()
 
+        # Show user prompt at start in ALL mode (stream-json doesn't include user messages)
+        if console:
+            console.stream_text(prompt, role="user")
+
         # Collect all text for final result
         collected_text: list[str] = []
         result_text: str | None = None
@@ -296,14 +327,17 @@ def run_claude(
                 if data is None:
                     continue
 
+                # Note: user messages from stream-json are rare, but handle them if present
+                user_text = extract_user_text(data)
+                if user_text and console:
+                    console.stream_text(user_text, role="user")
+
                 # Extract text from assistant messages for streaming
                 for text in extract_text_from_message(data):
                     if console:
-                        console.stream_text(text)
+                        console.stream_text(text, role="assistant")
                     else:
-                        # Replace \n with \r\n for proper terminal output
-                        formatted = text.replace("\n", "\r\n")
-                        print(formatted, end="", flush=True)
+                        print(text, end="", flush=True)
                     collected_text.append(text)
 
                 # Capture final result

@@ -178,20 +178,41 @@ class ConsoleOutput:
         err = _colorize("[ERROR]", Color.BRIGHT_RED)
         self._print(f"{err} {message}")
 
-    def stream_text(self, text: str) -> None:
-        """Stream text content from Claude's assistant messages.
+    def stream_text(self, text: str, role: str = "assistant") -> None:
+        """Stream text content from Claude's messages.
 
-        In ALL mode: prints all text with proper line endings.
+        In ALL mode: prints all text with visual indicators by role.
         In BASE mode: shows only the last line, overwriting previous output.
 
         Args:
-            text: Text content extracted from stream-json assistant message
+            text: Text content extracted from stream-json message
+            role: Message role - "user" or "assistant"
         """
         if self.level == OutputLevel.ALL:
-            # Replace \n with \r\n for proper terminal output
-            # This ensures cursor returns to start of line
-            formatted = text.replace("\n", "\r\n")
-            self._print(formatted, end="")
+            # Skip empty text
+            if not text or not text.strip():
+                return
+
+            # Format with role indicator
+            if role == "user":
+                prefix = _colorize(">", Color.BRIGHT_CYAN, Color.BOLD)
+                label = _colorize(" [user]", Color.DIM)
+                # Print user message with prefix on first line
+                self._print("")  # Blank line before
+                self._print(f"{prefix}{label}")
+                for line in text.split("\n"):
+                    self._print(f"  {line}")
+            else:
+                # Assistant message - green bullet prefix
+                bullet = _colorize("*", Color.BRIGHT_GREEN, Color.BOLD)
+                lines = text.split("\n")
+                # Always start with blank line to separate from previous output
+                self._print("")
+                # First line gets the bullet
+                self._print(f"{bullet} {lines[0]}")
+                # Subsequent lines are indented to align
+                for line in lines[1:]:
+                    self._print(f"  {line}")
         elif self.level == OutputLevel.BASE:
             # Show only the last meaningful line, overwriting previous
             # Split by newlines and get the last non-empty line

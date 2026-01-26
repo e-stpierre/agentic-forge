@@ -14,6 +14,7 @@ from agentic_sdlc.runner import (
     check_claude_available,
     extract_result_text,
     extract_text_from_message,
+    extract_user_text,
     get_executable,
     parse_stream_json_line,
     run_claude,
@@ -156,6 +157,46 @@ class TestExtractTextFromMessage:
         }
         texts = list(extract_text_from_message(data))
         assert texts == ["Non-empty"]
+
+
+class TestExtractUserText:
+    """Tests for extract_user_text function."""
+
+    def test_extract_user_text_from_user_message(self) -> None:
+        """Test extracting text from user message with content array."""
+        data = {
+            "type": "user",
+            "message": {
+                "content": [
+                    {"type": "text", "text": "Hello, Claude!"},
+                ]
+            },
+        }
+        result = extract_user_text(data)
+        assert result == "Hello, Claude!"
+
+    def test_extract_user_text_string_content(self) -> None:
+        """Test extracting text from user message with string content."""
+        data = {
+            "type": "user",
+            "message": {
+                "content": ["Simple string prompt"],
+            },
+        }
+        result = extract_user_text(data)
+        assert result == "Simple string prompt"
+
+    def test_extract_user_text_non_user_returns_none(self) -> None:
+        """Test that non-user messages return None."""
+        data = {"type": "assistant", "message": {"content": []}}
+        result = extract_user_text(data)
+        assert result is None
+
+    def test_extract_user_text_empty_content(self) -> None:
+        """Test handling of empty content array."""
+        data = {"type": "user", "message": {"content": []}}
+        result = extract_user_text(data)
+        assert result is None
 
 
 class TestExtractResultText:

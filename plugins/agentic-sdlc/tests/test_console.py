@@ -284,16 +284,29 @@ class TestConsoleOutput:
         assert "ERROR" in output
         assert "Error message" in output
 
-    def test_stream_text_all_mode(self) -> None:
-        """Test stream_text in ALL output mode."""
+    def test_stream_text_all_mode_assistant(self) -> None:
+        """Test stream_text in ALL mode for assistant messages."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
 
-        console.stream_text("Hello\nWorld")
+        console.stream_text("Hello\nWorld", role="assistant")
 
         output = stream.getvalue()
-        # ALL mode converts \n to \r\n for proper terminal output
-        assert output == "Hello\r\nWorld"
+        # ALL mode adds green dot prefix and formatting
+        assert "Hello" in output
+        assert "World" in output
+
+    def test_stream_text_all_mode_user(self) -> None:
+        """Test stream_text in ALL mode for user messages."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
+
+        console.stream_text("User prompt here", role="user")
+
+        output = stream.getvalue()
+        # ALL mode shows user messages with indicator
+        assert "[user]" in output
+        assert "User prompt here" in output
 
     def test_stream_text_base_mode_shows_last_line(self) -> None:
         """Test stream_text shows only last line in BASE mode."""
@@ -318,12 +331,24 @@ class TestConsoleOutput:
         output = stream.getvalue()
         assert "Content" in output
 
+    def test_stream_text_all_mode_skips_empty(self) -> None:
+        """Test stream_text skips empty text in ALL mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
+
+        console.stream_text("", role="assistant")
+        console.stream_text("   ", role="assistant")
+
+        output = stream.getvalue()
+        # Empty and whitespace-only text should be skipped
+        assert output == ""
+
     def test_stream_text_all_mode_preserves_multiline(self) -> None:
         """Test stream_text preserves multi-line output in ALL mode."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
 
-        console.stream_text("Line 1\nLine 2\nLine 3")
+        console.stream_text("Line 1\nLine 2\nLine 3", role="assistant")
 
         output = stream.getvalue()
         assert "Line 1" in output
