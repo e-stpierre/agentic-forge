@@ -309,17 +309,16 @@ class TestConsoleOutput:
         assert "User prompt here" in output
 
     def test_stream_text_base_mode_shows_last_line(self) -> None:
-        """Test stream_text shows only last line in BASE mode."""
+        """Test stream_text shows only last line in BASE mode with indentation."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
         console.stream_text("First line\nSecond line\nThird line")
 
         output = stream.getvalue()
-        # BASE mode shows only the last non-empty line
+        # BASE mode shows only the last non-empty line with "  - " prefix
         assert "Third line" in output
-        assert "\r" in output  # Uses carriage return
-        assert "\033[2K" in output  # Clears entire line
+        assert "  - " in output  # Uses dash prefix for indentation
 
     def test_stream_text_base_mode_skips_empty_lines(self) -> None:
         """Test stream_text skips empty lines when finding last line in BASE mode."""
@@ -355,8 +354,8 @@ class TestConsoleOutput:
         assert "Line 2" in output
         assert "Line 3" in output
 
-    def test_stream_text_base_mode_clears_line(self) -> None:
-        """Test stream_text uses proper line clearing in BASE mode."""
+    def test_stream_text_base_mode_multiple_messages(self) -> None:
+        """Test stream_text prints each message on its own line in BASE mode."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
@@ -364,9 +363,9 @@ class TestConsoleOutput:
         console.stream_text("Second message")
 
         output = stream.getvalue()
-        # Should use \033[2K to clear entire line
-        assert "\033[2K" in output
-        assert "Second message" in output
+        # Each message gets its own line with "  - " prefix
+        assert "  - First message" in output
+        assert "  - Second message" in output
 
     def test_stream_text_all_mode_multiple_messages(self) -> None:
         """Test stream_text handles multiple messages in ALL mode."""

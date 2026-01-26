@@ -6,7 +6,6 @@ step results, errors, and summaries.
 
 from __future__ import annotations
 
-import shutil
 import sys
 from dataclasses import dataclass
 from enum import Enum
@@ -65,7 +64,7 @@ class ConsoleOutput:
 
     level: OutputLevel = OutputLevel.BASE
     stream: TextIO = sys.stdout
-    _last_base_line_len: int = 0  # Track length of last BASE mode line for clearing
+    _last_base_line_count: int = 0  # Track number of lines output in BASE mode for clearing
 
     def _print(self, message: str, end: str = "\n") -> None:
         """Print message to stream."""
@@ -216,7 +215,7 @@ class ConsoleOutput:
                 for line in lines[1:]:
                     self._print(f"  {line}")
         elif self.level == OutputLevel.BASE:
-            # Show only the last meaningful line, overwriting previous
+            # Show only the last meaningful line with "  - " prefix
             # Split by newlines and get the last non-empty line
             lines = text.strip().split("\n")
             last_line = ""
@@ -225,24 +224,16 @@ class ConsoleOutput:
                     last_line = line.strip()
                     break
             if last_line:
-                # Truncate to terminal width to prevent wrapping
-                # (wrapping breaks the \r carriage return behavior)
-                term_width = shutil.get_terminal_size().columns
-                if len(last_line) > term_width - 1:
-                    last_line = last_line[: term_width - 4] + "..."
-                # Clear entire line first, then write new content
-                # \033[2K clears the entire line, \r moves cursor to start
-                self._print(f"\033[2K\r{last_line}", end="")
-                self._last_base_line_len = len(last_line)
+                # Print with indentation prefix, let terminal handle wrapping
+                self._print(f"  - {last_line}")
+                self._last_base_line_count = 1
 
     def stream_complete(self) -> None:
         """Called when streaming is complete to finalize output.
 
-        In BASE mode: prints a newline to move past the overwritten line.
-        In ALL mode: no action needed (already printing newlines).
+        Resets internal state for next stream.
         """
-        if self.level == OutputLevel.BASE:
-            self._print("")  # Print newline to move past the last streamed line
+        self._last_base_line_count = 0  # Reset for next stream
 
 
 def extract_json(output: str) -> dict | None:
