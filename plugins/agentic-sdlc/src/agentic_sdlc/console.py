@@ -225,7 +225,12 @@ class ConsoleOutput:
                     break
             if last_line:
                 # Print with indentation prefix, let terminal handle wrapping
-                self._print(f"  - {last_line}")
+                # User messages in green, assistant messages in default color
+                if role == "user":
+                    colored_line = _colorize(f"  - {last_line}", Color.GREEN)
+                    self._print(colored_line)
+                else:
+                    self._print(f"  - {last_line}")
                 self._last_base_line_count = 1
 
     def stream_complete(self) -> None:
