@@ -178,22 +178,32 @@ class ConsoleOutput:
         err = _colorize("[ERROR]", Color.BRIGHT_RED)
         self._print(f"{err} {message}")
 
-    def stream_line(self, line: str) -> None:
-        """Stream a line of output.
+    def stream_text(self, text: str) -> None:
+        """Stream text content from Claude's assistant messages.
 
-        In ALL mode: prints every line immediately.
-        In BASE mode: overwrites the current line with the new one (displays only the latest message).
+        In ALL mode: prints all text with proper line endings.
+        In BASE mode: shows only the last line, overwriting previous output.
+
+        Args:
+            text: Text content extracted from stream-json assistant message
         """
         if self.level == OutputLevel.ALL:
-            self._print(line, end="")
+            # Replace \n with \r\n for proper terminal output
+            # This ensures cursor returns to start of line
+            formatted = text.replace("\n", "\r\n")
+            self._print(formatted, end="")
         elif self.level == OutputLevel.BASE:
-            # Show only the last line, overwriting previous output
-            # Use \r to return to start of line, then clear line with spaces
-            # Strip to avoid issues with whitespace, limit length to prevent wrapping
-            clean_line = line.strip()[:150]
-            if clean_line:
+            # Show only the last meaningful line, overwriting previous
+            # Split by newlines and get the last non-empty line
+            lines = text.strip().split("\n")
+            last_line = ""
+            for line in reversed(lines):
+                if line.strip():
+                    last_line = line.strip()[:150]
+                    break
+            if last_line:
                 # Move to start, write the line, clear to end of line
-                self._print(f"\r{clean_line}\033[K", end="")
+                self._print(f"\r{last_line}\033[K", end="")
 
     def stream_complete(self) -> None:
         """Called when streaming is complete to finalize output.

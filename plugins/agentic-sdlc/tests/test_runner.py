@@ -12,7 +12,10 @@ from agentic_sdlc.runner import (
     SessionOutput,
     _get_agentic_system_prompt,
     check_claude_available,
+    extract_result_text,
+    extract_text_from_message,
     get_executable,
+    parse_stream_json_line,
     run_claude,
 )
 
@@ -53,6 +56,128 @@ class TestModelMap:
         assert MODEL_MAP["sonnet"] == "sonnet"
         assert MODEL_MAP["haiku"] == "haiku"
         assert MODEL_MAP["opus"] == "opus"
+
+
+class TestParseStreamJsonLine:
+    """Tests for parse_stream_json_line function."""
+
+    def test_parse_valid_json(self) -> None:
+        """Test parsing valid JSON line."""
+        line = '{"type": "assistant", "message": {"content": []}}'
+        result = parse_stream_json_line(line)
+        assert result is not None
+        assert result["type"] == "assistant"
+
+    def test_parse_json_with_whitespace(self) -> None:
+        """Test parsing JSON with leading/trailing whitespace."""
+        line = '  {"type": "result", "result": "done"}  \n'
+        result = parse_stream_json_line(line)
+        assert result is not None
+        assert result["type"] == "result"
+
+    def test_parse_non_json_line(self) -> None:
+        """Test parsing non-JSON line returns None."""
+        line = "Some random text output"
+        result = parse_stream_json_line(line)
+        assert result is None
+
+    def test_parse_empty_line(self) -> None:
+        """Test parsing empty line returns None."""
+        result = parse_stream_json_line("")
+        assert result is None
+
+    def test_parse_invalid_json(self) -> None:
+        """Test parsing invalid JSON returns None."""
+        line = "{invalid json"
+        result = parse_stream_json_line(line)
+        assert result is None
+
+
+class TestExtractTextFromMessage:
+    """Tests for extract_text_from_message function."""
+
+    def test_extract_text_from_assistant_message(self) -> None:
+        """Test extracting text from assistant message."""
+        data = {
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {"type": "text", "text": "Hello, world!"},
+                    {"type": "text", "text": "More text"},
+                ]
+            },
+        }
+        texts = list(extract_text_from_message(data))
+        assert texts == ["Hello, world!", "More text"]
+
+    def test_extract_text_skips_non_text_blocks(self) -> None:
+        """Test that non-text blocks are skipped."""
+        data = {
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {"type": "text", "text": "Text content"},
+                    {"type": "tool_use", "name": "Read"},
+                    {"type": "text", "text": "More text"},
+                ]
+            },
+        }
+        texts = list(extract_text_from_message(data))
+        assert texts == ["Text content", "More text"]
+
+    def test_extract_text_non_assistant_returns_empty(self) -> None:
+        """Test that non-assistant messages return empty."""
+        data = {"type": "result", "result": "some result"}
+        texts = list(extract_text_from_message(data))
+        assert texts == []
+
+    def test_extract_text_empty_content(self) -> None:
+        """Test handling of empty content array."""
+        data = {"type": "assistant", "message": {"content": []}}
+        texts = list(extract_text_from_message(data))
+        assert texts == []
+
+    def test_extract_text_missing_message(self) -> None:
+        """Test handling of missing message key."""
+        data = {"type": "assistant"}
+        texts = list(extract_text_from_message(data))
+        assert texts == []
+
+    def test_extract_text_skips_empty_text(self) -> None:
+        """Test that empty text blocks are skipped."""
+        data = {
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {"type": "text", "text": ""},
+                    {"type": "text", "text": "Non-empty"},
+                ]
+            },
+        }
+        texts = list(extract_text_from_message(data))
+        assert texts == ["Non-empty"]
+
+
+class TestExtractResultText:
+    """Tests for extract_result_text function."""
+
+    def test_extract_result_from_result_message(self) -> None:
+        """Test extracting result from result message."""
+        data = {"type": "result", "result": "Task completed successfully."}
+        result = extract_result_text(data)
+        assert result == "Task completed successfully."
+
+    def test_extract_result_non_result_returns_none(self) -> None:
+        """Test that non-result messages return None."""
+        data = {"type": "assistant", "message": {"content": []}}
+        result = extract_result_text(data)
+        assert result is None
+
+    def test_extract_result_missing_result_key(self) -> None:
+        """Test handling of result message without result key."""
+        data = {"type": "result"}
+        result = extract_result_text(data)
+        assert result is None
 
 
 class TestSessionOutput:

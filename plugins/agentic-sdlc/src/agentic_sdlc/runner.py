@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from typing import Any
 
     from agentic_sdlc.console import ConsoleOutput
@@ -43,6 +44,64 @@ MODEL_MAP = {
     "haiku": "haiku",
     "opus": "opus",
 }
+
+
+def parse_stream_json_line(line: str) -> dict[str, Any] | None:
+    """Parse a single line of stream-json output.
+
+    Args:
+        line: A line from Claude's stream-json output
+
+    Returns:
+        Parsed JSON dict, or None if not valid JSON
+    """
+    line = line.strip()
+    if not line.startswith("{"):
+        return None
+    try:
+        return json.loads(line)
+    except json.JSONDecodeError:
+        return None
+
+
+def extract_text_from_message(data: dict[str, Any]) -> Generator[str, None, None]:
+    """Extract text content from an assistant message.
+
+    Handles the stream-json format where assistant messages contain
+    content arrays with text blocks.
+
+    Args:
+        data: Parsed JSON from stream-json output
+
+    Yields:
+        Text content strings from the message
+    """
+    if data.get("type") != "assistant":
+        return
+
+    message = data.get("message", {})
+    content = message.get("content", [])
+
+    for block in content:
+        if isinstance(block, dict) and block.get("type") == "text":
+            text = block.get("text", "")
+            if text:
+                yield text
+
+
+def extract_result_text(data: dict[str, Any]) -> str | None:
+    """Extract the final result text from a result message.
+
+    Args:
+        data: Parsed JSON from stream-json output
+
+    Returns:
+        Result text, or None if not a result message
+    """
+    if data.get("type") != "result":
+        return None
+    return data.get("result")
+
 
 # Path to the agentic system prompt file
 AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent.parent.parent / "prompts" / "agentic-system.md"
@@ -180,6 +239,10 @@ def run_claude(
     claude_path = get_executable("claude")
     cmd = [claude_path, "--print"]
 
+    # Use stream-json format when streaming output for real-time parsing
+    if print_output:
+        cmd.extend(["--output-format", "stream-json", "--verbose"])
+
     if model and model in MODEL_MAP:
         cmd.extend(["--model", MODEL_MAP[model]])
 
@@ -211,6 +274,8 @@ def run_claude(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=cwd_str,
             env=env,
             shell=False,
@@ -220,14 +285,31 @@ def run_claude(
             process.stdin.write(prompt)
             process.stdin.close()
 
-        stdout_lines: list[str] = []
+        # Collect all text for final result
+        collected_text: list[str] = []
+        result_text: str | None = None
+
         if process.stdout:
             for line in process.stdout:
-                if console:
-                    console.stream_line(line)
-                else:
-                    print(line, end="", flush=True)
-                stdout_lines.append(line)
+                # Parse stream-json format
+                data = parse_stream_json_line(line)
+                if data is None:
+                    continue
+
+                # Extract text from assistant messages for streaming
+                for text in extract_text_from_message(data):
+                    if console:
+                        console.stream_text(text)
+                    else:
+                        # Replace \n with \r\n for proper terminal output
+                        formatted = text.replace("\n", "\r\n")
+                        print(formatted, end="", flush=True)
+                    collected_text.append(text)
+
+                # Capture final result
+                result = extract_result_text(data)
+                if result is not None:
+                    result_text = result
 
         # Signal that streaming is complete
         if console:
@@ -241,9 +323,12 @@ def run_claude(
 
         stderr = process.stderr.read() if process.stderr else ""
 
+        # Use result_text if available, otherwise join collected text
+        final_output = result_text if result_text is not None else "".join(collected_text)
+
         return ClaudeResult(
             returncode=process.returncode if process.returncode is not None else 1,
-            stdout="".join(stdout_lines),
+            stdout=final_output,
             stderr=stderr,
             prompt=prompt,
             cwd=cwd,
@@ -256,6 +341,8 @@ def run_claude(
                 input=prompt,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 cwd=cwd_str,
                 env=env,
                 timeout=timeout,

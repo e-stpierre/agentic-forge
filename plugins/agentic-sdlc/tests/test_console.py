@@ -284,26 +284,51 @@ class TestConsoleOutput:
         assert "ERROR" in output
         assert "Error message" in output
 
-    def test_stream_line_all_mode(self) -> None:
-        """Test stream_line in ALL output mode."""
+    def test_stream_text_all_mode(self) -> None:
+        """Test stream_text in ALL output mode."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
 
-        console.stream_line("streaming line")
+        console.stream_text("Hello\nWorld")
 
         output = stream.getvalue()
-        assert "streaming line" in output
+        # ALL mode converts \n to \r\n for proper terminal output
+        assert output == "Hello\r\nWorld"
 
-    def test_stream_line_base_mode_overwrites(self) -> None:
-        """Test stream_line overwrites current line in BASE mode."""
+    def test_stream_text_base_mode_shows_last_line(self) -> None:
+        """Test stream_text shows only last line in BASE mode."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
-        console.stream_line("streaming line")
+        console.stream_text("First line\nSecond line\nThird line")
 
         output = stream.getvalue()
-        # BASE mode uses \r to return to start and \033[K to clear to end of line
-        assert output == "\rstreaming line\033[K"
+        # BASE mode shows only the last non-empty line
+        assert "Third line" in output
+        assert "\r" in output  # Uses carriage return
+        assert "\033[K" in output  # Clears to end of line
+
+    def test_stream_text_base_mode_skips_empty_lines(self) -> None:
+        """Test stream_text skips empty lines when finding last line in BASE mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        console.stream_text("Content\n\n")
+
+        output = stream.getvalue()
+        assert "Content" in output
+
+    def test_stream_text_all_mode_preserves_multiline(self) -> None:
+        """Test stream_text preserves multi-line output in ALL mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
+
+        console.stream_text("Line 1\nLine 2\nLine 3")
+
+        output = stream.getvalue()
+        assert "Line 1" in output
+        assert "Line 2" in output
+        assert "Line 3" in output
 
 
 class TestExtractSummary:
