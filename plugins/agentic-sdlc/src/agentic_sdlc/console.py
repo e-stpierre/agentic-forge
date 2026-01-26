@@ -64,6 +64,7 @@ class ConsoleOutput:
 
     level: OutputLevel = OutputLevel.BASE
     stream: TextIO = sys.stdout
+    _last_base_line_count: int = 0  # Track number of lines output in BASE mode for clearing
 
     def _print(self, message: str, end: str = "\n") -> None:
         """Print message to stream."""
@@ -178,31 +179,69 @@ class ConsoleOutput:
         err = _colorize("[ERROR]", Color.BRIGHT_RED)
         self._print(f"{err} {message}")
 
-    def stream_line(self, line: str) -> None:
-        """Stream a line of output.
+    def stream_text(self, text: str, role: str = "assistant") -> None:
+        """Stream text content from Claude's messages.
 
-        In ALL mode: prints every line immediately.
-        In BASE mode: overwrites the current line with the new one (displays only the latest message).
+        In ALL mode: prints all text with visual indicators by role.
+        In BASE mode: shows only the last line, overwriting previous output.
+
+        Args:
+            text: Text content extracted from stream-json message (delta only)
+            role: Message role - "user" or "assistant"
         """
         if self.level == OutputLevel.ALL:
-            self._print(line, end="")
+            # Skip empty text
+            if not text or not text.strip():
+                return
+
+            # Format with role indicator
+            if role == "user":
+                prefix = _colorize(">", Color.BRIGHT_CYAN, Color.BOLD)
+                label = _colorize(" [user]", Color.DIM)
+                # Print user message with prefix on first line
+                self._print("")  # Blank line before
+                self._print(f"{prefix}{label}")
+                for line in text.split("\n"):
+                    self._print(f"  {line}")
+            else:
+                # Assistant message - green bullet prefix
+                bullet = _colorize("*", Color.BRIGHT_GREEN, Color.BOLD)
+                lines = text.split("\n")
+                # Always start with blank line to separate from previous output
+                self._print("")
+                # First line gets the bullet
+                self._print(f"{bullet} {lines[0]}")
+                # Subsequent lines are indented to align
+                for line in lines[1:]:
+                    self._print(f"  {line}")
         elif self.level == OutputLevel.BASE:
-            # Show only the last line, overwriting previous output
-            # Use \r to return to start of line, then clear line with spaces
-            # Strip to avoid issues with whitespace, limit length to prevent wrapping
-            clean_line = line.strip()[:150]
-            if clean_line:
-                # Move to start, write the line, clear to end of line
-                self._print(f"\r{clean_line}\033[K", end="")
+            if role == "user":
+                # Print full user message (prompt) with indentation, in green
+                lines = text.strip().split("\n")
+                for i, line in enumerate(lines):
+                    prefix = "  - " if i == 0 else "    "
+                    colored_line = _colorize(f"{prefix}{line}", Color.GREEN)
+                    self._print(colored_line)
+                self._last_base_line_count = len(lines)
+            else:
+                # Assistant messages: show only the last meaningful line
+                # (since these stream incrementally)
+                lines = text.strip().split("\n")
+                last_line = ""
+                for line in reversed(lines):
+                    if line.strip():
+                        last_line = line.strip()
+                        break
+                if last_line:
+                    self._print(f"  - {last_line}")
+                    self._last_base_line_count = 1
 
     def stream_complete(self) -> None:
         """Called when streaming is complete to finalize output.
 
-        In BASE mode: prints a newline to move past the overwritten line.
-        In ALL mode: no action needed (already printing newlines).
+        Resets internal state for next stream.
         """
-        if self.level == OutputLevel.BASE:
-            self._print("")  # Print newline to move past the last streamed line
+        self._last_base_line_count = 0  # Reset for next stream
 
 
 def extract_json(output: str) -> dict | None:

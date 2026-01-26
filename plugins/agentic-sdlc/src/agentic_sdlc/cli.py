@@ -65,8 +65,8 @@ def main() -> None:
     run_parser.add_argument(
         "--terminal-output",
         choices=["base", "all"],
-        default="base",
-        help="Terminal output granularity",
+        default=None,
+        help="Terminal output granularity (defaults to workflow settings, then 'base')",
     )
 
     # resume command

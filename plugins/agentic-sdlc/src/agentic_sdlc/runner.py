@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from typing import Any
 
     from agentic_sdlc.console import ConsoleOutput
@@ -43,6 +44,106 @@ MODEL_MAP = {
     "haiku": "haiku",
     "opus": "opus",
 }
+
+
+def parse_stream_json_line(line: str) -> dict[str, Any] | None:
+    """Parse a single line of stream-json output.
+
+    Args:
+        line: A line from Claude's stream-json output
+
+    Returns:
+        Parsed JSON dict, or None if not valid JSON
+    """
+    line = line.strip()
+    if not line.startswith("{"):
+        return None
+    try:
+        return json.loads(line)
+    except json.JSONDecodeError:
+        return None
+
+
+def extract_text_from_message(data: dict[str, Any]) -> Generator[tuple[int, str], None, None]:
+    """Extract text content from an assistant message.
+
+    Handles two stream-json formats:
+    1. Verbose format: {"type": "assistant", "message": {"content": [...]}}
+    2. Stream event format: {"type": "stream_event", "event": {"type": "content_block_delta", ...}}
+
+    Args:
+        data: Parsed JSON from stream-json output
+
+    Yields:
+        Tuple of (content_block_index, text) for tracking cumulative updates
+    """
+    msg_type = data.get("type")
+
+    # Handle verbose format: complete assistant messages
+    if msg_type == "assistant":
+        message = data.get("message", {})
+        content = message.get("content", [])
+
+        for idx, block in enumerate(content):
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = block.get("text", "")
+                if text:
+                    yield (idx, text)
+
+    # Handle stream event format: incremental deltas
+    elif msg_type == "stream_event":
+        event = data.get("event", {})
+        event_type = event.get("type")
+
+        if event_type == "content_block_delta":
+            idx = event.get("index", 0)
+            delta = event.get("delta", {})
+            if delta.get("type") == "text_delta":
+                text = delta.get("text", "")
+                if text:
+                    yield (idx, text)
+
+
+def extract_user_text(data: dict[str, Any]) -> str | None:
+    """Extract text content from a user message.
+
+    Args:
+        data: Parsed JSON from stream-json output
+
+    Returns:
+        User message text, or None if not a user message
+    """
+    if data.get("type") != "user":
+        return None
+
+    message = data.get("message", {})
+    content = message.get("content", [])
+
+    texts = []
+    for block in content:
+        if isinstance(block, dict) and block.get("type") == "text":
+            text = block.get("text", "")
+            if text:
+                texts.append(text)
+        elif isinstance(block, str):
+            texts.append(block)
+
+    return "\n".join(texts) if texts else None
+
+
+def extract_result_text(data: dict[str, Any]) -> str | None:
+    """Extract the final result text from a result message.
+
+    Args:
+        data: Parsed JSON from stream-json output
+
+    Returns:
+        Result text, or None if not a result message
+    """
+    if data.get("type") != "result":
+        return None
+    return data.get("result")
+
 
 # Path to the agentic system prompt file
 AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent.parent.parent / "prompts" / "agentic-system.md"
@@ -180,6 +281,10 @@ def run_claude(
     claude_path = get_executable("claude")
     cmd = [claude_path, "--print"]
 
+    # Use stream-json format when streaming output for real-time parsing
+    if print_output:
+        cmd.extend(["--output-format", "stream-json", "--verbose"])
+
     if model and model in MODEL_MAP:
         cmd.extend(["--model", MODEL_MAP[model]])
 
@@ -211,6 +316,8 @@ def run_claude(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=cwd_str,
             env=env,
             shell=False,
@@ -220,14 +327,56 @@ def run_claude(
             process.stdin.write(prompt)
             process.stdin.close()
 
-        stdout_lines: list[str] = []
+        # Show user prompt at start in ALL mode (stream-json doesn't include user messages)
+        if console:
+            console.stream_text(prompt, role="user")
+
+        # Collect all text for final result
+        collected_text: list[str] = []
+        result_text: str | None = None
+        # Track accumulated text per content block to compute deltas
+        # stream-json with --verbose provides cumulative text, not deltas
+        accumulated_text: dict[int, str] = {}
+
         if process.stdout:
             for line in process.stdout:
-                if console:
-                    console.stream_line(line)
-                else:
-                    print(line, end="", flush=True)
-                stdout_lines.append(line)
+                # Parse stream-json format
+                data = parse_stream_json_line(line)
+                if data is None:
+                    continue
+
+                # Note: user messages from stream-json are rare, but handle them if present
+                user_text = extract_user_text(data)
+                if user_text and console:
+                    console.stream_text(user_text, role="user")
+
+                # Extract text from assistant messages for streaming
+                # Verbose format provides cumulative text, stream_event provides deltas
+                msg_type = data.get("type")
+                is_stream_event = msg_type == "stream_event"
+
+                for idx, text in extract_text_from_message(data):
+                    if is_stream_event:
+                        # Stream events are already deltas, use directly
+                        delta = text
+                    else:
+                        # Verbose format: compute delta from cumulative text
+                        prev_text = accumulated_text.get(idx, "")
+                        # New text is what wasn't there before, or full text if it's a new block
+                        delta = text[len(prev_text) :] if text.startswith(prev_text) else text
+                        accumulated_text[idx] = text
+
+                    if delta:
+                        if console:
+                            console.stream_text(delta, role="assistant")
+                        else:
+                            print(delta, end="", flush=True)
+                        collected_text.append(delta)
+
+                # Capture final result
+                result = extract_result_text(data)
+                if result is not None:
+                    result_text = result
 
         # Signal that streaming is complete
         if console:
@@ -241,9 +390,12 @@ def run_claude(
 
         stderr = process.stderr.read() if process.stderr else ""
 
+        # Use result_text if available, otherwise join collected text
+        final_output = result_text if result_text is not None else "".join(collected_text)
+
         return ClaudeResult(
             returncode=process.returncode if process.returncode is not None else 1,
-            stdout="".join(stdout_lines),
+            stdout=final_output,
             stderr=stderr,
             prompt=prompt,
             cwd=cwd,
@@ -256,6 +408,8 @@ def run_claude(
                 input=prompt,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 cwd=cwd_str,
                 env=env,
                 timeout=timeout,

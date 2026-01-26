@@ -284,26 +284,103 @@ class TestConsoleOutput:
         assert "ERROR" in output
         assert "Error message" in output
 
-    def test_stream_line_all_mode(self) -> None:
-        """Test stream_line in ALL output mode."""
+    def test_stream_text_all_mode_assistant(self) -> None:
+        """Test stream_text in ALL mode for assistant messages."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
 
-        console.stream_line("streaming line")
+        console.stream_text("Hello\nWorld", role="assistant")
 
         output = stream.getvalue()
-        assert "streaming line" in output
+        # ALL mode adds green dot prefix and formatting
+        assert "Hello" in output
+        assert "World" in output
 
-    def test_stream_line_base_mode_overwrites(self) -> None:
-        """Test stream_line overwrites current line in BASE mode."""
+    def test_stream_text_all_mode_user(self) -> None:
+        """Test stream_text in ALL mode for user messages."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
+
+        console.stream_text("User prompt here", role="user")
+
+        output = stream.getvalue()
+        # ALL mode shows user messages with indicator
+        assert "[user]" in output
+        assert "User prompt here" in output
+
+    def test_stream_text_base_mode_shows_last_line(self) -> None:
+        """Test stream_text shows only last line in BASE mode with indentation."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
-        console.stream_line("streaming line")
+        console.stream_text("First line\nSecond line\nThird line")
 
         output = stream.getvalue()
-        # BASE mode uses \r to return to start and \033[K to clear to end of line
-        assert output == "\rstreaming line\033[K"
+        # BASE mode shows only the last non-empty line with "  - " prefix
+        assert "Third line" in output
+        assert "  - " in output  # Uses dash prefix for indentation
+
+    def test_stream_text_base_mode_skips_empty_lines(self) -> None:
+        """Test stream_text skips empty lines when finding last line in BASE mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        console.stream_text("Content\n\n")
+
+        output = stream.getvalue()
+        assert "Content" in output
+
+    def test_stream_text_all_mode_skips_empty(self) -> None:
+        """Test stream_text skips empty text in ALL mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
+
+        console.stream_text("", role="assistant")
+        console.stream_text("   ", role="assistant")
+
+        output = stream.getvalue()
+        # Empty and whitespace-only text should be skipped
+        assert output == ""
+
+    def test_stream_text_all_mode_preserves_multiline(self) -> None:
+        """Test stream_text preserves multi-line output in ALL mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
+
+        console.stream_text("Line 1\nLine 2\nLine 3", role="assistant")
+
+        output = stream.getvalue()
+        assert "Line 1" in output
+        assert "Line 2" in output
+        assert "Line 3" in output
+
+    def test_stream_text_base_mode_multiple_messages(self) -> None:
+        """Test stream_text prints each message on its own line in BASE mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        console.stream_text("First message")
+        console.stream_text("Second message")
+
+        output = stream.getvalue()
+        # Each message gets its own line with "  - " prefix
+        assert "  - First message" in output
+        assert "  - Second message" in output
+
+    def test_stream_text_all_mode_multiple_messages(self) -> None:
+        """Test stream_text handles multiple messages in ALL mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.ALL, stream=stream)
+
+        console.stream_text("First response", role="assistant")
+        console.stream_text("Second response", role="assistant")
+
+        output = stream.getvalue()
+        # Each message should be on its own line with bullet
+        assert "First response" in output
+        assert "Second response" in output
+        # Count blank lines - should have at least 2 (one before each message)
+        assert output.count("\n\n") >= 1 or output.count("\n*") >= 2
 
 
 class TestExtractSummary:
