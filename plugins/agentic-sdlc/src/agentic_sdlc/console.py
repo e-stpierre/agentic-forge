@@ -215,23 +215,26 @@ class ConsoleOutput:
                 for line in lines[1:]:
                     self._print(f"  {line}")
         elif self.level == OutputLevel.BASE:
-            # Show only the last meaningful line with "  - " prefix
-            # Split by newlines and get the last non-empty line
-            lines = text.strip().split("\n")
-            last_line = ""
-            for line in reversed(lines):
-                if line.strip():
-                    last_line = line.strip()
-                    break
-            if last_line:
-                # Print with indentation prefix, let terminal handle wrapping
-                # User messages in green, assistant messages in default color
-                if role == "user":
-                    colored_line = _colorize(f"  - {last_line}", Color.GREEN)
+            if role == "user":
+                # Print full user message (prompt) with indentation, in green
+                lines = text.strip().split("\n")
+                for i, line in enumerate(lines):
+                    prefix = "  - " if i == 0 else "    "
+                    colored_line = _colorize(f"{prefix}{line}", Color.GREEN)
                     self._print(colored_line)
-                else:
+                self._last_base_line_count = len(lines)
+            else:
+                # Assistant messages: show only the last meaningful line
+                # (since these stream incrementally)
+                lines = text.strip().split("\n")
+                last_line = ""
+                for line in reversed(lines):
+                    if line.strip():
+                        last_line = line.strip()
+                        break
+                if last_line:
                     self._print(f"  - {last_line}")
-                self._last_base_line_count = 1
+                    self._last_base_line_count = 1
 
     def stream_complete(self) -> None:
         """Called when streaming is complete to finalize output.
