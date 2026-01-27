@@ -73,6 +73,9 @@ settings:
   # Bypass permission prompts (use with caution)
   bypass-permissions: false # Default: false
 
+  # Fail on undefined template variables (strict) or warn and continue (lenient)
+  strict-mode: false # Default: false (lenient - warns but continues)
+
   # Tools Claude can use without prompting
   required-tools: # Default: []
     - "Bash"
@@ -376,6 +379,29 @@ agentic-sdlc input <workflow-id> "approved"
 ## Templating with Jinja2
 
 Workflows use Jinja2 templating for dynamic content.
+
+### Undefined Variable Behavior
+
+By default, workflows use **lenient mode** (`strict-mode: false`):
+
+- Undefined variables log a warning but don't fail the workflow
+- The original Jinja2 syntax is preserved in the output (e.g., `{{ missing_var }}`)
+- Useful for workflows where some variables may not be available at all steps
+
+Enable **strict mode** (`strict-mode: true`) to:
+
+- Fail immediately when an undefined variable is encountered
+- Ensure all template variables are properly defined
+- Catch configuration errors early
+
+```yaml
+settings:
+  # Lenient mode (default): warn and continue
+  strict-mode: false
+
+  # Strict mode: fail on undefined variables
+  # strict-mode: true
+```
 
 ### Built-in Variables
 

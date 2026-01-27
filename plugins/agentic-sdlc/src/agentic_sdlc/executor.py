@@ -39,10 +39,11 @@ class WorkflowExecutor:
     specialized step executors based on step type.
     """
 
-    def __init__(self, repo_root: Path | None = None):
+    def __init__(self, repo_root: Path | None = None, strict_mode: bool = False):
         self.repo_root = repo_root or Path.cwd()
         self.config = load_config(self.repo_root)
-        self.renderer = TemplateRenderer()
+        self.strict_mode = strict_mode
+        self.renderer = TemplateRenderer(strict_mode=strict_mode)
         self.workflow_settings: WorkflowSettings | None = None
 
         # Initialize step executors
@@ -98,6 +99,9 @@ class WorkflowExecutor:
         variables = variables or {}
         workflow_id = generate_workflow_id(workflow.name)
         self.workflow_settings = workflow.settings
+
+        # Update renderer with workflow's strict_mode setting
+        self.renderer = TemplateRenderer(strict_mode=workflow.settings.strict_mode)
 
         # Create console output handler
         output_level = OutputLevel.ALL if terminal_output == "all" else OutputLevel.BASE
@@ -214,6 +218,7 @@ class WorkflowExecutor:
                     output_path=output_path,
                     context=context,
                     template_dirs=template_dirs,
+                    strict_mode=workflow.settings.strict_mode,
                 )
                 logger.info("workflow", f"Generated output: {output_path}")
             except Exception as e:

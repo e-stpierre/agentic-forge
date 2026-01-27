@@ -54,11 +54,39 @@ class TestTemplateRenderer:
         assert renderer.render_string(template, {"enabled": True}) == "ON"
         assert renderer.render_string(template, {"enabled": False}) == "OFF"
 
-    def test_render_string_strict_undefined(self) -> None:
-        """Test that undefined variables raise error."""
-        renderer = TemplateRenderer()
+    def test_render_string_lenient_mode_default(self) -> None:
+        """Test that undefined variables warn but don't fail in lenient mode (default)."""
+        renderer = TemplateRenderer()  # Default is lenient (strict_mode=False)
+        result = renderer.render_string("{{ undefined_var }}", {})
+        # Should preserve original syntax
+        assert result == "{{ undefined_var }}"
+
+    def test_render_string_strict_mode(self) -> None:
+        """Test that undefined variables raise error in strict mode."""
+        renderer = TemplateRenderer(strict_mode=True)
         with pytest.raises(UndefinedError):
             renderer.render_string("{{ undefined_var }}", {})
+
+    def test_render_string_lenient_mode_nested_access(self) -> None:
+        """Test that nested attribute access on undefined vars preserves syntax."""
+        renderer = TemplateRenderer()  # Default lenient mode
+        result = renderer.render_string("{{ undefined.nested.attr }}", {})
+        # Should preserve original syntax for nested access
+        assert "{{ undefined" in result
+
+    def test_render_string_lenient_mode_in_loop(self) -> None:
+        """Test that undefined vars in loops return empty iterator."""
+        renderer = TemplateRenderer()
+        result = renderer.render_string("{% for x in undefined %}{{ x }}{% endfor %}", {})
+        # Loop over undefined should produce empty output
+        assert result == ""
+
+    def test_render_string_lenient_mode_in_condition(self) -> None:
+        """Test that undefined vars evaluate to False in conditions."""
+        renderer = TemplateRenderer()
+        result = renderer.render_string("{% if undefined %}yes{% else %}no{% endif %}", {})
+        # Undefined should evaluate to False
+        assert result == "no"
 
     def test_render_string_nested_variables(self) -> None:
         """Test rendering with nested variable access."""
@@ -134,7 +162,8 @@ class TestSandboxedEnvironment:
 
     def test_sandbox_blocks_dangerous_attributes(self) -> None:
         """Test that sandbox blocks dangerous attribute access."""
-        renderer = TemplateRenderer()
+        # Use strict_mode to ensure we get SecurityError instead of WarnOnUndefined
+        renderer = TemplateRenderer(strict_mode=True)
 
         # Attempt to access __class__ (common SSTI attack vector)
         with pytest.raises(SecurityError):

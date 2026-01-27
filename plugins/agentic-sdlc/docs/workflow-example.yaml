@@ -38,6 +38,9 @@ settings:
   # Bypass permission prompts - use with caution (default: false)
   bypass-permissions: false
 
+  # Template variable handling: false = warn and continue, true = fail on undefined (default: false)
+  strict-mode: false
+
   # Tools Claude can use without prompting (default: [])
   required-tools:
     - "Bash"
