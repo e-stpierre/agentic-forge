@@ -34,14 +34,23 @@ Load ONE of these based on the `[type]` argument (or detected type if auto):
 
 ## Core Principles
 
-- Each milestone should take 1-3 implementation sessions
+### Plan Structure
+
+- **Every plan must use Milestones and Tasks** - This applies to all plan types (feature, bug, chore). Having a single milestone is valid for smaller work items.
 - Tasks should be specific enough to execute without ambiguity
 - Include file paths with line numbers where changes are needed
 - Consider testing requirements in each milestone
 - Flag any unclear requirements or assumptions
-- Milestones should be completable independently
 - Plans are static documentation - never modified during implementation
 - Always include a Progress section as the first `##` header with two subsections: Implementation (milestones/tasks) and Validation (verification and tests)
+
+### Milestone Scoping (Critical)
+
+- **Each milestone must be scoped to a single Claude session** - If a milestone is too large for one session, split it into multiple milestones.
+- **Milestones are executed in fresh sessions** - When building the plan, assume each milestone will be executed in a new session that only has access to the plan document. All necessary context must be included in the plan itself.
+- **Every milestone must produce a concrete output** - Examples: generate code, update documentation, update plan, create tests. A milestone should never be purely research without output, because subsequent sessions cannot access that research.
+- **Research milestones require documented outputs** - If research is needed, the milestone must output its findings (e.g., "Research X and update Milestone 2 checklist with findings"). However, this pattern is discouraged. Prefer milestones that produce direct project artifacts.
+- **Ideal milestones are scoped units of work** - Each milestone should generate output in the current project that represents tangible progression toward the plan's goal.
 
 ## Instructions
 

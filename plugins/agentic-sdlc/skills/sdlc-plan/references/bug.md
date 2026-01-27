@@ -45,13 +45,23 @@ Common root causes to investigate:
 - Prefer targeted changes over broad refactoring
 - Include test coverage for the specific failure case
 
-## Milestone Structure
+## Milestone Design
 
-Bug fixes typically have 2-3 milestones:
+Break bug fixes into logical milestones:
 
-1. **Investigation & Setup**: Reproduce bug, identify root cause, prepare environment
+- Each milestone should deliver visible progress toward the fix
+- Milestones should be testable independently
+- Order by dependency (investigation before implementation)
+- Each milestone must be scoped to a single Claude session
+- Typically 1-3 milestones per bug fix
+
+**Common milestone patterns**:
+
+1. **Investigation & Setup**: Reproduce bug, identify root cause, document findings
 2. **Implementation**: Apply fix, handle edge cases
 3. **Validation & Testing**: Verify fix, add regression tests
+
+**Session independence**: Each milestone will be executed in a fresh session with only the plan document as context. Ensure all necessary information (root cause analysis, affected files, reproduction steps) is documented in the plan itself.
 
 ## Template
 
@@ -84,9 +94,15 @@ Bug fixes typically have 2-3 milestones:
 
 {{fix_strategy}}
 
-## Tasks
+## Milestones
 
-{{tasks}}
+### Milestone {{milestone_number}}: {{milestone_title}}
+
+{{milestone_description}}
+
+#### Task {{milestone_number}}.{{task_number}}: {{task_title}}
+
+{{task_description}}
 
 ## Validation
 
@@ -100,10 +116,13 @@ Bug fixes typically have 2-3 milestones:
 <!--
 Placeholders:
 - {{bug_title}}: Concise title for the bug (e.g., "Login Timeout on Safari OAuth Redirect")
-- {{implementation_checklist}}: Checkbox list of tasks for fixing the bug.
+- {{implementation_checklist}}: Checkbox list of milestones and tasks for fixing the bug.
   Format:
-  - [ ] Task 1: Description
-  - [ ] Task 2: Description
+  - [ ] Milestone 1: Title
+    - [ ] Task 1.1: Description
+    - [ ] Task 1.2: Description
+  - [ ] Milestone 2: Title
+    - [ ] Task 2.1: Description
 - {{validation_checklist}}: Checkbox list of validation and testing items.
   Format:
   - [ ] Verify fix resolves the issue
@@ -113,7 +132,12 @@ Placeholders:
 - {{reproduction_steps}}: Numbered steps to reproduce the bug
 - {{root_cause}}: Technical explanation with code references
 - {{fix_strategy}}: High-level approach to fixing the bug
-- {{tasks}}: Numbered list of specific implementation tasks
+- {{milestone_number}}: Sequential number (1, 2, 3, ...)
+- {{milestone_title}}: What this milestone accomplishes
+- {{milestone_description}}: Brief description of the milestone
+- {{task_number}}: Task number within milestone
+- {{task_title}}: Clear, actionable task title
+- {{task_description}}: Specific task details with acceptance criteria
 - {{validation}}: Steps to verify the bug is fixed
 - {{testing}}: Test cases to add to prevent regression
 -->
