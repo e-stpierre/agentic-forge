@@ -134,6 +134,7 @@ Instructions:
 Instructions:
 - The $ARGUMENTS placeholder is automatically replaced with all arguments passed when invoking the skill
 - If $ARGUMENTS is not present in the content, arguments are appended as `ARGUMENTS: <value>`
+- IMPORTANT: When creating a new skill, you MUST use \$ARGUMENTS (with backslash) to escape the dollar sign
 - Do not modify this subsection
 -->
 
