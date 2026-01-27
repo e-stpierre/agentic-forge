@@ -130,11 +130,11 @@ steps:
       Return JSON with fix results:
       ```json
       {
-        "success": {{success}},
-        "issues_fixed": {{count}},
-        "issues_remaining": {{count}},
-        "unfixed_issues": [{{unfixed_issues_if_any}}],
-        "error": "{{error_message_if_failed}}"
+        "success": [true|false],
+        "issues_fixed": [count],
+        "issues_remaining": [count],
+        "unfixed_issues": ["issue1", "issue2"],
+        "error": "[error_message_if_failed]"
       }
       ```
 
