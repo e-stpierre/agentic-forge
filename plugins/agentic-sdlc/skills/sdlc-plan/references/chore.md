@@ -49,24 +49,14 @@ For chores that could break things:
 - Note any feature flags or gradual rollout needs
 - Consider timing (avoid high-traffic periods)
 
-## Milestone Design
+## Milestone Patterns
 
-Break chores into logical milestones:
-
-- Each milestone should deliver visible progress
-- Milestones should be testable independently
-- Order by dependency (preparation before core changes)
-- Each milestone must be scoped to a single Claude session
-- Typically 1-2 milestones per chore
-
-**Common milestone patterns**:
+Typically 1-2 milestones per chore. Common patterns:
 
 1. **Implementation**: Execute the main tasks
 2. **Verification**: Validate changes, update docs (if needed)
 
 For larger chores, break into logical phases based on scope boundaries.
-
-**Session independence**: Each milestone will be executed in a fresh session with only the plan document as context. Ensure all necessary information (scope boundaries, affected files, task dependencies) is documented in the plan itself.
 
 ## Template
 
@@ -107,26 +97,9 @@ For larger chores, break into logical phases based on scope boundaries.
 ```
 
 <!--
-Placeholders:
+Type-specific placeholders (see SKILL.md for common milestone/task placeholders):
 - {{chore_title}}: Concise title for the chore (e.g., "Update All Dependencies")
-- {{implementation_checklist}}: Checkbox list of milestones and tasks for completing the chore.
-  Format:
-  - [ ] Milestone 1: Title
-    - [ ] Task 1.1: Description
-    - [ ] Task 1.2: Description
-  - [ ] Milestone 2: Title
-    - [ ] Task 2.1: Description
-- {{validation_checklist}}: Checkbox list of validation criteria and tests.
-  Format:
-  - [ ] Validation criterion 1
-  - [ ] Validation criterion 2
 - {{description}}: Brief explanation of what needs to be done and why
 - {{scope}}: What is in scope and out of scope (use bullet points)
-- {{milestone_number}}: Sequential number (1, 2, 3, ...)
-- {{milestone_title}}: What this milestone accomplishes
-- {{milestone_description}}: Brief description of the milestone
-- {{task_number}}: Task number within milestone
-- {{task_title}}: Clear, actionable task title
-- {{task_description}}: Specific task details with acceptance criteria
 - {{validation_criteria}}: Checklist to verify completion
 -->

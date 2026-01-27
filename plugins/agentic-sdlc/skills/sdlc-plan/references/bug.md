@@ -45,23 +45,13 @@ Common root causes to investigate:
 - Prefer targeted changes over broad refactoring
 - Include test coverage for the specific failure case
 
-## Milestone Design
+## Milestone Patterns
 
-Break bug fixes into logical milestones:
-
-- Each milestone should deliver visible progress toward the fix
-- Milestones should be testable independently
-- Order by dependency (investigation before implementation)
-- Each milestone must be scoped to a single Claude session
-- Typically 1-3 milestones per bug fix
-
-**Common milestone patterns**:
+Typically 1-3 milestones per bug fix. Common patterns:
 
 1. **Investigation & Setup**: Reproduce bug, identify root cause, document findings
 2. **Implementation**: Apply fix, handle edge cases
 3. **Validation & Testing**: Verify fix, add regression tests
-
-**Session independence**: Each milestone will be executed in a fresh session with only the plan document as context. Ensure all necessary information (root cause analysis, affected files, reproduction steps) is documented in the plan itself.
 
 ## Template
 
@@ -114,30 +104,12 @@ Break bug fixes into logical milestones:
 ```
 
 <!--
-Placeholders:
+Type-specific placeholders (see SKILL.md for common milestone/task placeholders):
 - {{bug_title}}: Concise title for the bug (e.g., "Login Timeout on Safari OAuth Redirect")
-- {{implementation_checklist}}: Checkbox list of milestones and tasks for fixing the bug.
-  Format:
-  - [ ] Milestone 1: Title
-    - [ ] Task 1.1: Description
-    - [ ] Task 1.2: Description
-  - [ ] Milestone 2: Title
-    - [ ] Task 2.1: Description
-- {{validation_checklist}}: Checkbox list of validation and testing items.
-  Format:
-  - [ ] Verify fix resolves the issue
-  - [ ] Test: Regression test for bug scenario
-  - [ ] Test: Edge case coverage
 - {{description}}: Clear explanation of the bug and its impact
 - {{reproduction_steps}}: Numbered steps to reproduce the bug
 - {{root_cause}}: Technical explanation with code references
 - {{fix_strategy}}: High-level approach to fixing the bug
-- {{milestone_number}}: Sequential number (1, 2, 3, ...)
-- {{milestone_title}}: What this milestone accomplishes
-- {{milestone_description}}: Brief description of the milestone
-- {{task_number}}: Task number within milestone
-- {{task_title}}: Clear, actionable task title
-- {{task_description}}: Specific task details with acceptance criteria
 - {{validation}}: Steps to verify the bug is fixed
 - {{testing}}: Test cases to add to prevent regression
 -->
