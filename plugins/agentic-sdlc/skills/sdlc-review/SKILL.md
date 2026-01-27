@@ -1,20 +1,22 @@
 ---
 name: sdlc-review
 description: Review implementation quality and plan compliance
-argument-hint: [plan] [severity]
+argument-hint: <workflow-id> [plan] [output_dir] [severity]
 ---
 
 # SDLC Review
 
 ## Overview
 
-Review the implementation against quality standards and optionally against a plan. When a plan is provided, the review verifies plan compliance and creates a separate review.md file in the same output directory. When no plan is provided, the review examines the diff compared to the remote main branch.
+Review the implementation against quality standards and optionally against a plan. When a plan is provided, the review verifies plan compliance. Creates a review.md file in the specified output directory. When no plan is provided, the review examines the diff compared to the remote main branch.
 
 ## Arguments
 
 ### Definitions
 
-- **`[plan]`** (optional): Path to plan document. When provided, review checks plan compliance and creates review.md in the same directory.
+- **`<workflow-id>`** (required): The workflow identifier for output organization.
+- **`[plan]`** (optional): Path to plan document. When provided, review checks plan compliance.
+- **`[output_dir]`** (optional): Directory to write review.md file (default to `agentic/outputs/<workflow-id>`).
 - **`[severity]`** (optional): Minimum severity to report. Values: `minor`, `major`, `critical`. Defaults to `minor`.
 
 ### Values
@@ -28,21 +30,26 @@ Review the implementation against quality standards and optionally against a pla
 - When a plan is provided, verify all milestones and tasks are completed
 - Report issues with accurate severity levels
 - Tests, lint, types, and build must pass for a successful review
-- Always create a separate review.md file in the same directory as the plan document
+- Always create a review.md file in the output directory
 
 ## Instructions
 
-1. **Determine Review Scope**
+1. **Parse Arguments**
+   - Extract workflow-id, plan, output_dir, and severity from arguments
+   - Default output_dir to `agentic/outputs/<workflow-id>` if not specified
+   - Default severity to `minor` if not specified
+
+2. **Determine Review Scope**
    - If plan is provided: Load and parse the plan document
    - If no plan: Fetch latest remote main branch and get diff
 
-2. **Run Quality Checks**
+3. **Run Quality Checks**
    - **Test Suite**: Run all tests, verify coverage
    - **Linter**: Check for linting errors
    - **Type Checker**: Verify type correctness
    - **Build**: Ensure project builds successfully
 
-3. **Review Changes**
+4. **Review Changes**
    - If plan provided:
      - Verify all milestones completed
      - Verify all tasks marked done
@@ -52,13 +59,13 @@ Review the implementation against quality standards and optionally against a pla
      - Check for code quality issues
      - Identify potential bugs or regressions
 
-4. **Generate Review Output**
+5. **Generate Review Output**
    - Aggregate all check results
    - Filter issues by severity threshold
    - Generate summary
 
-5. **Write Outputs**
-   - If plan provided: Create `review.md` file in the same directory as the plan document
+6. **Write Outputs**
+   - Create `review.md` file in the output_dir
    - Return JSON output
 
 ## Output Guidance
@@ -98,7 +105,8 @@ Return JSON with review details:
     }
   },
   "issues": [{{issues_array}}],
-  "summary": "{{summary}}"
+  "summary": "{{summary}}",
+  "document_path": "{{document_path}}"
 }
 ```
 
@@ -117,6 +125,7 @@ Placeholders:
 - {{build_passed}}: Boolean for build passing (true/false)
 - {{issues_array}}: Array of issue objects with severity, category, message, file, line
 - {{summary}}: Human-readable summary of review results
+- {{document_path}}: Path to generated review.md file
 -->
 
 ### Issue Schema
@@ -140,9 +149,9 @@ Placeholders:
 - {{line}}: Line number where issue occurs (null if not applicable)
 -->
 
-### Review Document (when plan is provided)
+### Review Document
 
-When a plan document is provided, create a `review.md` file in the same directory with the following format:
+Create a `review.md` file in the output_dir with the following format:
 
 ```markdown
 # Review

@@ -89,7 +89,7 @@ steps:
 
   - name: review
     type: prompt
-    prompt: /agentic-sdlc:sdlc-review "agentic/outputs/{{ workflow_id }}/plan.md" minor
+    prompt: /agentic-sdlc:sdlc-review {{ workflow_id }} "agentic/outputs/{{ workflow_id }}/plan.md" "agentic/outputs/{{ workflow_id }}" minor
     agent: agents/reviewer.md
 
   - name: fix-issues
@@ -115,7 +115,7 @@ steps:
          - Track which issues were fixed and which could not be fixed
       5. **After attempting fixes**:
          - Use /agentic-sdlc:git-commit to commit all fixes
-         - Re-run /agentic-sdlc:sdlc-review to update the Review section
+         - Re-run /agentic-sdlc:sdlc-review {{ workflow_id }} "agentic/outputs/{{ workflow_id }}/plan.md" to update the Review section
 
       ### Critical Requirement
 
