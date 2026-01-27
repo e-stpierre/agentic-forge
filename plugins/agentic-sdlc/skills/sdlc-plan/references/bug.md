@@ -45,11 +45,11 @@ Common root causes to investigate:
 - Prefer targeted changes over broad refactoring
 - Include test coverage for the specific failure case
 
-## Milestone Structure
+## Milestone Patterns
 
-Bug fixes typically have 2-3 milestones:
+Typically 1-3 milestones per bug fix. Common patterns:
 
-1. **Investigation & Setup**: Reproduce bug, identify root cause, prepare environment
+1. **Investigation & Setup**: Reproduce bug, identify root cause, document findings
 2. **Implementation**: Apply fix, handle edge cases
 3. **Validation & Testing**: Verify fix, add regression tests
 
@@ -57,6 +57,16 @@ Bug fixes typically have 2-3 milestones:
 
 ```markdown
 # Bug Fix: {{bug_title}}
+
+## Progress
+
+### Implementation
+
+{{implementation_checklist}}
+
+### Validation
+
+{{validation_checklist}}
 
 ## Description
 
@@ -74,9 +84,15 @@ Bug fixes typically have 2-3 milestones:
 
 {{fix_strategy}}
 
-## Tasks
+## Milestones
 
-{{tasks}}
+### Milestone {{milestone_number}}: {{milestone_title}}
+
+{{milestone_description}}
+
+#### Task {{milestone_number}}.{{task_number}}: {{task_title}}
+
+{{task_description}}
 
 ## Validation
 
@@ -88,13 +104,12 @@ Bug fixes typically have 2-3 milestones:
 ```
 
 <!--
-Placeholders:
+Type-specific placeholders (see SKILL.md for common milestone/task placeholders):
 - {{bug_title}}: Concise title for the bug (e.g., "Login Timeout on Safari OAuth Redirect")
 - {{description}}: Clear explanation of the bug and its impact
 - {{reproduction_steps}}: Numbered steps to reproduce the bug
 - {{root_cause}}: Technical explanation with code references
 - {{fix_strategy}}: High-level approach to fixing the bug
-- {{tasks}}: Numbered list of specific implementation tasks
 - {{validation}}: Steps to verify the bug is fixed
 - {{testing}}: Test cases to add to prevent regression
 -->

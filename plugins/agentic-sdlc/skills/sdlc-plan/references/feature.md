@@ -45,17 +45,9 @@ When designing the feature:
 - Plan for extensibility without over-engineering
 - Document key technical decisions
 
-## Milestone Design
+## Milestone Patterns
 
-Break features into logical milestones:
-
-- Each milestone should deliver visible progress
-- Milestones should be testable independently
-- Order by dependency (foundational first)
-- Keep milestones small enough to complete in 1-3 sessions
-- Typically 2-5 milestones per feature
-
-**Common milestone patterns**:
+Typically 2-5 milestones per feature. Common patterns:
 
 1. Core infrastructure/data models
 2. Basic functionality (happy path)
@@ -85,6 +77,16 @@ Plan testing at multiple levels:
 
 ```markdown
 # Feature: {{feature_title}}
+
+## Progress
+
+### Implementation
+
+{{implementation_checklist}}
+
+### Validation
+
+{{validation_checklist}}
 
 ## Overview
 
@@ -118,17 +120,11 @@ Plan testing at multiple levels:
 ```
 
 <!--
-Placeholders:
+Type-specific placeholders (see SKILL.md for common milestone/task placeholders):
 - {{feature_title}}: Concise title for the feature (e.g., "User Authentication with OAuth")
 - {{overview}}: What this feature does and why it's valuable (2-4 sentences)
 - {{requirements}}: Functional and non-functional requirements (use subsections)
 - {{architecture}}: High-level design decisions and patterns
-- {{milestone_number}}: Sequential number (1, 2, 3, ...)
-- {{milestone_title}}: What this milestone accomplishes
-- {{milestone_description}}: Brief description of the milestone
-- {{task_number}}: Task number within milestone
-- {{task_title}}: Clear, actionable task title
-- {{task_description}}: Specific task details with acceptance criteria
 - {{testing_strategy}}: How the feature will be tested at each level
 - {{validation_criteria}}: Checklist to verify feature completion
 -->

@@ -34,13 +34,70 @@ Load ONE of these based on the `[type]` argument (or detected type if auto):
 
 ## Core Principles
 
-- Each milestone should take 1-3 implementation sessions
+### Plan Structure
+
+- **Every plan must use Milestones and Tasks** - This applies to all plan types (feature, bug, chore). Having a single milestone is valid for smaller work items.
 - Tasks should be specific enough to execute without ambiguity
 - Include file paths with line numbers where changes are needed
 - Consider testing requirements in each milestone
 - Flag any unclear requirements or assumptions
-- Milestones should be completable independently
 - Plans are static documentation - never modified during implementation
+- Always include a Progress section as the first `##` header with two subsections: Implementation (milestones/tasks) and Validation (verification and tests)
+
+### Milestone Design
+
+- Each milestone should deliver visible progress
+- Milestones should be testable independently
+- Order milestones by dependency (foundational work first)
+
+### Milestone Scoping (Critical)
+
+- **Each milestone must be scoped to a single Claude session** - If a milestone is too large for one session, split it into multiple milestones.
+- **Milestones are executed in fresh sessions** - When building the plan, assume each milestone will be executed in a new session that only has access to the plan document. All necessary context must be included in the plan itself.
+- **Every milestone must produce a concrete output** - Examples: generate code, update documentation, update plan, create tests. A milestone should never be purely research without output, because subsequent sessions cannot access that research.
+- **Research milestones require documented outputs** - If research is needed, the milestone must output its findings (e.g., "Research X and update Milestone 2 checklist with findings"). However, this pattern is discouraged. Prefer milestones that produce direct project artifacts.
+- **Ideal milestones are scoped units of work** - Each milestone should generate output in the current project that represents tangible progression toward the plan's goal.
+
+### Milestone & Task Template
+
+All plans must use this common structure for Progress and Milestones sections:
+
+```markdown
+## Progress
+
+### Implementation
+
+- [ ] Milestone 1: {{milestone_title}}
+  - [ ] Task 1.1: {{task_title}}
+  - [ ] Task 1.2: {{task_title}}
+- [ ] Milestone 2: {{milestone_title}}
+  - [ ] Task 2.1: {{task_title}}
+
+### Validation
+
+- [ ] {{validation_item}}
+
+## Milestones
+
+### Milestone {{milestone_number}}: {{milestone_title}}
+
+{{milestone_description}}
+
+#### Task {{milestone_number}}.{{task_number}}: {{task_title}}
+
+{{task_description}}
+```
+
+<!--
+Common placeholders (used by all plan types):
+- {{milestone_number}}: Sequential number (1, 2, 3, ...)
+- {{milestone_title}}: What this milestone accomplishes
+- {{milestone_description}}: Brief description of the milestone
+- {{task_number}}: Task number within milestone (1, 2, 3, ...)
+- {{task_title}}: Clear, actionable task title
+- {{task_description}}: Specific task details with acceptance criteria
+- {{validation_item}}: Validation criterion or test item
+-->
 
 ## Instructions
 

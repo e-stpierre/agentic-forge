@@ -49,19 +49,29 @@ For chores that could break things:
 - Note any feature flags or gradual rollout needs
 - Consider timing (avoid high-traffic periods)
 
-## Milestone Structure
+## Milestone Patterns
 
-Chores typically have 1-2 milestones:
+Typically 1-2 milestones per chore. Common patterns:
 
 1. **Implementation**: Execute the main tasks
 2. **Verification**: Validate changes, update docs (if needed)
 
-For larger chores, break into logical phases.
+For larger chores, break into logical phases based on scope boundaries.
 
 ## Template
 
 ```markdown
 # Chore: {{chore_title}}
+
+## Progress
+
+### Implementation
+
+{{implementation_checklist}}
+
+### Validation
+
+{{validation_checklist}}
 
 ## Description
 
@@ -71,9 +81,15 @@ For larger chores, break into logical phases.
 
 {{scope}}
 
-## Tasks
+## Milestones
 
-{{tasks}}
+### Milestone {{milestone_number}}: {{milestone_title}}
+
+{{milestone_description}}
+
+#### Task {{milestone_number}}.{{task_number}}: {{task_title}}
+
+{{task_description}}
 
 ## Validation Criteria
 
@@ -81,10 +97,9 @@ For larger chores, break into logical phases.
 ```
 
 <!--
-Placeholders:
+Type-specific placeholders (see SKILL.md for common milestone/task placeholders):
 - {{chore_title}}: Concise title for the chore (e.g., "Update All Dependencies")
 - {{description}}: Brief explanation of what needs to be done and why
 - {{scope}}: What is in scope and out of scope (use bullet points)
-- {{tasks}}: Numbered list of specific tasks in execution order
 - {{validation_criteria}}: Checklist to verify completion
 -->
