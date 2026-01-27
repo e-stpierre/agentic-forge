@@ -63,6 +63,16 @@ For larger chores, break into logical phases.
 ```markdown
 # Chore: {{chore_title}}
 
+## Progress
+
+### Implementation
+
+{{implementation_checklist}}
+
+### Validation
+
+{{validation_checklist}}
+
 ## Description
 
 {{description}}
@@ -83,6 +93,14 @@ For larger chores, break into logical phases.
 <!--
 Placeholders:
 - {{chore_title}}: Concise title for the chore (e.g., "Update All Dependencies")
+- {{implementation_checklist}}: Checkbox list of tasks for completing the chore.
+  Format:
+  - [ ] Task 1: Description
+  - [ ] Task 2: Description
+- {{validation_checklist}}: Checkbox list of validation criteria and tests.
+  Format:
+  - [ ] Validation criterion 1
+  - [ ] Validation criterion 2
 - {{description}}: Brief explanation of what needs to be done and why
 - {{scope}}: What is in scope and out of scope (use bullet points)
 - {{tasks}}: Numbered list of specific tasks in execution order

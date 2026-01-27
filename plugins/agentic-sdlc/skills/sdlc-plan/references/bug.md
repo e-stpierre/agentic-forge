@@ -58,6 +58,16 @@ Bug fixes typically have 2-3 milestones:
 ```markdown
 # Bug Fix: {{bug_title}}
 
+## Progress
+
+### Implementation
+
+{{implementation_checklist}}
+
+### Validation
+
+{{validation_checklist}}
+
 ## Description
 
 {{description}}
@@ -90,6 +100,15 @@ Bug fixes typically have 2-3 milestones:
 <!--
 Placeholders:
 - {{bug_title}}: Concise title for the bug (e.g., "Login Timeout on Safari OAuth Redirect")
+- {{implementation_checklist}}: Checkbox list of tasks for fixing the bug.
+  Format:
+  - [ ] Task 1: Description
+  - [ ] Task 2: Description
+- {{validation_checklist}}: Checkbox list of validation and testing items.
+  Format:
+  - [ ] Verify fix resolves the issue
+  - [ ] Test: Regression test for bug scenario
+  - [ ] Test: Edge case coverage
 - {{description}}: Clear explanation of the bug and its impact
 - {{reproduction_steps}}: Numbered steps to reproduce the bug
 - {{root_cause}}: Technical explanation with code references

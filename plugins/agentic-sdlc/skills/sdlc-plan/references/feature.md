@@ -86,6 +86,16 @@ Plan testing at multiple levels:
 ```markdown
 # Feature: {{feature_title}}
 
+## Progress
+
+### Implementation
+
+{{implementation_checklist}}
+
+### Validation
+
+{{validation_checklist}}
+
 ## Overview
 
 {{overview}}
@@ -120,6 +130,18 @@ Plan testing at multiple levels:
 <!--
 Placeholders:
 - {{feature_title}}: Concise title for the feature (e.g., "User Authentication with OAuth")
+- {{implementation_checklist}}: Checkbox list of milestones and tasks for building the feature.
+  Format:
+  - [ ] Milestone 1: Title
+    - [ ] Task 1.1: Description
+    - [ ] Task 1.2: Description
+  - [ ] Milestone 2: Title
+    - [ ] Task 2.1: Description
+- {{validation_checklist}}: Checkbox list of validation and testing items.
+  Format:
+  - [ ] Validation criterion 1
+  - [ ] Test: Unit tests for component X
+  - [ ] Test: Integration test for feature Y
 - {{overview}}: What this feature does and why it's valuable (2-4 sentences)
 - {{requirements}}: Functional and non-functional requirements (use subsections)
 - {{architecture}}: High-level design decisions and patterns

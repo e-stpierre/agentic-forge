@@ -41,6 +41,7 @@ Load ONE of these based on the `[type]` argument (or detected type if auto):
 - Flag any unclear requirements or assumptions
 - Milestones should be completable independently
 - Plans are static documentation - never modified during implementation
+- Always include a Progress section as the first `##` header with two subsections: Implementation (milestones/tasks) and Validation (verification and tests)
 
 ## Instructions
 
