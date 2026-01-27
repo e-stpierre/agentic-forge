@@ -97,11 +97,13 @@ steps:
     prompt: |
       ## Fix Review Issues
 
-      Read the plan file at `agentic/outputs/{{ workflow_id }}/plan.md` and locate the `## Review` section.
+      Read both documents from the workflow output directory:
+      - Plan: `agentic/outputs/{{ workflow_id }}/plan.md`
+      - Review: `agentic/outputs/{{ workflow_id }}/review.md`
 
       ### Task
 
-      1. **Parse the Review section** to identify all issues from the Issues table
+      1. **Parse the review.md** to identify all issues from the Issues table
       2. **Filter by severity**: Only consider issues with severity `{{ variables.fix_severity }}` or higher
          - Severity order: minor < major < critical
       3. **If no issues** at or above `{{ variables.fix_severity }}` severity exist:

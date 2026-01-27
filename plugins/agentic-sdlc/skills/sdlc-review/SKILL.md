@@ -8,13 +8,13 @@ argument-hint: [plan] [severity]
 
 ## Overview
 
-Review the implementation against quality standards and optionally against a plan. When a plan is provided, the review verifies plan compliance and appends a Review section to the plan document. When no plan is provided, the review examines the diff compared to the remote main branch.
+Review the implementation against quality standards and optionally against a plan. When a plan is provided, the review verifies plan compliance and creates a separate review.md file in the same output directory. When no plan is provided, the review examines the diff compared to the remote main branch.
 
 ## Arguments
 
 ### Definitions
 
-- **`[plan]`** (optional): Path to plan document. When provided, review checks plan compliance and appends results to the document.
+- **`[plan]`** (optional): Path to plan document. When provided, review checks plan compliance and creates review.md in the same directory.
 - **`[severity]`** (optional): Minimum severity to report. Values: `minor`, `major`, `critical`. Defaults to `minor`.
 
 ### Values
@@ -28,7 +28,7 @@ Review the implementation against quality standards and optionally against a pla
 - When a plan is provided, verify all milestones and tasks are completed
 - Report issues with accurate severity levels
 - Tests, lint, types, and build must pass for a successful review
-- Always append the Review section to the plan document when a plan is provided
+- Always create a separate review.md file in the same directory as the plan document
 
 ## Instructions
 
@@ -58,7 +58,7 @@ Review the implementation against quality standards and optionally against a pla
    - Generate summary
 
 5. **Write Outputs**
-   - If plan provided: Append `## Review` section to the plan document
+   - If plan provided: Create `review.md` file in the same directory as the plan document
    - Return JSON output
 
 ## Output Guidance
@@ -140,21 +140,29 @@ Placeholders:
 - {{line}}: Line number where issue occurs (null if not applicable)
 -->
 
-### Plan Review Section (when plan is provided)
+### Review Document (when plan is provided)
 
-When a plan document is provided, append a `## Review` section to the plan file with the following format:
+When a plan document is provided, create a `review.md` file in the same directory with the following format:
 
 ```markdown
-## Review
+# Review
 
 **Status**: {{review_status}}
 **Date**: {{review_date}}
 
-### Summary
+## Progress
+
+- [ ] All issues resolved
+- [ ] Tests passing
+- [ ] Lint passing
+- [ ] Types passing
+- [ ] Build passing
+
+## Summary
 
 {{summary}}
 
-### Checks
+## Checks
 
 | Check           | Status                     | Details                                                                    |
 | --------------- | -------------------------- | -------------------------------------------------------------------------- |
@@ -164,7 +172,7 @@ When a plan document is provided, append a `## Review` section to the plan file 
 | Types           | {{types_status}}           | {{type_errors}} errors                                                     |
 | Build           | {{build_status}}           | {{build_details}}                                                          |
 
-### Issues
+## Issues
 
 {{#if issues_exist}}
 | Severity | Category | File | Line | Message |
