@@ -288,6 +288,70 @@ Added comprehensive tests:
 
 All 311 tests pass with the new functionality.
 
+## Additional Fixes: ALL Mode Output Issues
+
+### Issue #1: Parallel Output Mixing
+
+**Problem:** In `OutputLevel.ALL` mode with parallel steps, messages from different branches were interleaved line-by-line, making the output unreadable.
+
+**Solution:** Implemented message buffering by branch:
+
+1. **Message Buffering (`console.py`)**
+   - Added `_parallel_buffer` to store messages by branch name
+   - Added `_all_accumulated_text`, `_all_accumulated_role`, `_all_accumulated_model` to accumulate complete messages during streaming
+   - Added `set_parallel_branch(branch_name)` to set the current branch context
+   - Added `flush_parallel_branch(branch_name)` to display all buffered messages for a completed branch
+
+2. **Streaming Accumulation (`console.py:stream_text()`)**
+   - When in parallel mode AND ALL mode, accumulate text instead of printing immediately
+   - Store accumulated messages in buffer when `stream_complete()` is called
+
+3. **Branch Context (`parallel_step.py`)**
+   - Call `console.set_parallel_branch(branch_step.name)` before executing each branch
+   - Call `console.flush_parallel_branch(branch_step.name)` after branch completes
+   - Messages are displayed as complete blocks with branch identification: `[branch-name] * message...`
+
+**Output Example:**
+```
+[INFO] Parallel: starting 2 branches
+
+[create-demo-1] > [user]
+  Create a file named `demo-1.md` at the repository root...
+
+[create-demo-1] * [haiku-4.5] I'll create the demo file at the repository root...
+
+[create-demo-2] > [user]
+  Create a file named `demo-2.md` at the repository root...
+
+[create-demo-2] * [haiku-4.5] I'll create the `demo-2.md` file...
+```
+
+### Issue #2: Duplicate Step Summaries
+
+**Problem:** Step completion summaries were displayed twice - once during streaming and again in the `[OK] step completed` message.
+
+**Solution:** Modified `step_complete()` to only show summaries in BASE mode:
+
+```python
+def step_complete(self, step_name: str, summary: str | None = None) -> None:
+    """Print step completion with optional summary.
+
+    In ALL mode, skip the summary since full output was already streamed.
+    In BASE mode, show the summary as it provides the only visible output.
+    """
+    check = _colorize("[OK]", Color.BRIGHT_GREEN)
+    name = _colorize(step_name, Color.GREEN)
+    self._print(f"{check} {name} completed")
+
+    # Only show summary in BASE mode - in ALL mode, full output was already streamed
+    if summary and self.level == OutputLevel.BASE:
+        # ... show summary
+```
+
+**Result:**
+- In ALL mode: `[OK] step_name completed` (no duplicate summary)
+- In BASE mode: `[OK] step_name completed` with summary (as before)
+
 ## Future Considerations
 
 1. **Tool subtexts**: Would require changes to Claude Code CLI to expose these in stream-json format

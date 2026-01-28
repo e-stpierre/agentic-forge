@@ -65,19 +65,86 @@ class ConsoleOutput:
     level: OutputLevel = OutputLevel.BASE
     stream: TextIO = sys.stdout
     _base_accumulated_text: str = ""  # Accumulated text for BASE mode streaming
-    _parallel_mode: bool = False  # Whether running in parallel (disables streaming)
+    _parallel_mode: bool = False  # Whether running in parallel (disables streaming in BASE, buffers in ALL)
+    _parallel_branch: str | None = None  # Current parallel branch name
+    _parallel_buffer: dict[str, list[tuple[str, str, str | None]]] = None  # Buffer for parallel messages by branch: {branch: [(role, text, model), ...]}
+    _all_accumulated_text: str = ""  # Accumulated text for ALL mode when in parallel
+    _all_accumulated_role: str = "assistant"  # Track role for accumulated text
+    _all_accumulated_model: str | None = None  # Track model for accumulated text
 
     def _print(self, message: str, end: str = "\n") -> None:
         """Print message to stream."""
         print(message, end=end, flush=True, file=self.stream)
 
     def enter_parallel_mode(self) -> None:
-        """Enter parallel mode - disables in-place streaming for BASE mode."""
+        """Enter parallel mode - disables streaming in BASE mode, enables buffering in ALL mode."""
         self._parallel_mode = True
+        if self.level == OutputLevel.ALL:
+            # Initialize message buffer for parallel branches
+            if self._parallel_buffer is None:
+                self._parallel_buffer = {}
 
     def exit_parallel_mode(self) -> None:
-        """Exit parallel mode - re-enables in-place streaming for BASE mode."""
+        """Exit parallel mode - re-enables streaming."""
         self._parallel_mode = False
+        self._parallel_branch = None
+        if self._parallel_buffer is not None:
+            self._parallel_buffer.clear()
+
+    def set_parallel_branch(self, branch_name: str) -> None:
+        """Set the current parallel branch name for message buffering.
+
+        Args:
+            branch_name: Name of the parallel branch being executed
+        """
+        self._parallel_branch = branch_name
+        if self._parallel_mode and self.level == OutputLevel.ALL and self._parallel_buffer is not None:
+            if branch_name not in self._parallel_buffer:
+                self._parallel_buffer[branch_name] = []
+
+    def flush_parallel_branch(self, branch_name: str) -> None:
+        """Flush and display buffered messages for a specific branch.
+
+        Args:
+            branch_name: Name of the branch whose messages to display
+        """
+        if self._parallel_buffer is None or branch_name not in self._parallel_buffer:
+            return
+
+        messages = self._parallel_buffer[branch_name]
+        if not messages:
+            return
+
+        # Display all buffered messages for this branch
+        for role, text, model in messages:
+            # Import here to avoid circular dependency
+            from agentic_sdlc.runner import format_model_name
+
+            formatted_model = format_model_name(model) if model else None
+
+            # Display branch prefix
+            branch_prefix = _colorize(f"[{branch_name}] ", Color.CYAN, Color.BOLD)
+
+            if role == "user":
+                prefix = _colorize(">", Color.BRIGHT_CYAN, Color.BOLD)
+                label = _colorize(" [user]", Color.DIM)
+                self._print(f"\n{branch_prefix}{prefix}{label}")
+                for line in text.split("\n"):
+                    colored_line = _colorize(line, Color.GREEN)
+                    self._print(f"  {colored_line}")
+            else:
+                # Assistant message
+                bullet = _colorize("*", Color.BRIGHT_GREEN, Color.BOLD)
+                model_label = ""
+                if formatted_model:
+                    model_label = " " + _colorize(f"[{formatted_model}]", Color.DIM)
+                lines = text.split("\n")
+                self._print(f"\n{branch_prefix}{bullet}{model_label} {lines[0]}")
+                for line in lines[1:]:
+                    self._print(f"  {line}")
+
+        # Clear the buffer for this branch
+        self._parallel_buffer[branch_name] = []
 
     # Workflow-level messages
 
@@ -106,12 +173,17 @@ class ConsoleOutput:
         self._print(f"\n{step_str} {type_str}")
 
     def step_complete(self, step_name: str, summary: str | None = None) -> None:
-        """Print step completion with optional summary."""
+        """Print step completion with optional summary.
+
+        In ALL mode, skip the summary since full output was already streamed.
+        In BASE mode, show the summary as it provides the only visible output.
+        """
         check = _colorize("[OK]", Color.BRIGHT_GREEN)
         name = _colorize(step_name, Color.GREEN)
         self._print(f"{check} {name} completed")
 
-        if summary:
+        # Only show summary in BASE mode - in ALL mode, full output was already streamed
+        if summary and self.level == OutputLevel.BASE:
             # Indent and dim the summary
             summary_lines = summary.strip().split("\n")
             for line in summary_lines[:5]:  # Limit to 5 lines
@@ -209,6 +281,14 @@ class ConsoleOutput:
             if not text or not text.strip():
                 return
 
+            # In parallel mode, accumulate messages for buffering instead of printing immediately
+            if self._parallel_mode:
+                self._all_accumulated_text += text
+                self._all_accumulated_role = role
+                if model:
+                    self._all_accumulated_model = model
+                return
+
             # Format with role indicator
             if role == "user":
                 prefix = _colorize(">", Color.BRIGHT_CYAN, Color.BOLD)
@@ -251,6 +331,7 @@ class ConsoleOutput:
         """Called when streaming is complete to finalize output.
 
         In BASE mode, prints the final accumulated message.
+        In ALL mode with parallel, buffers the complete message.
         Resets internal state for next stream.
         """
         # In BASE mode, print the final accumulated message
@@ -266,8 +347,23 @@ class ConsoleOutput:
             if last_line:
                 self._print(f"  - {last_line}")
 
+        # In ALL mode with parallel, buffer the complete message
+        if (
+            self.level == OutputLevel.ALL
+            and self._parallel_mode
+            and self._all_accumulated_text
+            and self._parallel_branch
+            and self._parallel_buffer is not None
+        ):
+            self._parallel_buffer[self._parallel_branch].append(
+                (self._all_accumulated_role, self._all_accumulated_text.strip(), self._all_accumulated_model)
+            )
+
         # Reset state for next stream
         self._base_accumulated_text = ""
+        self._all_accumulated_text = ""
+        self._all_accumulated_role = "assistant"
+        self._all_accumulated_model = None
 
 
 def extract_json(output: str) -> dict | None:

@@ -71,6 +71,9 @@ class ParallelStepExecutor(StepExecutor):
             worktree: Worktree | None = None
 
             try:
+                # Set branch name for message buffering in parallel mode
+                console.set_parallel_branch(branch_step.name)
+
                 if use_worktree:
                     worktree = create_worktree(
                         workflow_name=progress.workflow_name,
@@ -83,9 +86,14 @@ class ParallelStepExecutor(StepExecutor):
 
                 result = self.branch_executor.execute(branch_step, progress, branch_context, logger, console)
 
+                # Flush buffered messages for this branch
+                console.flush_parallel_branch(branch_step.name)
+
                 return (branch_step.name, result.success, result.output_summary, worktree)
             except Exception as e:
                 logger.error(branch_step.name, f"Branch failed: {e}")
+                # Flush buffered messages even on failure
+                console.flush_parallel_branch(branch_step.name)
                 return (branch_step.name, False, str(e), worktree)
 
         with ThreadPoolExecutor(max_workers=len(step.steps)) as executor:
