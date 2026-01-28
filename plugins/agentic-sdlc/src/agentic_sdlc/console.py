@@ -188,7 +188,7 @@ class ConsoleOutput:
         err = _colorize("[ERROR]", Color.BRIGHT_RED)
         self._print(f"{err} {message}")
 
-    def stream_text(self, text: str, role: str = "assistant") -> None:
+    def stream_text(self, text: str, role: str = "assistant", model: str | None = None) -> None:
         """Stream text content from Claude's messages.
 
         In ALL mode: prints all text with visual indicators by role.
@@ -197,7 +197,13 @@ class ConsoleOutput:
         Args:
             text: Text content extracted from stream-json message (delta only)
             role: Message role - "user" or "assistant"
+            model: Optional model name (e.g., "claude-sonnet-4-5-20250929")
         """
+        # Import here to avoid circular dependency
+        from agentic_sdlc.runner import format_model_name
+
+        formatted_model = format_model_name(model) if model else None
+
         if self.level == OutputLevel.ALL:
             # Skip empty text
             if not text or not text.strip():
@@ -214,13 +220,16 @@ class ConsoleOutput:
                     colored_line = _colorize(line, Color.GREEN)
                     self._print(f"  {colored_line}")
             else:
-                # Assistant message - green bullet prefix
+                # Assistant message - green bullet prefix with optional model
                 bullet = _colorize("*", Color.BRIGHT_GREEN, Color.BOLD)
+                model_label = ""
+                if formatted_model:
+                    model_label = " " + _colorize(f"[{formatted_model}]", Color.DIM)
                 lines = text.split("\n")
                 # Always start with blank line to separate from previous output
                 self._print("")
-                # First line gets the bullet
-                self._print(f"{bullet} {lines[0]}")
+                # First line gets the bullet and model label
+                self._print(f"{bullet}{model_label} {lines[0]}")
                 # Subsequent lines are indented to align
                 for line in lines[1:]:
                     self._print(f"  {line}")

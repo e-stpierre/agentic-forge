@@ -199,6 +199,95 @@ for line in text.split("\n"):
 
 This ensures consistent green coloring for user messages across all terminal environments, including Windows Terminal.
 
+## Additional Feature: Model Name Display
+
+### Feature
+
+Added model name display in `OutputLevel.ALL` mode to show which model is responding to each message. This is useful for workflows that use different models for different steps.
+
+### Implementation
+
+**1. Model Extraction (`runner.py`)**
+
+Added `extract_model_from_message()` to extract model from stream-json messages:
+
+```python
+def extract_model_from_message(data: dict[str, Any]) -> str | None:
+    """Extract model name from assistant or system messages."""
+    msg_type = data.get("type")
+    if msg_type == "assistant":
+        message = data.get("message", {})
+        return message.get("model")
+    if msg_type == "system":
+        return data.get("model")
+    return None
+```
+
+**2. Model Formatting (`runner.py`)**
+
+Added `format_model_name()` to convert long model names to friendly short versions:
+
+```python
+def format_model_name(model: str | None) -> str:
+    """Format model name for display.
+
+    Examples:
+        "claude-sonnet-4-5-20250929" -> "sonnet-4.5"
+        "claude-opus-4-5-20251101" -> "opus-4.5"
+        "claude-3-7-sonnet-20250219" -> "sonnet-3.7"
+    """
+```
+
+**3. Streaming Integration (`runner.py`)**
+
+Updated the streaming loop to track and pass model information:
+
+```python
+# Track current model
+current_model: str | None = None
+
+# Extract model from assistant messages
+model = extract_model_from_message(data)
+if model:
+    current_model = model
+
+# Pass model to stream_text
+console.stream_text(delta, role="assistant", model=current_model)
+```
+
+**4. Display in Console (`console.py`)**
+
+Updated `stream_text()` to accept and display model:
+
+```python
+def stream_text(self, text: str, role: str = "assistant", model: str | None = None) -> None:
+    """Stream text with optional model name display."""
+    formatted_model = format_model_name(model) if model else None
+
+    # For assistant messages in ALL mode
+    if formatted_model:
+        model_label = " " + _colorize(f"[{formatted_model}]", Color.DIM)
+
+    # Display: * [sonnet-4.5] Message text...
+```
+
+### Output Example
+
+```
+* [sonnet-4.5] I'll help you with that task...
+  This is the continuation of the message.
+
+* [opus-4.5] Here's a more detailed analysis...
+```
+
+### Test Coverage
+
+Added comprehensive tests:
+- `TestExtractModelFromMessage` (4 tests)
+- `TestFormatModelName` (6 tests)
+
+All 311 tests pass with the new functionality.
+
 ## Future Considerations
 
 1. **Tool subtexts**: Would require changes to Claude Code CLI to expose these in stream-json format

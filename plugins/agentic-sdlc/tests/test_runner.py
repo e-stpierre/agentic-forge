@@ -12,9 +12,11 @@ from agentic_sdlc.runner import (
     SessionOutput,
     _get_agentic_system_prompt,
     check_claude_available,
+    extract_model_from_message,
     extract_result_text,
     extract_text_from_message,
     extract_user_text,
+    format_model_name,
     get_executable,
     parse_stream_json_line,
     run_claude,
@@ -236,6 +238,74 @@ class TestExtractUserText:
         data = {"type": "user", "message": {"content": []}}
         result = extract_user_text(data)
         assert result is None
+
+
+class TestExtractModelFromMessage:
+    """Tests for extract_model_from_message function."""
+
+    def test_extract_model_from_assistant_message(self) -> None:
+        """Test extracting model from assistant message."""
+        data = {
+            "type": "assistant",
+            "message": {
+                "model": "claude-sonnet-4-5-20250929",
+                "content": [{"type": "text", "text": "Hello!"}],
+            },
+        }
+        result = extract_model_from_message(data)
+        assert result == "claude-sonnet-4-5-20250929"
+
+    def test_extract_model_from_system_message(self) -> None:
+        """Test extracting model from system message."""
+        data = {"type": "system", "model": "claude-opus-4-5-20251101"}
+        result = extract_model_from_message(data)
+        assert result == "claude-opus-4-5-20251101"
+
+    def test_extract_model_non_message_returns_none(self) -> None:
+        """Test that non-assistant/system messages return None."""
+        data = {"type": "user", "message": {"content": []}}
+        result = extract_model_from_message(data)
+        assert result is None
+
+    def test_extract_model_missing_model_field(self) -> None:
+        """Test handling of missing model field."""
+        data = {"type": "assistant", "message": {"content": []}}
+        result = extract_model_from_message(data)
+        assert result is None
+
+
+class TestFormatModelName:
+    """Tests for format_model_name function."""
+
+    def test_format_sonnet_4_5(self) -> None:
+        """Test formatting Sonnet 4.5 model."""
+        result = format_model_name("claude-sonnet-4-5-20250929")
+        assert result == "sonnet-4.5"
+
+    def test_format_opus_4_5(self) -> None:
+        """Test formatting Opus 4.5 model."""
+        result = format_model_name("claude-opus-4-5-20251101")
+        assert result == "opus-4.5"
+
+    def test_format_haiku_4_0(self) -> None:
+        """Test formatting Haiku 4.0 model."""
+        result = format_model_name("claude-haiku-4-0-20250101")
+        assert result == "haiku-4.0"
+
+    def test_format_sonnet_3_7(self) -> None:
+        """Test formatting Sonnet 3.7 model."""
+        result = format_model_name("claude-3-7-sonnet-20250219")
+        assert result == "sonnet-3.7"
+
+    def test_format_none_returns_empty(self) -> None:
+        """Test that None returns empty string."""
+        result = format_model_name(None)
+        assert result == ""
+
+    def test_format_unparseable_returns_original(self) -> None:
+        """Test that unparseable names return original."""
+        result = format_model_name("unknown-model")
+        assert result == "unknown-model"
 
 
 class TestExtractResultText:

@@ -64,6 +64,92 @@ def parse_stream_json_line(line: str) -> dict[str, Any] | None:
         return None
 
 
+def extract_model_from_message(data: dict[str, Any]) -> str | None:
+    """Extract model name from an assistant message.
+
+    Args:
+        data: Parsed JSON from stream-json output
+
+    Returns:
+        Model name string, or None if not found
+    """
+    msg_type = data.get("type")
+
+    # Handle verbose format: complete assistant messages
+    if msg_type == "assistant":
+        message = data.get("message", {})
+        return message.get("model")
+
+    # System messages also include model
+    if msg_type == "system":
+        return data.get("model")
+
+    return None
+
+
+def format_model_name(model: str | None) -> str:
+    """Format model name for display.
+
+    Examples:
+        "claude-sonnet-4-5-20250929" -> "sonnet-4.5"
+        "claude-opus-4-5-20251101" -> "opus-4.5"
+        "claude-3-7-sonnet-20250219" -> "sonnet-3.7"
+
+    Args:
+        model: Full model name
+
+    Returns:
+        Formatted short model name
+    """
+    if not model:
+        return ""
+
+    # Parse model name: claude-{tier}-{version}-{date}
+    parts = model.split("-")
+    if len(parts) < 4:
+        return model  # Can't parse, return as-is
+
+    # Extract tier (sonnet, opus, haiku) and version
+    tier = None
+    version_parts = []
+
+    # Handle both formats:
+    # - claude-sonnet-4-5-date (tier at position 1, version after)
+    # - claude-3-7-sonnet-date (version at positions 1-2, tier after)
+    for i, part in enumerate(parts[1:], 1):
+        if part in ("sonnet", "opus", "haiku"):
+            tier = part
+            tier_index = i
+            # Check if version is before or after tier
+            if tier_index == 1:
+                # Format: claude-sonnet-4-5-date
+                # Version parts come after tier
+                # Collect numeric parts after tier (skip 8-digit dates)
+                for j in range(tier_index + 1, len(parts)):
+                    if parts[j].isdigit():
+                        # Skip 8-digit date stamps (e.g., 20250929)
+                        if len(parts[j]) == 8:
+                            break
+                        version_parts.append(parts[j])
+                    else:
+                        break
+            else:
+                # Format: claude-3-7-sonnet-date
+                # Version parts are before the tier
+                version_parts = parts[1:tier_index]
+            break
+
+    if not tier:
+        return model  # Can't find tier, return as-is
+
+    # Format version (e.g., ["4", "5"] -> "4.5")
+    if version_parts:
+        version = ".".join(version_parts)
+        return f"{tier}-{version}"
+
+    return tier
+
+
 def extract_text_from_message(data: dict[str, Any]) -> Generator[tuple[int, str], None, None]:
     """Extract text content from an assistant message.
 
@@ -337,6 +423,8 @@ def run_claude(
         # Track accumulated text per content block to compute deltas
         # stream-json with --verbose provides cumulative text, not deltas
         accumulated_text: dict[int, str] = {}
+        # Track current model
+        current_model: str | None = None
 
         if process.stdout:
             for line in process.stdout:
@@ -344,6 +432,11 @@ def run_claude(
                 data = parse_stream_json_line(line)
                 if data is None:
                     continue
+
+                # Extract model from assistant messages
+                model = extract_model_from_message(data)
+                if model:
+                    current_model = model
 
                 # Note: user messages from stream-json are rare, but handle them if present
                 user_text = extract_user_text(data)
@@ -368,7 +461,7 @@ def run_claude(
 
                     if delta:
                         if console:
-                            console.stream_text(delta, role="assistant")
+                            console.stream_text(delta, role="assistant", model=current_model)
                         else:
                             print(delta, end="", flush=True)
                         collected_text.append(delta)
