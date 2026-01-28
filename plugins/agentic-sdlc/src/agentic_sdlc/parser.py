@@ -63,6 +63,7 @@ class WorkflowSettings:
     terminal_output: str = "base"
     bypass_permissions: bool = False
     strict_mode: bool = False
+    model: str | None = None
     required_tools: list[str] = field(default_factory=list)
     git: GitSettings = field(default_factory=GitSettings)
 
@@ -200,6 +201,7 @@ class WorkflowParser:
             terminal_output=data.get("terminal-output", "base"),
             bypass_permissions=data.get("bypass-permissions", False),
             strict_mode=data.get("strict-mode", False),
+            model=data.get("model"),
             required_tools=data.get("required-tools", []),
             git=git,
         )

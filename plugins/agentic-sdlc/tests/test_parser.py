@@ -175,6 +175,32 @@ steps: []
         assert workflow.settings.git.worktree is True
         assert workflow.settings.git.branch_prefix == "custom"
 
+    def test_model_setting_parsed(self) -> None:
+        """Test workflow-level model setting is parsed."""
+        parser = WorkflowParser()
+        workflow = parser.parse_string(
+            """
+name: test
+settings:
+  model: opus
+steps: []
+"""
+        )
+
+        assert workflow.settings.model == "opus"
+
+    def test_model_setting_default_is_none(self) -> None:
+        """Test workflow-level model defaults to None when not specified."""
+        parser = WorkflowParser()
+        workflow = parser.parse_string(
+            """
+name: test
+steps: []
+"""
+        )
+
+        assert workflow.settings.model is None
+
 
 class TestWorkflowParserOutputs:
     """Tests for parsing workflow outputs."""

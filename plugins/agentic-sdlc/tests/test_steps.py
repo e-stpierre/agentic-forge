@@ -103,6 +103,62 @@ class TestStepContext:
         # Variables should also be spread at top level
         assert template_ctx["task"] == "feature"
 
+    def test_resolve_model_step_takes_priority(self, temp_dir: Path) -> None:
+        """Test that step-level model takes priority over workflow-level."""
+        context = StepContext(
+            repo_root=temp_dir,
+            config={"defaults": {"model": "sonnet"}},
+            renderer=TemplateRenderer(),
+            workflow_settings=WorkflowSettings(model="haiku"),
+            workflow_id="test-workflow",
+            variables={},
+            outputs={},
+        )
+
+        assert context.resolve_model("opus") == "opus"
+
+    def test_resolve_model_workflow_takes_priority_over_config(self, temp_dir: Path) -> None:
+        """Test that workflow-level model takes priority over config default."""
+        context = StepContext(
+            repo_root=temp_dir,
+            config={"defaults": {"model": "sonnet"}},
+            renderer=TemplateRenderer(),
+            workflow_settings=WorkflowSettings(model="haiku"),
+            workflow_id="test-workflow",
+            variables={},
+            outputs={},
+        )
+
+        assert context.resolve_model(None) == "haiku"
+
+    def test_resolve_model_falls_back_to_config(self, temp_dir: Path) -> None:
+        """Test that model falls back to config default when not set elsewhere."""
+        context = StepContext(
+            repo_root=temp_dir,
+            config={"defaults": {"model": "opus"}},
+            renderer=TemplateRenderer(),
+            workflow_settings=WorkflowSettings(),  # No model set
+            workflow_id="test-workflow",
+            variables={},
+            outputs={},
+        )
+
+        assert context.resolve_model(None) == "opus"
+
+    def test_resolve_model_falls_back_to_sonnet(self, temp_dir: Path) -> None:
+        """Test that model falls back to sonnet when nothing is configured."""
+        context = StepContext(
+            repo_root=temp_dir,
+            config={"defaults": {}},  # No model in config
+            renderer=TemplateRenderer(),
+            workflow_settings=WorkflowSettings(),  # No model set
+            workflow_id="test-workflow",
+            variables={},
+            outputs={},
+        )
+
+        assert context.resolve_model(None) == "sonnet"
+
 
 class TestStepExecutorBase:
     """Tests for base StepExecutor class."""

@@ -76,11 +76,39 @@ settings:
   # Fail on undefined template variables (strict) or warn and continue (lenient)
   strict-mode: false # Default: false (lenient - warns but continues)
 
+  # Default model for all steps (steps can override)
+  model: sonnet # Options: sonnet, haiku, opus (Default: user-configured or sonnet)
+
   # Tools Claude can use without prompting
   required-tools: # Default: []
     - "Bash"
     - "Edit"
     - "Write"
+```
+
+### Model Selection
+
+The model used for each step follows this priority:
+
+1. **Step-level `model`** - If the step specifies a model, use it
+2. **Workflow-level `settings.model`** - If the workflow settings specify a model, use it
+3. **User-configured default** - From `config.defaults.model`
+4. **Fallback** - `sonnet`
+
+```yaml
+settings:
+  model: haiku  # Default for all steps in this workflow
+
+steps:
+  - name: quick-analysis
+    type: prompt
+    prompt: "Analyze this file"
+    # Uses workflow default: haiku
+
+  - name: complex-implementation
+    type: prompt
+    prompt: "Implement this feature"
+    model: opus  # Override: uses opus for this step
 ```
 
 ### Git Settings
