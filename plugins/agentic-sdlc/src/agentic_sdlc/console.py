@@ -6,12 +6,18 @@ step results, errors, and summaries.
 
 from __future__ import annotations
 
+import logging
 import queue
 import sys
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TextIO
+
+logger = logging.getLogger(__name__)
+
+# Sentinel value to signal consumer thread to stop
+_STOP_SENTINEL = object()
 
 
 class OutputLevel(Enum):
@@ -90,10 +96,16 @@ class ConsoleOutput:
 
     def exit_parallel_mode(self) -> None:
         """Exit parallel mode - stops consumer thread and re-enables normal streaming."""
-        # Signal consumer to stop and wait for it to finish
+        # Signal consumer to stop using sentinel value (avoids race condition)
         self._consumer_running = False
+        if self._message_queue is not None:
+            self._message_queue.put(_STOP_SENTINEL)
         if self._consumer_thread is not None:
             self._consumer_thread.join(timeout=5.0)
+            if self._consumer_thread.is_alive():
+                logger.warning(
+                    "Consumer thread did not finish within timeout, some messages may be lost"
+                )
             self._consumer_thread = None
         self._message_queue = None
         self._parallel_mode = False
@@ -142,19 +154,30 @@ class ConsoleOutput:
     def _message_consumer(self) -> None:
         """Consumer thread that prints messages from the queue in order.
 
-        Runs until _consumer_running is False and the queue is empty.
+        Runs until it receives the stop sentinel or the queue is None.
         Each message is printed atomically to avoid interleaving.
+        Uses sentinel-based termination to avoid race conditions.
         """
-        while self._consumer_running or (self._message_queue is not None and not self._message_queue.empty()):
-            try:
+        try:
+            while True:
                 if self._message_queue is None:
                     break
-                msg = self._message_queue.get(timeout=0.1)
-                branch, role, text, model = msg
-                self._print_branch_message(branch, role, text, model)
-                self._message_queue.task_done()
-            except queue.Empty:
-                continue
+                try:
+                    msg = self._message_queue.get(timeout=0.1)
+                    # Check for stop sentinel
+                    if msg is _STOP_SENTINEL:
+                        self._message_queue.task_done()
+                        break
+                    branch, role, text, model = msg
+                    self._print_branch_message(branch, role, text, model)
+                    self._message_queue.task_done()
+                except queue.Empty:
+                    # If not running and queue is empty, exit
+                    if not self._consumer_running:
+                        break
+                    continue
+        except Exception as e:
+            logger.error("Error in message consumer thread: %s", e, exc_info=True)
 
     def _print_branch_message(self, branch: str, role: str, text: str, model: str | None) -> None:
         """Print a single message with branch prefix.

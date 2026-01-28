@@ -307,6 +307,21 @@ class TestFormatModelName:
         result = format_model_name("unknown-model")
         assert result == "unknown-model"
 
+    def test_format_empty_string_returns_empty(self) -> None:
+        """Test that empty string returns empty string."""
+        result = format_model_name("")
+        assert result == ""
+
+    def test_format_short_name_returns_original(self) -> None:
+        """Test that short names (less than 4 parts) return original."""
+        result = format_model_name("claude-sonnet")
+        assert result == "claude-sonnet"
+
+    def test_format_no_tier_returns_original(self) -> None:
+        """Test that names without a known tier return original."""
+        result = format_model_name("claude-unknown-4-5-20250929")
+        assert result == "claude-unknown-4-5-20250929"
+
 
 class TestExtractResultText:
     """Tests for extract_result_text function."""
