@@ -57,6 +57,9 @@ class ParallelStepExecutor(StepExecutor):
         else:
             console.info(f"Parallel: starting {len(step.steps)} branches")
 
+        # Enter parallel mode to disable in-place streaming (avoids interleaved output)
+        console.enter_parallel_mode()
+
         branch_results: dict[str, dict[str, Any]] = {}
         failed_branches: list[str] = []
         worktrees: dict[str, Worktree] = {}
@@ -104,6 +107,9 @@ class ParallelStepExecutor(StepExecutor):
                     branch_results[branch_step.name] = {"success": False, "output": str(e)}
                     failed_branches.append(branch_step.name)
                     console.error(f"  Branch '{branch_step.name}' exception: {e}")
+
+        # Exit parallel mode after all branches complete
+        console.exit_parallel_mode()
 
         # Handle merge modes
         if step.merge_mode == "merge" and worktrees:

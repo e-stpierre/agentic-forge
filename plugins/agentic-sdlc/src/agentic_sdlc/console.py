@@ -64,11 +64,20 @@ class ConsoleOutput:
 
     level: OutputLevel = OutputLevel.BASE
     stream: TextIO = sys.stdout
-    _last_base_line_count: int = 0  # Track number of lines output in BASE mode for clearing
+    _base_accumulated_text: str = ""  # Accumulated text for BASE mode streaming
+    _parallel_mode: bool = False  # Whether running in parallel (disables streaming)
 
     def _print(self, message: str, end: str = "\n") -> None:
         """Print message to stream."""
         print(message, end=end, flush=True, file=self.stream)
+
+    def enter_parallel_mode(self) -> None:
+        """Enter parallel mode - disables in-place streaming for BASE mode."""
+        self._parallel_mode = True
+
+    def exit_parallel_mode(self) -> None:
+        """Exit parallel mode - re-enables in-place streaming for BASE mode."""
+        self._parallel_mode = False
 
     # Workflow-level messages
 
@@ -183,7 +192,7 @@ class ConsoleOutput:
         """Stream text content from Claude's messages.
 
         In ALL mode: prints all text with visual indicators by role.
-        In BASE mode: shows only the last line, overwriting previous output.
+        In BASE mode: shows only the last line, overwriting previous output in-place.
 
         Args:
             text: Text content extracted from stream-json message (delta only)
@@ -216,32 +225,39 @@ class ConsoleOutput:
                     self._print(f"  {line}")
         elif self.level == OutputLevel.BASE:
             if role == "user":
-                # Print full user message (prompt) with indentation, in green
-                lines = text.strip().split("\n")
-                for i, line in enumerate(lines):
-                    prefix = "  - " if i == 0 else "    "
-                    colored_line = _colorize(f"{prefix}{line}", Color.GREEN)
-                    self._print(colored_line)
-                self._last_base_line_count = len(lines)
+                # In BASE mode, skip user prompts - only show assistant output
+                return
+
+            # In parallel mode, skip streaming to avoid interleaved output
+            if self._parallel_mode:
+                return
             else:
-                # Assistant messages: show only the last meaningful line
-                # (since these stream incrementally)
-                lines = text.strip().split("\n")
-                last_line = ""
-                for line in reversed(lines):
-                    if line.strip():
-                        last_line = line.strip()
-                        break
-                if last_line:
-                    self._print(f"  - {last_line}")
-                    self._last_base_line_count = 1
+                # Assistant messages: accumulate text silently during streaming.
+                # The final message will be displayed in stream_complete().
+                # This avoids issues with in-place updates not working in all terminals.
+                self._base_accumulated_text += text
 
     def stream_complete(self) -> None:
         """Called when streaming is complete to finalize output.
 
+        In BASE mode, prints the final accumulated message.
         Resets internal state for next stream.
         """
-        self._last_base_line_count = 0  # Reset for next stream
+        # In BASE mode, print the final accumulated message
+        if self.level == OutputLevel.BASE and self._base_accumulated_text:
+            # Find the last meaningful line from accumulated text
+            lines = self._base_accumulated_text.strip().split("\n")
+            last_line = ""
+            for line in reversed(lines):
+                if line.strip():
+                    last_line = line.strip()
+                    break
+
+            if last_line:
+                self._print(f"  - {last_line}")
+
+        # Reset state for next stream
+        self._base_accumulated_text = ""
 
 
 def extract_json(output: str) -> dict | None:

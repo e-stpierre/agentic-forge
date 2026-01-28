@@ -314,6 +314,7 @@ class TestConsoleOutput:
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
         console.stream_text("First line\nSecond line\nThird line")
+        console.stream_complete()  # Output happens here
 
         output = stream.getvalue()
         # BASE mode shows only the last non-empty line with "  - " prefix
@@ -326,6 +327,7 @@ class TestConsoleOutput:
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
         console.stream_text("Content\n\n")
+        console.stream_complete()  # Output happens here
 
         output = stream.getvalue()
         assert "Content" in output
@@ -355,17 +357,50 @@ class TestConsoleOutput:
         assert "Line 3" in output
 
     def test_stream_text_base_mode_multiple_messages(self) -> None:
-        """Test stream_text prints each message on its own line in BASE mode."""
+        """Test stream_text accumulates text in BASE mode (simulating token streaming)."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
+        # Simulate token-by-token streaming (tokens concatenate without separator)
         console.stream_text("First message")
         console.stream_text("Second message")
+        console.stream_complete()  # Finalize streaming
 
         output = stream.getvalue()
-        # Each message gets its own line with "  - " prefix
-        assert "  - First message" in output
-        assert "  - Second message" in output
+        # In BASE mode, text accumulates continuously (like token streaming)
+        # The accumulated text "First messageSecond message" is shown as one line
+        assert "First messageSecond message" in output
+        # The output ends with a newline from stream_complete
+        assert output.rstrip().endswith("First messageSecond message")
+
+    def test_stream_text_base_mode_accumulates_text(self) -> None:
+        """Test stream_text accumulates text across multiple calls in BASE mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # Simulate incremental streaming
+        console.stream_text("Hello ")
+        console.stream_text("world")
+        console.stream_complete()
+
+        output = stream.getvalue()
+        # The accumulated text "Hello world" forms one line
+        assert "Hello world" in output
+
+    def test_stream_text_base_mode_shows_latest_complete_line(self) -> None:
+        """Test stream_text shows the latest complete line from accumulated text."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # Build up multi-line text incrementally
+        console.stream_text("First line\n")
+        console.stream_text("Second line\n")
+        console.stream_text("Third line")
+        console.stream_complete()
+
+        output = stream.getvalue()
+        # Should show "Third line" as the last meaningful line
+        assert "Third line" in output
 
     def test_stream_text_all_mode_multiple_messages(self) -> None:
         """Test stream_text handles multiple messages in ALL mode."""
@@ -381,6 +416,54 @@ class TestConsoleOutput:
         assert "Second response" in output
         # Count blank lines - should have at least 2 (one before each message)
         assert output.count("\n\n") >= 1 or output.count("\n*") >= 2
+
+    def test_stream_complete_resets_state_for_new_stream(self) -> None:
+        """Test stream_complete resets state so next stream starts fresh."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # First stream
+        console.stream_text("First stream message")
+        console.stream_complete()
+
+        # Second stream should not contain first stream's accumulated text
+        console.stream_text("Second stream message")
+        console.stream_complete()
+
+        output = stream.getvalue()
+        # Both messages should appear (each in their own stream)
+        assert "First stream message" in output
+        assert "Second stream message" in output
+
+    def test_stream_text_base_mode_handles_long_lines(self) -> None:
+        """Test stream_text handles long lines without truncation in BASE mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # Create a very long line
+        long_text = "x" * 200
+        console.stream_text(long_text)
+        console.stream_complete()
+
+        output = stream.getvalue()
+        # Full line should be present (no truncation)
+        assert long_text in output
+
+    def test_stream_text_base_mode_skips_user_prompts(self) -> None:
+        """Test stream_text skips user prompts in BASE mode for cleaner output."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # User prompts should be skipped in BASE mode
+        console.stream_text("This is the user prompt", role="user")
+        console.stream_text("This is the assistant response", role="assistant")
+        console.stream_complete()
+
+        output = stream.getvalue()
+        # User prompt should NOT appear
+        assert "user prompt" not in output
+        # Assistant response should appear
+        assert "assistant response" in output
 
 
 class TestExtractSummary:
