@@ -97,7 +97,7 @@ The model used for each step follows this priority:
 
 ```yaml
 settings:
-  model: haiku  # Default for all steps in this workflow
+  model: haiku # Default for all steps in this workflow
 
 steps:
   - name: quick-analysis
@@ -108,7 +108,7 @@ steps:
   - name: complex-implementation
     type: prompt
     prompt: "Implement this feature"
-    model: opus  # Override: uses opus for this step
+    model: opus # Override: uses opus for this step
 ```
 
 ### Git Settings

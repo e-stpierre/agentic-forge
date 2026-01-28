@@ -85,9 +85,7 @@ class ConsoleOutput:
             # Start message queue and consumer thread for real-time streaming
             self._message_queue = queue.Queue()
             self._consumer_running = True
-            self._consumer_thread = threading.Thread(
-                target=self._message_consumer, daemon=True
-            )
+            self._consumer_thread = threading.Thread(target=self._message_consumer, daemon=True)
             self._consumer_thread.start()
 
     def exit_parallel_mode(self) -> None:
@@ -403,22 +401,13 @@ class ConsoleOutput:
     def stream_complete(self) -> None:
         """Called when streaming is complete to finalize output.
 
-        In BASE mode, prints the final accumulated message.
+        In BASE mode, does not print anything - the summary is shown by
+        step_complete() or ralph_iteration() methods instead.
         In ALL mode with parallel, buffers the complete message.
         Resets internal state for next stream.
         """
-        # In BASE mode, print the final accumulated message
-        if self.level == OutputLevel.BASE and self._base_accumulated_text:
-            # Find the last meaningful line from accumulated text
-            lines = self._base_accumulated_text.strip().split("\n")
-            last_line = ""
-            for line in reversed(lines):
-                if line.strip():
-                    last_line = line.strip()
-                    break
-
-            if last_line:
-                self._print(f"  - {last_line}")
+        # In BASE mode, don't print intermediate messages - the summary will be
+        # shown by step_complete() or ralph_iteration() at the end
 
         # In ALL mode with parallel, enqueue the current accumulated message for printing
         if self.level == OutputLevel.ALL and self._parallel_mode:

@@ -113,18 +113,18 @@ console.exit_parallel_mode()
 
 ## Files Modified
 
-| File | Changes |
-|------|---------|
-| `plugins/agentic-sdlc/src/agentic_sdlc/console.py` | Added accumulation, ANSI clearing, parallel mode, removed truncation |
-| `plugins/agentic-sdlc/src/agentic_sdlc/steps/parallel_step.py` | Added enter/exit parallel mode calls |
-| `plugins/agentic-sdlc/tests/test_console.py` | Updated tests for new behavior, added new tests |
+| File                                                           | Changes                                                              |
+| -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `plugins/agentic-sdlc/src/agentic_sdlc/console.py`             | Added accumulation, ANSI clearing, parallel mode, removed truncation |
+| `plugins/agentic-sdlc/src/agentic_sdlc/steps/parallel_step.py` | Added enter/exit parallel mode calls                                 |
+| `plugins/agentic-sdlc/tests/test_console.py`                   | Updated tests for new behavior, added new tests                      |
 
 ## Behavior Summary
 
-| Mode | Single Step | Parallel Steps |
-|------|-------------|----------------|
+| Mode     | Single Step                                              | Parallel Steps                                     |
+| -------- | -------------------------------------------------------- | -------------------------------------------------- |
 | **BASE** | Shows latest line with in-place updates, no user prompts | Streaming disabled, only completion messages shown |
-| **ALL** | Full streaming output with role indicators | Full streaming output (may interleave) |
+| **ALL**  | Full streaming output with role indicators               | Full streaming output (may interleave)             |
 
 ## Test Coverage
 
@@ -384,6 +384,56 @@ def ralph_iteration(self, step_name: str, iteration: int, max_iterations: int, s
 
 - In ALL mode: `[3/5] step_name iteration` (no duplicate summary)
 - In BASE mode: `[3/5] step_name iteration` with summary (as before)
+
+## Additional Fix: Ralph Loop Output in BASE Mode
+
+### Issue
+
+In BASE mode, ralph-loop iterations displayed both intermediate streaming messages (`- ...` prefix) AND the iteration summary. This caused duplicate/verbose output:
+
+```
+Step: random-facts-loop [ralph-loop]
+[INFO] Ralph loop starting (max 5 iterations)
+  - I'll start by reading the file `demo-1.md`...
+  - The file currently has no Random Facts section...
+  - Done. I've added the first random fact...
+[1/5] random-facts-loop iteration
+    Done. I've added the first random fact...
+```
+
+### Solution
+
+Removed the printing from `stream_complete()` in BASE mode entirely. The summary is already shown by `step_complete()` or `ralph_iteration()` at the end of each step/iteration, so printing from `stream_complete()` was redundant.
+
+### Code Changes
+
+```python
+def stream_complete(self) -> None:
+    """Called when streaming is complete to finalize output.
+
+    In BASE mode, does not print anything - the summary is shown by
+    step_complete() or ralph_iteration() methods instead.
+    In ALL mode with parallel, buffers the complete message.
+    Resets internal state for next stream.
+    """
+    # In BASE mode, don't print intermediate messages - the summary will be
+    # shown by step_complete() or ralph_iteration() at the end
+```
+
+### Result
+
+In BASE mode, only the step completion messages with summaries are shown:
+
+```
+Step: random-facts-loop [ralph-loop]
+[INFO] Ralph loop starting (max 5 iterations)
+[1/5] random-facts-loop iteration
+    Done. I've added the first random fact...
+[2/5] random-facts-loop iteration
+    Perfect! I've successfully added the second random fact...
+```
+
+This matches the expected "only summary at the end" behavior for BASE mode.
 
 ## Future Considerations
 
