@@ -416,6 +416,7 @@ def run_claude(
         # Show user prompt at start in ALL mode (stream-json doesn't include user messages)
         if console:
             console.stream_text(prompt, role="user")
+            console.stream_complete()  # Complete the initial user message
 
         # Collect all text for final result
         collected_text: list[str] = []
@@ -425,6 +426,8 @@ def run_claude(
         accumulated_text: dict[int, str] = {}
         # Track current model
         current_model: str | None = None
+        # Track if we've streamed any content (to know when to call stream_complete)
+        has_streamed_content: bool = False
 
         if process.stdout:
             for line in process.stdout:
@@ -438,14 +441,28 @@ def run_claude(
                 if model:
                     current_model = model
 
-                # Note: user messages from stream-json are rare, but handle them if present
+                # Get message type to detect message boundaries
+                msg_type = data.get("type")
+
+                # When a new assistant message starts (verbose format), complete the previous one
+                if msg_type == "assistant" and has_streamed_content and console:
+                    console.stream_complete()
+                    has_streamed_content = False
+                    # Reset accumulated text for new message
+                    accumulated_text.clear()
+
+                # Note: user messages from stream-json are tool results
                 user_text = extract_user_text(data)
                 if user_text and console:
+                    # Complete any previous assistant message before user message
+                    if has_streamed_content:
+                        console.stream_complete()
+                        has_streamed_content = False
                     console.stream_text(user_text, role="user")
+                    console.stream_complete()  # User messages are complete units
 
                 # Extract text from assistant messages for streaming
                 # Verbose format provides cumulative text, stream_event provides deltas
-                msg_type = data.get("type")
                 is_stream_event = msg_type == "stream_event"
 
                 for idx, text in extract_text_from_message(data):
@@ -462,6 +479,7 @@ def run_claude(
                     if delta:
                         if console:
                             console.stream_text(delta, role="assistant", model=current_model)
+                            has_streamed_content = True
                         else:
                             print(delta, end="", flush=True)
                         collected_text.append(delta)
@@ -471,8 +489,8 @@ def run_claude(
                 if result is not None:
                     result_text = result
 
-        # Signal that streaming is complete
-        if console:
+        # Signal that streaming is complete for the final message
+        if console and has_streamed_content:
             console.stream_complete()
 
         try:

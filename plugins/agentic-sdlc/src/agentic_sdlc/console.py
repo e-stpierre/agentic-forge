@@ -353,6 +353,7 @@ class ConsoleOutput:
                 # Detect role change - enqueue previous message before starting new one
                 if current_role and current_role != role and current_text.strip():
                     self._enqueue_current_message()
+                    current_text = ""  # Reset after enqueue (thread-local was reset)
 
                 # Accumulate text for current message in thread-local storage
                 self._thread_local.accumulated_text = current_text + text
