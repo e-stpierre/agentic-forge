@@ -211,7 +211,8 @@ class ConsoleOutput:
                 self._print("")  # Blank line before
                 self._print(f"{prefix}{label}")
                 for line in text.split("\n"):
-                    self._print(f"  {line}")
+                    colored_line = _colorize(line, Color.GREEN)
+                    self._print(f"  {colored_line}")
             else:
                 # Assistant message - green bullet prefix
                 bullet = _colorize("*", Color.BRIGHT_GREEN, Color.BOLD)

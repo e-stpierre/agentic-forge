@@ -178,6 +178,27 @@ if self.level == OutputLevel.BASE and self._base_accumulated_text:
 
 This approach is simpler and works reliably across all terminal environments.
 
+## Additional Fix: Windows Terminal User Message Color
+
+### Issue
+
+In Windows Terminal, user messages in `OutputLevel.ALL` mode were displayed in white (default terminal color) instead of green. Only the prefix and label were colored, but the message text itself was not.
+
+### Solution
+
+Applied `Color.GREEN` to user message text content in the `stream_text()` method to match the visual styling of other colored output.
+
+### Code Changes
+
+```python
+# In stream_text() for OutputLevel.ALL mode, user role
+for line in text.split("\n"):
+    colored_line = _colorize(line, Color.GREEN)
+    self._print(f"  {colored_line}")
+```
+
+This ensures consistent green coloring for user messages across all terminal environments, including Windows Terminal.
+
 ## Future Considerations
 
 1. **Tool subtexts**: Would require changes to Claude Code CLI to expose these in stream-json format
