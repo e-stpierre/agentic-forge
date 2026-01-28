@@ -220,12 +220,17 @@ class ConsoleOutput:
     # Ralph loop messages
 
     def ralph_iteration(self, step_name: str, iteration: int, max_iterations: int, summary: str | None = None) -> None:
-        """Print Ralph loop iteration progress."""
+        """Print Ralph loop iteration progress.
+
+        In ALL mode, skip the summary since full output was already streamed.
+        In BASE mode, show the summary as it provides the only visible output.
+        """
         progress = _colorize(f"[{iteration}/{max_iterations}]", Color.CYAN)
         name = _colorize(step_name, Color.CYAN)
         self._print(f"{progress} {name} iteration")
 
-        if summary:
+        # Only show summary in BASE mode - in ALL mode, full output was already streamed
+        if summary and self.level == OutputLevel.BASE:
             summary_lines = summary.strip().split("\n")
             for line in summary_lines[:3]:  # Brief summary for iterations
                 truncated = line[:150] + "..." if len(line) > 150 else line

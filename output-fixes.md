@@ -352,6 +352,32 @@ def step_complete(self, step_name: str, summary: str | None = None) -> None:
 - In ALL mode: `[OK] step_name completed` (no duplicate summary)
 - In BASE mode: `[OK] step_name completed` with summary (as before)
 
+### Issue #3: Ralph Loop Duplicate Summaries
+
+**Problem:** Ralph loop iterations also displayed duplicate summaries after the fix for regular steps.
+
+**Solution:** Applied the same fix to `ralph_iteration()`:
+
+```python
+def ralph_iteration(self, step_name: str, iteration: int, max_iterations: int, summary: str | None = None) -> None:
+    """Print Ralph loop iteration progress.
+
+    In ALL mode, skip the summary since full output was already streamed.
+    In BASE mode, show the summary as it provides the only visible output.
+    """
+    progress = _colorize(f"[{iteration}/{max_iterations}]", Color.CYAN)
+    name = _colorize(step_name, Color.CYAN)
+    self._print(f"{progress} {name} iteration")
+
+    # Only show summary in BASE mode - in ALL mode, full output was already streamed
+    if summary and self.level == OutputLevel.BASE:
+        # ... show summary
+```
+
+**Result:**
+- In ALL mode: `[3/5] step_name iteration` (no duplicate summary)
+- In BASE mode: `[3/5] step_name iteration` with summary (as before)
+
 ## Future Considerations
 
 1. **Tool subtexts**: Would require changes to Claude Code CLI to expose these in stream-json format
