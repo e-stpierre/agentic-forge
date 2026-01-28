@@ -6,8 +6,10 @@ step results, errors, and summaries.
 
 from __future__ import annotations
 
+import queue
 import sys
-from dataclasses import dataclass
+import threading
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TextIO
 
@@ -65,86 +67,142 @@ class ConsoleOutput:
     level: OutputLevel = OutputLevel.BASE
     stream: TextIO = sys.stdout
     _base_accumulated_text: str = ""  # Accumulated text for BASE mode streaming
-    _parallel_mode: bool = False  # Whether running in parallel (disables streaming in BASE, buffers in ALL)
-    _parallel_branch: str | None = None  # Current parallel branch name
-    _parallel_buffer: dict[str, list[tuple[str, str, str | None]]] = None  # Buffer for parallel messages by branch: {branch: [(role, text, model), ...]}
-    _all_accumulated_text: str = ""  # Accumulated text for ALL mode when in parallel
-    _all_accumulated_role: str = "assistant"  # Track role for accumulated text
-    _all_accumulated_model: str | None = None  # Track model for accumulated text
+    _parallel_mode: bool = False  # Whether running in parallel (disables streaming in BASE, queues in ALL)
+    _thread_local: threading.local = field(default_factory=threading.local)  # Thread-local storage for branch context
+    # Queue-based streaming for parallel mode (ALL level)
+    _message_queue: queue.Queue | None = field(default=None, repr=False)
+    _consumer_thread: threading.Thread | None = field(default=None, repr=False)
+    _consumer_running: bool = False
 
     def _print(self, message: str, end: str = "\n") -> None:
         """Print message to stream."""
         print(message, end=end, flush=True, file=self.stream)
 
     def enter_parallel_mode(self) -> None:
-        """Enter parallel mode - disables streaming in BASE mode, enables buffering in ALL mode."""
+        """Enter parallel mode - disables streaming in BASE mode, enables queue-based streaming in ALL mode."""
         self._parallel_mode = True
         if self.level == OutputLevel.ALL:
-            # Initialize message buffer for parallel branches
-            if self._parallel_buffer is None:
-                self._parallel_buffer = {}
+            # Start message queue and consumer thread for real-time streaming
+            self._message_queue = queue.Queue()
+            self._consumer_running = True
+            self._consumer_thread = threading.Thread(
+                target=self._message_consumer, daemon=True
+            )
+            self._consumer_thread.start()
 
     def exit_parallel_mode(self) -> None:
-        """Exit parallel mode - re-enables streaming."""
+        """Exit parallel mode - stops consumer thread and re-enables normal streaming."""
+        # Signal consumer to stop and wait for it to finish
+        self._consumer_running = False
+        if self._consumer_thread is not None:
+            self._consumer_thread.join(timeout=5.0)
+            self._consumer_thread = None
+        self._message_queue = None
         self._parallel_mode = False
-        self._parallel_branch = None
-        if self._parallel_buffer is not None:
-            self._parallel_buffer.clear()
 
     def set_parallel_branch(self, branch_name: str) -> None:
-        """Set the current parallel branch name for message buffering.
+        """Set the current parallel branch name for message streaming.
+
+        Uses thread-local storage to avoid conflicts between parallel threads.
 
         Args:
             branch_name: Name of the parallel branch being executed
         """
-        self._parallel_branch = branch_name
-        if self._parallel_mode and self.level == OutputLevel.ALL and self._parallel_buffer is not None:
-            if branch_name not in self._parallel_buffer:
-                self._parallel_buffer[branch_name] = []
+        # Store branch name and initialize accumulation state in thread-local storage
+        self._thread_local.branch_name = branch_name
+        self._thread_local.accumulated_text = ""
+        self._thread_local.accumulated_role = ""
+        self._thread_local.accumulated_model = None
 
-    def flush_parallel_branch(self, branch_name: str) -> None:
-        """Flush and display buffered messages for a specific branch.
+    def _get_thread_branch(self) -> str | None:
+        """Get the current thread's branch name."""
+        return getattr(self._thread_local, "branch_name", None)
+
+    def _enqueue_current_message(self) -> None:
+        """Enqueue the current accumulated message for printing by the consumer thread."""
+        branch = self._get_thread_branch()
+        accumulated_text = getattr(self._thread_local, "accumulated_text", "")
+        accumulated_role = getattr(self._thread_local, "accumulated_role", "")
+        accumulated_model = getattr(self._thread_local, "accumulated_model", None)
+
+        if (
+            self.level == OutputLevel.ALL
+            and self._parallel_mode
+            and accumulated_text.strip()
+            and accumulated_role
+            and branch
+            and self._message_queue is not None
+        ):
+            # Enqueue message tuple for the consumer thread to print
+            self._message_queue.put((branch, accumulated_role, accumulated_text.strip(), accumulated_model))
+
+        # Reset accumulation state
+        self._thread_local.accumulated_text = ""
+        self._thread_local.accumulated_role = ""
+        self._thread_local.accumulated_model = None
+
+    def _message_consumer(self) -> None:
+        """Consumer thread that prints messages from the queue in order.
+
+        Runs until _consumer_running is False and the queue is empty.
+        Each message is printed atomically to avoid interleaving.
+        """
+        while self._consumer_running or (self._message_queue is not None and not self._message_queue.empty()):
+            try:
+                if self._message_queue is None:
+                    break
+                msg = self._message_queue.get(timeout=0.1)
+                branch, role, text, model = msg
+                self._print_branch_message(branch, role, text, model)
+                self._message_queue.task_done()
+            except queue.Empty:
+                continue
+
+    def _print_branch_message(self, branch: str, role: str, text: str, model: str | None) -> None:
+        """Print a single message with branch prefix.
 
         Args:
-            branch_name: Name of the branch whose messages to display
+            branch: Branch name for the prefix
+            role: Message role - "user" or "assistant"
+            text: Message text content
+            model: Optional model name
         """
-        if self._parallel_buffer is None or branch_name not in self._parallel_buffer:
-            return
+        # Import here to avoid circular dependency
+        from agentic_sdlc.runner import format_model_name
 
-        messages = self._parallel_buffer[branch_name]
-        if not messages:
-            return
+        formatted_model = format_model_name(model) if model else None
+        branch_prefix = _colorize(f"[{branch}] ", Color.CYAN, Color.BOLD)
 
-        # Display all buffered messages for this branch
-        for role, text, model in messages:
-            # Import here to avoid circular dependency
-            from agentic_sdlc.runner import format_model_name
+        if role == "user":
+            prefix = _colorize(">", Color.BRIGHT_CYAN, Color.BOLD)
+            label = _colorize(" [user]", Color.DIM)
+            self._print(f"\n{branch_prefix}{prefix}{label}")
+            for line in text.split("\n"):
+                colored_line = _colorize(line, Color.GREEN)
+                self._print(f"  {colored_line}")
+        else:
+            # Assistant message
+            bullet = _colorize("*", Color.BRIGHT_GREEN, Color.BOLD)
+            model_label = ""
+            if formatted_model:
+                model_label = " " + _colorize(f"[{formatted_model}]", Color.DIM)
+            lines = text.split("\n")
+            self._print(f"\n{branch_prefix}{bullet}{model_label} {lines[0]}")
+            for line in lines[1:]:
+                self._print(f"  {line}")
 
-            formatted_model = format_model_name(model) if model else None
+    def flush_parallel_branch(self, branch_name: str) -> None:
+        """Flush any remaining messages for a branch.
 
-            # Display branch prefix
-            branch_prefix = _colorize(f"[{branch_name}] ", Color.CYAN, Color.BOLD)
+        With queue-based streaming, messages are printed in real-time.
+        This method is kept for compatibility but is now a no-op since
+        messages are printed immediately via the consumer thread.
 
-            if role == "user":
-                prefix = _colorize(">", Color.BRIGHT_CYAN, Color.BOLD)
-                label = _colorize(" [user]", Color.DIM)
-                self._print(f"\n{branch_prefix}{prefix}{label}")
-                for line in text.split("\n"):
-                    colored_line = _colorize(line, Color.GREEN)
-                    self._print(f"  {colored_line}")
-            else:
-                # Assistant message
-                bullet = _colorize("*", Color.BRIGHT_GREEN, Color.BOLD)
-                model_label = ""
-                if formatted_model:
-                    model_label = " " + _colorize(f"[{formatted_model}]", Color.DIM)
-                lines = text.split("\n")
-                self._print(f"\n{branch_prefix}{bullet}{model_label} {lines[0]}")
-                for line in lines[1:]:
-                    self._print(f"  {line}")
-
-        # Clear the buffer for this branch
-        self._parallel_buffer[branch_name] = []
+        Args:
+            branch_name: Name of the branch (unused)
+        """
+        # No-op: messages are now streamed in real-time via the queue
+        pass
 
     # Workflow-level messages
 
@@ -286,12 +344,21 @@ class ConsoleOutput:
             if not text or not text.strip():
                 return
 
-            # In parallel mode, accumulate messages for buffering instead of printing immediately
+            # In parallel mode, accumulate messages and enqueue when complete
             if self._parallel_mode:
-                self._all_accumulated_text += text
-                self._all_accumulated_role = role
+                # Get current thread's accumulated state
+                current_role = getattr(self._thread_local, "accumulated_role", "")
+                current_text = getattr(self._thread_local, "accumulated_text", "")
+
+                # Detect role change - enqueue previous message before starting new one
+                if current_role and current_role != role and current_text.strip():
+                    self._enqueue_current_message()
+
+                # Accumulate text for current message in thread-local storage
+                self._thread_local.accumulated_text = current_text + text
+                self._thread_local.accumulated_role = role
                 if model:
-                    self._all_accumulated_model = model
+                    self._thread_local.accumulated_model = model
                 return
 
             # Format with role indicator
@@ -352,23 +419,12 @@ class ConsoleOutput:
             if last_line:
                 self._print(f"  - {last_line}")
 
-        # In ALL mode with parallel, buffer the complete message
-        if (
-            self.level == OutputLevel.ALL
-            and self._parallel_mode
-            and self._all_accumulated_text
-            and self._parallel_branch
-            and self._parallel_buffer is not None
-        ):
-            self._parallel_buffer[self._parallel_branch].append(
-                (self._all_accumulated_role, self._all_accumulated_text.strip(), self._all_accumulated_model)
-            )
+        # In ALL mode with parallel, enqueue the current accumulated message for printing
+        if self.level == OutputLevel.ALL and self._parallel_mode:
+            self._enqueue_current_message()
 
         # Reset state for next stream
         self._base_accumulated_text = ""
-        self._all_accumulated_text = ""
-        self._all_accumulated_role = "assistant"
-        self._all_accumulated_model = None
 
 
 def extract_json(output: str) -> dict | None:

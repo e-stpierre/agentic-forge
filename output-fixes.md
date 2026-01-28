@@ -12,6 +12,7 @@ Two main issues were identified with `terminal-output: "base"` mode:
 2. **Line truncation at 120 characters**: Long messages were being cut off
 
 Additionally, the user requested:
+
 - Hide user prompts in BASE mode (only show assistant output)
 - Investigate if Claude's tool subtexts could be captured and streamed
 
@@ -31,6 +32,7 @@ The status subtexts shown during tool execution in Claude Code's interactive ter
 ### BASE Mode Output Issues
 
 The original implementation called `stream_text()` for each delta and printed a new line each time. The fix required:
+
 1. Accumulating text across streaming calls
 2. Using ANSI escape codes to overwrite previous output
 3. Handling parallel execution specially to avoid interleaved output
@@ -127,6 +129,7 @@ console.exit_parallel_mode()
 ## Test Coverage
 
 All 295 tests pass. New tests added:
+
 - `test_stream_text_base_mode_accumulates_text`
 - `test_stream_text_base_mode_shows_latest_complete_line`
 - `test_stream_complete_resets_state_for_new_stream`
@@ -283,6 +286,7 @@ def stream_text(self, text: str, role: str = "assistant", model: str | None = No
 ### Test Coverage
 
 Added comprehensive tests:
+
 - `TestExtractModelFromMessage` (4 tests)
 - `TestFormatModelName` (6 tests)
 
@@ -312,6 +316,7 @@ All 311 tests pass with the new functionality.
    - Messages are displayed as complete blocks with branch identification: `[branch-name] * message...`
 
 **Output Example:**
+
 ```
 [INFO] Parallel: starting 2 branches
 
@@ -349,6 +354,7 @@ def step_complete(self, step_name: str, summary: str | None = None) -> None:
 ```
 
 **Result:**
+
 - In ALL mode: `[OK] step_name completed` (no duplicate summary)
 - In BASE mode: `[OK] step_name completed` with summary (as before)
 
@@ -375,6 +381,7 @@ def ralph_iteration(self, step_name: str, iteration: int, max_iterations: int, s
 ```
 
 **Result:**
+
 - In ALL mode: `[3/5] step_name iteration` (no duplicate summary)
 - In BASE mode: `[3/5] step_name iteration` with summary (as before)
 
