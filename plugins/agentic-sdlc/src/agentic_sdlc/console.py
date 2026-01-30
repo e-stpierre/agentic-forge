@@ -101,27 +101,36 @@ class ConsoleOutput:
         Args:
             message: Message to display (can be multi-line)
         """
-        # Clear previous in-place lines
-        if self._base_last_display_lines > 0 and _supports_color():
-            # Move cursor up and clear each line
-            for _ in range(self._base_last_display_lines):
-                self.stream.write("\033[A\033[K")  # Move up + clear line
-            self.stream.flush()  # Flush escape codes before printing new content
-
         # Prepare lines for display - show full message
         lines = message.strip().split("\n")
+        num_lines = len(lines)
 
-        # Print the lines
-        for line in lines:
-            self._print(line)
+        if _supports_color():
+            # Clear previous in-place lines by moving up N lines at once
+            # then clearing from cursor to end of screen
+            if self._base_last_display_lines > 0:
+                # Move cursor up N lines in one operation
+                self.stream.write(f"\033[{self._base_last_display_lines}A")
+                # Clear from cursor to end of screen (removes all old content below)
+                self.stream.write("\033[J")
 
-        self._base_last_display_lines = len(lines)
+            # Write all lines in a single operation for atomicity
+            # This avoids issues with rapid line-by-line flushing on Windows
+            content = "\n".join(lines) + "\n"
+            self.stream.write(content)
+            self.stream.flush()
+        else:
+            # Fallback: simple print without ANSI
+            for line in lines:
+                self._print(line)
+
+        self._base_last_display_lines = num_lines
 
     def _clear_inplace(self) -> None:
         """Clear any in-place output that was displayed."""
         if self._base_last_display_lines > 0 and _supports_color():
-            for _ in range(self._base_last_display_lines):
-                self.stream.write("\033[A\033[K")  # Move up + clear line
+            # Move cursor up N lines in one operation, then clear to end of screen
+            self.stream.write(f"\033[{self._base_last_display_lines}A\033[J")
             self.stream.flush()
         self._base_last_display_lines = 0
 
@@ -288,7 +297,7 @@ class ConsoleOutput:
             total_lines = len(self._parallel_branches) * self._parallel_lines_per_branch
             # Move up and clear each line
             for _ in range(total_lines):
-                self.stream.write("\033[A\033[K")  # Move up + clear line
+                self.stream.write("\033[A\033[2K")  # Move up + clear entire line
             self.stream.flush()
 
         self._parallel_branches = []
@@ -508,9 +517,11 @@ class ConsoleOutput:
         In BASE mode, show the summary as it provides the only visible output.
         In parallel BASE mode, mark the branch as done and defer the message.
         """
-        # In BASE mode (non-parallel), clear the in-place streaming display first
+        # In BASE mode (non-parallel), reset tracking state but don't clear display.
+        # The streaming content stays visible, providing context for the completion.
         if self.level == OutputLevel.BASE and not self._parallel_mode:
-            self._clear_inplace()
+            self._base_last_display_lines = 0
+            self._base_accumulated_text = ""
 
         check = _colorize("[OK]", Color.BRIGHT_GREEN)
         name = _colorize(step_name, Color.GREEN)
@@ -540,9 +551,10 @@ class ConsoleOutput:
 
     def step_failed(self, step_name: str, error: str | None = None) -> None:
         """Print step failure with error details."""
-        # In BASE mode (non-parallel), clear the in-place streaming display first
+        # In BASE mode (non-parallel), reset tracking state but don't clear display.
         if self.level == OutputLevel.BASE and not self._parallel_mode:
-            self._clear_inplace()
+            self._base_last_display_lines = 0
+            self._base_accumulated_text = ""
 
         cross = _colorize("[FAIL]", Color.BRIGHT_RED)
         name = _colorize(step_name, Color.RED)
@@ -625,9 +637,12 @@ class ConsoleOutput:
 
     def ralph_complete(self, step_name: str, iteration: int, max_iterations: int) -> None:
         """Print Ralph loop completion."""
-        # In BASE mode (non-parallel), clear the in-place streaming display
+        # In BASE mode (non-parallel), reset tracking state but don't clear display.
+        # The streaming content stays visible, providing context for the completion.
+        # Clearing is unreliable due to terminal line wrapping affecting cursor position.
         if self.level == OutputLevel.BASE and not self._parallel_mode:
-            self._clear_inplace()
+            self._base_last_display_lines = 0
+            self._base_accumulated_text = ""
 
         check = _colorize("[OK]", Color.BRIGHT_GREEN)
         name = _colorize(step_name, Color.GREEN)
@@ -635,9 +650,10 @@ class ConsoleOutput:
 
     def ralph_max_iterations(self, step_name: str, max_iterations: int) -> None:
         """Print Ralph loop max iterations reached."""
-        # In BASE mode (non-parallel), clear the in-place streaming display
+        # In BASE mode (non-parallel), reset tracking state but don't clear display.
         if self.level == OutputLevel.BASE and not self._parallel_mode:
-            self._clear_inplace()
+            self._base_last_display_lines = 0
+            self._base_accumulated_text = ""
 
         warn = _colorize("[WARN]", Color.YELLOW)
         name = _colorize(step_name, Color.YELLOW)
