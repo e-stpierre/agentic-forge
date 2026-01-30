@@ -146,7 +146,7 @@ class ConsoleOutput:
         """
         self._parallel_branches = list(branches)
         self._parallel_branch_index = {name: idx for idx, name in enumerate(branches)}
-        self._parallel_branch_done = {name: False for name in branches}
+        self._parallel_branch_done = dict.fromkeys(branches, False)
         self._parallel_deferred_messages = []
 
         # In BASE mode, print initial branch layout
@@ -260,10 +260,7 @@ class ConsoleOutput:
             lines_up_to_msg2 = total_lines - message_line_2
 
             prefix = _colorize(f"[{branch}]", Color.CYAN, Color.BOLD)
-            if success:
-                status = _colorize("[Done]", Color.BRIGHT_GREEN, Color.BOLD)
-            else:
-                status = _colorize("[Failed]", Color.BRIGHT_RED, Color.BOLD)
+            status = _colorize("[Done]", Color.BRIGHT_GREEN, Color.BOLD) if success else _colorize("[Failed]", Color.BRIGHT_RED, Color.BOLD)
 
             # Save cursor position
             self.stream.write("\033[s")
