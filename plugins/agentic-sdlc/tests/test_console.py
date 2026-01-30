@@ -215,16 +215,27 @@ class TestConsoleOutput:
         assert "2/3" in output
         assert "Timeout" in output
 
+    def test_ralph_iteration_start(self) -> None:
+        """Test ralph iteration start message (header before streaming)."""
+        stream = io.StringIO()
+        console = ConsoleOutput(stream=stream)
+
+        console.ralph_iteration_start("apply-fixes", 3, 10)
+
+        output = stream.getvalue()
+        assert "3/10" in output
+        assert "apply-fixes" in output
+        assert "iteration" in output
+
     def test_ralph_iteration(self) -> None:
-        """Test ralph iteration message."""
+        """Test ralph iteration summary message (after iteration completes)."""
         stream = io.StringIO()
         console = ConsoleOutput(stream=stream)
 
         console.ralph_iteration("apply-fixes", 3, 10, summary="Fixed 2 issues")
 
         output = stream.getvalue()
-        assert "3/10" in output
-        assert "apply-fixes" in output
+        # ralph_iteration now only prints the summary, not the header
         assert "Fixed 2 issues" in output
 
     def test_ralph_complete(self) -> None:

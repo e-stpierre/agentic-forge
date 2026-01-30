@@ -581,8 +581,17 @@ class ConsoleOutput:
 
     # Ralph loop messages
 
+    def ralph_iteration_start(self, step_name: str, iteration: int, max_iterations: int) -> None:
+        """Print Ralph loop iteration header at the START of an iteration.
+
+        Called before run_claude so streaming messages appear below the header.
+        """
+        progress = _colorize(f"[{iteration}/{max_iterations}]", Color.CYAN)
+        name = _colorize(step_name, Color.CYAN)
+        self._print(f"{progress} {name} iteration")
+
     def ralph_iteration(self, step_name: str, iteration: int, max_iterations: int, summary: str | None = None) -> None:
-        """Print Ralph loop iteration progress.
+        """Print Ralph loop iteration summary AFTER iteration completes.
 
         In ALL mode, skip the summary since full output was already streamed.
         In BASE mode, show the summary as it provides the only visible output.
@@ -590,10 +599,6 @@ class ConsoleOutput:
         # In BASE mode (non-parallel), clear the in-place streaming display first
         if self.level == OutputLevel.BASE and not self._parallel_mode:
             self._clear_inplace()
-
-        progress = _colorize(f"[{iteration}/{max_iterations}]", Color.CYAN)
-        name = _colorize(step_name, Color.CYAN)
-        self._print(f"{progress} {name} iteration")
 
         # Only show summary in BASE mode - in ALL mode, full output was already streamed
         if summary and self.level == OutputLevel.BASE:

@@ -94,6 +94,9 @@ class RalphLoopStepExecutor(StepExecutor):
             system_message = build_ralph_system_message(iteration, max_iterations, completion_promise)
             full_prompt = f"{system_message}{prompt}"
 
+            # Display iteration header BEFORE running Claude so streaming appears below it
+            console.ralph_iteration_start(step.name, iteration, max_iterations)
+
             result = run_claude(
                 prompt=full_prompt,
                 cwd=context.repo_root,

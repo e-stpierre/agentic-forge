@@ -537,6 +537,9 @@ class WorkflowOrchestrator:
             ralph_message = build_ralph_system_message(state.iteration, max_iterations, completion_promise)
             full_prompt = ralph_message + prompt
 
+            # Display iteration header BEFORE running Claude so streaming appears below it
+            console.ralph_iteration_start(step.name, state.iteration, max_iterations)
+
             # Execute fresh Claude session
             timeout = (step.step_timeout_minutes or 60) * 60
             result = run_claude(
