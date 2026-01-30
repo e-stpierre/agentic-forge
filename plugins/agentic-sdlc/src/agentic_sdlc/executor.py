@@ -233,12 +233,7 @@ class WorkflowExecutor:
         console: ConsoleOutput,
     ) -> None:
         """Execute a single step by dispatching to the appropriate executor."""
-        logger.info(step.name, f"Starting step: {step.name}")
-        console.step_start(step.name, step.type.value)
-        update_step_started(progress, step.name)
-        save_progress(progress, self.repo_root)
-
-        # Build step context
+        # Build step context early to resolve model for display
         context = StepContext(
             repo_root=self.repo_root,
             config=self.config,
@@ -248,6 +243,14 @@ class WorkflowExecutor:
             variables=variables,
             outputs=progress.step_outputs,
         )
+
+        # Resolve model for step_start display (BASE mode shows model in header)
+        resolved_model = context.resolve_model(step.model)
+
+        logger.info(step.name, f"Starting step: {step.name}")
+        console.step_start(step.name, step.type.value, model=resolved_model)
+        update_step_started(progress, step.name)
+        save_progress(progress, self.repo_root)
 
         # Get executor for step type
         executor = self.executors.get(step.type)

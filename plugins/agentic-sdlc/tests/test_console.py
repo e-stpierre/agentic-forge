@@ -215,10 +215,23 @@ class TestConsoleOutput:
         assert "2/3" in output
         assert "Timeout" in output
 
-    def test_ralph_iteration_start(self) -> None:
-        """Test ralph iteration start message (header before streaming)."""
+    def test_ralph_iteration_start_base_mode(self) -> None:
+        """Test ralph iteration start message in BASE mode (prints header)."""
         stream = io.StringIO()
-        console = ConsoleOutput(stream=stream)
+        console = ConsoleOutput(stream=stream, level=OutputLevel.BASE)
+
+        console.ralph_iteration_start("apply-fixes", 3, 10)
+
+        output = stream.getvalue()
+        # In BASE mode, header is printed and in-place state is reset
+        assert "3/10" in output
+        assert "apply-fixes" in output
+        assert "iteration" in output
+
+    def test_ralph_iteration_start_all_mode(self) -> None:
+        """Test ralph iteration start message in ALL mode (prints header)."""
+        stream = io.StringIO()
+        console = ConsoleOutput(stream=stream, level=OutputLevel.ALL)
 
         console.ralph_iteration_start("apply-fixes", 3, 10)
 
@@ -227,15 +240,26 @@ class TestConsoleOutput:
         assert "apply-fixes" in output
         assert "iteration" in output
 
-    def test_ralph_iteration(self) -> None:
-        """Test ralph iteration summary message (after iteration completes)."""
+    def test_ralph_iteration_base_mode(self) -> None:
+        """Test ralph iteration summary message in BASE mode (skips printing)."""
         stream = io.StringIO()
-        console = ConsoleOutput(stream=stream)
+        console = ConsoleOutput(stream=stream, level=OutputLevel.BASE)
 
         console.ralph_iteration("apply-fixes", 3, 10, summary="Fixed 2 issues")
 
         output = stream.getvalue()
-        # ralph_iteration now only prints the summary, not the header
+        # In BASE mode, iteration summary is skipped to allow in-place streaming
+        assert output == ""
+
+    def test_ralph_iteration_all_mode(self) -> None:
+        """Test ralph iteration summary message in ALL mode (prints summary)."""
+        stream = io.StringIO()
+        console = ConsoleOutput(stream=stream, level=OutputLevel.ALL)
+
+        console.ralph_iteration("apply-fixes", 3, 10, summary="Fixed 2 issues")
+
+        output = stream.getvalue()
+        # In ALL mode, shows iteration summary
         assert "Fixed 2 issues" in output
 
     def test_ralph_complete(self) -> None:

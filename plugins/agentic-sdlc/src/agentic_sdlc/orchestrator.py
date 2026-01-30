@@ -498,11 +498,14 @@ class WorkflowOrchestrator:
         completion_promise = step.completion_promise or "COMPLETE"
         max_iterations = step.max_iterations
 
+        # Resolve model for step_start display
+        resolved_model = self._resolve_model(step.model)
+
         logger.info(
             step.name,
             f"Starting Ralph loop (max {max_iterations} iterations, promise: {completion_promise})",
         )
-        console.step_start(step.name, "ralph-loop")
+        console.step_start(step.name, "ralph-loop", model=resolved_model)
         console.info(f"Ralph loop starting (max {max_iterations} iterations)")
         update_step_started(progress, step.name)
 

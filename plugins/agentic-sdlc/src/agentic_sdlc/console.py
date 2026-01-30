@@ -92,7 +92,7 @@ class ConsoleOutput:
         """Print message to stream."""
         print(message, end=end, flush=True, file=self.stream)
 
-    def _print_inplace(self, message: str, max_width: int = 120) -> None:
+    def _print_inplace(self, message: str) -> None:
         """Print message in-place, overwriting previous in-place output.
 
         Uses ANSI escape sequences to clear previous lines and update display.
@@ -100,7 +100,6 @@ class ConsoleOutput:
 
         Args:
             message: Message to display (can be multi-line)
-            max_width: Maximum width per line before truncation
         """
         # Clear previous in-place lines
         if self._base_last_display_lines > 0 and _supports_color():
@@ -109,19 +108,14 @@ class ConsoleOutput:
                 self.stream.write("\033[A\033[K")  # Move up + clear line
             self.stream.flush()  # Flush escape codes before printing new content
 
-        # Prepare lines for display
+        # Prepare lines for display - show full message
         lines = message.strip().split("\n")
-        display_lines = []
-        for line in lines[-3:]:  # Show at most 3 lines
-            if len(line) > max_width:
-                line = line[: max_width - 3] + "..."
-            display_lines.append(line)
 
         # Print the lines
-        for line in display_lines:
+        for line in lines:
             self._print(line)
 
-        self._base_last_display_lines = len(display_lines)
+        self._base_last_display_lines = len(lines)
 
     def _clear_inplace(self) -> None:
         """Clear any in-place output that was displayed."""
@@ -481,11 +475,27 @@ class ConsoleOutput:
 
     # Step-level messages
 
-    def step_start(self, step_name: str, step_type: str | None = None) -> None:
-        """Print step start message."""
+    def step_start(self, step_name: str, step_type: str | None = None, model: str | None = None) -> None:
+        """Print step start message.
+
+        Args:
+            step_name: Name of the step
+            step_type: Type of the step (prompt, parallel, etc.)
+            model: Model name for BASE mode display (shown in brackets before step name)
+        """
+        # Import here to avoid circular dependency
+        from agentic_sdlc.runner import format_model_name
+
+        # In BASE mode, show model before step name
+        model_str = ""
+        if self.level == OutputLevel.BASE and model:
+            formatted_model = format_model_name(model)
+            if formatted_model:
+                model_str = _colorize(f"[{formatted_model}] ", Color.DIM)
+
         step_str = _colorize(f"Step: {step_name}", Color.BOLD)
         type_str = _colorize(f"[{step_type}]", Color.DIM) if step_type else ""
-        formatted = f"\n{step_str} {type_str}"
+        formatted = f"\n{model_str}{step_str} {type_str}"
         if self._should_defer_message():
             self._defer_message(formatted)
         else:
@@ -582,7 +592,14 @@ class ConsoleOutput:
         """Print Ralph loop iteration header at the START of an iteration.
 
         Called before run_claude so streaming messages appear below the header.
+        In BASE mode, print header and reset in-place state so streaming appears below.
         """
+        # In BASE mode (non-parallel), print header and reset in-place tracking
+        if self.level == OutputLevel.BASE and not self._parallel_mode:
+            # Reset in-place state so streaming doesn't clear the header
+            self._base_last_display_lines = 0
+            self._base_accumulated_text = ""
+
         progress = _colorize(f"[{iteration}/{max_iterations}]", Color.CYAN)
         name = _colorize(step_name, Color.CYAN)
         self._print(f"{progress} {name} iteration")
@@ -590,15 +607,17 @@ class ConsoleOutput:
     def ralph_iteration(self, step_name: str, iteration: int, max_iterations: int, summary: str | None = None) -> None:
         """Print Ralph loop iteration summary AFTER iteration completes.
 
-        In ALL mode, skip the summary since full output was already streamed.
-        In BASE mode, show the summary as it provides the only visible output.
+        In ALL mode, show the summary since it provides context for iteration completion.
+        In BASE mode (non-parallel), don't clear - let the final content stay visible,
+        then next iteration will print its header below.
         """
-        # In BASE mode (non-parallel), clear the in-place streaming display first
+        # In BASE mode (non-parallel), don't clear - let content stay visible
+        # The next ralph_iteration_start() will reset state and print below
         if self.level == OutputLevel.BASE and not self._parallel_mode:
-            self._clear_inplace()
+            return
 
-        # Only show summary in BASE mode - in ALL mode, full output was already streamed
-        if summary and self.level == OutputLevel.BASE:
+        # In ALL mode, show iteration summary
+        if summary and self.level == OutputLevel.ALL:
             summary_lines = summary.strip().split("\n")
             for line in summary_lines[:3]:  # Brief summary for iterations
                 truncated = line[:150] + "..." if len(line) > 150 else line
@@ -606,12 +625,20 @@ class ConsoleOutput:
 
     def ralph_complete(self, step_name: str, iteration: int, max_iterations: int) -> None:
         """Print Ralph loop completion."""
+        # In BASE mode (non-parallel), clear the in-place streaming display
+        if self.level == OutputLevel.BASE and not self._parallel_mode:
+            self._clear_inplace()
+
         check = _colorize("[OK]", Color.BRIGHT_GREEN)
         name = _colorize(step_name, Color.GREEN)
         self._print(f"{check} {name} completed at iteration {iteration}/{max_iterations}")
 
     def ralph_max_iterations(self, step_name: str, max_iterations: int) -> None:
         """Print Ralph loop max iterations reached."""
+        # In BASE mode (non-parallel), clear the in-place streaming display
+        if self.level == OutputLevel.BASE and not self._parallel_mode:
+            self._clear_inplace()
+
         warn = _colorize("[WARN]", Color.YELLOW)
         name = _colorize(step_name, Color.YELLOW)
         self._print(f"{warn} {name} reached max iterations ({max_iterations})")
@@ -738,13 +765,11 @@ class ConsoleOutput:
             # Show current message in-place (will be cleared when step completes)
             if self._base_accumulated_text.strip():
                 prefix = _colorize("...", Color.DIM)
-                # Get last few lines of accumulated text for display
+                # Get all lines of accumulated text for display
                 lines = self._base_accumulated_text.strip().split("\n")
-                # Show up to 3 lines for better context
-                display_lines = lines[-3:] if len(lines) > 3 else lines
                 # Format with prefix on first line, indent continuation lines
-                formatted_lines = [f"{prefix} {display_lines[0]}"]
-                for line in display_lines[1:]:
+                formatted_lines = [f"{prefix} {lines[0]}"]
+                for line in lines[1:]:
                     formatted_lines.append(f"    {line}")
                 display_text = "\n".join(formatted_lines)
                 self._print_inplace(display_text)
