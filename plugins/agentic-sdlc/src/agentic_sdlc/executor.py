@@ -185,6 +185,7 @@ class WorkflowExecutor:
 
         context = build_template_context(
             workflow_name=workflow.name,
+            workflow_id=progress.workflow_id,
             started_at=progress.started_at or "",
             completed_at=progress.completed_at,
             step_outputs=step_outputs,

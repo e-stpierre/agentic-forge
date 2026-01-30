@@ -154,6 +154,7 @@ def _extract_fix_steps(step_outputs: dict[str, Any]) -> dict[str, dict[str, Any]
 
 def build_template_context(
     workflow_name: str,
+    workflow_id: str,
     started_at: str,
     completed_at: str | None,
     step_outputs: dict[str, Any],
@@ -174,9 +175,11 @@ def build_template_context(
     return {
         "workflow": {
             "name": workflow_name,
+            "id": workflow_id,
             "started_at": started_at,
             "completed_at": completed_at,
         },
+        "workflow_id": workflow_id,
         "steps": step_outputs,
         "analysis_steps": analysis_steps,
         "fix_steps": fix_steps,

@@ -274,6 +274,7 @@ class TestBuildTemplateContext:
         """Test building basic template context."""
         context = build_template_context(
             workflow_name="test-workflow",
+            workflow_id="test-workflow-20260111-143000",
             started_at="2026-01-11T14:30:00Z",
             completed_at="2026-01-11T15:00:00Z",
             step_outputs={"step1": {"result": "ok"}},
@@ -284,8 +285,10 @@ class TestBuildTemplateContext:
         )
 
         assert context["workflow"]["name"] == "test-workflow"
+        assert context["workflow"]["id"] == "test-workflow-20260111-143000"
         assert context["workflow"]["started_at"] == "2026-01-11T14:30:00Z"
         assert context["workflow"]["completed_at"] == "2026-01-11T15:00:00Z"
+        assert context["workflow_id"] == "test-workflow-20260111-143000"
         assert context["steps"] == {"step1": {"result": "ok"}}
         assert context["files_changed"] == ["file1.py", "file2.py"]
         assert context["branches"] == ["feature/test"]
@@ -296,6 +299,7 @@ class TestBuildTemplateContext:
         """Test context extracts analysis steps."""
         context = build_template_context(
             workflow_name="test",
+            workflow_id="test-123",
             started_at="",
             completed_at=None,
             step_outputs={
@@ -315,6 +319,7 @@ class TestBuildTemplateContext:
         """Test context extracts fix steps."""
         context = build_template_context(
             workflow_name="test",
+            workflow_id="test-123",
             started_at="",
             completed_at=None,
             step_outputs={
