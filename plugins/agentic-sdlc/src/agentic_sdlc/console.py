@@ -501,6 +501,10 @@ class ConsoleOutput:
         In BASE mode, show the summary as it provides the only visible output.
         In parallel BASE mode, mark the branch as done and defer the message.
         """
+        # In BASE mode (non-parallel), clear the in-place streaming display first
+        if self.level == OutputLevel.BASE and not self._parallel_mode:
+            self._clear_inplace()
+
         check = _colorize("[OK]", Color.BRIGHT_GREEN)
         name = _colorize(step_name, Color.GREEN)
         main_line = f"{check} {name} completed"
@@ -529,6 +533,10 @@ class ConsoleOutput:
 
     def step_failed(self, step_name: str, error: str | None = None) -> None:
         """Print step failure with error details."""
+        # In BASE mode (non-parallel), clear the in-place streaming display first
+        if self.level == OutputLevel.BASE and not self._parallel_mode:
+            self._clear_inplace()
+
         cross = _colorize("[FAIL]", Color.BRIGHT_RED)
         name = _colorize(step_name, Color.RED)
         main_line = f"{cross} {name} failed"
@@ -579,6 +587,10 @@ class ConsoleOutput:
         In ALL mode, skip the summary since full output was already streamed.
         In BASE mode, show the summary as it provides the only visible output.
         """
+        # In BASE mode (non-parallel), clear the in-place streaming display first
+        if self.level == OutputLevel.BASE and not self._parallel_mode:
+            self._clear_inplace()
+
         progress = _colorize(f"[{iteration}/{max_iterations}]", Color.CYAN)
         name = _colorize(step_name, Color.CYAN)
         self._print(f"{progress} {name} iteration")
@@ -724,29 +736,34 @@ class ConsoleOutput:
             # Show current message in-place (will be cleared when step completes)
             if self._base_accumulated_text.strip():
                 prefix = _colorize("...", Color.DIM)
-                # Get last lines of accumulated text for display
+                # Get last few lines of accumulated text for display
                 lines = self._base_accumulated_text.strip().split("\n")
-                # Format with prefix on first line
-                display_text = f"{prefix} {lines[-1]}" if lines else ""
+                # Show up to 3 lines for better context
+                display_lines = lines[-3:] if len(lines) > 3 else lines
+                # Format with prefix on first line, indent continuation lines
+                formatted_lines = [f"{prefix} {display_lines[0]}"]
+                for line in display_lines[1:]:
+                    formatted_lines.append(f"    {line}")
+                display_text = "\n".join(formatted_lines)
                 self._print_inplace(display_text)
 
     def stream_complete(self) -> None:
         """Called when streaming is complete to finalize output.
 
-        In BASE mode, clears the in-place display - the summary is shown by
-        step_complete() or ralph_iteration() methods instead.
+        In BASE mode, keeps the in-place display visible until step_complete()
+        clears it and shows the summary. This prevents blank screen between
+        streaming and step completion.
         In ALL mode with parallel, buffers the complete message.
-        Resets internal state for next stream.
+        Resets accumulated text for next stream (but preserves display state).
         """
-        # In BASE mode, clear the in-place display line
-        if self.level == OutputLevel.BASE and not self._parallel_mode:
-            self._clear_inplace()
+        # In BASE mode, do NOT clear - keep message visible until step_complete
+        # The display will be cleared by step_complete() when it shows the summary
 
         # In ALL mode with parallel, enqueue the current accumulated message for printing
         if self.level == OutputLevel.ALL and self._parallel_mode:
             self._enqueue_current_message()
 
-        # Reset state for next stream
+        # Reset accumulated text for next stream (preserves _base_last_display_lines for clearing later)
         self._base_accumulated_text = ""
 
 
