@@ -430,7 +430,9 @@ def run_claude(
         has_streamed_content: bool = False
 
         if process.stdout:
-            for line in process.stdout:
+            # Use iter with readline for more responsive real-time streaming
+            # (avoids internal buffering that can delay output)
+            for line in iter(process.stdout.readline, ""):
                 # Parse stream-json format
                 data = parse_stream_json_line(line)
                 if data is None:

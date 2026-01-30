@@ -57,7 +57,11 @@ class ParallelStepExecutor(StepExecutor):
         else:
             console.info(f"Parallel: starting {len(step.steps)} branches")
 
-        # Enter parallel mode to disable in-place streaming (avoids interleaved output)
+        # Register branches for parallel display (must be called before entering parallel mode)
+        branch_names = [branch_step.name for branch_step in step.steps]
+        console.register_parallel_branches(branch_names)
+
+        # Enter parallel mode - enables multi-branch display in BASE mode, queue-based streaming in ALL mode
         console.enter_parallel_mode()
 
         branch_results: dict[str, dict[str, Any]] = {}
