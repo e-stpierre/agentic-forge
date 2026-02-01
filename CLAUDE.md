@@ -145,6 +145,15 @@ uv run pytest       # Python tests (for plugins with Python code)
 
 ## Technical Considerations
 
+### Workflow Engine Changes (agentic-sdlc)
+
+When modifying the workflow engine in `plugins/agentic-sdlc/src/`, you must update both documentation files to keep them in sync:
+
+- `plugins/agentic-sdlc/docs/WorkflowBuilder.md` - User guide for authoring workflows
+- `plugins/agentic-sdlc/docs/workflow-example.yaml` - Annotated reference workflow
+
+Changes to workflow settings, step types, or features require updates to both files.
+
 ### Python Development
 
 - **Always use `uv` for Python commands**: This repository requires `uv` for all Python-related operations (building packages, installing tools, running scripts)

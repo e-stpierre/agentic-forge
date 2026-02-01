@@ -2,11 +2,63 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
-from jinja2 import FileSystemLoader, StrictUndefined
+from jinja2 import FileSystemLoader, StrictUndefined, Undefined
 from jinja2.sandbox import SandboxedEnvironment
+
+logger = logging.getLogger(__name__)
+
+
+class WarnOnUndefined(Undefined):
+    """Log warning and preserve original syntax for undefined variables.
+
+    Instead of raising an exception or returning empty string, this class
+    logs a warning and returns the original Jinja2 syntax so the template
+    continues processing.
+
+    Uses a class-level cache to avoid logging the same warning multiple times
+    within a single template render.
+    """
+
+    # Class-level cache of warned variables to avoid duplicate warnings
+    _warned_vars: ClassVar[set[str]] = set()
+
+    @classmethod
+    def reset_warnings(cls) -> None:
+        """Reset the warnings cache. Call before rendering a new template."""
+        cls._warned_vars.clear()
+
+    def __str__(self) -> str:
+        """Return original Jinja2 syntax and log warning (once per variable)."""
+        var_name = self._undefined_name
+        if var_name not in WarnOnUndefined._warned_vars:
+            WarnOnUndefined._warned_vars.add(var_name)
+            logger.warning(
+                "Template variable '%s' is undefined, leaving as-is: {{ %s }}",
+                var_name,
+                var_name,
+            )
+        return "{{ " + str(var_name) + " }}"
+
+    def __iter__(self):
+        """Return empty iterator for undefined variables in loops."""
+        return iter([])
+
+    def __bool__(self) -> bool:
+        """Return False for undefined variables in boolean contexts."""
+        return False
+
+    def __getattr__(self, name: str) -> WarnOnUndefined:
+        """Return WarnOnUndefined for attribute access on undefined variables."""
+        return WarnOnUndefined(
+            hint=self._undefined_hint,
+            obj=self._undefined_obj,
+            name=f"{self._undefined_name}.{name}",
+            exc=self._undefined_exception,
+        )
 
 
 class TemplateRenderer:
@@ -17,28 +69,48 @@ class TemplateRenderer:
     preventing malicious templates from executing arbitrary Python code.
     """
 
-    def __init__(self, template_dirs: list[Path] | None = None):
+    def __init__(
+        self,
+        template_dirs: list[Path] | None = None,
+        strict_mode: bool = False,
+    ):
+        """Initialize the template renderer.
+
+        Args:
+            template_dirs: List of directories to search for templates.
+            strict_mode: If True, raise exception on undefined variables.
+                        If False (default), log warning and preserve original syntax.
+        """
         if template_dirs is None:
             default_templates = Path(__file__).parent / "templates"
             template_dirs = [default_templates]
 
         self.template_dirs = template_dirs
+        self.strict_mode = strict_mode
+
+        # Choose undefined behavior based on strict_mode
+        undefined_class = StrictUndefined if strict_mode else WarnOnUndefined
+
         # Use SandboxedEnvironment to prevent SSTI attacks
         # autoescape=False is intentional: we render prompts/markdown, not HTML
         self.env = SandboxedEnvironment(
             loader=FileSystemLoader([str(d) for d in template_dirs if d.exists()]),
             autoescape=False,
-            undefined=StrictUndefined,
+            undefined=undefined_class,
         )
         self.env.globals = {}
 
     def render(self, template_name: str, context: dict[str, Any]) -> str:
         """Render a template file with context."""
+        if not self.strict_mode:
+            WarnOnUndefined.reset_warnings()
         template = self.env.get_template(template_name)
         return template.render(**context)
 
     def render_string(self, template_str: str, context: dict[str, Any]) -> str:
         """Render a template string with context."""
+        if not self.strict_mode:
+            WarnOnUndefined.reset_warnings()
         template = self.env.from_string(template_str)
         return template.render(**context)
 
@@ -99,6 +171,7 @@ def _extract_fix_steps(step_outputs: dict[str, Any]) -> dict[str, dict[str, Any]
 
 def build_template_context(
     workflow_name: str,
+    workflow_id: str,
     started_at: str,
     completed_at: str | None,
     step_outputs: dict[str, Any],
@@ -119,9 +192,11 @@ def build_template_context(
     return {
         "workflow": {
             "name": workflow_name,
+            "id": workflow_id,
             "started_at": started_at,
             "completed_at": completed_at,
         },
+        "workflow_id": workflow_id,
         "steps": step_outputs,
         "analysis_steps": analysis_steps,
         "fix_steps": fix_steps,
@@ -137,9 +212,18 @@ def render_workflow_output(
     output_path: Path,
     context: dict[str, Any],
     template_dirs: list[Path] | None = None,
+    strict_mode: bool = False,
 ) -> None:
-    """Render a workflow output template to a file."""
-    renderer = TemplateRenderer(template_dirs)
+    """Render a workflow output template to a file.
+
+    Args:
+        template_path: Path to the template file.
+        output_path: Path to write the rendered output.
+        context: Template context variables.
+        template_dirs: List of directories to search for templates.
+        strict_mode: If True, raise exception on undefined variables.
+    """
+    renderer = TemplateRenderer(template_dirs, strict_mode=strict_mode)
 
     if template_path.is_absolute():
         content = template_path.read_text(encoding="utf-8")

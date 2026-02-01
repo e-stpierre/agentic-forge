@@ -215,16 +215,51 @@ class TestConsoleOutput:
         assert "2/3" in output
         assert "Timeout" in output
 
-    def test_ralph_iteration(self) -> None:
-        """Test ralph iteration message."""
+    def test_ralph_iteration_start_base_mode(self) -> None:
+        """Test ralph iteration start message in BASE mode (prints header)."""
         stream = io.StringIO()
-        console = ConsoleOutput(stream=stream)
+        console = ConsoleOutput(stream=stream, level=OutputLevel.BASE)
 
-        console.ralph_iteration("apply-fixes", 3, 10, summary="Fixed 2 issues")
+        console.ralph_iteration_start("apply-fixes", 3, 10)
+
+        output = stream.getvalue()
+        # In BASE mode, header is printed and in-place state is reset
+        assert "3/10" in output
+        assert "apply-fixes" in output
+        assert "iteration" in output
+
+    def test_ralph_iteration_start_all_mode(self) -> None:
+        """Test ralph iteration start message in ALL mode (prints header)."""
+        stream = io.StringIO()
+        console = ConsoleOutput(stream=stream, level=OutputLevel.ALL)
+
+        console.ralph_iteration_start("apply-fixes", 3, 10)
 
         output = stream.getvalue()
         assert "3/10" in output
         assert "apply-fixes" in output
+        assert "iteration" in output
+
+    def test_ralph_iteration_base_mode(self) -> None:
+        """Test ralph iteration summary message in BASE mode (skips printing)."""
+        stream = io.StringIO()
+        console = ConsoleOutput(stream=stream, level=OutputLevel.BASE)
+
+        console.ralph_iteration("apply-fixes", 3, 10, summary="Fixed 2 issues")
+
+        output = stream.getvalue()
+        # In BASE mode, iteration summary is skipped to allow in-place streaming
+        assert output == ""
+
+    def test_ralph_iteration_all_mode(self) -> None:
+        """Test ralph iteration summary message in ALL mode (prints summary)."""
+        stream = io.StringIO()
+        console = ConsoleOutput(stream=stream, level=OutputLevel.ALL)
+
+        console.ralph_iteration("apply-fixes", 3, 10, summary="Fixed 2 issues")
+
+        output = stream.getvalue()
+        # In ALL mode, shows iteration summary
         assert "Fixed 2 issues" in output
 
     def test_ralph_complete(self) -> None:
@@ -309,26 +344,32 @@ class TestConsoleOutput:
         assert "User prompt here" in output
 
     def test_stream_text_base_mode_shows_last_line(self) -> None:
-        """Test stream_text shows only last line in BASE mode with indentation."""
+        """Test stream_text in BASE mode shows last line in-place during streaming."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
         console.stream_text("First line\nSecond line\nThird line")
 
         output = stream.getvalue()
-        # BASE mode shows only the last non-empty line with "  - " prefix
+        # BASE mode shows last line in-place (in non-TTY mode, no clearing happens)
         assert "Third line" in output
-        assert "  - " in output  # Uses dash prefix for indentation
+        assert "..." in output  # Prefix indicator
+
+        console.stream_complete()  # Clears in-place display (no-op in non-TTY)
 
     def test_stream_text_base_mode_skips_empty_lines(self) -> None:
-        """Test stream_text skips empty lines when finding last line in BASE mode."""
+        """Test stream_text in BASE mode shows content, handles empty lines."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
         console.stream_text("Content\n\n")
 
         output = stream.getvalue()
+        # BASE mode shows content in-place
         assert "Content" in output
+        assert "..." in output
+
+        console.stream_complete()
 
     def test_stream_text_all_mode_skips_empty(self) -> None:
         """Test stream_text skips empty text in ALL mode."""
@@ -355,17 +396,62 @@ class TestConsoleOutput:
         assert "Line 3" in output
 
     def test_stream_text_base_mode_multiple_messages(self) -> None:
-        """Test stream_text prints each message on its own line in BASE mode."""
+        """Test stream_text accumulates and displays text in BASE mode."""
         stream = io.StringIO()
         console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
 
+        # Simulate token-by-token streaming (tokens concatenate without separator)
         console.stream_text("First message")
         console.stream_text("Second message")
 
+        # Text is accumulated internally
+        assert "First messageSecond message" in console._base_accumulated_text
+
         output = stream.getvalue()
-        # Each message gets its own line with "  - " prefix
-        assert "  - First message" in output
-        assert "  - Second message" in output
+        # BASE mode shows in-place updates (non-TTY doesn't clear, so both visible)
+        assert "First message" in output
+        assert "Second message" in output
+
+        console.stream_complete()  # Finalize streaming
+
+    def test_stream_text_base_mode_accumulates_text(self) -> None:
+        """Test stream_text accumulates text and displays updates in BASE mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # Simulate incremental streaming
+        console.stream_text("Hello ")
+        console.stream_text("world")
+
+        # Text is accumulated internally
+        assert "Hello world" in console._base_accumulated_text
+
+        output = stream.getvalue()
+        # BASE mode shows in-place updates
+        assert "Hello" in output
+        assert "world" in output
+
+        console.stream_complete()
+
+    def test_stream_text_base_mode_shows_latest_complete_line(self) -> None:
+        """Test stream_text shows latest line as text accumulates in BASE mode."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # Build up multi-line text incrementally
+        console.stream_text("First line\n")
+        console.stream_text("Second line\n")
+        console.stream_text("Third line")
+
+        # All text is accumulated internally
+        assert "Third line" in console._base_accumulated_text
+
+        output = stream.getvalue()
+        # BASE mode shows in-place updates (all visible in non-TTY mode)
+        assert "First line" in output
+        assert "Third line" in output
+
+        console.stream_complete()
 
     def test_stream_text_all_mode_multiple_messages(self) -> None:
         """Test stream_text handles multiple messages in ALL mode."""
@@ -381,6 +467,104 @@ class TestConsoleOutput:
         assert "Second response" in output
         # Count blank lines - should have at least 2 (one before each message)
         assert output.count("\n\n") >= 1 or output.count("\n*") >= 2
+
+    def test_stream_complete_resets_state_for_new_stream(self) -> None:
+        """Test stream_complete resets state so next stream starts fresh."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # First stream
+        console.stream_text("First stream message")
+        assert "First stream message" in console._base_accumulated_text
+        console.stream_complete()
+
+        # After stream_complete, accumulated text should be reset
+        assert console._base_accumulated_text == ""
+
+        # Second stream should not contain first stream's accumulated text
+        console.stream_text("Second stream message")
+        assert "Second stream message" in console._base_accumulated_text
+        assert "First stream message" not in console._base_accumulated_text
+        console.stream_complete()
+
+        output = stream.getvalue()
+        # BASE mode shows in-place updates (visible in non-TTY mode)
+        assert "First stream message" in output
+        assert "Second stream message" in output
+
+    def test_stream_text_base_mode_handles_long_lines(self) -> None:
+        """Test stream_text handles and truncates long lines in BASE mode display."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # Create a very long line
+        long_text = "x" * 200
+        console.stream_text(long_text)
+
+        # Full line should be accumulated (no truncation in internal state)
+        assert long_text in console._base_accumulated_text
+
+        output = stream.getvalue()
+        # BASE mode shows truncated version in display (max_width=120)
+        assert "..." in output  # Prefix and truncation indicator
+        assert "x" * 50 in output  # Some of the content visible
+
+        console.stream_complete()
+
+    def test_stream_text_base_mode_skips_user_prompts(self) -> None:
+        """Test stream_text skips user prompts in BASE mode - only assistant shown."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        # User prompts should be skipped in BASE mode
+        console.stream_text("This is the user prompt", role="user")
+        console.stream_text("This is the assistant response", role="assistant")
+
+        # User prompt should NOT be accumulated
+        assert "user prompt" not in console._base_accumulated_text
+        # Assistant response should be accumulated
+        assert "assistant response" in console._base_accumulated_text
+
+        output = stream.getvalue()
+        # BASE mode shows only assistant content
+        assert "user prompt" not in output
+        assert "assistant response" in output
+
+        console.stream_complete()
+
+    def test_register_parallel_branches_base_mode(self) -> None:
+        """Test registering parallel branches in BASE mode prints headers."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        console.register_parallel_branches(["branch-a", "branch-b", "branch-c"])
+
+        # Should have registered the branches (accessed via parallel handler)
+        assert console._parallel_handler is not None
+        assert console._parallel_handler._branches == ["branch-a", "branch-b", "branch-c"]
+        assert console._parallel_handler._branch_index == {"branch-a": 0, "branch-b": 1, "branch-c": 2}
+
+        # Non-TTY mode doesn't print headers with ANSI codes, but branches are still registered
+        # (the colorize function strips ANSI in non-TTY mode)
+
+    def test_parallel_branch_streaming_base_mode(self) -> None:
+        """Test streaming to parallel branches in BASE mode accumulates text."""
+        stream = io.StringIO()
+        console = ConsoleOutput(level=OutputLevel.BASE, stream=stream)
+
+        console.register_parallel_branches(["branch-a", "branch-b"])
+        console.enter_parallel_mode()
+
+        # Set branch and stream text
+        console.set_parallel_branch("branch-a")
+        console.stream_text("Message from branch A", role="assistant")
+
+        # Text should be accumulated in thread-local storage (accessed via parallel handler)
+        assert console._parallel_handler is not None
+        accumulated = getattr(console._parallel_handler._thread_local, "base_accumulated_text", "")
+        assert "Message from branch A" in accumulated
+
+        console.exit_parallel_mode()
 
 
 class TestExtractSummary:

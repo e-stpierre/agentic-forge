@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
@@ -9,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 from agentic_sdlc.git.worktree import Worktree, create_worktree, remove_worktree
 from agentic_sdlc.progress import WorkflowStatus, update_step_completed, update_step_failed
 from agentic_sdlc.steps.base import StepContext, StepExecutor, StepResult
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from agentic_sdlc.console import ConsoleOutput
@@ -57,6 +61,13 @@ class ParallelStepExecutor(StepExecutor):
         else:
             console.info(f"Parallel: starting {len(step.steps)} branches")
 
+        # Register branches for parallel display (must be called before entering parallel mode)
+        branch_names = [branch_step.name for branch_step in step.steps]
+        console.register_parallel_branches(branch_names)
+
+        # Enter parallel mode - enables multi-branch display in BASE mode, queue-based streaming in ALL mode
+        console.enter_parallel_mode()
+
         branch_results: dict[str, dict[str, Any]] = {}
         failed_branches: list[str] = []
         worktrees: dict[str, Worktree] = {}
@@ -68,6 +79,9 @@ class ParallelStepExecutor(StepExecutor):
             worktree: Worktree | None = None
 
             try:
+                # Set branch name for message buffering in parallel mode
+                console.set_parallel_branch(branch_step.name)
+
                 if use_worktree:
                     worktree = create_worktree(
                         workflow_name=progress.workflow_name,
@@ -80,9 +94,21 @@ class ParallelStepExecutor(StepExecutor):
 
                 result = self.branch_executor.execute(branch_step, progress, branch_context, logger, console)
 
+                # Flush buffered messages for this branch
+                console.flush_parallel_branch(branch_step.name)
+
                 return (branch_step.name, result.success, result.output_summary, worktree)
             except Exception as e:
-                logger.error(branch_step.name, f"Branch failed: {e}")
+                # Log error with traceback for debugging
+                tb_str = traceback.format_exc()
+                logger.error(
+                    "Branch '%s' failed with exception: %s\n%s",
+                    branch_step.name,
+                    e,
+                    tb_str,
+                )
+                # Flush buffered messages even on failure
+                console.flush_parallel_branch(branch_step.name)
                 return (branch_step.name, False, str(e), worktree)
 
         with ThreadPoolExecutor(max_workers=len(step.steps)) as executor:
@@ -104,6 +130,9 @@ class ParallelStepExecutor(StepExecutor):
                     branch_results[branch_step.name] = {"success": False, "output": str(e)}
                     failed_branches.append(branch_step.name)
                     console.error(f"  Branch '{branch_step.name}' exception: {e}")
+
+        # Exit parallel mode after all branches complete
+        console.exit_parallel_mode()
 
         # Handle merge modes
         if step.merge_mode == "merge" and worktrees:

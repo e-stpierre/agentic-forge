@@ -38,6 +38,13 @@ settings:
   # Bypass permission prompts - use with caution (default: false)
   bypass-permissions: false
 
+  # Template variable handling: false = warn and continue, true = fail on undefined (default: false)
+  strict-mode: false
+
+  # Default model for all steps: sonnet, haiku, opus (default: user-configured or sonnet)
+  # Steps can override this with their own model setting
+  model: sonnet
+
   # Tools Claude can use without prompting (default: [])
   required-tools:
     - "Bash"

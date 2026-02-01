@@ -64,6 +64,73 @@ def parse_stream_json_line(line: str) -> dict[str, Any] | None:
         return None
 
 
+def extract_model_from_message(data: dict[str, Any]) -> str | None:
+    """Extract model name from an assistant message.
+
+    Args:
+        data: Parsed JSON from stream-json output
+
+    Returns:
+        Model name string, or None if not found
+    """
+    msg_type = data.get("type")
+
+    # Handle verbose format: complete assistant messages
+    if msg_type == "assistant":
+        message = data.get("message", {})
+        return message.get("model")
+
+    # System messages also include model
+    if msg_type == "system":
+        return data.get("model")
+
+    return None
+
+
+def format_model_name(model: str | None) -> str:
+    """Format model name for display.
+
+    Examples:
+        "claude-sonnet-4-5-20250929" -> "sonnet-4.5"
+        "claude-opus-4-5-20251101" -> "opus-4.5"
+        "claude-3-7-sonnet-20250219" -> "sonnet-3.7"
+
+    Args:
+        model: Full model name
+
+    Returns:
+        Formatted short model name
+    """
+    if not model:
+        return ""
+
+    # Pattern 1: claude-{tier}-{major}-{minor}-{date}
+    # e.g., claude-sonnet-4-5-20250929
+    pattern1 = re.compile(r"^claude-(sonnet|opus|haiku)-(\d+)-(\d+)-\d{8}$")
+    match = pattern1.match(model)
+    if match:
+        tier, major, minor = match.groups()
+        return f"{tier}-{major}.{minor}"
+
+    # Pattern 2: claude-{major}-{minor}-{tier}-{date}
+    # e.g., claude-3-7-sonnet-20250219
+    pattern2 = re.compile(r"^claude-(\d+)-(\d+)-(sonnet|opus|haiku)-\d{8}$")
+    match = pattern2.match(model)
+    if match:
+        major, minor, tier = match.groups()
+        return f"{tier}-{major}.{minor}"
+
+    # Pattern 3: claude-{tier}-{date} (no version)
+    # e.g., claude-sonnet-20250101
+    pattern3 = re.compile(r"^claude-(sonnet|opus|haiku)-\d{8}$")
+    match = pattern3.match(model)
+    if match:
+        return match.group(1)
+
+    # Can't parse, return as-is
+    return model
+
+
 def extract_text_from_message(data: dict[str, Any]) -> Generator[tuple[int, str], None, None]:
     """Extract text content from an assistant message.
 
@@ -330,6 +397,7 @@ def run_claude(
         # Show user prompt at start in ALL mode (stream-json doesn't include user messages)
         if console:
             console.stream_text(prompt, role="user")
+            console.stream_complete()  # Complete the initial user message
 
         # Collect all text for final result
         collected_text: list[str] = []
@@ -337,22 +405,47 @@ def run_claude(
         # Track accumulated text per content block to compute deltas
         # stream-json with --verbose provides cumulative text, not deltas
         accumulated_text: dict[int, str] = {}
+        # Track current model
+        current_model: str | None = None
+        # Track if we've streamed any content (to know when to call stream_complete)
+        has_streamed_content: bool = False
 
         if process.stdout:
-            for line in process.stdout:
+            # Use iter with readline for more responsive real-time streaming
+            # (avoids internal buffering that can delay output)
+            for line in iter(process.stdout.readline, ""):
                 # Parse stream-json format
                 data = parse_stream_json_line(line)
                 if data is None:
                     continue
 
-                # Note: user messages from stream-json are rare, but handle them if present
+                # Extract model from assistant messages
+                model = extract_model_from_message(data)
+                if model:
+                    current_model = model
+
+                # Get message type to detect message boundaries
+                msg_type = data.get("type")
+
+                # When a new assistant message starts (verbose format), complete the previous one
+                if msg_type == "assistant" and has_streamed_content and console:
+                    console.stream_complete()
+                    has_streamed_content = False
+                    # Reset accumulated text for new message
+                    accumulated_text.clear()
+
+                # Note: user messages from stream-json are tool results
                 user_text = extract_user_text(data)
                 if user_text and console:
+                    # Complete any previous assistant message before user message
+                    if has_streamed_content:
+                        console.stream_complete()
+                        has_streamed_content = False
                     console.stream_text(user_text, role="user")
+                    console.stream_complete()  # User messages are complete units
 
                 # Extract text from assistant messages for streaming
                 # Verbose format provides cumulative text, stream_event provides deltas
-                msg_type = data.get("type")
                 is_stream_event = msg_type == "stream_event"
 
                 for idx, text in extract_text_from_message(data):
@@ -368,7 +461,8 @@ def run_claude(
 
                     if delta:
                         if console:
-                            console.stream_text(delta, role="assistant")
+                            console.stream_text(delta, role="assistant", model=current_model)
+                            has_streamed_content = True
                         else:
                             print(delta, end="", flush=True)
                         collected_text.append(delta)
@@ -378,8 +472,8 @@ def run_claude(
                 if result is not None:
                     result_text = result
 
-        # Signal that streaming is complete
-        if console:
+        # Signal that streaming is complete for the final message
+        if console and has_streamed_content:
             console.stream_complete()
 
         try:

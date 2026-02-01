@@ -43,10 +43,12 @@ class StepContext:
     def resolve_model(self, step_model: str | None) -> str:
         """Resolve the model to use for a step.
 
-        Priority: step.model > config.defaults.model > "sonnet"
+        Priority: step.model > workflow.settings.model > config.defaults.model > "sonnet"
         """
         if step_model:
             return step_model
+        if self.workflow_settings and self.workflow_settings.model:
+            return self.workflow_settings.model
         return self.config["defaults"].get("model", "sonnet")
 
 

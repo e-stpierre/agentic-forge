@@ -73,11 +73,42 @@ settings:
   # Bypass permission prompts (use with caution)
   bypass-permissions: false # Default: false
 
+  # Fail on undefined template variables (strict) or warn and continue (lenient)
+  strict-mode: false # Default: false (lenient - warns but continues)
+
+  # Default model for all steps (steps can override)
+  model: sonnet # Options: sonnet, haiku, opus (Default: user-configured or sonnet)
+
   # Tools Claude can use without prompting
   required-tools: # Default: []
     - "Bash"
     - "Edit"
     - "Write"
+```
+
+### Model Selection
+
+The model used for each step follows this priority:
+
+1. **Step-level `model`** - If the step specifies a model, use it
+2. **Workflow-level `settings.model`** - If the workflow settings specify a model, use it
+3. **User-configured default** - From `config.defaults.model`
+4. **Fallback** - `sonnet`
+
+```yaml
+settings:
+  model: haiku # Default for all steps in this workflow
+
+steps:
+  - name: quick-analysis
+    type: prompt
+    prompt: "Analyze this file"
+    # Uses workflow default: haiku
+
+  - name: complex-implementation
+    type: prompt
+    prompt: "Implement this feature"
+    model: opus # Override: uses opus for this step
 ```
 
 ### Git Settings
@@ -376,6 +407,29 @@ agentic-sdlc input <workflow-id> "approved"
 ## Templating with Jinja2
 
 Workflows use Jinja2 templating for dynamic content.
+
+### Undefined Variable Behavior
+
+By default, workflows use **lenient mode** (`strict-mode: false`):
+
+- Undefined variables log a warning but don't fail the workflow
+- The original Jinja2 syntax is preserved in the output (e.g., `{{ missing_var }}`)
+- Useful for workflows where some variables may not be available at all steps
+
+Enable **strict mode** (`strict-mode: true`) to:
+
+- Fail immediately when an undefined variable is encountered
+- Ensure all template variables are properly defined
+- Catch configuration errors early
+
+```yaml
+settings:
+  # Lenient mode (default): warn and continue
+  strict-mode: false
+
+  # Strict mode: fail on undefined variables
+  # strict-mode: true
+```
 
 ### Built-in Variables
 
