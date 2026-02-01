@@ -104,50 +104,31 @@ def format_model_name(model: str | None) -> str:
     if not model:
         return ""
 
-    # Parse model name: claude-{tier}-{version}-{date}
-    parts = model.split("-")
-    if len(parts) < 4:
-        return model  # Can't parse, return as-is
+    # Pattern 1: claude-{tier}-{major}-{minor}-{date}
+    # e.g., claude-sonnet-4-5-20250929
+    pattern1 = re.compile(r"^claude-(sonnet|opus|haiku)-(\d+)-(\d+)-\d{8}$")
+    match = pattern1.match(model)
+    if match:
+        tier, major, minor = match.groups()
+        return f"{tier}-{major}.{minor}"
 
-    # Extract tier (sonnet, opus, haiku) and version
-    tier = None
-    version_parts = []
+    # Pattern 2: claude-{major}-{minor}-{tier}-{date}
+    # e.g., claude-3-7-sonnet-20250219
+    pattern2 = re.compile(r"^claude-(\d+)-(\d+)-(sonnet|opus|haiku)-\d{8}$")
+    match = pattern2.match(model)
+    if match:
+        major, minor, tier = match.groups()
+        return f"{tier}-{major}.{minor}"
 
-    # Handle both formats:
-    # - claude-sonnet-4-5-date (tier at position 1, version after)
-    # - claude-3-7-sonnet-date (version at positions 1-2, tier after)
-    for i, part in enumerate(parts[1:], 1):
-        if part in ("sonnet", "opus", "haiku"):
-            tier = part
-            tier_index = i
-            # Check if version is before or after tier
-            if tier_index == 1:
-                # Format: claude-sonnet-4-5-date
-                # Version parts come after tier
-                # Collect numeric parts after tier (skip 8-digit dates)
-                for j in range(tier_index + 1, len(parts)):
-                    if parts[j].isdigit():
-                        # Skip 8-digit date stamps (e.g., 20250929)
-                        if len(parts[j]) == 8:
-                            break
-                        version_parts.append(parts[j])
-                    else:
-                        break
-            else:
-                # Format: claude-3-7-sonnet-date
-                # Version parts are before the tier
-                version_parts = parts[1:tier_index]
-            break
+    # Pattern 3: claude-{tier}-{date} (no version)
+    # e.g., claude-sonnet-20250101
+    pattern3 = re.compile(r"^claude-(sonnet|opus|haiku)-\d{8}$")
+    match = pattern3.match(model)
+    if match:
+        return match.group(1)
 
-    if not tier:
-        return model  # Can't find tier, return as-is
-
-    # Format version (e.g., ["4", "5"] -> "4.5")
-    if version_parts:
-        version = ".".join(version_parts)
-        return f"{tier}-{version}"
-
-    return tier
+    # Can't parse, return as-is
+    return model
 
 
 def extract_text_from_message(data: dict[str, Any]) -> Generator[tuple[int, str], None, None]:

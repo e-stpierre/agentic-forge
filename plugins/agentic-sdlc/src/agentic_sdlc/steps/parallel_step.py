@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
@@ -9,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 from agentic_sdlc.git.worktree import Worktree, create_worktree, remove_worktree
 from agentic_sdlc.progress import WorkflowStatus, update_step_completed, update_step_failed
 from agentic_sdlc.steps.base import StepContext, StepExecutor, StepResult
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from agentic_sdlc.console import ConsoleOutput
@@ -95,7 +99,14 @@ class ParallelStepExecutor(StepExecutor):
 
                 return (branch_step.name, result.success, result.output_summary, worktree)
             except Exception as e:
-                logger.error(branch_step.name, f"Branch failed: {e}")
+                # Log error with traceback for debugging
+                tb_str = traceback.format_exc()
+                logger.error(
+                    "Branch '%s' failed with exception: %s\n%s",
+                    branch_step.name,
+                    e,
+                    tb_str,
+                )
                 # Flush buffered messages even on failure
                 console.flush_parallel_branch(branch_step.name)
                 return (branch_step.name, False, str(e), worktree)

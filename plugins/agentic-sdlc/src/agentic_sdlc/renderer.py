@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from jinja2 import FileSystemLoader, StrictUndefined, Undefined
 from jinja2.sandbox import SandboxedEnvironment
@@ -18,16 +18,29 @@ class WarnOnUndefined(Undefined):
     Instead of raising an exception or returning empty string, this class
     logs a warning and returns the original Jinja2 syntax so the template
     continues processing.
+
+    Uses a class-level cache to avoid logging the same warning multiple times
+    within a single template render.
     """
 
+    # Class-level cache of warned variables to avoid duplicate warnings
+    _warned_vars: ClassVar[set[str]] = set()
+
+    @classmethod
+    def reset_warnings(cls) -> None:
+        """Reset the warnings cache. Call before rendering a new template."""
+        cls._warned_vars.clear()
+
     def __str__(self) -> str:
-        """Return original Jinja2 syntax and log warning."""
+        """Return original Jinja2 syntax and log warning (once per variable)."""
         var_name = self._undefined_name
-        logger.warning(
-            "Template variable '%s' is undefined, leaving as-is: {{ %s }}",
-            var_name,
-            var_name,
-        )
+        if var_name not in WarnOnUndefined._warned_vars:
+            WarnOnUndefined._warned_vars.add(var_name)
+            logger.warning(
+                "Template variable '%s' is undefined, leaving as-is: {{ %s }}",
+                var_name,
+                var_name,
+            )
         return "{{ " + str(var_name) + " }}"
 
     def __iter__(self):
@@ -89,11 +102,15 @@ class TemplateRenderer:
 
     def render(self, template_name: str, context: dict[str, Any]) -> str:
         """Render a template file with context."""
+        if not self.strict_mode:
+            WarnOnUndefined.reset_warnings()
         template = self.env.get_template(template_name)
         return template.render(**context)
 
     def render_string(self, template_str: str, context: dict[str, Any]) -> str:
         """Render a template string with context."""
+        if not self.strict_mode:
+            WarnOnUndefined.reset_warnings()
         template = self.env.from_string(template_str)
         return template.render(**context)
 

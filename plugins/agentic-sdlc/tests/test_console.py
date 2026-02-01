@@ -539,9 +539,10 @@ class TestConsoleOutput:
 
         console.register_parallel_branches(["branch-a", "branch-b", "branch-c"])
 
-        # Should have registered the branches
-        assert console._parallel_branches == ["branch-a", "branch-b", "branch-c"]
-        assert console._parallel_branch_index == {"branch-a": 0, "branch-b": 1, "branch-c": 2}
+        # Should have registered the branches (accessed via parallel handler)
+        assert console._parallel_handler is not None
+        assert console._parallel_handler._branches == ["branch-a", "branch-b", "branch-c"]
+        assert console._parallel_handler._branch_index == {"branch-a": 0, "branch-b": 1, "branch-c": 2}
 
         # Non-TTY mode doesn't print headers with ANSI codes, but branches are still registered
         # (the colorize function strips ANSI in non-TTY mode)
@@ -558,8 +559,10 @@ class TestConsoleOutput:
         console.set_parallel_branch("branch-a")
         console.stream_text("Message from branch A", role="assistant")
 
-        # Text should be accumulated in thread-local storage
-        assert "Message from branch A" in console._thread_local.base_accumulated_text
+        # Text should be accumulated in thread-local storage (accessed via parallel handler)
+        assert console._parallel_handler is not None
+        accumulated = getattr(console._parallel_handler._thread_local, "base_accumulated_text", "")
+        assert "Message from branch A" in accumulated
 
         console.exit_parallel_mode()
 

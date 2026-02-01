@@ -12,12 +12,18 @@ import sys
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TextIO
+from typing import TYPE_CHECKING, TextIO
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
 # Sentinel value to signal consumer thread to stop
 _STOP_SENTINEL = object()
+
+# Maximum characters to accumulate in BASE mode before truncating (1MB)
+_MAX_ACCUMULATED_TEXT = 1024 * 1024
 
 
 class OutputLevel(Enum):
@@ -67,74 +73,56 @@ def _colorize(text: str, *colors: Color) -> str:
 
 
 @dataclass
-class ConsoleOutput:
-    """Handles structured console output for workflows."""
+class ParallelOutputHandler:
+    """Handles parallel branch output display and message queuing.
 
-    level: OutputLevel = OutputLevel.BASE
+    Extracted from ConsoleOutput to manage the complexity of parallel execution display.
+    Supports two modes:
+    - BASE mode: Multi-branch status display with in-place updates
+    - ALL mode: Queue-based message streaming for ordered output
+    """
+
     stream: TextIO = sys.stdout
-    _base_accumulated_text: str = ""  # Accumulated text for BASE mode streaming
-    _base_last_display_lines: int = 0  # Track lines displayed for clearing
-    _parallel_mode: bool = False  # Whether running in parallel (disables streaming in BASE, queues in ALL)
-    _thread_local: threading.local = field(default_factory=threading.local)  # Thread-local storage for branch context
+    level: OutputLevel = OutputLevel.BASE
+    _print_fn: Callable[[str], None] | None = None  # Callback for printing
+
+    # Thread-local storage for branch context
+    _thread_local: threading.local = field(default_factory=threading.local)
+
     # Queue-based streaming for parallel mode (ALL level)
     _message_queue: queue.Queue | None = field(default=None, repr=False)
     _consumer_thread: threading.Thread | None = field(default=None, repr=False)
     _consumer_running: bool = False
+
     # Parallel branch display for BASE mode
-    _parallel_branches: list[str] = field(default_factory=list)  # Ordered list of branch names
-    _parallel_branch_index: dict[str, int] = field(default_factory=dict)  # Branch name -> display line index
-    _parallel_branch_done: dict[str, bool] = field(default_factory=dict)  # Branch name -> is completed
-    _parallel_display_lock: threading.Lock = field(default_factory=threading.Lock)  # Thread-safe updates
-    _parallel_deferred_messages: list[str] = field(default_factory=list)  # Messages to print after parallel completes
-    _parallel_lines_per_branch: int = 4  # Header (1) + message lines (2) + blank (1)
+    _branches: list[str] = field(default_factory=list)  # Ordered list of branch names
+    _branch_index: dict[str, int] = field(default_factory=dict)  # Branch name -> display line index
+    _branch_done: dict[str, bool] = field(default_factory=dict)  # Branch name -> is completed
+    _display_lock: threading.Lock = field(default_factory=threading.Lock)  # Thread-safe updates
+    _deferred_messages: list[str] = field(default_factory=list)  # Messages to print after parallel completes
+    _lines_per_branch: int = 4  # Header (1) + message lines (2) + blank (1)
 
-    def _print(self, message: str, end: str = "\n") -> None:
-        """Print message to stream."""
-        print(message, end=end, flush=True, file=self.stream)
+    # State
+    _active: bool = False
 
-    def _print_inplace(self, message: str) -> None:
-        """Print message in-place, overwriting previous in-place output.
-
-        Uses ANSI escape sequences to clear previous lines and update display.
-        Falls back to simple print if terminal doesn't support escape sequences.
-
-        Args:
-            message: Message to display (can be multi-line)
-        """
-        # Prepare lines for display - show full message
-        lines = message.strip().split("\n")
-        num_lines = len(lines)
-
-        if _supports_color():
-            # Clear previous in-place lines by moving up N lines at once
-            # then clearing from cursor to end of screen
-            if self._base_last_display_lines > 0:
-                # Move cursor up N lines in one operation
-                self.stream.write(f"\033[{self._base_last_display_lines}A")
-                # Clear from cursor to end of screen (removes all old content below)
-                self.stream.write("\033[J")
-
-            # Write all lines in a single operation for atomicity
-            # This avoids issues with rapid line-by-line flushing on Windows
-            content = "\n".join(lines) + "\n"
-            self.stream.write(content)
-            self.stream.flush()
+    def _print(self, message: str) -> None:
+        """Print message using callback or directly to stream."""
+        if self._print_fn:
+            self._print_fn(message)
         else:
-            # Fallback: simple print without ANSI
-            for line in lines:
-                self._print(line)
+            print(message, flush=True, file=self.stream)
 
-        self._base_last_display_lines = num_lines
+    @property
+    def is_active(self) -> bool:
+        """Check if parallel mode is active."""
+        return self._active
 
-    def _clear_inplace(self) -> None:
-        """Clear any in-place output that was displayed."""
-        if self._base_last_display_lines > 0 and _supports_color():
-            # Move cursor up N lines in one operation, then clear to end of screen
-            self.stream.write(f"\033[{self._base_last_display_lines}A\033[J")
-            self.stream.flush()
-        self._base_last_display_lines = 0
+    @property
+    def has_branches(self) -> bool:
+        """Check if branches are registered."""
+        return bool(self._branches)
 
-    def register_parallel_branches(self, branches: list[str]) -> None:
+    def register_branches(self, branches: list[str]) -> None:
         """Register parallel branches and initialize their display.
 
         Call this before entering parallel mode to set up the multi-branch display.
@@ -147,10 +135,10 @@ class ConsoleOutput:
         Args:
             branches: List of branch names in execution order
         """
-        self._parallel_branches = list(branches)
-        self._parallel_branch_index = {name: idx for idx, name in enumerate(branches)}
-        self._parallel_branch_done = dict.fromkeys(branches, False)
-        self._parallel_deferred_messages = []
+        self._branches = list(branches)
+        self._branch_index = {name: idx for idx, name in enumerate(branches)}
+        self._branch_done = dict.fromkeys(branches, False)
+        self._deferred_messages = []
 
         # In BASE mode, print initial branch layout
         if self.level == OutputLevel.BASE and _supports_color():
@@ -162,7 +150,7 @@ class ConsoleOutput:
                 self._print("")  # Message line 2 (empty initially)
                 self._print("")  # Blank line between branches
 
-    def _update_parallel_branch_line(self, branch: str, text: str, max_width: int = 100) -> None:
+    def update_branch_line(self, branch: str, text: str, max_width: int = 100) -> None:
         """Update a specific branch's message display area.
 
         Uses ANSI escape codes to move to the correct lines and update them.
@@ -173,25 +161,25 @@ class ConsoleOutput:
             text: Status text to display (can be multi-line or wrap)
             max_width: Maximum width per line before wrapping
         """
-        if not _supports_color() or branch not in self._parallel_branch_index:
+        if not _supports_color() or branch not in self._branch_index:
             return
 
         # Don't update if branch is already done
-        if self._parallel_branch_done.get(branch, False):
+        if self._branch_done.get(branch, False):
             return
 
-        with self._parallel_display_lock:
-            idx = self._parallel_branch_index[branch]
-            total_branches = len(self._parallel_branches)
+        with self._display_lock:
+            idx = self._branch_index[branch]
+            total_branches = len(self._branches)
 
             # Calculate total lines in the display area
-            total_lines = total_branches * self._parallel_lines_per_branch
+            total_lines = total_branches * self._lines_per_branch
 
             # Calculate the starting line for this branch's message area
-            # Each branch takes _parallel_lines_per_branch lines
+            # Each branch takes _lines_per_branch lines
             # Branch layout: header (line 0), message1 (line 1), message2 (line 2), blank (line 3)
             # We want to update lines 1 and 2 (the message lines)
-            branch_start_line = idx * self._parallel_lines_per_branch
+            branch_start_line = idx * self._lines_per_branch
             message_line_1 = branch_start_line + 1
             message_line_2 = branch_start_line + 2
 
@@ -235,25 +223,25 @@ class ConsoleOutput:
             self.stream.write("\033[u")
             self.stream.flush()
 
-    def mark_parallel_branch_done(self, branch: str, success: bool = True) -> None:
+    def mark_branch_done(self, branch: str, success: bool = True) -> None:
         """Mark a branch as completed with [Done] or [Failed] indicator.
 
         Args:
             branch: Branch name to mark as done
             success: Whether the branch completed successfully
         """
-        if not _supports_color() or branch not in self._parallel_branch_index:
+        if not _supports_color() or branch not in self._branch_index:
             return
 
-        with self._parallel_display_lock:
-            self._parallel_branch_done[branch] = True
+        with self._display_lock:
+            self._branch_done[branch] = True
 
-            idx = self._parallel_branch_index[branch]
-            total_branches = len(self._parallel_branches)
-            total_lines = total_branches * self._parallel_lines_per_branch
+            idx = self._branch_index[branch]
+            total_branches = len(self._branches)
+            total_lines = total_branches * self._lines_per_branch
 
             # Calculate the header line for this branch
-            branch_start_line = idx * self._parallel_lines_per_branch
+            branch_start_line = idx * self._lines_per_branch
             lines_up_to_header = total_lines - branch_start_line
 
             # Also clear the message lines
@@ -285,28 +273,28 @@ class ConsoleOutput:
             self.stream.write("\033[u")
             self.stream.flush()
 
-    def _clear_parallel_display(self) -> None:
+    def _clear_display(self) -> None:
         """Clear the parallel branch display area."""
-        if not self._parallel_branches or not _supports_color():
-            self._parallel_branches = []
-            self._parallel_branch_index = {}
-            self._parallel_branch_done = {}
+        if not self._branches or not _supports_color():
+            self._branches = []
+            self._branch_index = {}
+            self._branch_done = {}
             return
 
-        with self._parallel_display_lock:
-            total_lines = len(self._parallel_branches) * self._parallel_lines_per_branch
+        with self._display_lock:
+            total_lines = len(self._branches) * self._lines_per_branch
             # Move up and clear each line
             for _ in range(total_lines):
                 self.stream.write("\033[A\033[2K")  # Move up + clear entire line
             self.stream.flush()
 
-        self._parallel_branches = []
-        self._parallel_branch_index = {}
-        self._parallel_branch_done = {}
+        self._branches = []
+        self._branch_index = {}
+        self._branch_done = {}
 
-    def enter_parallel_mode(self) -> None:
-        """Enter parallel mode - disables streaming in BASE mode, enables queue-based streaming in ALL mode."""
-        self._parallel_mode = True
+    def enter(self) -> None:
+        """Enter parallel mode - enables queue-based streaming in ALL mode."""
+        self._active = True
         if self.level == OutputLevel.ALL:
             # Start message queue and consumer thread for real-time streaming
             self._message_queue = queue.Queue()
@@ -314,16 +302,16 @@ class ConsoleOutput:
             self._consumer_thread = threading.Thread(target=self._message_consumer, daemon=True)
             self._consumer_thread.start()
 
-    def exit_parallel_mode(self) -> None:
-        """Exit parallel mode - stops consumer thread and re-enables normal streaming."""
+    def exit(self) -> None:
+        """Exit parallel mode - stops consumer thread and flushes deferred messages."""
         # Clear parallel branch display in BASE mode and flush deferred messages
         if self.level == OutputLevel.BASE:
-            if self._parallel_branches:
-                self._clear_parallel_display()
+            if self._branches:
+                self._clear_display()
             # Print all deferred messages now
-            for msg in self._parallel_deferred_messages:
+            for msg in self._deferred_messages:
                 self._print(msg)
-            self._parallel_deferred_messages = []
+            self._deferred_messages = []
 
         # Signal consumer to stop using sentinel value (avoids race condition)
         self._consumer_running = False
@@ -335,9 +323,9 @@ class ConsoleOutput:
                 logger.warning("Consumer thread did not finish within timeout, some messages may be lost")
             self._consumer_thread = None
         self._message_queue = None
-        self._parallel_mode = False
+        self._active = False
 
-    def _defer_message(self, message: str) -> None:
+    def defer_message(self, message: str) -> None:
         """Defer a message to be printed after parallel mode exits.
 
         Thread-safe. Used in BASE mode to avoid breaking the parallel display.
@@ -345,10 +333,10 @@ class ConsoleOutput:
         Args:
             message: The formatted message to defer
         """
-        with self._parallel_display_lock:
-            self._parallel_deferred_messages.append(message)
+        with self._display_lock:
+            self._deferred_messages.append(message)
 
-    def set_parallel_branch(self, branch_name: str) -> None:
+    def set_branch(self, branch_name: str) -> None:
         """Set the current parallel branch name for message streaming.
 
         Uses thread-local storage to avoid conflicts between parallel threads.
@@ -363,20 +351,20 @@ class ConsoleOutput:
         self._thread_local.accumulated_model = None
         self._thread_local.base_accumulated_text = ""  # For BASE mode parallel display
 
-    def _get_thread_branch(self) -> str | None:
+    def get_current_branch(self) -> str | None:
         """Get the current thread's branch name."""
         return getattr(self._thread_local, "branch_name", None)
 
-    def _enqueue_current_message(self) -> None:
+    def enqueue_current_message(self) -> None:
         """Enqueue the current accumulated message for printing by the consumer thread."""
-        branch = self._get_thread_branch()
+        branch = self.get_current_branch()
         accumulated_text = getattr(self._thread_local, "accumulated_text", "")
         accumulated_role = getattr(self._thread_local, "accumulated_role", "")
         accumulated_model = getattr(self._thread_local, "accumulated_model", None)
 
         if (
             self.level == OutputLevel.ALL
-            and self._parallel_mode
+            and self._active
             and accumulated_text.strip()
             and accumulated_role
             and branch
@@ -451,18 +439,158 @@ class ConsoleOutput:
             for line in lines[1:]:
                 self._print(f"  {line}")
 
-    def flush_parallel_branch(self, branch_name: str) -> None:
-        """Flush any remaining messages for a branch.
-
-        With queue-based streaming, messages are printed in real-time.
-        This method is kept for compatibility but is now a no-op since
-        messages are printed immediately via the consumer thread.
+    def accumulate_text(self, text: str, role: str, model: str | None = None) -> None:
+        """Accumulate text for the current thread's message (ALL mode).
 
         Args:
-            branch_name: Name of the branch (unused)
+            text: Text to accumulate
+            role: Message role
+            model: Optional model name
         """
-        # No-op: messages are now streamed in real-time via the queue
+        current_role = getattr(self._thread_local, "accumulated_role", "")
+        current_text = getattr(self._thread_local, "accumulated_text", "")
+
+        # Detect role change - enqueue previous message before starting new one
+        if current_role and current_role != role and current_text.strip():
+            self.enqueue_current_message()
+            current_text = ""
+
+        # Accumulate text for current message in thread-local storage
+        self._thread_local.accumulated_text = current_text + text
+        self._thread_local.accumulated_role = role
+        if model:
+            self._thread_local.accumulated_model = model
+
+    def accumulate_base_text(self, text: str) -> str:
+        """Accumulate text for BASE mode display and return last line.
+
+        Args:
+            text: Text to accumulate
+
+        Returns:
+            The last line of accumulated text for display
+        """
+        current_text = getattr(self._thread_local, "base_accumulated_text", "")
+        self._thread_local.base_accumulated_text = current_text + text
+        accumulated = self._thread_local.base_accumulated_text.strip()
+        if accumulated:
+            lines = accumulated.split("\n")
+            return lines[-1]
+        return ""
+
+
+@dataclass
+class ConsoleOutput:
+    """Handles structured console output for workflows."""
+
+    level: OutputLevel = OutputLevel.BASE
+    stream: TextIO = sys.stdout
+    _base_accumulated_text: str = ""  # Accumulated text for BASE mode streaming
+    _base_last_display_lines: int = 0  # Track lines displayed for clearing
+    _parallel_handler: ParallelOutputHandler | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        """Initialize parallel handler after dataclass init."""
+        self._parallel_handler = ParallelOutputHandler(
+            stream=self.stream,
+            level=self.level,
+            _print_fn=lambda msg: print(msg, flush=True, file=self.stream),
+        )
+
+    def _print(self, message: str, end: str = "\n") -> None:
+        """Print message to stream."""
+        print(message, end=end, flush=True, file=self.stream)
+
+    def _print_inplace(self, message: str) -> None:
+        """Print message in-place, overwriting previous in-place output.
+
+        Uses ANSI escape sequences to clear previous lines and update display.
+        Falls back to showing a "[streaming...]" indicator if terminal doesn't
+        support ANSI escape sequences (e.g., Windows without VT100 support).
+
+        Args:
+            message: Message to display (can be multi-line)
+        """
+        # Prepare lines for display - show full message
+        lines = message.strip().split("\n")
+        num_lines = len(lines)
+
+        if _supports_color():
+            # Clear previous in-place lines by moving up N lines at once
+            # then clearing from cursor to end of screen
+            if self._base_last_display_lines > 0:
+                # Move cursor up N lines in one operation
+                self.stream.write(f"\033[{self._base_last_display_lines}A")
+                # Clear from cursor to end of screen (removes all old content below)
+                self.stream.write("\033[J")
+
+            # Write all lines in a single operation for atomicity
+            # This avoids issues with rapid line-by-line flushing on Windows
+            content = "\n".join(lines) + "\n"
+            self.stream.write(content)
+            self.stream.flush()
+        else:
+            # Fallback for non-ANSI terminals: show last line only with indicator
+            # This provides some feedback without cluttering the output
+            last_line = lines[-1] if lines else ""
+            truncated = last_line[:80] + "..." if len(last_line) > 80 else last_line
+            self._print(f"  ... {truncated}")
+
+        self._base_last_display_lines = num_lines
+
+    def _clear_inplace(self) -> None:
+        """Clear any in-place output that was displayed."""
+        if self._base_last_display_lines > 0 and _supports_color():
+            # Move cursor up N lines in one operation, then clear to end of screen
+            self.stream.write(f"\033[{self._base_last_display_lines}A\033[J")
+            self.stream.flush()
+        self._base_last_display_lines = 0
+
+    # Parallel mode delegation methods
+
+    def register_parallel_branches(self, branches: list[str]) -> None:
+        """Register parallel branches and initialize their display."""
+        if self._parallel_handler:
+            self._parallel_handler.register_branches(branches)
+
+    def enter_parallel_mode(self) -> None:
+        """Enter parallel mode."""
+        if self._parallel_handler:
+            self._parallel_handler.enter()
+
+    def exit_parallel_mode(self) -> None:
+        """Exit parallel mode."""
+        if self._parallel_handler:
+            self._parallel_handler.exit()
+
+    def set_parallel_branch(self, branch_name: str) -> None:
+        """Set the current parallel branch name for message streaming."""
+        if self._parallel_handler:
+            self._parallel_handler.set_branch(branch_name)
+
+    def flush_parallel_branch(self, branch_name: str) -> None:
+        """Flush any remaining messages for a branch (no-op, kept for compatibility)."""
         pass
+
+    def mark_parallel_branch_done(self, branch: str, success: bool = True) -> None:
+        """Mark a branch as completed."""
+        if self._parallel_handler:
+            self._parallel_handler.mark_branch_done(branch, success)
+
+    def _is_parallel_mode(self) -> bool:
+        """Check if parallel mode is active."""
+        return self._parallel_handler is not None and self._parallel_handler.is_active
+
+    def _should_defer_message(self) -> bool:
+        """Check if messages should be deferred (during parallel BASE mode)."""
+        if not self._parallel_handler:
+            return False
+        return self._parallel_handler.is_active and self.level == OutputLevel.BASE and self._parallel_handler.has_branches
+
+    def _defer_message(self, message: str) -> None:
+        """Defer a message to be printed after parallel mode exits."""
+        if self._parallel_handler:
+            self._parallel_handler.defer_message(message)
 
     # Workflow-level messages
 
@@ -519,7 +647,7 @@ class ConsoleOutput:
         """
         # In BASE mode (non-parallel), reset tracking state but don't clear display.
         # The streaming content stays visible, providing context for the completion.
-        if self.level == OutputLevel.BASE and not self._parallel_mode:
+        if self.level == OutputLevel.BASE and not self._is_parallel_mode():
             self._base_last_display_lines = 0
             self._base_accumulated_text = ""
 
@@ -539,7 +667,7 @@ class ConsoleOutput:
 
         if self._should_defer_message():
             # Mark the current branch as done
-            branch = self._get_thread_branch()
+            branch = self._parallel_handler.get_current_branch() if self._parallel_handler else None
             if branch:
                 self.mark_parallel_branch_done(branch)
             # Defer the completion message
@@ -552,7 +680,7 @@ class ConsoleOutput:
     def step_failed(self, step_name: str, error: str | None = None) -> None:
         """Print step failure with error details."""
         # In BASE mode (non-parallel), reset tracking state but don't clear display.
-        if self.level == OutputLevel.BASE and not self._parallel_mode:
+        if self.level == OutputLevel.BASE and not self._is_parallel_mode():
             self._base_last_display_lines = 0
             self._base_accumulated_text = ""
 
@@ -571,7 +699,7 @@ class ConsoleOutput:
 
         if self._should_defer_message():
             # Mark the current branch as failed
-            branch = self._get_thread_branch()
+            branch = self._parallel_handler.get_current_branch() if self._parallel_handler else None
             if branch:
                 self.mark_parallel_branch_done(branch, success=False)
             for line in lines:
@@ -607,7 +735,7 @@ class ConsoleOutput:
         In BASE mode, print header and reset in-place state so streaming appears below.
         """
         # In BASE mode (non-parallel), print header and reset in-place tracking
-        if self.level == OutputLevel.BASE and not self._parallel_mode:
+        if self.level == OutputLevel.BASE and not self._is_parallel_mode():
             # Reset in-place state so streaming doesn't clear the header
             self._base_last_display_lines = 0
             self._base_accumulated_text = ""
@@ -625,7 +753,7 @@ class ConsoleOutput:
         """
         # In BASE mode (non-parallel), don't clear - let content stay visible
         # The next ralph_iteration_start() will reset state and print below
-        if self.level == OutputLevel.BASE and not self._parallel_mode:
+        if self.level == OutputLevel.BASE and not self._is_parallel_mode():
             return
 
         # In ALL mode, show iteration summary
@@ -640,7 +768,7 @@ class ConsoleOutput:
         # In BASE mode (non-parallel), reset tracking state but don't clear display.
         # The streaming content stays visible, providing context for the completion.
         # Clearing is unreliable due to terminal line wrapping affecting cursor position.
-        if self.level == OutputLevel.BASE and not self._parallel_mode:
+        if self.level == OutputLevel.BASE and not self._is_parallel_mode():
             self._base_last_display_lines = 0
             self._base_accumulated_text = ""
 
@@ -651,7 +779,7 @@ class ConsoleOutput:
     def ralph_max_iterations(self, step_name: str, max_iterations: int) -> None:
         """Print Ralph loop max iterations reached."""
         # In BASE mode (non-parallel), reset tracking state but don't clear display.
-        if self.level == OutputLevel.BASE and not self._parallel_mode:
+        if self.level == OutputLevel.BASE and not self._is_parallel_mode():
             self._base_last_display_lines = 0
             self._base_accumulated_text = ""
 
@@ -660,10 +788,6 @@ class ConsoleOutput:
         self._print(f"{warn} {name} reached max iterations ({max_iterations})")
 
     # Generic messages
-
-    def _should_defer_message(self) -> bool:
-        """Check if messages should be deferred (during parallel BASE mode)."""
-        return self._parallel_mode and self.level == OutputLevel.BASE and self._parallel_branches
 
     def info(self, message: str) -> None:
         """Print info message."""
@@ -713,22 +837,9 @@ class ConsoleOutput:
             if not text or not text.strip():
                 return
 
-            # In parallel mode, accumulate messages and enqueue when complete
-            if self._parallel_mode:
-                # Get current thread's accumulated state
-                current_role = getattr(self._thread_local, "accumulated_role", "")
-                current_text = getattr(self._thread_local, "accumulated_text", "")
-
-                # Detect role change - enqueue previous message before starting new one
-                if current_role and current_role != role and current_text.strip():
-                    self._enqueue_current_message()
-                    current_text = ""  # Reset after enqueue (thread-local was reset)
-
-                # Accumulate text for current message in thread-local storage
-                self._thread_local.accumulated_text = current_text + text
-                self._thread_local.accumulated_role = role
-                if model:
-                    self._thread_local.accumulated_model = model
+            # In parallel mode, use handler to accumulate and queue messages
+            if self._is_parallel_mode() and self._parallel_handler:
+                self._parallel_handler.accumulate_text(text, role, model)
                 return
 
             # Format with role indicator
@@ -760,23 +871,20 @@ class ConsoleOutput:
                 # In BASE mode, skip user prompts - only show assistant output
                 return
 
-            # In parallel mode, update the branch's dedicated line
-            if self._parallel_mode:
-                branch = self._get_thread_branch()
-                if branch and self._parallel_branches:
-                    # Accumulate text in thread-local storage
-                    current_text = getattr(self._thread_local, "base_accumulated_text", "")
-                    self._thread_local.base_accumulated_text = current_text + text
-
-                    # Update the branch's display line with the last line of accumulated text
-                    accumulated = self._thread_local.base_accumulated_text.strip()
-                    if accumulated:
-                        lines = accumulated.split("\n")
-                        self._update_parallel_branch_line(branch, lines[-1])
+            # In parallel mode, update the branch's dedicated line via handler
+            if self._is_parallel_mode() and self._parallel_handler:
+                branch = self._parallel_handler.get_current_branch()
+                if branch and self._parallel_handler.has_branches:
+                    last_line = self._parallel_handler.accumulate_base_text(text)
+                    if last_line:
+                        self._parallel_handler.update_branch_line(branch, last_line)
                 return
 
-            # Accumulate the text
+            # Accumulate the text (with memory limit)
             self._base_accumulated_text += text
+            if len(self._base_accumulated_text) > _MAX_ACCUMULATED_TEXT:
+                # Truncate from the beginning, keeping the most recent content
+                self._base_accumulated_text = self._base_accumulated_text[-_MAX_ACCUMULATED_TEXT:]
 
             # Show current message in-place (will be cleared when step completes)
             if self._base_accumulated_text.strip():
@@ -803,8 +911,8 @@ class ConsoleOutput:
         # The display will be cleared by step_complete() when it shows the summary
 
         # In ALL mode with parallel, enqueue the current accumulated message for printing
-        if self.level == OutputLevel.ALL and self._parallel_mode:
-            self._enqueue_current_message()
+        if self.level == OutputLevel.ALL and self._is_parallel_mode() and self._parallel_handler:
+            self._parallel_handler.enqueue_current_message()
 
         # Reset accumulated text for next stream (preserves _base_last_display_lines for clearing later)
         self._base_accumulated_text = ""
