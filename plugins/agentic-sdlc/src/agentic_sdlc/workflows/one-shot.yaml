@@ -20,14 +20,14 @@ variables:
   - name: create_pr
     type: boolean
     required: false
-    default: true
+    default: false
     description: Whether to create a PR
 
 steps:
   - name: create-branch
     type: prompt
     model: haiku
-    prompt: /agentic-sdlc:git-branch {{ variables.type }}
+    prompt: /agentic-sdlc:git-branch {{ variables.type }} {{ variables.task }}
 
   - name: execute-task
     type: prompt

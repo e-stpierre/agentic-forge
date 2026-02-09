@@ -6,7 +6,8 @@ settings:
   max-retry: 3
   timeout-minutes: 120
   track-progress: true
-  bypass-permissions: true
+  bypass-permissions: false
+  terminal-output: base
   git:
     enabled: true
     auto-commit: true
