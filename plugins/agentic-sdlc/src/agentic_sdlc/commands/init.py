@@ -18,7 +18,7 @@ def get_bundled_workflows_dir() -> Path:
 
 
 def cmd_init(args: Namespace) -> None:
-    """Copy bundled workflow templates to local project."""
+    """Copy bundled workflow templates and config to local project."""
     bundled_dir = get_bundled_workflows_dir()
     if not bundled_dir.exists():
         print("Error: Bundled workflows directory not found.", file=sys.stderr)
@@ -64,9 +64,27 @@ def cmd_init(args: Namespace) -> None:
             print(f"  - {name}")
         print("\nUse --force to overwrite existing files.")
 
+    # Create config.json next to workflows
+    _init_config(target_dir.parent, force=args.force)
+
     if copied:
         print("\nYou can now run workflows with:")
         print("  agentic-sdlc run agentic/workflows/<workflow>.yaml")
+
+
+def _init_config(agentic_dir: Path, *, force: bool = False) -> None:
+    """Create config.json in the agentic directory if it doesn't exist."""
+    from agentic_sdlc.config import get_default_config
+
+    config_path = agentic_dir / "config.json"
+    if config_path.exists() and not force:
+        print(f"\nConfig already exists: {config_path}")
+        return
+
+    config = get_default_config()
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+    print(f"\nCreated config: {config_path}")
 
 
 def cmd_configure(args: Namespace) -> None:
