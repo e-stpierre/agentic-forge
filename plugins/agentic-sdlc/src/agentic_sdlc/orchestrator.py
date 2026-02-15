@@ -131,7 +131,11 @@ class WorkflowOrchestrator:
 
         if resume_progress:
             progress = resume_progress
-            progress.variables.update(variables)
+            merged = dict(progress.variables)
+            merged.update(variables)
+            progress.variables = merged
+            if not progress.workflow_file and workflow_file:
+                progress.workflow_file = workflow_file
         else:
             progress = self._init_progress(workflow, variables, from_step, workflow_file=workflow_file)
         logger = WorkflowLogger(progress.workflow_id, self.repo_root)

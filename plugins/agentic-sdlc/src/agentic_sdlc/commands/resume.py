@@ -78,6 +78,7 @@ def cmd_resume(args: Namespace) -> None:
         result = executor.run(
             workflow=workflow,
             terminal_output=terminal_output,
+            workflow_file=str(workflow_path.resolve()),
             resume_progress=progress,
         )
         print(f"\nWorkflow {result.status}: {result.workflow_id}")

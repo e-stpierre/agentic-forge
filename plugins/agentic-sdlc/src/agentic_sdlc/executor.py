@@ -111,19 +111,25 @@ class WorkflowExecutor:
         output_level = OutputLevel.ALL if terminal_output == "all" else OutputLevel.BASE
         console = ConsoleOutput(level=output_level)
 
-        for var in workflow.variables:
-            if var.name not in variables:
-                if var.required and var.default is None:
-                    raise ValueError(f"Missing required variable: {var.name}")
-                variables[var.name] = var.default
-
         if resume_progress:
             # Reuse existing progress (already prepared by prepare_for_resume)
             progress = resume_progress
-            # Merge variables: keep existing, overlay any new ones
-            progress.variables.update(variables)
+            # Seed variables from stored progress, then overlay any new CLI vars
+            merged = dict(progress.variables)
+            merged.update(variables)
+            variables = merged
+            progress.variables = variables
             workflow_id = progress.workflow_id
+            # Backfill workflow_file if it was empty (pre-upgrade progress)
+            if not progress.workflow_file and workflow_file:
+                progress.workflow_file = workflow_file
         else:
+            for var in workflow.variables:
+                if var.name not in variables:
+                    if var.required and var.default is None:
+                        raise ValueError(f"Missing required variable: {var.name}")
+                    variables[var.name] = var.default
+
             workflow_id = generate_workflow_id(workflow.name)
             step_names = [s.name for s in workflow.steps]
             progress = create_progress(workflow_id, workflow.name, step_names, variables, workflow_file=workflow_file)
