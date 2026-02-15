@@ -26,7 +26,7 @@ variables:
   - name: max_iterations
     type: number
     required: false
-    default: 5
+    default: 25
     description: Maximum iterations before stopping
 
 steps:
