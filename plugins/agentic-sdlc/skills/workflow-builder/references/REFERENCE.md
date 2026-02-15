@@ -5,14 +5,14 @@ Complete reference for all agentic-sdlc workflow YAML properties.
 ## Top-Level Structure
 
 ```yaml
-name: workflow-name        # Required. Unique identifier (kebab-case)
-version: "1.0"             # Required. Schema version (always "1.0")
-description: |             # Optional. Human-readable description
+name: workflow-name # Required. Unique identifier (kebab-case)
+version: "1.0" # Required. Schema version (always "1.0")
+description: | # Optional. Human-readable description
   What this workflow does
-settings: {}               # Optional. Workflow configuration
-variables: []              # Optional. Input parameters
-steps: []                  # Required. Workflow steps (at least one)
-outputs: []                # Optional. Output artifacts
+settings: {} # Optional. Workflow configuration
+variables: [] # Optional. Input parameters
+steps: [] # Required. Workflow steps (at least one)
+outputs: [] # Optional. Output artifacts
 ```
 
 ## Settings
@@ -21,29 +21,29 @@ All settings are optional with sensible defaults.
 
 ### Global Settings
 
-| Key | Type | Default | Valid Values | Description |
-|---|---|---|---|---|
-| `max-retry` | int | `3` | 0+ | Max retry attempts for failed steps |
-| `timeout-minutes` | int | `60` | 1+ | Max time for entire workflow (minutes) |
-| `track-progress` | bool | `true` | true/false | Track progress in progress.json |
-| `autofix` | string | `"none"` | none, minor, major, critical | Auto-fix severity level |
-| `terminal-output` | string | `"base"` | base, all | Output mode: base (last message) or all (stream) |
-| `bypass-permissions` | bool | `false` | true/false | Bypass tool permission prompts |
-| `strict-mode` | bool | `false` | true/false | Fail on undefined template variables |
-| `model` | string | `"sonnet"` | sonnet, haiku, opus | Default model for all steps |
-| `required-tools` | list | `[]` | Tool names | Tools Claude can use without prompting |
+| Key                  | Type   | Default    | Valid Values                 | Description                                      |
+| -------------------- | ------ | ---------- | ---------------------------- | ------------------------------------------------ |
+| `max-retry`          | int    | `3`        | 0+                           | Max retry attempts for failed steps              |
+| `timeout-minutes`    | int    | `60`       | 1+                           | Max time for entire workflow (minutes)           |
+| `track-progress`     | bool   | `true`     | true/false                   | Track progress in progress.json                  |
+| `autofix`            | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                          |
+| `terminal-output`    | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream) |
+| `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts                   |
+| `strict-mode`        | bool   | `false`    | true/false                   | Fail on undefined template variables             |
+| `model`              | string | `"sonnet"` | sonnet, haiku, opus          | Default model for all steps                      |
+| `required-tools`     | list   | `[]`       | Tool names                   | Tools Claude can use without prompting           |
 
 ### Git Settings
 
 Nested under `settings.git`:
 
-| Key | Type | Default | Valid Values | Description |
-|---|---|---|---|---|
-| `enabled` | bool | `false` | true/false | Enable git operations |
-| `worktree` | bool | `false` | true/false | Use worktrees for parallel steps |
-| `auto-commit` | bool | `true` | true/false | Auto-commit after each step |
-| `auto-pr` | bool | `true` | true/false | Auto-create PR on completion |
-| `branch-prefix` | string | `"agentic"` | any string | Prefix for branch names |
+| Key             | Type   | Default     | Valid Values | Description                      |
+| --------------- | ------ | ----------- | ------------ | -------------------------------- |
+| `enabled`       | bool   | `false`     | true/false   | Enable git operations            |
+| `worktree`      | bool   | `false`     | true/false   | Use worktrees for parallel steps |
+| `auto-commit`   | bool   | `true`      | true/false   | Auto-commit after each step      |
+| `auto-pr`       | bool   | `true`      | true/false   | Auto-create PR on completion     |
+| `branch-prefix` | string | `"agentic"` | any string   | Prefix for branch names          |
 
 ```yaml
 settings:
@@ -59,13 +59,13 @@ settings:
 
 Define input parameters for the workflow. Passed via `--var "name=value"` on the CLI.
 
-| Key | Required | Type | Default | Description |
-|---|---|---|---|---|
-| `name` | Yes | string | - | Variable identifier (snake_case) |
-| `type` | No | string | `"string"` | string, number, boolean |
-| `required` | No | bool | `true` | Whether the variable must be provided |
-| `default` | No | any | `null` | Default value if not provided |
-| `description` | No | string | `""` | Human-readable description |
+| Key           | Required | Type   | Default    | Description                           |
+| ------------- | -------- | ------ | ---------- | ------------------------------------- |
+| `name`        | Yes      | string | -          | Variable identifier (snake_case)      |
+| `type`        | No       | string | `"string"` | string, number, boolean               |
+| `required`    | No       | bool   | `true`     | Whether the variable must be provided |
+| `default`     | No       | any    | `null`     | Default value if not provided         |
+| `description` | No       | string | `""`       | Human-readable description            |
 
 ```yaml
 variables:
@@ -95,16 +95,16 @@ Reference in templates: `{{ variables.task }}`, `{{ variables.max_iterations }}`
 
 These properties apply to all step types:
 
-| Key | Type | Default | Valid Values | Description |
-|---|---|---|---|---|
-| `name` | string | **required** | kebab-case | Unique step identifier |
-| `type` | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type |
-| `model` | string | null | sonnet, haiku, opus | Override workflow model |
-| `timeout-minutes` | int | null | 1+ | Override workflow timeout |
-| `max-retry` | int | null | 0+ | Override workflow max-retry |
-| `on-error` | string | `"retry"` | retry, skip, fail | Error handling strategy |
-| `checkpoint` | bool | `false` | true/false | Create checkpoint after step |
-| `depends-on` | string | null | step name | Step dependency |
+| Key               | Type   | Default      | Valid Values                                                      | Description                  |
+| ----------------- | ------ | ------------ | ----------------------------------------------------------------- | ---------------------------- |
+| `name`            | string | **required** | kebab-case                                                        | Unique step identifier       |
+| `type`            | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type                    |
+| `model`           | string | null         | sonnet, haiku, opus                                               | Override workflow model      |
+| `timeout-minutes` | int    | null         | 1+                                                                | Override workflow timeout    |
+| `max-retry`       | int    | null         | 0+                                                                | Override workflow max-retry  |
+| `on-error`        | string | `"retry"`    | retry, skip, fail                                                 | Error handling strategy      |
+| `checkpoint`      | bool   | `false`      | true/false                                                        | Create checkpoint after step |
+| `depends-on`      | string | null         | step name                                                         | Step dependency              |
 
 ### prompt
 
@@ -112,10 +112,10 @@ Execute a prompt in a Claude session. The most common step type.
 
 **Specific properties:**
 
-| Key | Type | Required | Description |
-|---|---|---|---|
-| `prompt` | string | Yes | The prompt text, skill invocation, or template |
-| `agent` | string | No | Path to an agent file to load before the prompt |
+| Key      | Type   | Required | Description                                     |
+| -------- | ------ | -------- | ----------------------------------------------- |
+| `prompt` | string | Yes      | The prompt text, skill invocation, or template  |
+| `agent`  | string | No       | Path to an agent file to load before the prompt |
 
 ```yaml
 # Simple prompt
@@ -140,9 +140,9 @@ Execute nested steps sequentially. Stops on first failure.
 
 **Specific properties:**
 
-| Key | Type | Required | Description |
-|---|---|---|---|
-| `steps` | list | Yes | List of nested step definitions |
+| Key     | Type | Required | Description                     |
+| ------- | ---- | -------- | ------------------------------- |
+| `steps` | list | Yes      | List of nested step definitions |
 
 ```yaml
 - name: setup-and-build
@@ -162,22 +162,23 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
 
 **Specific properties:**
 
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `steps` | list | **required** | List of nested step definitions |
-| `merge-strategy` | string | `"wait-all"` | Only "wait-all" supported |
-| `merge-mode` | string | `"independent"` | "independent" (no merge) or "merge" (merge branches) |
-| `git` | object | null | Step-level git config (see below) |
+| Key              | Type   | Default         | Description                                          |
+| ---------------- | ------ | --------------- | ---------------------------------------------------- |
+| `steps`          | list   | **required**    | List of nested step definitions                      |
+| `merge-strategy` | string | `"wait-all"`    | Only "wait-all" supported                            |
+| `merge-mode`     | string | `"independent"` | "independent" (no merge) or "merge" (merge branches) |
+| `git`            | object | null            | Step-level git config (see below)                    |
 
 **Step-level git (parallel only):**
 
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `worktree` | bool | `false` | Run each step in separate worktree |
-| `branch-prefix` | string | `"agentic"` | Prefix for parallel branch names |
-| `auto-pr` | bool | `false` | Auto-create PR per branch |
+| Key             | Type   | Default     | Description                        |
+| --------------- | ------ | ----------- | ---------------------------------- |
+| `worktree`      | bool   | `false`     | Run each step in separate worktree |
+| `branch-prefix` | string | `"agentic"` | Prefix for parallel branch names   |
+| `auto-pr`       | bool   | `false`     | Auto-create PR per branch          |
 
 **Constraints:**
+
 - Nested parallel steps are NOT allowed (parallel inside parallel)
 - When `merge-mode: merge`, branches are merged back to the parent branch after all complete
 - When `merge-mode: independent`, each branch stays separate
@@ -207,13 +208,14 @@ Branch execution based on a Jinja2 condition expression.
 
 **Specific properties:**
 
-| Key | Type | Required | Description |
-|---|---|---|---|
-| `condition` | string | Yes | Jinja2 expression evaluating to true/false |
-| `then` | list | Yes | Steps to execute if condition is true |
-| `else` | list | No | Steps to execute if condition is false |
+| Key         | Type   | Required | Description                                |
+| ----------- | ------ | -------- | ------------------------------------------ |
+| `condition` | string | Yes      | Jinja2 expression evaluating to true/false |
+| `then`      | list   | Yes      | Steps to execute if condition is true      |
+| `else`      | list   | No       | Steps to execute if condition is false     |
 
 **Condition evaluation supports:**
+
 - Variable checks: `{{ variables.create_pr }}`
 - Equality: `{{ variables.severity == 'major' }}`
 - Inequality: `{{ variables.mode != 'skip' }}`
@@ -241,31 +243,34 @@ Iterative prompt execution with completion detection. Each iteration runs in a f
 
 **Specific properties:**
 
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `prompt` | string | **required** | Prompt template for each iteration |
-| `max-iterations` | int or string | `5` | Maximum iterations (supports variable templates) |
-| `completion-promise` | string | null | Text to match in completion JSON `promise` field |
+| Key                  | Type          | Default      | Description                                      |
+| -------------------- | ------------- | ------------ | ------------------------------------------------ |
+| `prompt`             | string        | **required** | Prompt template for each iteration               |
+| `max-iterations`     | int or string | `5`          | Maximum iterations (supports variable templates) |
+| `completion-promise` | string        | null         | Text to match in completion JSON `promise` field |
 
 **How it works:**
+
 1. Each iteration runs in a fresh Claude session (no context accumulation)
 2. State persists in `agentic/outputs/{workflow-id}/ralph-{step-name}.md`
 3. Loop exits when Claude outputs completion JSON or max iterations reached
 4. Additional template variables: `{{ iteration }}` (current), `{{ max_iterations }}` (max)
 
 **Completion JSON format** (Claude must output this when done):
+
 ```json
-{"ralph_complete": true, "promise": "YOUR_PROMISE_TEXT"}
+{ "ralph_complete": true, "promise": "YOUR_PROMISE_TEXT" }
 ```
 
 **Failure signal** (Claude outputs this if stuck):
+
 ```json
-{"ralph_complete": false}
+{ "ralph_complete": false }
 ```
 
 The `completion-promise` setting must match the `promise` value in Claude's JSON output.
 
-```yaml
+````yaml
 - name: implement-milestones
   type: ralph-loop
   prompt: |
@@ -281,7 +286,7 @@ The `completion-promise` setting must match the `promise` value in Claude's JSON
   model: sonnet
   checkpoint: true
   timeout-minutes: 120
-```
+````
 
 ### wait-for-human
 
@@ -289,12 +294,12 @@ Pause workflow execution and wait for human input via CLI.
 
 **Specific properties:**
 
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `message` | string | **required** | Message displayed to the human |
-| `polling-interval` | int | `15` | Seconds between input checks |
-| `on-timeout` | string | `"abort"` | "abort" (stop workflow) or "continue" (proceed) |
-| `timeout-minutes` | int | `5` | Minutes to wait before timeout action |
+| Key                | Type   | Default      | Description                                     |
+| ------------------ | ------ | ------------ | ----------------------------------------------- |
+| `message`          | string | **required** | Message displayed to the human                  |
+| `polling-interval` | int    | `15`         | Seconds between input checks                    |
+| `on-timeout`       | string | `"abort"`    | "abort" (stop workflow) or "continue" (proceed) |
+| `timeout-minutes`  | int    | `5`          | Minutes to wait before timeout action           |
 
 Human provides input via: `agentic-sdlc input <workflow-id> "response"`
 
@@ -315,29 +320,29 @@ Workflows use Jinja2 for dynamic content in prompts, conditions, and output path
 
 ### Built-in Variables
 
-| Variable | Description |
-|---|---|
-| `{{ workflow_id }}` | Unique workflow execution ID |
-| `{{ workflow_name }}` | Workflow name from YAML |
-| `{{ variables.<name> }}` | User-defined variable |
-| `{{ outputs.<step>.<field> }}` | Output from a previous step |
-| `{{ iteration }}` | Current ralph-loop iteration (1-based) |
-| `{{ max_iterations }}` | Max iterations for ralph-loop |
+| Variable                       | Description                            |
+| ------------------------------ | -------------------------------------- |
+| `{{ workflow_id }}`            | Unique workflow execution ID           |
+| `{{ workflow_name }}`          | Workflow name from YAML                |
+| `{{ variables.<name> }}`       | User-defined variable                  |
+| `{{ outputs.<step>.<field> }}` | Output from a previous step            |
+| `{{ iteration }}`              | Current ralph-loop iteration (1-based) |
+| `{{ max_iterations }}`         | Max iterations for ralph-loop          |
 
 ### Jinja2 Filters
 
-| Filter | Example | Description |
-|---|---|---|
-| `length` | `{{ list \| length }}` | Count items |
-| `first` | `{{ list \| first }}` | First item |
-| `last` | `{{ list \| last }}` | Last item |
-| `upper` | `{{ text \| upper }}` | Uppercase |
-| `lower` | `{{ text \| lower }}` | Lowercase |
-| `replace` | `{{ text \| replace('old', 'new') }}` | String replace |
-| `tojson` | `{{ data \| tojson }}` | Convert to JSON |
-| `tojson(indent=2)` | `{{ data \| tojson(indent=2) }}` | Pretty JSON |
-| `selectattr` | `{{ items \| selectattr('key', 'eq', 'val') }}` | Filter by attribute |
-| `rejectattr` | `{{ items \| rejectattr('done', 'true') }}` | Reject by attribute |
+| Filter             | Example                                         | Description         |
+| ------------------ | ----------------------------------------------- | ------------------- |
+| `length`           | `{{ list \| length }}`                          | Count items         |
+| `first`            | `{{ list \| first }}`                           | First item          |
+| `last`             | `{{ list \| last }}`                            | Last item           |
+| `upper`            | `{{ text \| upper }}`                           | Uppercase           |
+| `lower`            | `{{ text \| lower }}`                           | Lowercase           |
+| `replace`          | `{{ text \| replace('old', 'new') }}`           | String replace      |
+| `tojson`           | `{{ data \| tojson }}`                          | Convert to JSON     |
+| `tojson(indent=2)` | `{{ data \| tojson(indent=2) }}`                | Pretty JSON         |
+| `selectattr`       | `{{ items \| selectattr('key', 'eq', 'val') }}` | Filter by attribute |
+| `rejectattr`       | `{{ items \| rejectattr('done', 'true') }}`     | Reject by attribute |
 
 ### Conditionals and Loops in Templates
 
@@ -363,14 +368,15 @@ prompt: |
 
 Generate files when the workflow completes or fails.
 
-| Key | Required | Type | Default | Description |
-|---|---|---|---|---|
-| `name` | Yes | string | - | Output identifier |
-| `template` | Yes | string | - | Jinja2 template file path |
-| `path` | Yes | string | - | Output file path (supports templates) |
-| `when` | No | string | `"completed"` | "completed" or "failed" |
+| Key        | Required | Type   | Default       | Description                           |
+| ---------- | -------- | ------ | ------------- | ------------------------------------- |
+| `name`     | Yes      | string | -             | Output identifier                     |
+| `template` | Yes      | string | -             | Jinja2 template file path             |
+| `path`     | Yes      | string | -             | Output file path (supports templates) |
+| `when`     | No       | string | `"completed"` | "completed" or "failed"               |
 
 Template resolution order:
+
 1. Workflow directory (same directory as the YAML file)
 2. `agentic/templates/`
 3. Bundled plugin templates
@@ -426,40 +432,41 @@ agentic-sdlc configure
 
 Always use fully qualified names in workflows:
 
-| Skill | Description |
-|---|---|
-| `/agentic-sdlc:sdlc-plan` | Generate implementation plan |
-| `/agentic-sdlc:sdlc-review` | Review implementation quality |
-| `/agentic-sdlc:analyze bug` | Find bugs and logic errors |
-| `/agentic-sdlc:analyze debt` | Identify technical debt |
-| `/agentic-sdlc:analyze doc` | Check documentation |
-| `/agentic-sdlc:analyze security` | Security scan |
-| `/agentic-sdlc:analyze style` | Code style check |
-| `/agentic-sdlc:git-branch` | Create git branch |
-| `/agentic-sdlc:git-commit` | Create commit |
-| `/agentic-sdlc:git-pr` | Create pull request |
-| `/agentic-sdlc:orchestrate` | Workflow state evaluation |
-| `/agentic-sdlc:add-improvement` | Track improvements |
+| Skill                            | Description                   |
+| -------------------------------- | ----------------------------- |
+| `/agentic-sdlc:sdlc-plan`        | Generate implementation plan  |
+| `/agentic-sdlc:sdlc-review`      | Review implementation quality |
+| `/agentic-sdlc:analyze bug`      | Find bugs and logic errors    |
+| `/agentic-sdlc:analyze debt`     | Identify technical debt       |
+| `/agentic-sdlc:analyze doc`      | Check documentation           |
+| `/agentic-sdlc:analyze security` | Security scan                 |
+| `/agentic-sdlc:analyze style`    | Code style check              |
+| `/agentic-sdlc:git-branch`       | Create git branch             |
+| `/agentic-sdlc:git-commit`       | Create commit                 |
+| `/agentic-sdlc:git-pr`           | Create pull request           |
+| `/agentic-sdlc:orchestrate`      | Workflow state evaluation     |
+| `/agentic-sdlc:add-improvement`  | Track improvements            |
 
 ## Bundled Workflows
 
 Available via `agentic-sdlc init` or `agentic-sdlc run <name>`:
 
-| Workflow | Description |
-|---|---|
-| `demo` | Validation workflow for installation testing |
-| `one-shot` | Complete a single task with optional PR |
-| `plan-build-review` | Full SDLC: plan -> implement -> review -> fix -> PR |
-| `ralph-loop` | Generic iterative loop for any task |
-| `analyze-codebase` | Parallel analysis (5 types) with optional autofix, independent branches |
-| `analyze-codebase-merge` | Parallel analysis with autofix, branch merge, validation, and PR |
-| `analyze-single` | Single analysis type with optional autofix |
+| Workflow                 | Description                                                             |
+| ------------------------ | ----------------------------------------------------------------------- |
+| `demo`                   | Validation workflow for installation testing                            |
+| `one-shot`               | Complete a single task with optional PR                                 |
+| `plan-build-review`      | Full SDLC: plan -> implement -> review -> fix -> PR                     |
+| `ralph-loop`             | Generic iterative loop for any task                                     |
+| `analyze-codebase`       | Parallel analysis (5 types) with optional autofix, independent branches |
+| `analyze-codebase-merge` | Parallel analysis with autofix, branch merge, validation, and PR        |
+| `analyze-single`         | Single analysis type with optional autofix                              |
 
 ## Validation Checklist
 
 When validating a workflow, check for these issues:
 
 **Errors (workflow will fail):**
+
 - Missing `name` field
 - Missing `steps` field or empty steps list
 - Invalid step type (not one of: prompt, serial, parallel, conditional, ralph-loop, wait-for-human)
@@ -471,6 +478,7 @@ When validating a workflow, check for these issues:
 - Required variable without default and not provided at runtime
 
 **Warnings (may cause issues):**
+
 - Variable referenced in templates but not defined in `variables` section
 - `completion-promise` missing on ralph-loop (loop will only stop at max-iterations)
 - No `timeout-minutes` on long-running steps

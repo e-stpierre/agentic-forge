@@ -13,6 +13,6 @@
     "MD060": false // Table column style
   },
   "globs": ["**/*.md"],
-  "ignores": ["node_modules", ".git"],
+  "ignores": ["agentic", "node_modules", ".git"],
   "fix": true
 }

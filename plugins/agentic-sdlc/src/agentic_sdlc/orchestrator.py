@@ -44,6 +44,7 @@ from agentic_sdlc.ralph_loop import (
     create_ralph_state,
     deactivate_ralph_state,
     detect_completion_promise,
+    load_ralph_state,
     update_ralph_iteration,
 )
 from agentic_sdlc.renderer import TemplateRenderer
@@ -107,6 +108,8 @@ class WorkflowOrchestrator:
         variables: dict[str, Any] | None = None,
         from_step: str | None = None,
         terminal_output: str = "base",
+        workflow_file: str = "",
+        resume_progress: WorkflowProgress | None = None,
     ) -> WorkflowProgress:
         """Run a workflow with orchestration loop.
 
@@ -115,6 +118,8 @@ class WorkflowOrchestrator:
             variables: Workflow variables
             from_step: Resume from specific step
             terminal_output: Output mode (base or all)
+            workflow_file: Absolute path to the source workflow YAML file
+            resume_progress: Existing progress to resume (reuses workflow_id)
         """
         prune_orphaned(self.repo_root)
 
@@ -124,7 +129,11 @@ class WorkflowOrchestrator:
         output_level = OutputLevel.ALL if terminal_output == "all" else OutputLevel.BASE
         console = ConsoleOutput(level=output_level)
 
-        progress = self._init_progress(workflow, variables, from_step)
+        if resume_progress:
+            progress = resume_progress
+            progress.variables.update(variables)
+        else:
+            progress = self._init_progress(workflow, variables, from_step, workflow_file=workflow_file)
         logger = WorkflowLogger(progress.workflow_id, self.repo_root)
 
         logger.info("orchestrator", f"Starting workflow: {workflow.name}")
@@ -179,6 +188,7 @@ class WorkflowOrchestrator:
         workflow: WorkflowDefinition,
         variables: dict[str, Any],
         from_step: str | None,
+        workflow_file: str = "",
     ) -> WorkflowProgress:
         """Initialize or resume progress document."""
         workflow_id = generate_workflow_id(workflow.name)
@@ -190,7 +200,7 @@ class WorkflowOrchestrator:
                     raise ValueError(f"Missing required variable: {var.name}")
                 variables[var.name] = var.default
 
-        progress = create_progress(workflow_id, workflow.name, step_names, variables)
+        progress = create_progress(workflow_id, workflow.name, step_names, variables, workflow_file=workflow_file)
 
         if from_step:
             skip = True
@@ -519,15 +529,21 @@ class WorkflowOrchestrator:
         if self.renderer.has_variables(prompt):
             prompt = self.renderer.render_string(prompt, context)
 
-        # Create state file for tracking/resuming
-        state = create_ralph_state(
-            workflow_id=progress.workflow_id,
-            step_name=step.name,
-            prompt=prompt,
-            max_iterations=max_iterations,
-            completion_promise=completion_promise,
-            repo_root=self.repo_root,
-        )
+        # Check for existing state to resume from, otherwise create fresh
+        existing_state = load_ralph_state(progress.workflow_id, step.name, self.repo_root)
+        if existing_state and existing_state.active:
+            state = existing_state
+            logger.info(step.name, f"Resuming Ralph loop from iteration {state.iteration}")
+            console.info(f"Resuming Ralph loop from iteration {state.iteration}")
+        else:
+            state = create_ralph_state(
+                workflow_id=progress.workflow_id,
+                step_name=step.name,
+                prompt=prompt,
+                max_iterations=max_iterations,
+                completion_promise=completion_promise,
+                repo_root=self.repo_root,
+            )
 
         print_output = console.level == OutputLevel.ALL
         final_output = ""

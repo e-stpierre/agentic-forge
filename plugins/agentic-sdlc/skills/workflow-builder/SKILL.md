@@ -44,6 +44,7 @@ Create, update, explain, validate, and debug agentic-sdlc YAML workflows. This s
 ### Operation Modes
 
 **Create** - Generate a complete workflow YAML from a description:
+
 1. Ask clarifying questions if the request is ambiguous
 2. Choose appropriate step types for the task
 3. Define variables for configurable values
@@ -51,23 +52,27 @@ Create, update, explain, validate, and debug agentic-sdlc YAML workflows. This s
 5. Write the YAML file to the requested location (default: project root or `agentic/workflows/`)
 
 **Update** - Modify an existing workflow YAML:
+
 1. Read the existing workflow file
 2. Understand the current structure
 3. Apply the requested changes
 4. Preserve comments and formatting where possible
 
 **Explain** - Answer questions about workflow features:
+
 1. Reference the schema to provide accurate information
 2. Include examples from the reference workflow
 3. Explain defaults and valid values
 
 **Validate** - Check a workflow YAML for correctness:
+
 1. Read the workflow file
 2. Check against the schema (required fields, valid types, valid values)
 3. Report issues with specific field references
 4. Suggest fixes for each issue found
 
 **Debug** - Help troubleshoot workflow execution issues:
+
 1. Read the workflow YAML and any error output
 2. Check for common issues (undefined variables, incorrect conditions, missing fields)
 3. Check `agentic/outputs/<workflow-id>/progress.json` if available
@@ -75,22 +80,22 @@ Create, update, explain, validate, and debug agentic-sdlc YAML workflows. This s
 
 ### Step Type Selection Guide
 
-| Step Type | Use When |
-|---|---|
-| `prompt` | Single task, skill invocation, or simple operation |
-| `serial` | Multiple tasks that must run in sequence |
-| `parallel` | Independent tasks that can run concurrently |
-| `conditional` | Branching logic based on variables or outputs |
-| `ralph-loop` | Iterative work with unknown iteration count |
-| `wait-for-human` | Pause for human review, approval, or input |
+| Step Type        | Use When                                           |
+| ---------------- | -------------------------------------------------- |
+| `prompt`         | Single task, skill invocation, or simple operation |
+| `serial`         | Multiple tasks that must run in sequence           |
+| `parallel`       | Independent tasks that can run concurrently        |
+| `conditional`    | Branching logic based on variables or outputs      |
+| `ralph-loop`     | Iterative work with unknown iteration count        |
+| `wait-for-human` | Pause for human review, approval, or input         |
 
 ### Model Selection Strategy
 
-| Model | Best For |
-|---|---|
-| `haiku` | Quick tasks: validation, formatting, small analysis |
-| `sonnet` | Default: implementation, review, planning |
-| `opus` | Complex reasoning: architecture, large refactors |
+| Model    | Best For                                            |
+| -------- | --------------------------------------------------- |
+| `haiku`  | Quick tasks: validation, formatting, small analysis |
+| `sonnet` | Default: implementation, review, planning           |
+| `opus`   | Complex reasoning: architecture, large refactors    |
 
 Priority: step `model` > `settings.model` > config default > `sonnet`
 
@@ -106,14 +111,14 @@ Priority: step `model` > `settings.model` > config default > `sonnet`
 
 ### Common Debugging Issues
 
-| Symptom | Likely Cause | Fix |
-|---|---|---|
-| "Missing required variable" | Variable not passed via `--var` | Add `--var "name=value"` to CLI or set `default` |
-| Conditional always takes else | Condition expression evaluates to falsy | Check Jinja2 expression syntax and variable names |
-| Ralph loop never completes | Completion JSON not output or promise mismatch | Verify `completion-promise` matches the `promise` field in JSON |
-| Template variable shows as `{{ ... }}` | Undefined variable in lenient mode | Define the variable or enable `strict-mode: true` to catch early |
-| Step timeout | Task exceeds `timeout-minutes` | Increase step or workflow `timeout-minutes` |
-| "Nested parallel steps not allowed" | Parallel step inside another parallel | Flatten structure or use serial inside parallel |
+| Symptom                                | Likely Cause                                   | Fix                                                              |
+| -------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------- |
+| "Missing required variable"            | Variable not passed via `--var`                | Add `--var "name=value"` to CLI or set `default`                 |
+| Conditional always takes else          | Condition expression evaluates to falsy        | Check Jinja2 expression syntax and variable names                |
+| Ralph loop never completes             | Completion JSON not output or promise mismatch | Verify `completion-promise` matches the `promise` field in JSON  |
+| Template variable shows as `{{ ... }}` | Undefined variable in lenient mode             | Define the variable or enable `strict-mode: true` to catch early |
+| Step timeout                           | Task exceeds `timeout-minutes`                 | Increase step or workflow `timeout-minutes`                      |
+| "Nested parallel steps not allowed"    | Parallel step inside another parallel          | Flatten structure or use serial inside parallel                  |
 
 ## Instructions
 

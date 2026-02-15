@@ -75,6 +75,7 @@ class WorkflowProgress:
     errors: list[dict[str, Any]] = field(default_factory=list)
     variables: dict[str, Any] = field(default_factory=dict)
     step_outputs: dict[str, Any] = field(default_factory=dict)
+    workflow_file: str = ""
 
 
 def generate_workflow_id(workflow_name: str) -> str:
@@ -130,6 +131,7 @@ def create_progress(
     workflow_name: str,
     step_names: list[str],
     variables: dict[str, Any],
+    workflow_file: str = "",
 ) -> WorkflowProgress:
     """Create initial progress document."""
     return WorkflowProgress(
@@ -139,6 +141,7 @@ def create_progress(
         started_at=datetime.now(timezone.utc).isoformat(),
         pending_steps=step_names.copy(),
         variables=variables.copy(),
+        workflow_file=workflow_file,
     )
 
 
@@ -231,6 +234,27 @@ def update_step_skipped(progress: WorkflowProgress, step_name: str) -> None:
     progress.current_step = None
 
 
+def prepare_for_resume(progress: WorkflowProgress) -> None:
+    """Prepare a progress object for resuming execution.
+
+    Moves running steps and current step back to pending, resets status to RUNNING.
+    """
+    # Move running_steps back to front of pending
+    if progress.running_steps:
+        progress.pending_steps = progress.running_steps + progress.pending_steps
+        progress.running_steps = []
+
+    # Move current_step to pending if needed
+    if progress.current_step:
+        step_name = progress.current_step.get("name")
+        if step_name and step_name not in progress.pending_steps:
+            progress.pending_steps.insert(0, step_name)
+        progress.current_step = None
+
+    progress.status = WorkflowStatus.RUNNING.value
+    progress.completed_at = None
+
+
 def _progress_to_dict(progress: WorkflowProgress) -> dict[str, Any]:
     """Convert progress to dictionary for JSON serialization."""
     data = asdict(progress)
@@ -259,4 +283,5 @@ def _dict_to_progress(data: dict[str, Any]) -> WorkflowProgress:
         errors=data.get("errors", []),
         variables=data.get("variables", {}),
         step_outputs=data.get("step_outputs", {}),
+        workflow_file=data.get("workflow_file", ""),
     )
