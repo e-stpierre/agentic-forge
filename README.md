@@ -82,7 +82,8 @@ agentic-sdlc run ralph-loop.yaml --var "max_iterations=20" \
 
 ## Contributing
 
-Found a bug or have a suggestion? Please [open an issue](https://github.com/e-stpierre/agentic-forge/issues) on GitHub.
+- **Bug reports and suggestions** - [Open an issue](https://github.com/e-stpierre/agentic-forge/issues) on GitHub
+- **Code contributions** - See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and PR guidelines
 
 ## Credits
 
