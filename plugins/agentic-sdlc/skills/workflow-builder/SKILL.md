@@ -2,6 +2,7 @@
 name: workflow-builder
 description: Create, update, explain, validate, and debug agentic-sdlc YAML workflows with comprehensive schema knowledge
 argument-hint: <request>
+disable-model-invocation: true
 ---
 
 # Workflow Builder
