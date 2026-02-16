@@ -78,9 +78,7 @@ plugins/agentic-sdlc/
 │
 ├── docs/                      # Documentation
 │   ├── QuickStart.md
-│   ├── WorkflowBuilder.md
-│   ├── Contributing.md
-│   └── workflow-example.yaml
+│   └── Contributing.md
 │
 ├── pyproject.toml             # Package configuration
 ├── README.md                  # Plugin documentation
@@ -274,7 +272,7 @@ def _execute_your_type(self, step, context):
 
 3. Add tests for the new step type
 
-4. Document in `docs/WorkflowBuilder.md`
+4. Document in `skills/workflow-builder/references/REFERENCE.md`
 
 ### Adding a Bundled Workflow
 
@@ -418,8 +416,8 @@ Keep README concise:
 Place detailed content in `docs/`:
 
 - **QuickStart.md**: 5-minute getting started
-- **WorkflowBuilder.md**: Complete workflow authoring
 - **Contributing.md**: Development guidelines
+- Workflow authoring docs are in `skills/workflow-builder/references/`
 
 ### Prompt Documentation
 

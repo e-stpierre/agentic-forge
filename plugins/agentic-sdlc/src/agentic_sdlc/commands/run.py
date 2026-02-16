@@ -224,6 +224,7 @@ def cmd_run(args: Namespace) -> None:
             variables=variables,
             from_step=args.from_step,
             terminal_output=terminal_output,
+            workflow_file=str(workflow_path.resolve()),
         )
         print(f"\nWorkflow {progress.status}: {progress.workflow_id}")
         if progress.errors:

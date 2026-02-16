@@ -22,13 +22,13 @@ Execute complete development workflows from planning through implementation to v
 ## Documentation
 
 - **[Quick Start](docs/QuickStart.md)** - Get running in 5 minutes
-- **[Workflow Builder Guide](docs/WorkflowBuilder.md)** - Complete workflow authoring documentation
-- **[Workflow Example](docs/workflow-example.yaml)** - Annotated reference with all options
+- **[Workflow Schema Reference](skills/workflow-builder/references/REFERENCE.md)** - Complete workflow authoring documentation
+- **[Workflow Example](skills/workflow-builder/references/workflow-example.yaml)** - Annotated reference with all options
 - **[Contributing](docs/Contributing.md)** - Development and testing guidelines
 
 ## Skills
 
-> **Note for Workflow Authors:** When referencing skills in YAML workflow files, always use fully qualified names (e.g., `/agentic-sdlc:sdlc-plan` instead of `/sdlc-plan`) to ensure the correct skill is invoked and avoid conflicts with other plugins. See [WorkflowBuilder.md](docs/WorkflowBuilder.md#invoking-skills) for details.
+> **Note for Workflow Authors:** When referencing skills in YAML workflow files, always use fully qualified names (e.g., `/agentic-sdlc:sdlc-plan` instead of `/sdlc-plan`) to ensure the correct skill is invoked and avoid conflicts with other plugins. See the [Workflow Schema Reference](skills/workflow-builder/references/REFERENCE.md#prompt) for details.
 
 ### Planning and Validation
 

@@ -97,7 +97,7 @@ agentic/
 
 ## Next Steps
 
-- **Learn workflow syntax**: See [WorkflowBuilder.md](./WorkflowBuilder.md) for complete workflow authoring guide
+- **Learn workflow syntax**: Use `/agentic-sdlc:workflow-builder` skill or see [REFERENCE.md](../skills/workflow-builder/references/REFERENCE.md) for complete workflow authoring guide
 - **Configure settings**: Run `agentic-sdlc configure` for interactive setup
 - **View full command reference**: See [README.md](../README.md) for detailed documentation
 

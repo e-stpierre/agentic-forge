@@ -5,6 +5,7 @@ description: Full SDLC workflow with planning, implementation, and review
 settings:
   max-retry: 3
   timeout-minutes: 180
+  terminal-output: base
   track-progress: true
   git:
     enabled: true
@@ -30,24 +31,30 @@ variables:
   - name: explore_agents
     type: integer
     required: false
-    default: 0
+    default: 2
     description: Number of explore agents for codebase analysis (0=quick main session, 1+=parallel agents)
+  - name: max_iterations
+    type: number
+    required: false
+    default: 25
+    description: Maximum iterations for implementation and review fixes loops
   - name: create_pr
     type: boolean
     required: false
-    default: true
+    default: false
     description: Whether to create a PR
 
 steps:
   - name: plan
     type: prompt
+    model: opus
     prompt: /agentic-sdlc:sdlc-plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.explore_agents }} {{ variables.task }}
     checkpoint: true
 
   - name: create-branch
     type: prompt
     model: haiku
-    prompt: /agentic-sdlc:git-branch {{ variables.type }}
+    prompt: /agentic-sdlc:git-branch {{ variables.type }} {{ variables.task }}
 
   - name: implement
     type: ralph-loop
@@ -83,7 +90,7 @@ steps:
       - Only output the completion JSON when ALL milestones are genuinely finished and every validation completed successfully
       - Complete ONE milestone per iteration, then STOP
       - Do NOT try to implement multiple milestones in a single iteration
-    max-iterations: 10
+    max-iterations: "{{ variables.max_iterations }}"
     completion-promise: "ALL_MILESTONES_COMPLETE"
     checkpoint: true
 

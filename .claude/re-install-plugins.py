@@ -179,8 +179,9 @@ def staged_marketplace(repo_root: Path, marketplace_name: str):
     Create a staged copy of the repository and temporarily register it as the marketplace.
 
     This avoids Windows symlink issues with pnpm's node_modules/.pnpm structure
-    by creating a clean copy without those directories, then registering that
-    copy as the marketplace source for plugin installation.
+    by creating a clean copy without those directories. The staged marketplace is
+    used for uninstalling plugins; installation happens after this context manager
+    exits and the original marketplace is restored.
     """
     staging_dir = repo_root / ".staging"
 
@@ -203,6 +204,7 @@ def staged_marketplace(repo_root: Path, marketplace_name: str):
         run_command(
             ["claude", "plugin", "marketplace", "remove", marketplace_name],
             "Remove existing marketplace",
+            allow_failure=True,
         )
         success, error = run_command(
             ["claude", "plugin", "marketplace", "add", "./.staging"],
@@ -219,12 +221,18 @@ def staged_marketplace(repo_root: Path, marketplace_name: str):
         run_command(
             ["claude", "plugin", "marketplace", "remove", marketplace_name],
             "Remove staged marketplace",
+            allow_failure=True,
         )
-        run_command(
+        success, error = run_command(
             ["claude", "plugin", "marketplace", "add", "./"],
             "Restore original marketplace",
             cwd=repo_root,
         )
+        if not success:
+            print_task_error(
+                "WARNING: Failed to restore marketplace",
+                f"Run manually: claude plugin marketplace add ./\n{error}",
+            )
 
         if staging_dir.exists():
             shutil.rmtree(staging_dir)
@@ -306,32 +314,32 @@ def main():
     total_steps = (2 if has_claude_plugins else 0) + (1 if has_python_tools else 0)
     current_step = 0
 
-    # Step 1 & 2: Create staged copy, register as marketplace, and reinstall plugins
+    # Step 1 & 2: Uninstall from staged marketplace, then install from original
     if has_claude_plugins:
         current_step += 1
-        print_step(current_step, total_steps, "Create Staged Marketplace")
+        print_step(current_step, total_steps, "Uninstall Claude Code Plugins")
 
         with staged_marketplace(repo_root, marketplace_name):
-            # Reinstall each plugin from the staged marketplace
-            current_step += 1
-            print_step(current_step, total_steps, "Reinstall Claude Code Plugins")
-
             for plugin in requested_claude_plugins:
-                # Uninstall first (allow failure if not installed)
                 run_command(
                     ["claude", "plugin", "uninstall", plugin],
                     f"Uninstall {plugin}",
                     allow_failure=True,
                 )
-                # Install from staged marketplace
-                success, _ = run_command(
-                    ["claude", "plugin", "install", plugin],
-                    f"Install {plugin}",
-                )
-                if success:
-                    success_count += 1
-                else:
-                    error_count += 1
+
+        # Install from the original marketplace (restored by staged_marketplace)
+        current_step += 1
+        print_step(current_step, total_steps, "Install Claude Code Plugins")
+
+        for plugin in requested_claude_plugins:
+            success, _ = run_command(
+                ["claude", "plugin", "install", plugin],
+                f"Install {plugin}",
+            )
+            if success:
+                success_count += 1
+            else:
+                error_count += 1
 
     # Step 3: Force reinstall Python tools (from original repo, not staged)
     if has_python_tools:

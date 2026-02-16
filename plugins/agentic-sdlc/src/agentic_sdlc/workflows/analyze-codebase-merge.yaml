@@ -32,12 +32,12 @@ variables:
   - name: create_pr
     type: boolean
     required: false
-    default: true
+    default: false
     description: Whether to create a PR after all changes are merged
   - name: max_fix_iterations
     type: number
     required: false
-    default: 10
+    default: 25
     description: Maximum iterations per analysis type for fixing issues
 
 steps:

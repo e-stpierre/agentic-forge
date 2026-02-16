@@ -147,10 +147,10 @@ uv run pytest       # Python tests (for plugins with Python code)
 
 ### Workflow Engine Changes (agentic-sdlc)
 
-When modifying the workflow engine in `plugins/agentic-sdlc/src/`, you must update both documentation files to keep them in sync:
+When modifying the workflow engine in `plugins/agentic-sdlc/src/`, you must update the workflow-builder skill reference files to keep them in sync:
 
-- `plugins/agentic-sdlc/docs/WorkflowBuilder.md` - User guide for authoring workflows
-- `plugins/agentic-sdlc/docs/workflow-example.yaml` - Annotated reference workflow
+- `plugins/agentic-sdlc/skills/workflow-builder/references/REFERENCE.md` - Complete schema reference
+- `plugins/agentic-sdlc/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
 
 Changes to workflow settings, step types, or features require updates to both files.
 

@@ -72,6 +72,12 @@ def main() -> None:
     # resume command
     resume_parser = subparsers.add_parser("resume", help="Resume a workflow")
     resume_parser.add_argument("workflow_id", help="Workflow ID to resume")
+    resume_parser.add_argument(
+        "--terminal-output",
+        choices=["base", "all"],
+        default=None,
+        help="Terminal output granularity (defaults to workflow settings, then 'base')",
+    )
 
     # status command
     status_parser = subparsers.add_parser("status", help="Show workflow status")

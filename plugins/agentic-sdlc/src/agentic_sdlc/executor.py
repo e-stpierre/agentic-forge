@@ -11,6 +11,7 @@ from agentic_sdlc.console import ConsoleOutput, OutputLevel
 from agentic_sdlc.logging.logger import WorkflowLogger
 from agentic_sdlc.parser import StepDefinition, StepType, WorkflowDefinition, WorkflowSettings
 from agentic_sdlc.progress import (
+    StepStatus,
     WorkflowProgress,
     WorkflowStatus,
     create_progress,
@@ -87,6 +88,8 @@ class WorkflowExecutor:
         variables: dict[str, Any] | None = None,
         from_step: str | None = None,
         terminal_output: str = "base",
+        workflow_file: str = "",
+        resume_progress: WorkflowProgress | None = None,
     ) -> WorkflowProgress:
         """Execute a workflow.
 
@@ -95,9 +98,10 @@ class WorkflowExecutor:
             variables: Variables to pass to templates
             from_step: Resume from a specific step
             terminal_output: Output mode (base or all)
+            workflow_file: Absolute path to the source workflow YAML file
+            resume_progress: Existing progress to resume (reuses workflow_id)
         """
         variables = variables or {}
-        workflow_id = generate_workflow_id(workflow.name)
         self.workflow_settings = workflow.settings
 
         # Update renderer with workflow's strict_mode setting
@@ -107,15 +111,29 @@ class WorkflowExecutor:
         output_level = OutputLevel.ALL if terminal_output == "all" else OutputLevel.BASE
         console = ConsoleOutput(level=output_level)
 
-        for var in workflow.variables:
-            if var.name not in variables:
-                if var.required and var.default is None:
-                    raise ValueError(f"Missing required variable: {var.name}")
-                variables[var.name] = var.default
+        if resume_progress:
+            # Reuse existing progress (already prepared by prepare_for_resume)
+            progress = resume_progress
+            # Seed variables from stored progress, then overlay any new CLI vars
+            merged = dict(progress.variables)
+            merged.update(variables)
+            variables = merged
+            progress.variables = variables
+            workflow_id = progress.workflow_id
+            # Backfill workflow_file if it was empty (pre-upgrade progress)
+            if not progress.workflow_file and workflow_file:
+                progress.workflow_file = workflow_file
+        else:
+            for var in workflow.variables:
+                if var.name not in variables:
+                    if var.required and var.default is None:
+                        raise ValueError(f"Missing required variable: {var.name}")
+                    variables[var.name] = var.default
 
-        step_names = [s.name for s in workflow.steps]
+            workflow_id = generate_workflow_id(workflow.name)
+            step_names = [s.name for s in workflow.steps]
+            progress = create_progress(workflow_id, workflow.name, step_names, variables, workflow_file=workflow_file)
 
-        progress = create_progress(workflow_id, workflow.name, step_names, variables)
         save_progress(progress, self.repo_root)
 
         logger = WorkflowLogger(workflow_id, self.repo_root)
@@ -123,6 +141,11 @@ class WorkflowExecutor:
 
         # Print workflow start
         console.workflow_start(workflow.name, workflow_id)
+
+        # Build set of completed step names to skip on resume
+        completed_step_names = {
+            s.name for s in progress.completed_steps if s.status in (StepStatus.COMPLETED.value, StepStatus.SKIPPED.value)
+        }
 
         skip_until = from_step
 
@@ -132,6 +155,12 @@ class WorkflowExecutor:
                     skip_until = None
                 else:
                     continue
+
+            # Skip steps already completed/skipped during resume
+            if step.name in completed_step_names:
+                logger.info(step.name, f"Skipping already completed step: {step.name}")
+                console.info(f"Skipping completed step: {step.name}")
+                continue
 
             try:
                 self._execute_step(step, progress, variables, logger, console)

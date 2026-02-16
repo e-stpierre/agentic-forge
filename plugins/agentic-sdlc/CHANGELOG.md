@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.6.0] - 2026-02-15
+
+### Added
+
+- `workflow-builder` skill for creating, updating, explaining, validating, and debugging workflows
+- Parallel branch display in terminal with multi-branch status updates (BASE mode)
+- Queue-based message streaming for parallel steps (ALL mode)
+- Stream-JSON parsing for real-time Claude output processing
+- Model name detection and display in step headers (e.g., `sonnet-4.5`)
+- `strict-mode` setting for failing on undefined template variables
+- `max_iterations` variable to plan-build-review workflow
+- Config file copy during `init` command
+- Comprehensive test coverage for console, runner, init, parser, and step modules
+
+### Changed
+
+- Rewrote console output module with `ParallelOutputHandler` for parallel execution display
+- Improved `sdlc-plan` skill with milestone structure, progress tracking, and validation sections
+- Improved `sdlc-review` skill with workflow-id support and output directory handling
+- Updated plan-build-review workflow: opus model for planning, variable-based max-iterations, improved review and fix steps
+- Increased default `max_iterations` from 5-10 to 25 across all workflows
+- Changed `create_pr` default to `false` across all workflows
+- Changed `bypass-permissions` default to `false` in ralph-loop workflow
+- Set `terminal-output: base` as explicit default in plan-build-review and ralph-loop workflows
+- Improved `git-branch` prompt to pass task context
+- Consolidated workflow documentation from `docs/` into `workflow-builder` skill references
+- Updated all documentation references to point to new skill location
+
+### Removed
+
+- `docs/WorkflowBuilder.md` (consolidated into `skills/workflow-builder/references/REFERENCE.md`)
+- `docs/workflow-example.yaml` (moved to `skills/workflow-builder/references/workflow-example.yaml`)
+
+### Fixed
+
+- Fix-issues step in plan-build-review now reads separate review.md instead of plan file review section
+- JSON template placeholders in fix-issues step replaced with proper syntax
+- `create-skill` template now documents `\$ARGUMENTS` escaping requirement
+
 ## [0.5.0] - 2026-01-25
 
 ### Added

@@ -93,7 +93,7 @@ Instructions:
 - Use bullet-point format with markdown links
 - Example:
   - **[Quick Start](docs/QuickStart.md)** - Get running in 5 minutes
-  - **[Workflow Guide](docs/WorkflowBuilder.md)** - Complete authoring documentation
+  - **[Workflow Schema Reference](skills/workflow-builder/references/REFERENCE.md)** - Complete authoring documentation
   - **[Contributing](docs/Contributing.md)** - Development guidelines
 -->
 

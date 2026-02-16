@@ -11,6 +11,7 @@ from agentic_sdlc.ralph_loop import (
     create_ralph_state,
     deactivate_ralph_state,
     detect_completion_promise,
+    load_ralph_state,
     update_ralph_iteration,
 )
 from agentic_sdlc.runner import run_claude
@@ -66,7 +67,16 @@ class RalphLoopStepExecutor(StepExecutor):
 
         all_outputs: list[str] = []
 
-        for iteration in range(1, max_iterations + 1):
+        # Check for existing ralph state to resume from
+        existing_state = load_ralph_state(progress.workflow_id, step.name, context.repo_root)
+        if existing_state and existing_state.active:
+            start_iteration = existing_state.iteration
+            logger.info(step.name, f"Resuming Ralph loop from iteration {start_iteration}")
+            console.info(f"Resuming Ralph loop from iteration {start_iteration}")
+        else:
+            start_iteration = 1
+
+        for iteration in range(start_iteration, max_iterations + 1):
             logger.info(step.name, f"Ralph loop iteration {iteration}/{max_iterations}")
 
             # Render prompt with iteration context for each iteration
@@ -81,7 +91,7 @@ class RalphLoopStepExecutor(StepExecutor):
                 prompt = prompt_template
 
             # Create ralph state on first iteration (after we have the rendered prompt)
-            if iteration == 1:
+            if iteration == start_iteration and not (existing_state and existing_state.active):
                 _ralph_state = create_ralph_state(
                     workflow_id=progress.workflow_id,
                     step_name=step.name,
