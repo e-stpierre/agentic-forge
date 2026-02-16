@@ -30,10 +30,6 @@ def cmd_resume(args: Namespace) -> None:
         )
         sys.exit(1)
 
-    # Normalize state for resume
-    prepare_for_resume(progress)
-    save_progress(progress)
-
     # Resolve workflow YAML file
     workflow_path: Path | None = None
 
@@ -64,6 +60,10 @@ def cmd_resume(args: Namespace) -> None:
     except WorkflowParseError as e:
         print(f"Error parsing workflow: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Normalize state for resume (after all preconditions pass)
+    prepare_for_resume(progress)
+    save_progress(progress)
 
     # Execute with resume
     executor = WorkflowExecutor()
