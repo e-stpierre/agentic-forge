@@ -18,66 +18,115 @@
   YAML-defined workflows | Multi-step execution | Progress tracking | Error recovery
 </p>
 
+## Overview
+
+Agentic Forge is a standalone Python package that provides YAML-based workflow orchestration for Claude Code. It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution with parallel execution, conditional logic, and retry mechanisms.
+
+**Best for**: Autonomous development where you prefer Claude works independently.
+
 ## Getting Started
 
 ### Prerequisites
 
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
 - Claude Code CLI installed and configured
-- Basic familiarity with Claude Code
 
 ### Installation
 
-1. Add this repository as a plugin marketplace in Claude Code:
+```bash
+# Install with uv (recommended)
+uv tool install agentic-forge
 
-   ```bash
-   /plugin marketplace add e-stpierre/agentic-forge
-   ```
+# Or install from source
+git clone https://github.com/e-stpierre/agentic-forge.git
+cd agentic-forge
+uv tool install .
+```
 
-2. Install the plugin(s) you need and refer to their README for usage.
+### Using Skills in Interactive Claude Sessions
 
-## Plugins
+Agentic Forge bundles 13 skills that extend Claude Code with slash commands like `/sdlc-plan`, `/analyze`, `/git-commit`, and more. To make them available in interactive sessions:
 
-### Agentic SDLC
-
-YAML-based workflow orchestration for autonomous task execution with parallel execution, conditional logic, and retry mechanisms.
-
-**Best for**: Autonomous development where you prefer Claude works independently.
-
-#### Installation
-
-1. Install the plugin in Claude Code:
-
-   ```bash
-   /plugin install agentic-sdlc@agentic-forge
-   ```
-
-2. Install the python CLI tools:
-
-   ```bash
-   # Windows (PowerShell)
-   uv tool install "$env:USERPROFILE\.claude\plugins\marketplaces\agentic-forge\plugins\agentic-sdlc"
-
-   # macOS/Linux
-   uv tool install ~/.claude/plugins/marketplaces/agentic-forge/plugins/agentic-sdlc
-   ```
-
-#### Examples
-
-See [Agentic-SDLC README](plugins/agentic-sdlc/README.md) for all skills and workflow options.
+**Option 1: Pass `--add-dir` when launching Claude**
 
 ```bash
-# Run plan-build-review workflow for full SDLC automation
-agentic-sdlc run plan-build-review.yaml --var "task=Add dark mode support"
+claude --add-dir $(agentic-forge skills-dir)
+```
 
-# Complete a task end-to-end autonomously
-agentic-sdlc run one-shot.yaml --var "task=Add user authentication"
+**Option 2: Add to `~/.claude/settings.json` permanently**
 
+```json
+{
+  "additionalDirectories": ["<output of agentic-forge skills-dir>"]
+}
+```
+
+## Workflows
+
+### plan-build-review (Full SDLC)
+
+Plan -> Create Branch -> Implement (iterative) -> Review -> Fix Issues -> Create PR
+
+```bash
+agentic-forge run plan-build-review --var "task=Add dark mode support"
+```
+
+### one-shot (Single Task)
+
+Create Branch -> Execute Task -> Review -> Create PR
+
+```bash
+agentic-forge run one-shot --var "task=Add user authentication"
+```
+
+### ralph-loop (Iterative Execution)
+
+Generic iterative loop where each iteration runs in a fresh session.
+
+```bash
+agentic-forge run ralph-loop --var "task=Follow the improvement plan" --var "max_iterations=20"
+```
+
+### analyze-codebase (Parallel Analysis)
+
+Run 5 parallel analysis types (bug, debt, doc, security, style) with optional autofix.
+
+```bash
+agentic-forge run analyze-codebase --var "autofix=true"
+```
+
+### All Commands
+
+```bash
 # List available workflows
-agentic-sdlc workflows
+agentic-forge workflows
 
-# Run a workflow with variables for iterative task completion
-agentic-sdlc run ralph-loop.yaml --var "max_iterations=20" \
-  --var "task=Follow the improvement plan. Each iteration: read plan, implement next task, commit, STOP."
+# Run a workflow with variables
+agentic-forge run <workflow> --var "key=value"
+
+# Print path to bundled skills directory
+agentic-forge skills-dir
+
+# Check current version
+agentic-forge version
+
+# Update to latest version
+agentic-forge update
+```
+
+## Repository Structure
+
+```
+src/agentic_forge/
+  agents/              # Bundled agent definitions (explorer, reviewer)
+  claude/.claude/      # Skills loaded via --add-dir
+    skills/            # 13 bundled skills
+  commands/            # CLI command implementations
+  prompts/             # System prompt templates
+  steps/               # Workflow step handlers
+  workflows/           # 7 bundled YAML workflow definitions
+tests/                 # Test suite
 ```
 
 ## Contributing

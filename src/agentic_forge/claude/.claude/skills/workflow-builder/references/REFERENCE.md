@@ -432,8 +432,8 @@ agentic-forge configure
 
 Always use fully qualified names in workflows:
 
-| Skill                            | Description                   |
-| -------------------------------- | ----------------------------- |
+| Skill               | Description                   |
+| ------------------- | ----------------------------- |
 | `/sdlc-plan`        | Generate implementation plan  |
 | `/sdlc-review`      | Review implementation quality |
 | `/analyze bug`      | Find bugs and logic errors    |

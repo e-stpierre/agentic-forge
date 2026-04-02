@@ -5,6 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from jinja2 import UndefinedError
+from jinja2.sandbox import SecurityError
+
 from agentic_forge.renderer import (
     TemplateRenderer,
     _extract_analysis_steps,
@@ -12,8 +15,6 @@ from agentic_forge.renderer import (
     build_template_context,
     render_workflow_output,
 )
-from jinja2 import UndefinedError
-from jinja2.sandbox import SecurityError
 
 
 class TestTemplateRenderer:

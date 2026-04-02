@@ -69,6 +69,7 @@
 #### Task 1.1: Move Python source to repo root
 
 Move the Python package from nested plugin structure to repo root:
+
 - Move `plugins/agentic-sdlc/src/agentic_sdlc/` → `src/agentic_forge/`
 - Move `plugins/agentic-sdlc/tests/` → `tests/`
 - Preserve all subdirectories and files under agentic_sdlc (rename to agentic_forge)
@@ -78,6 +79,7 @@ Move the Python package from nested plugin structure to repo root:
 #### Task 1.2: Rename package from agentic_sdlc to agentic_forge
 
 Rename the Python package directory and all its internal structure:
+
 - Rename `src/agentic_forge/` internal module references if any
 - Update `__init__.py` and package metadata
 
@@ -86,6 +88,7 @@ Rename the Python package directory and all its internal structure:
 #### Task 1.3: Update all Python imports
 
 Perform global find-and-replace across all Python files in `src/` and `tests/`:
+
 - `import agentic_sdlc` → `import agentic_forge`
 - `from agentic_sdlc` → `from agentic_forge`
 - CLI entry point: `agentic-sdlc` → `agentic-forge`
@@ -95,6 +98,7 @@ Perform global find-and-replace across all Python files in `src/` and `tests/`:
 #### Task 1.4: Bundle skills as package data
 
 Create `src/agentic_forge/claude/.claude/skills/` directory structure:
+
 - Copy all 13 skill directories from `plugins/agentic-sdlc/skills/` to the new location
 - Preserve each skill's subdirectories (references/, templates/, etc.)
 
@@ -125,13 +129,16 @@ Create `src/agentic_forge/claude/.claude/skills/` directory structure:
 #### Task 2.3: Add agent path resolution fallback
 
 Update `src/agentic_forge/*/prompt_step.py` (or similar agent-loading code):
+
 - Add fallback resolution: if agent file not found relative to repo root, check package directory
 - Implementation:
+
   ```python
   agent_path = context.repo_root / step.agent
   if not agent_path.exists():
       agent_path = Path(__file__).parent / "agents" / Path(step.agent).name
   ```
+
 - Move agent `.md` files from `plugins/agentic-sdlc/agents/` → `src/agentic_forge/agents/`
 
 **Acceptance**: Agents resolve correctly from both user-provided and bundled locations.
@@ -155,6 +162,7 @@ Update `src/agentic_forge/*/prompt_step.py` (or similar agent-loading code):
 #### Task 3.1: Create new root pyproject.toml
 
 Create `/pyproject.toml` with:
+
 ```toml
 [project]
 name = "agentic-forge"
@@ -185,6 +193,7 @@ packages = ["src/agentic_forge"]
 
 - Ensure Hatch includes `.md`, `.yaml`, and other non-Python files
 - Add explicit inclusion rules in pyproject.toml if needed:
+
   ```toml
   [tool.hatch.build.targets.wheel.force-include]
   "src/agentic_forge/claude" = "agentic_forge/claude"
@@ -213,8 +222,10 @@ packages = ["src/agentic_forge"]
 #### Task 4.1: Modify runner.py to use --add-dir
 
 In `src/agentic_forge/runner.py` (or equivalent):
+
 - Add `SKILLS_DIR = Path(__file__).parent / "claude"`
 - In `run_claude()` function, add `--add-dir` flag:
+
   ```python
   cmd = [claude_path, "--print"]
   cmd.extend(["--add-dir", str(SKILLS_DIR)])
@@ -225,6 +236,7 @@ In `src/agentic_forge/runner.py` (or equivalent):
 #### Task 4.2: Update system prompt path resolution
 
 In `runner.py` (line ~216):
+
 - Old: `AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent.parent.parent / "prompts" / "agentic-system.md"`
 - New: `AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent / "prompts" / "agentic-system.md"`
 
@@ -233,12 +245,14 @@ In `runner.py` (line ~216):
 #### Task 4.3: Create skills-dir CLI command
 
 Add a new command to `src/agentic_forge/cli.py` (or appropriate CLI module):
+
 ```bash
 $ agentic-forge skills-dir
 /path/to/agentic_forge/claude
 ```
 
 Implementation:
+
 ```python
 def skills_dir():
     skills_path = Path(__file__).parent / "claude"
@@ -265,6 +279,7 @@ def skills_dir():
 #### Task 5.1: Remove agentic-sdlc: prefix from skill references
 
 Find all files in `src/agentic_forge/workflows/` that reference `/agentic-sdlc:skill-name`:
+
 - Replace `/agentic-sdlc:sdlc-plan` → `/sdlc-plan`
 - Replace `/agentic-sdlc:analyze` → `/analyze`
 - Replace for all 13 skills:
@@ -297,6 +312,7 @@ Find all files in `src/agentic_forge/workflows/` that reference `/agentic-sdlc:s
 #### Task 6.1: Rewrite README.md
 
 Update README.md with:
+
 - Installation: `uv tool install agentic-forge` (or `pip install agentic-forge`)
 - No marketplace setup required
 - How to use `skills-dir` for interactive sessions
@@ -307,6 +323,7 @@ Update README.md with:
 #### Task 6.2: Update CLAUDE.md project instructions
 
 Update project instructions:
+
 - Remove marketplace/plugin references
 - Update paths: `plugins/agentic-sdlc/` → `src/agentic_forge/`
 - Update build/install commands: reference new pyproject.toml location
@@ -317,6 +334,7 @@ Update project instructions:
 #### Task 6.3: Update CHANGELOG.md
 
 Document the 1.0.0 breaking change:
+
 - Summarize distribution change
 - Note: marketplace installation no longer supported
 - Note: skill prefix removal (`agentic-sdlc:` → unprefixed)
@@ -371,6 +389,7 @@ Execute these commands in order:
 ### Order of Execution
 
 Milestones must be completed in order. Each milestone depends on the previous one:
+
 1. Structure first (Milestone 1-2)
 2. Configuration (Milestone 3)
 3. Runtime updates (Milestone 4)

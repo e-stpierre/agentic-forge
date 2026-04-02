@@ -79,6 +79,7 @@ Move the Python source out of `plugins/agentic-sdlc/` to the repo root.
 - Move `plugins/agentic-sdlc/tests/` to `tests/`
 
 **Rename the Python package** from `agentic_sdlc` to `agentic_forge` throughout:
+
 - All `import agentic_sdlc` -> `import agentic_forge`
 - All `from agentic_sdlc` -> `from agentic_forge`
 - Entry point: `agentic-sdlc` CLI -> `agentic-forge` CLI
@@ -112,6 +113,7 @@ if not agent_path.exists():
 #### 1.5 Delete marketplace artifacts
 
 Remove:
+
 - `.claude-plugin/` directory (marketplace.json)
 - `plugins/` directory (after everything is moved)
 - Any marketplace-specific references in docs
@@ -174,11 +176,13 @@ Every Claude session spawned by the workflow engine will have access to all bund
 #### 3.2 Update system prompt path resolution
 
 Current (`runner.py:216`):
+
 ```python
 AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent.parent.parent / "prompts" / "agentic-system.md"
 ```
 
 New (resolve from within package):
+
 ```python
 AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent / "prompts" / "agentic-system.md"
 ```
@@ -190,12 +194,14 @@ AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent / "prompts" / "agentic-system
 #### 4.1 Rename all imports
 
 Global find-and-replace across all Python files:
+
 - `agentic_sdlc` -> `agentic_forge` (module name)
 - `agentic-sdlc` -> `agentic-forge` (CLI name in strings and docs)
 
 #### 4.2 Update workflow YAML files
 
 Skills loaded via `--add-dir` appear without a plugin prefix. Update all workflow references:
+
 - `/agentic-sdlc:sdlc-plan` -> `/sdlc-plan`
 - `/agentic-sdlc:analyze` -> `/analyze`
 - etc. for all 13 skills
@@ -224,8 +230,10 @@ $ agentic-forge skills-dir
 ```
 
 Users can then either:
+
 - Launch Claude with skills: `claude --add-dir $(agentic-forge skills-dir)`
 - Make it permanent in `~/.claude/settings.json`:
+
   ```json
   { "additionalDirectories": ["<output of skills-dir>"] }
   ```
@@ -237,6 +245,7 @@ Users can then either:
 #### 6.1 README.md
 
 Rewrite to reflect new distribution:
+
 - Installation: `uv tool install agentic-forge`
 - No marketplace setup required
 - How to use `skills-dir` for interactive sessions
@@ -244,6 +253,7 @@ Rewrite to reflect new distribution:
 #### 6.2 CLAUDE.md
 
 Update project instructions:
+
 - Remove marketplace/plugin references
 - Update paths for skills, agents, prompts
 - Update build/install commands
@@ -257,16 +267,19 @@ Document the 1.0.0 breaking change.
 ### Phase 7: Clean Up and Validate
 
 #### 7.1 Remove old files
+
 - Delete `plugins/` directory
 - Delete `.claude-plugin/` directory
 - Remove `package.json` if only used for marketplace tooling
 - Remove old `docs/templates/` if no longer applicable
 
 #### 7.2 Update CI/CD
+
 - Update lint/test/build commands for new paths
 - Ensure `uv build` produces valid wheel with all package data
 
 #### 7.3 End-to-end validation
+
 - `uv tool install .` from repo root
 - `agentic-forge run plan-build-review --var "task=test"` - workflow runs
 - Skills available in spawned Claude sessions (via `--add-dir`)
@@ -278,13 +291,13 @@ Document the 1.0.0 breaking change.
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| Package name | `agentic-forge` | Broader than SDLC, matches repo name |
-| Skill loading | `--add-dir` flag | Native Claude Code feature, live reload, no marketplace needed |
-| Agent loading | Bundled as package data, injected via prompt prepend | `--add-dir` doesn't discover agents; current prompt injection already works |
-| Breaking changes | Yes (v1.0.0) | Clean break, no backward compat needed |
-| Skill prefix | Drop `agentic-sdlc:` prefix | Skills via `--add-dir` don't have plugin prefix |
+| Decision         | Choice                                               | Rationale                                                                   |
+| ---------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| Package name     | `agentic-forge`                                      | Broader than SDLC, matches repo name                                        |
+| Skill loading    | `--add-dir` flag                                     | Native Claude Code feature, live reload, no marketplace needed              |
+| Agent loading    | Bundled as package data, injected via prompt prepend | `--add-dir` doesn't discover agents; current prompt injection already works |
+| Breaking changes | Yes (v1.0.0)                                         | Clean break, no backward compat needed                                      |
+| Skill prefix     | Drop `agentic-sdlc:` prefix                          | Skills via `--add-dir` don't have plugin prefix                             |
 
 ## Constraints and Risks
 

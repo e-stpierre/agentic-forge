@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from agentic_forge.console import ConsoleOutput
 from agentic_forge.logging.logger import WorkflowLogger
 from agentic_forge.parser import StepDefinition, StepType, WorkflowSettings

@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from agentic_forge.git.worktree import (
     Worktree,
     _generate_suffix,
