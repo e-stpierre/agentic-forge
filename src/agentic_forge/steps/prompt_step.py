@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from agentic_forge.console import extract_json, extract_summary
@@ -36,9 +37,11 @@ class PromptStepExecutor(StepExecutor):
 
         cwd = context.cwd_override or context.repo_root
 
-        # Load agent file if specified
+        # Load agent file if specified (fallback to bundled agents)
         if step.agent:
             agent_path = context.repo_root / step.agent
+            if not agent_path.exists():
+                agent_path = Path(__file__).parent.parent / "agents" / Path(step.agent).name
             if agent_path.exists():
                 agent_content = agent_path.read_text(encoding="utf-8")
                 prompt = f"{agent_content}\n\n{prompt}"

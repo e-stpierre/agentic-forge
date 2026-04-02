@@ -138,11 +138,11 @@ steps:
 
   # ==================== SKILL INVOCATION ====================
   # Invoke a Claude slash command skill
-  # IMPORTANT: Always use fully qualified skill names in workflows (e.g., /agentic-sdlc:sdlc-plan)
+  # IMPORTANT: Always use fully qualified skill names in workflows (e.g., /sdlc-plan)
   # to avoid conflicts with skills from other plugins or built-in commands.
   - name: generate-plan
     type: prompt
-    prompt: /agentic-sdlc:sdlc-plan --type {{ variables.plan_type }} --output_dir "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
+    prompt: /sdlc-plan --type {{ variables.plan_type }} --output_dir "agentic/outputs/{{ workflow_id }}" {{ variables.task }}
     checkpoint: true
     timeout-minutes: 20
 
@@ -186,22 +186,22 @@ steps:
     steps:
       - name: security-scan
         type: prompt
-        prompt: /agentic-sdlc:analyze security
+        prompt: /analyze security
         on-error: skip # Don't fail workflow if security scan fails
 
       - name: style-check
         type: prompt
-        prompt: /agentic-sdlc:analyze style
+        prompt: /analyze style
         on-error: skip
 
       - name: bug-detection
         type: prompt
-        prompt: /agentic-sdlc:analyze bug
+        prompt: /analyze bug
         on-error: skip
 
       - name: debt-analysis
         type: prompt
-        prompt: /agentic-sdlc:analyze debt
+        prompt: /analyze debt
         on-error: skip
 
   # ==================== RALPH LOOP STEP ====================
@@ -249,7 +249,7 @@ steps:
   # ==================== REVIEW STEP ====================
   - name: review-implementation
     type: prompt
-    prompt: /agentic-sdlc:sdlc-review "agentic/outputs/{{ workflow_id }}/plan.md" minor
+    prompt: /sdlc-review "agentic/outputs/{{ workflow_id }}/plan.md" minor
     checkpoint: true
 
   # ==================== CONDITIONAL STEP ====================
@@ -277,7 +277,7 @@ steps:
 
       - name: re-review
         type: prompt
-        prompt: /agentic-sdlc:sdlc-review "" {{ variables.fix_severity }}
+        prompt: /sdlc-review "" {{ variables.fix_severity }}
 
     # Steps to execute if condition is false
     else:
@@ -319,7 +319,7 @@ steps:
     then:
       - name: open-pr
         type: prompt
-        prompt: /agentic-sdlc:git-pr --title "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}"
+        prompt: /git-pr --title "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}"
 
   # ==================== FINAL SUMMARY ====================
   - name: generate-summary
@@ -355,30 +355,30 @@ outputs:
 # ==================== USAGE EXAMPLES ====================
 #
 # Run with required variable:
-#   agentic-sdlc run workflow-example.yaml --var "task=Add user authentication"
+#   agentic-forge run workflow-example.yaml --var "task=Add user authentication"
 #
 # Run with custom variables:
-#   agentic-sdlc run workflow-example.yaml \
+#   agentic-forge run workflow-example.yaml \
 #     --var "task=Fix login bug" \
 #     --var "plan_type=bug" \
 #     --var "create_pr=true" \
 #     --var "max_iterations=15"
 #
 # Run with verbose output:
-#   agentic-sdlc run workflow-example.yaml \
+#   agentic-forge run workflow-example.yaml \
 #     --var "task=Implement feature" \
 #     --terminal-output all
 #
 # Resume from specific step:
-#   agentic-sdlc run workflow-example.yaml \
+#   agentic-forge run workflow-example.yaml \
 #     --var "task=Implement feature" \
 #     --from-step review-implementation
 #
 # Provide human input:
-#   agentic-sdlc input <workflow-id> "approved"
+#   agentic-forge input <workflow-id> "approved"
 #
 # Check workflow status:
-#   agentic-sdlc status <workflow-id>
+#   agentic-forge status <workflow-id>
 #
 # ==================== AVAILABLE SKILLS ====================
 #
@@ -388,24 +388,24 @@ outputs:
 # Skills you can invoke via prompt steps:
 #
 # Planning & Review:
-#   - /agentic-sdlc:sdlc-plan - Generate implementation plan
-#   - /agentic-sdlc:sdlc-review - Review implementation quality
+#   - /sdlc-plan - Generate implementation plan
+#   - /sdlc-review - Review implementation quality
 #
 # Analysis:
-#   - /agentic-sdlc:analyze bug - Find bugs and logic errors
-#   - /agentic-sdlc:analyze debt - Identify technical debt
-#   - /agentic-sdlc:analyze doc - Check documentation
-#   - /agentic-sdlc:analyze security - Security scan
-#   - /agentic-sdlc:analyze style - Code style check
+#   - /analyze bug - Find bugs and logic errors
+#   - /analyze debt - Identify technical debt
+#   - /analyze doc - Check documentation
+#   - /analyze security - Security scan
+#   - /analyze style - Code style check
 #
 # Git Operations:
-#   - /agentic-sdlc:git-branch - Create git branch
-#   - /agentic-sdlc:git-commit - Create commit
-#   - /agentic-sdlc:git-pr - Create pull request
+#   - /git-branch - Create git branch
+#   - /git-commit - Create commit
+#   - /git-pr - Create pull request
 #
 # Workflow Support:
-#   - /agentic-sdlc:orchestrate - Workflow state evaluation
-#   - /agentic-sdlc:add-improvement - Track improvements
+#   - /orchestrate - Workflow state evaluation
+#   - /add-improvement - Track improvements
 #
 # ==================== BUILT-IN VARIABLES ====================
 #

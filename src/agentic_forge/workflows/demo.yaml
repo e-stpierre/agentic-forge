@@ -1,6 +1,6 @@
 name: demo
 version: "1.0"
-description: Demo workflow to validate agentic-sdlc plugin installation and configuration
+description: Demo workflow to validate agentic-forge plugin installation and configuration
 
 settings:
   track-progress: true
@@ -19,9 +19,9 @@ steps:
     type: prompt
     model: haiku
     prompt: |
-      # Welcome to the agentic-sdlc Demo Workflow
+      # Welcome to the agentic-forge Demo Workflow
 
-      This is a demonstration workflow that validates your agentic-sdlc plugin installation.
+      This is a demonstration workflow that validates your agentic-forge plugin installation.
 
       Please acknowledge this welcome message by saying: "Demo workflow started successfully."
 
@@ -42,7 +42,7 @@ steps:
           ```markdown
           # Demo File 1
 
-          Created by: agentic-sdlc demo
+          Created by: agentic-forge demo
           Timestamp: [current timestamp]
           Step: create-demo-1
 
@@ -65,7 +65,7 @@ steps:
           ```markdown
           # Demo File 2
 
-          Created by: agentic-sdlc demo
+          Created by: agentic-forge demo
           Timestamp: [current timestamp]
           Step: create-demo-2
 
@@ -123,12 +123,12 @@ steps:
   - name: git-branch
     type: prompt
     model: haiku
-    prompt: /agentic-sdlc:git-branch demo random-facts
+    prompt: /git-branch demo random-facts
 
   - name: git-commit
     type: prompt
     model: haiku
-    prompt: /agentic-sdlc:git-commit "[Demo] Add demo files with random facts"
+    prompt: /git-commit "[Demo] Add demo files with random facts"
 
   - name: completion
     type: prompt
@@ -136,7 +136,7 @@ steps:
     prompt: |
       # Demo Workflow Complete
 
-      The agentic-sdlc demo workflow has finished executing.
+      The agentic-forge demo workflow has finished executing.
 
       ## Validation Tasks
 
@@ -163,7 +163,7 @@ steps:
       After performing ALL validations, report the results:
 
       If ALL validations passed, say:
-      "DEMO WORKFLOW COMPLETED SUCCESSFULLY - Your agentic-sdlc installation is working correctly!
+      "DEMO WORKFLOW COMPLETED SUCCESSFULLY - Your agentic-forge installation is working correctly!
 
       Validation Summary:
       - demo-1.md: Created with 3 random facts

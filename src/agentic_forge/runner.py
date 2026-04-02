@@ -212,8 +212,11 @@ def extract_result_text(data: dict[str, Any]) -> str | None:
     return data.get("result")
 
 
+# Path to the bundled skills directory for --add-dir
+SKILLS_DIR = Path(__file__).parent / "claude"
+
 # Path to the agentic system prompt file
-AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent.parent.parent / "prompts" / "agentic-system.md"
+AGENTIC_SYSTEM_PROMPT_FILE = Path(__file__).parent / "prompts" / "agentic-system.md"
 
 
 def _get_agentic_system_prompt() -> str | None:
@@ -347,6 +350,10 @@ def run_claude(
     """
     claude_path = get_executable("claude")
     cmd = [claude_path, "--print"]
+
+    # Add bundled skills directory for skill discovery
+    if SKILLS_DIR.is_dir():
+        cmd.extend(["--add-dir", str(SKILLS_DIR)])
 
     # Use stream-json format when streaming output for real-time parsing
     if print_output:

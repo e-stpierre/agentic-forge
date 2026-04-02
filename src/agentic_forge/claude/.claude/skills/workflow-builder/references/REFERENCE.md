@@ -1,6 +1,6 @@
 # Workflow Schema Reference
 
-Complete reference for all agentic-sdlc workflow YAML properties.
+Complete reference for all agentic-forge workflow YAML properties.
 
 ## Top-Level Structure
 
@@ -131,7 +131,7 @@ Execute a prompt in a Claude session. The most common step type.
 # Skill invocation (always use fully qualified names)
 - name: generate-plan
   type: prompt
-  prompt: /agentic-sdlc:sdlc-plan --type {{ variables.plan_type }} {{ variables.task }}
+  prompt: /sdlc-plan --type {{ variables.plan_type }} {{ variables.task }}
 ```
 
 ### serial
@@ -194,11 +194,11 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
   steps:
     - name: security-scan
       type: prompt
-      prompt: /agentic-sdlc:analyze security
+      prompt: /analyze security
       on-error: skip
     - name: style-check
       type: prompt
-      prompt: /agentic-sdlc:analyze style
+      prompt: /analyze style
       on-error: skip
 ```
 
@@ -230,7 +230,7 @@ Branch execution based on a Jinja2 condition expression.
   then:
     - name: open-pr
       type: prompt
-      prompt: /agentic-sdlc:git-pr
+      prompt: /git-pr
   else:
     - name: skip-pr
       type: prompt
@@ -301,7 +301,7 @@ Pause workflow execution and wait for human input via CLI.
 | `on-timeout`       | string | `"abort"`    | "abort" (stop workflow) or "continue" (proceed) |
 | `timeout-minutes`  | int    | `5`          | Minutes to wait before timeout action           |
 
-Human provides input via: `agentic-sdlc input <workflow-id> "response"`
+Human provides input via: `agentic-forge input <workflow-id> "response"`
 
 ```yaml
 - name: get-approval
@@ -399,33 +399,33 @@ outputs:
 
 ```bash
 # Run a workflow
-agentic-sdlc run <workflow-name-or-path> --var "key=value" [--from-step <name>] [--terminal-output base|all]
+agentic-forge run <workflow-name-or-path> --var "key=value" [--from-step <name>] [--terminal-output base|all]
 
 # Resume a paused/failed workflow
-agentic-sdlc resume <workflow-id>
+agentic-forge resume <workflow-id>
 
 # Check workflow status
-agentic-sdlc status <workflow-id>
+agentic-forge status <workflow-id>
 
 # Cancel a running workflow
-agentic-sdlc cancel <workflow-id>
+agentic-forge cancel <workflow-id>
 
 # Provide human input (for wait-for-human steps)
-agentic-sdlc input <workflow-id> "response text"
+agentic-forge input <workflow-id> "response text"
 
 # List workflow executions
-agentic-sdlc list [--status running|completed|failed|paused]
+agentic-forge list [--status running|completed|failed|paused]
 
 # List available workflows with descriptions
-agentic-sdlc workflows [-v]
+agentic-forge workflows [-v]
 
 # Copy bundled workflows to local project
-agentic-sdlc init [--force] [--list]
+agentic-forge init [--force] [--list]
 
 # Configuration
-agentic-sdlc config get <key>
-agentic-sdlc config set <key> <value>
-agentic-sdlc configure
+agentic-forge config get <key>
+agentic-forge config set <key> <value>
+agentic-forge configure
 ```
 
 ## Available Skills for Prompt Steps
@@ -434,22 +434,22 @@ Always use fully qualified names in workflows:
 
 | Skill                            | Description                   |
 | -------------------------------- | ----------------------------- |
-| `/agentic-sdlc:sdlc-plan`        | Generate implementation plan  |
-| `/agentic-sdlc:sdlc-review`      | Review implementation quality |
-| `/agentic-sdlc:analyze bug`      | Find bugs and logic errors    |
-| `/agentic-sdlc:analyze debt`     | Identify technical debt       |
-| `/agentic-sdlc:analyze doc`      | Check documentation           |
-| `/agentic-sdlc:analyze security` | Security scan                 |
-| `/agentic-sdlc:analyze style`    | Code style check              |
-| `/agentic-sdlc:git-branch`       | Create git branch             |
-| `/agentic-sdlc:git-commit`       | Create commit                 |
-| `/agentic-sdlc:git-pr`           | Create pull request           |
-| `/agentic-sdlc:orchestrate`      | Workflow state evaluation     |
-| `/agentic-sdlc:add-improvement`  | Track improvements            |
+| `/sdlc-plan`        | Generate implementation plan  |
+| `/sdlc-review`      | Review implementation quality |
+| `/analyze bug`      | Find bugs and logic errors    |
+| `/analyze debt`     | Identify technical debt       |
+| `/analyze doc`      | Check documentation           |
+| `/analyze security` | Security scan                 |
+| `/analyze style`    | Code style check              |
+| `/git-branch`       | Create git branch             |
+| `/git-commit`       | Create commit                 |
+| `/git-pr`           | Create pull request           |
+| `/orchestrate`      | Workflow state evaluation     |
+| `/add-improvement`  | Track improvements            |
 
 ## Bundled Workflows
 
-Available via `agentic-sdlc init` or `agentic-sdlc run <name>`:
+Available via `agentic-forge init` or `agentic-forge run <name>`:
 
 | Workflow                 | Description                                                             |
 | ------------------------ | ----------------------------------------------------------------------- |
@@ -483,6 +483,6 @@ When validating a workflow, check for these issues:
 - `completion-promise` missing on ralph-loop (loop will only stop at max-iterations)
 - No `timeout-minutes` on long-running steps
 - `on-error: fail` without `max-retry` (any failure stops the workflow)
-- Non-qualified skill names in prompt steps (e.g., `/sdlc-plan` instead of `/agentic-sdlc:sdlc-plan`)
+- Non-qualified skill names in prompt steps (e.g., `/sdlc-plan` instead of `/sdlc-plan`)
 - Step name not in kebab-case
 - Variable name not in snake_case

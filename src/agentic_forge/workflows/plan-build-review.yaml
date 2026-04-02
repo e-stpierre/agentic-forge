@@ -48,13 +48,13 @@ steps:
   - name: plan
     type: prompt
     model: opus
-    prompt: /agentic-sdlc:sdlc-plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.explore_agents }} {{ variables.task }}
+    prompt: /sdlc-plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.explore_agents }} {{ variables.task }}
     checkpoint: true
 
   - name: create-branch
     type: prompt
     model: haiku
-    prompt: /agentic-sdlc:git-branch {{ variables.type }} {{ variables.task }}
+    prompt: /git-branch {{ variables.type }} {{ variables.task }}
 
   - name: implement
     type: ralph-loop
@@ -77,7 +77,7 @@ steps:
       2. Implement all tasks within that single milestone
       3. Run tests to verify your changes
       4. Mark the milestone as complete in the plan file
-      5. Use /agentic-sdlc:git-commit to commit your changes (including the plan.md if not gitignored)
+      5. Use /git-commit to commit your changes (including the plan.md if not gitignored)
       6. STOP - do not continue to the next milestone
 
       ## Completion Signal
@@ -96,7 +96,7 @@ steps:
 
   - name: review
     type: prompt
-    prompt: /agentic-sdlc:sdlc-review {{ workflow_id }} "agentic/outputs/{{ workflow_id }}/plan.md" "agentic/outputs/{{ workflow_id }}" minor
+    prompt: /sdlc-review {{ workflow_id }} "agentic/outputs/{{ workflow_id }}/plan.md" "agentic/outputs/{{ workflow_id }}" minor
     agent: agents/reviewer.md
 
   - name: fix-issues
@@ -121,8 +121,8 @@ steps:
          - Run relevant checks (tests, lint, types, build) to verify the fix
          - Track which issues were fixed and which could not be fixed
       5. **After attempting fixes**:
-         - Use /agentic-sdlc:git-commit to commit all fixes
-         - Re-run /agentic-sdlc:sdlc-review {{ workflow_id }} "agentic/outputs/{{ workflow_id }}/plan.md" to update the Review section
+         - Use /git-commit to commit all fixes
+         - Re-run /sdlc-review {{ workflow_id }} "agentic/outputs/{{ workflow_id }}/plan.md" to update the Review section
 
       ### Critical Requirement
 
@@ -151,7 +151,7 @@ steps:
     then:
       - name: open-pr
         type: prompt
-        prompt: /agentic-sdlc:git-pr "{{ outputs.plan.summary }}"
+        prompt: /git-pr "{{ outputs.plan.summary }}"
 
 outputs:
   - name: implementation-report

@@ -1,6 +1,6 @@
 ---
 name: workflow-builder
-description: Create, update, explain, validate, and debug agentic-sdlc YAML workflows with comprehensive schema knowledge
+description: Create, update, explain, validate, and debug agentic-forge YAML workflows with comprehensive schema knowledge
 argument-hint: <request>
 disable-model-invocation: true
 ---
@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 ## Overview
 
-Create, update, explain, validate, and debug agentic-sdlc YAML workflows. This skill has comprehensive knowledge of every workflow property, step type, setting, and pattern. Use it when you need to author new workflows, modify existing ones, understand workflow features, check YAML correctness, or troubleshoot execution issues.
+Create, update, explain, validate, and debug agentic-forge YAML workflows. This skill has comprehensive knowledge of every workflow property, step type, setting, and pattern. Use it when you need to author new workflows, modify existing ones, understand workflow features, check YAML correctness, or troubleshoot execution issues.
 
 ## Arguments
 
@@ -32,7 +32,7 @@ Create, update, explain, validate, and debug agentic-sdlc YAML workflows. This s
 - Use kebab-case for all YAML keys (e.g., `timeout-minutes`, `max-retry`, `on-error`)
 - Use kebab-case for step names and workflow names (e.g., `analyze-codebase`, `implement-feature`)
 - Use snake_case for variable names (e.g., `max_iterations`, `fix_severity`)
-- Always use fully qualified skill names in prompt steps (e.g., `/agentic-sdlc:sdlc-plan` not `/sdlc-plan`)
+- Use skill names without prefix in prompt steps (e.g., `/sdlc-plan`)
 - Keep workflows focused: prefer composing simple workflows over one massive workflow
 - Every workflow requires `name`, `version: "1.0"`, and at least one step
 - Include descriptions on the workflow and variables for documentation
