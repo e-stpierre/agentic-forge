@@ -1,0 +1,196 @@
+name: analyze-codebase
+version: "1.0"
+description: Run comprehensive codebase analysis with optional autofix in parallel worktrees
+
+settings:
+  max-retry: 2
+  timeout-minutes: 120
+  track-progress: true
+  terminal-output: base
+
+variables:
+  - name: autofix
+    type: string
+    required: false
+    default: "none"
+    description: Severity level for automatic fixes (none, minor, major, critical)
+  - name: paths
+    type: string
+    required: false
+    default: ""
+    description: Space-separated list of paths to analyze (optional)
+  - name: create_pr
+    type: boolean
+    required: false
+    default: false
+    description: Whether to create a PR for each analysis branch
+  - name: max_fix_iterations
+    type: number
+    required: false
+    default: 25
+    description: Maximum iterations per analysis type for fixing issues
+
+steps:
+  - name: analyze-and-fix-all
+    type: parallel
+    merge-strategy: wait-all
+    merge-mode: independent
+    git:
+      worktree: true
+      branch-prefix: "agentic/analysis"
+    steps:
+      - name: bug-analysis
+        type: serial
+        steps:
+          - name: analyze-bug
+            type: prompt
+            prompt: /agentic-sdlc:analyze bug {{ variables.paths }}
+
+          - name: fix-bug
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-bug-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "BUG_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  Use /agentic-sdlc:fix-analyze bug {{ variables.autofix }}
+
+                  Return completion promise "BUG_FIXES_COMPLETE" when done.
+
+          - name: create-bug-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-bug-pr
+                type: prompt
+                prompt: /agentic-sdlc:git-pr "[Analysis] Bug analysis and fixes"
+
+      - name: debt-analysis
+        type: serial
+        steps:
+          - name: analyze-debt
+            type: prompt
+            prompt: /agentic-sdlc:analyze debt {{ variables.paths }}
+
+          - name: fix-debt
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-debt-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "DEBT_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  Use /agentic-sdlc:fix-analyze debt {{ variables.autofix }}
+
+                  Return completion promise "DEBT_FIXES_COMPLETE" when done.
+
+          - name: create-debt-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-debt-pr
+                type: prompt
+                prompt: /agentic-sdlc:git-pr "[Analysis] Technical debt analysis and fixes"
+
+      - name: doc-analysis
+        type: serial
+        steps:
+          - name: analyze-doc
+            type: prompt
+            prompt: /agentic-sdlc:analyze doc {{ variables.paths }}
+
+          - name: fix-doc
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-doc-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "DOC_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  Use /agentic-sdlc:fix-analyze doc {{ variables.autofix }}
+
+                  Return completion promise "DOC_FIXES_COMPLETE" when done.
+
+          - name: create-doc-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-doc-pr
+                type: prompt
+                prompt: /agentic-sdlc:git-pr "[Analysis] Documentation analysis and fixes"
+
+      - name: security-analysis
+        type: serial
+        steps:
+          - name: analyze-security
+            type: prompt
+            prompt: /agentic-sdlc:analyze security {{ variables.paths }}
+
+          - name: fix-security
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-security-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "SECURITY_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  Use /agentic-sdlc:fix-analyze security {{ variables.autofix }}
+
+                  Return completion promise "SECURITY_FIXES_COMPLETE" when done.
+
+          - name: create-security-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-security-pr
+                type: prompt
+                prompt: /agentic-sdlc:git-pr "[Analysis] Security analysis and fixes"
+
+      - name: style-analysis
+        type: serial
+        steps:
+          - name: analyze-style
+            type: prompt
+            prompt: /agentic-sdlc:analyze style {{ variables.paths }}
+
+          - name: fix-style
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-style-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "STYLE_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  Use /agentic-sdlc:fix-analyze style {{ variables.autofix }}
+
+                  Return completion promise "STYLE_FIXES_COMPLETE" when done.
+
+          - name: create-style-pr
+            type: conditional
+            condition: "variables.create_pr"
+            then:
+              - name: open-style-pr
+                type: prompt
+                prompt: /agentic-sdlc:git-pr "[Analysis] Style analysis and fixes"
+
+outputs:
+  - name: analysis-summary
+    template: analysis-summary.md.j2
+    path: summary.md
+    when: completed

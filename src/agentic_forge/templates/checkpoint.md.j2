@@ -1,0 +1,27 @@
+---
+checkpoint_id: {{ checkpoint_id }}
+step: {{ step }}
+created: {{ created }}
+workflow_id: {{ workflow_id }}
+status: {{ status }}
+---
+
+## Context
+
+{{ context }}
+
+## Progress
+
+{{ progress }}
+
+{% if notes %}
+## Notes for Next Session
+
+{{ notes }}
+{% endif %}
+
+{% if issues %}
+## Issues Discovered
+
+{{ issues }}
+{% endif %}

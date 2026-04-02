@@ -1,0 +1,328 @@
+name: analyze-codebase-merge
+version: "1.0"
+description: Run comprehensive codebase analysis with autofix, merge branches, review, and create PR
+
+settings:
+  max-retry: 2
+  timeout-minutes: 180
+  track-progress: true
+  terminal-output: base
+  git:
+    enabled: true
+    worktree: true
+    auto-commit: true
+    branch-prefix: "agentic/analysis"
+
+variables:
+  - name: autofix
+    type: string
+    required: false
+    default: "major"
+    description: Severity level for automatic fixes (none, minor, major, critical)
+  - name: fix_severity
+    type: string
+    required: false
+    default: "major"
+    description: Minimum severity for validation auto-fix
+  - name: paths
+    type: string
+    required: false
+    default: ""
+    description: Space-separated list of paths to analyze (optional)
+  - name: create_pr
+    type: boolean
+    required: false
+    default: false
+    description: Whether to create a PR after all changes are merged
+  - name: max_fix_iterations
+    type: number
+    required: false
+    default: 25
+    description: Maximum iterations per analysis type for fixing issues
+
+steps:
+  - name: analyze-and-fix-all
+    type: parallel
+    merge-strategy: wait-all
+    merge-mode: merge
+    git:
+      worktree: true
+      branch-prefix: "agentic/analysis"
+    steps:
+      - name: bug-analysis
+        type: serial
+        steps:
+          - name: analyze-bug
+            type: prompt
+            prompt: /agentic-sdlc:analyze bug {{ variables.paths }}
+
+          - name: fix-bug
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-bug-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "BUG_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  ## Task
+                  Fix issues from the bug analysis document.
+
+                  ## Instructions
+                  1. Read the analysis document at agentic/analysis/bug.md
+                  2. If the document does not exist or has no unfixed issues, return the completion promise
+                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
+                  4. Navigate the code to understand the issue context
+                  5. Implement the fix
+                  6. Run build/lint commands and fix any errors
+                  7. Mark the issue as fixed in the analysis document
+                  8. Commit using git-commit with title starting with issue ID
+                  9. End this session (do NOT continue to next issue)
+
+                  ## Completion
+                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
+                  ```json
+                  {"ralph_complete": true, "promise": "BUG_FIXES_COMPLETE"}
+                  ```
+
+                  IMPORTANT:
+                  - Fix only ONE issue per iteration, then end session
+                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
+                  - Only return completion promise when genuinely done
+
+      - name: debt-analysis
+        type: serial
+        steps:
+          - name: analyze-debt
+            type: prompt
+            prompt: /agentic-sdlc:analyze debt {{ variables.paths }}
+
+          - name: fix-debt
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-debt-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "DEBT_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  ## Task
+                  Fix issues from the technical debt analysis document.
+
+                  ## Instructions
+                  1. Read the analysis document at agentic/analysis/debt.md
+                  2. If the document does not exist or has no unfixed issues, return the completion promise
+                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
+                  4. Navigate the code to understand the issue context
+                  5. Implement the fix
+                  6. Run build/lint commands and fix any errors
+                  7. Mark the issue as fixed in the analysis document
+                  8. Commit using git-commit with title starting with issue ID
+                  9. End this session (do NOT continue to next issue)
+
+                  ## Completion
+                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
+                  ```json
+                  {"ralph_complete": true, "promise": "DEBT_FIXES_COMPLETE"}
+                  ```
+
+                  IMPORTANT:
+                  - Fix only ONE issue per iteration, then end session
+                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
+                  - Only return completion promise when genuinely done
+
+      - name: doc-analysis
+        type: serial
+        steps:
+          - name: analyze-doc
+            type: prompt
+            prompt: /agentic-sdlc:analyze doc {{ variables.paths }}
+
+          - name: fix-doc
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-doc-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "DOC_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  ## Task
+                  Fix issues from the documentation analysis document.
+
+                  ## Instructions
+                  1. Read the analysis document at agentic/analysis/doc.md
+                  2. If the document does not exist or has no unfixed issues, return the completion promise
+                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
+                  4. Navigate the code to understand the issue context
+                  5. Implement the fix
+                  6. Run build/lint commands and fix any errors
+                  7. Mark the issue as fixed in the analysis document
+                  8. Commit using git-commit with title starting with issue ID
+                  9. End this session (do NOT continue to next issue)
+
+                  ## Completion
+                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
+                  ```json
+                  {"ralph_complete": true, "promise": "DOC_FIXES_COMPLETE"}
+                  ```
+
+                  IMPORTANT:
+                  - Fix only ONE issue per iteration, then end session
+                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
+                  - Only return completion promise when genuinely done
+
+      - name: security-analysis
+        type: serial
+        steps:
+          - name: analyze-security
+            type: prompt
+            prompt: /agentic-sdlc:analyze security {{ variables.paths }}
+
+          - name: fix-security
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-security-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "SECURITY_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  ## Task
+                  Fix issues from the security analysis document.
+
+                  ## Instructions
+                  1. Read the analysis document at agentic/analysis/security.md
+                  2. If the document does not exist or has no unfixed issues, return the completion promise
+                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
+                  4. Navigate the code to understand the issue context
+                  5. Implement the fix
+                  6. Run build/lint commands and fix any errors
+                  7. Mark the issue as fixed in the analysis document
+                  8. Commit using git-commit with title starting with issue ID
+                  9. End this session (do NOT continue to next issue)
+
+                  ## Completion
+                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
+                  ```json
+                  {"ralph_complete": true, "promise": "SECURITY_FIXES_COMPLETE"}
+                  ```
+
+                  IMPORTANT:
+                  - Fix only ONE issue per iteration, then end session
+                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
+                  - Only return completion promise when genuinely done
+
+      - name: style-analysis
+        type: serial
+        steps:
+          - name: analyze-style
+            type: prompt
+            prompt: /agentic-sdlc:analyze style {{ variables.paths }}
+
+          - name: fix-style
+            type: conditional
+            condition: "variables.autofix != 'none'"
+            then:
+              - name: apply-style-fixes
+                type: ralph-loop
+                max-iterations: "{{ variables.max_fix_iterations }}"
+                completion-promise: "STYLE_FIXES_COMPLETE"
+                model: sonnet
+                timeout-minutes: 30
+                prompt: |
+                  ## Task
+                  Fix issues from the style analysis document.
+
+                  ## Instructions
+                  1. Read the analysis document at agentic/analysis/style.md
+                  2. If the document does not exist or has no unfixed issues, return the completion promise
+                  3. Pick the NEXT unfixed issue (highest severity first, must be {{ variables.autofix }} or higher)
+                  4. Navigate the code to understand the issue context
+                  5. Implement the fix
+                  6. Run build/lint commands and fix any errors
+                  7. Mark the issue as fixed in the analysis document
+                  8. Commit using git-commit with title starting with issue ID
+                  9. End this session (do NOT continue to next issue)
+
+                  ## Completion
+                  When ALL issues with severity {{ variables.autofix }} or higher are fixed OR the document doesn't exist, output:
+                  ```json
+                  {"ralph_complete": true, "promise": "STYLE_FIXES_COMPLETE"}
+                  ```
+
+                  IMPORTANT:
+                  - Fix only ONE issue per iteration, then end session
+                  - If an issue cannot be fixed (error, missing data), mark as skipped with reason
+                  - Only return completion promise when genuinely done
+
+  - name: review-merged-changes
+    type: prompt
+    prompt: /agentic-sdlc:sdlc-review "" {{ variables.fix_severity }}
+
+  - name: fix-validation-issues
+    type: conditional
+    condition: "variables.fix_severity != 'none'"
+    then:
+      - name: apply-validation-fixes
+        type: ralph-loop
+        max-iterations: "{{ variables.max_fix_iterations }}"
+        completion-promise: "VALIDATION_FIXES_COMPLETE"
+        model: sonnet
+        timeout-minutes: 30
+        prompt: |
+          ## Task
+          Fix validation issues from the merged analysis changes.
+
+          ## Instructions
+          1. Run validation checks (tests, build, lint)
+          2. If all checks pass, return the completion promise
+          3. Pick the NEXT failing check (tests first, then build, then lint)
+          4. Navigate the code to understand the failure
+          5. Implement the fix
+          6. Run the failing check again to verify
+          7. Commit using git-commit with clear message
+          8. End this session (do NOT continue to next issue)
+
+          ## Checks to Run
+          - Run the test suite and fix failing tests
+          - Run the build and fix any build errors
+          - Run linting and fix style issues
+          - Verify all changes follow project conventions
+
+          ## Completion
+          When ALL validation checks pass, output:
+          ```json
+          {"ralph_complete": true, "promise": "VALIDATION_FIXES_COMPLETE"}
+          ```
+
+          IMPORTANT:
+          - Fix only ONE issue per iteration, then end session
+          - If an issue cannot be fixed (error, missing data), mark as skipped with reason
+          - Only return completion promise when genuinely done
+
+      - name: re-review
+        type: prompt
+        prompt: /agentic-sdlc:sdlc-review "" {{ variables.fix_severity }}
+
+  - name: create-pr
+    type: conditional
+    condition: "variables.create_pr"
+    then:
+      - name: open-pr
+        type: prompt
+        prompt: /agentic-sdlc:git-pr "[Analysis] Codebase analysis and fixes"
+
+outputs:
+  - name: analysis-summary
+    template: analysis-summary.md.j2
+    path: summary.md
+    when: completed
