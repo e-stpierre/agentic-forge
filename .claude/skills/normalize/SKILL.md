@@ -12,9 +12,7 @@ Validate that prompt files and plugin READMEs conform to the exact structure def
 
 Templates used for validation:
 
-- `docs/templates/agent-template.md` for agents
-- `plugins/agentic-sdlc/skills/create-skill/template.md` for skills
-- `docs/templates/readme-template.md` for plugin READMEs
+- `src/agentic_forge/claude/.claude/skills/create-skill/template.md` for skills
 
 All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`) with HTML comment instructions. See `CLAUDE.md` section "Prompt Template Convention" for complete details.
 
@@ -52,7 +50,8 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
    If no paths provided, use a two-pass discovery approach for reliability:
 
    **Pass 1: Gather all markdown files using broad patterns**
-   - `plugins/**/*.md` - All markdown files in plugins
+   - `src/agentic_forge/claude/.claude/skills/**/SKILL.md` - Bundled skills
+   - `src/agentic_forge/agents/*.md` - Bundled agents
    - `.claude/skills/**/SKILL.md` - Repository-level skills
 
    **Pass 2: Filter and classify discovered files**
@@ -65,16 +64,13 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 
    Determine the file type by checking if the file path contains these directory patterns:
 
-   | Path Contains           | Type   | Template to Read                                       |
-   | ----------------------- | ------ | ------------------------------------------------------ |
-   | `/agents/` or `agents`  | Agent  | `docs/templates/agent-template.md`                     |
-   | `/skills/` or `skills`  | Skill  | `plugins/agentic-sdlc/skills/create-skill/template.md` |
-   | `/hooks/` or `hooks`    | Hook   | (no template - skip validation)                        |
-   | Filename is `README.md` | README | `docs/templates/readme-template.md`                    |
+   | Path Contains           | Type   | Template to Read                                                    |
+   | ----------------------- | ------ | ------------------------------------------------------------------- |
+   | `/skills/` or `skills`  | Skill  | `src/agentic_forge/claude/.claude/skills/create-skill/template.md`  |
+   | `/agents/` or `agents`  | Agent  | (no template - validate structure manually)                         |
 
    **Classification rules:**
    - Check path segments, not substrings (e.g., `/agents/` not just `agent`)
-   - README.md files in plugin roots are validated; README.md in subdirectories are skipped
    - Files like CHANGELOG.md, CLAUDE.example.md are skipped (not prompts)
    - If a file cannot be classified, skip it and note in the report
 
@@ -186,7 +182,7 @@ All templates use Mustache/Handlebars-style placeholders (`{{placeholder_name}}`
 
 ### path/to/skill/SKILL.md (Skill)
 
-Template: plugins/agentic-sdlc/skills/create-skill/template.md
+Template: src/agentic_forge/claude/.claude/skills/create-skill/template.md
 
 **Frontmatter:**
 
@@ -204,14 +200,11 @@ Template: plugins/agentic-sdlc/skills/create-skill/template.md
 - [PASS] Instructions section uses numbered list
 - [WARN] Description is 105 characters (recommended: under 100)
 
-### plugins/my-plugin/README.md (README)
-
-Template: docs/templates/readme-template.md
+### src/agentic_forge/agents/explorer.md (Agent)
 
 **Structure:**
 
 - [PASS] All required sections present
-- [WARN] "Agents" section present but plugin has no agents/ directory
 
 ## Summary
 
@@ -233,7 +226,7 @@ Template: docs/templates/readme-template.md
 
 ### path/to/skill/SKILL.md (Skill)
 
-Template: plugins/agentic-sdlc/skills/create-skill/template.md
+Template: src/agentic_forge/claude/.claude/skills/create-skill/template.md
 
 - [FIXED] Added missing section: "Output Guidance"
 - [FIXED] Renamed section: "## arguments" -> "## Arguments"
