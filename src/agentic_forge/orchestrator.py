@@ -11,22 +11,22 @@ from typing import TYPE_CHECKING
 
 import yaml
 
-from agentic_sdlc.config import load_config
-from agentic_sdlc.console import ConsoleOutput, OutputLevel, extract_summary
-from agentic_sdlc.executor import WorkflowExecutor
-from agentic_sdlc.git.worktree import (
+from agentic_forge.config import load_config
+from agentic_forge.console import ConsoleOutput, OutputLevel, extract_summary
+from agentic_forge.executor import WorkflowExecutor
+from agentic_forge.git.worktree import (
     Worktree,
     create_worktree,
     prune_orphaned,
     remove_worktree,
 )
-from agentic_sdlc.logging.logger import WorkflowLogger
-from agentic_sdlc.parser import (
+from agentic_forge.logging.logger import WorkflowLogger
+from agentic_forge.parser import (
     StepDefinition,
     StepType,
     WorkflowDefinition,
 )
-from agentic_sdlc.progress import (
+from agentic_forge.progress import (
     ParallelBranch,
     WorkflowProgress,
     WorkflowStatus,
@@ -39,7 +39,7 @@ from agentic_sdlc.progress import (
     update_step_failed,
     update_step_started,
 )
-from agentic_sdlc.ralph_loop import (
+from agentic_forge.ralph_loop import (
     build_ralph_system_message,
     create_ralph_state,
     deactivate_ralph_state,
@@ -47,9 +47,9 @@ from agentic_sdlc.ralph_loop import (
     load_ralph_state,
     update_ralph_iteration,
 )
-from agentic_sdlc.renderer import TemplateRenderer
-from agentic_sdlc.runner import run_claude
-from agentic_sdlc.signal_manager import SignalManager, handle_graceful_shutdown
+from agentic_forge.renderer import TemplateRenderer
+from agentic_forge.runner import run_claude
+from agentic_forge.signal_manager import SignalManager, handle_graceful_shutdown
 
 if TYPE_CHECKING:
     from typing import Any
@@ -213,7 +213,7 @@ class WorkflowOrchestrator:
                 if name == from_step:
                     skip = False
                 if skip:
-                    from agentic_sdlc.progress import StepProgress
+                    from agentic_forge.progress import StepProgress
 
                     progress.completed_steps.append(
                         StepProgress(
@@ -668,7 +668,7 @@ class WorkflowOrchestrator:
         print("HUMAN INPUT REQUIRED")
         print(f"{'=' * 60}")
         print(f"\n{step.message}\n")
-        print(f'Provide input with: agentic-sdlc input {progress.workflow_id} "<your response>"')
+        print(f'Provide input with: agentic-forge input {progress.workflow_id} "<your response>"')
         print(f"{'=' * 60}\n")
 
     def _retry_step_action(
@@ -765,5 +765,5 @@ def process_human_input(workflow_id: str, response: str, repo_root: Path | None 
     progress.status = WorkflowStatus.RUNNING.value
     save_progress(progress, repo_root)
 
-    print(f"Input received. Resume workflow with: agentic-sdlc resume {workflow_id}")
+    print(f"Input received. Resume workflow with: agentic-forge resume {workflow_id}")
     return True

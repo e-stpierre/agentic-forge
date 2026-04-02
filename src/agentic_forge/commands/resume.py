@@ -12,10 +12,10 @@ if TYPE_CHECKING:
 
 def cmd_resume(args: Namespace) -> None:
     """Resume a paused, failed, or interrupted workflow by re-executing it."""
-    from agentic_sdlc.commands.run import discover_workflow
-    from agentic_sdlc.executor import WorkflowExecutor
-    from agentic_sdlc.parser import WorkflowParseError, WorkflowParser
-    from agentic_sdlc.progress import WorkflowStatus, load_progress, prepare_for_resume, save_progress
+    from agentic_forge.commands.run import discover_workflow
+    from agentic_forge.executor import WorkflowExecutor
+    from agentic_forge.parser import WorkflowParseError, WorkflowParser
+    from agentic_forge.progress import WorkflowStatus, load_progress, prepare_for_resume, save_progress
 
     progress = load_progress(args.workflow_id)
     if progress is None:
@@ -48,7 +48,7 @@ def cmd_resume(args: Namespace) -> None:
     if workflow_path is None:
         print(
             f"Error: Cannot find workflow file for '{progress.workflow_name}'.\n"
-            f"Provide the workflow YAML at one of the standard locations or re-run with 'agentic-sdlc run <path>'.",
+            f"Provide the workflow YAML at one of the standard locations or re-run with 'agentic-forge run <path>'.",
             file=sys.stderr,
         )
         sys.exit(1)

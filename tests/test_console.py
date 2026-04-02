@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import io
 
-from agentic_sdlc.console import (
+from agentic_forge.console import (
     Color,
     ConsoleOutput,
     OutputLevel,

@@ -416,7 +416,7 @@ class ParallelOutputHandler:
             model: Optional model name
         """
         # Import here to avoid circular dependency
-        from agentic_sdlc.runner import format_model_name
+        from agentic_forge.runner import format_model_name
 
         formatted_model = format_model_name(model) if model else None
         branch_prefix = _colorize(f"[{branch}] ", Color.CYAN, Color.BOLD)
@@ -621,7 +621,7 @@ class ConsoleOutput:
             model: Model name for BASE mode display (shown in brackets before step name)
         """
         # Import here to avoid circular dependency
-        from agentic_sdlc.runner import format_model_name
+        from agentic_forge.runner import format_model_name
 
         # In BASE mode, show model before step name
         model_str = ""
@@ -828,7 +828,7 @@ class ConsoleOutput:
             model: Optional model name (e.g., "claude-sonnet-4-5-20250929")
         """
         # Import here to avoid circular dependency
-        from agentic_sdlc.runner import format_model_name
+        from agentic_forge.runner import format_model_name
 
         formatted_model = format_model_name(model) if model else None
 

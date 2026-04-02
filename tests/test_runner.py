@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from agentic_sdlc.runner import (
+from agentic_forge.runner import (
     MODEL_MAP,
     ClaudeResult,
     SessionOutput,
@@ -529,8 +529,8 @@ class TestClaudeResult:
 class TestRunClaude:
     """Tests for run_claude function."""
 
-    @patch("agentic_sdlc.runner.subprocess.run")
-    @patch("agentic_sdlc.runner.get_executable")
+    @patch("agentic_forge.runner.subprocess.run")
+    @patch("agentic_forge.runner.get_executable")
     def test_run_claude_basic(self, mock_get_exe, mock_run) -> None:
         """Test basic claude run."""
         mock_get_exe.return_value = "/usr/bin/claude"
@@ -546,8 +546,8 @@ class TestRunClaude:
         assert result.stdout == "output"
         mock_run.assert_called_once()
 
-    @patch("agentic_sdlc.runner.subprocess.run")
-    @patch("agentic_sdlc.runner.get_executable")
+    @patch("agentic_forge.runner.subprocess.run")
+    @patch("agentic_forge.runner.get_executable")
     def test_run_claude_with_model(self, mock_get_exe, mock_run) -> None:
         """Test claude run with specific model."""
         mock_get_exe.return_value = "/usr/bin/claude"
@@ -564,8 +564,8 @@ class TestRunClaude:
         assert "--model" in cmd
         assert "opus" in cmd
 
-    @patch("agentic_sdlc.runner.subprocess.run")
-    @patch("agentic_sdlc.runner.get_executable")
+    @patch("agentic_forge.runner.subprocess.run")
+    @patch("agentic_forge.runner.get_executable")
     def test_run_claude_with_skip_permissions(self, mock_get_exe, mock_run) -> None:
         """Test claude run with skip permissions."""
         mock_get_exe.return_value = "/usr/bin/claude"
@@ -581,8 +581,8 @@ class TestRunClaude:
         cmd = call_args[0][0]
         assert "--dangerously-skip-permissions" in cmd
 
-    @patch("agentic_sdlc.runner.subprocess.run")
-    @patch("agentic_sdlc.runner.get_executable")
+    @patch("agentic_forge.runner.subprocess.run")
+    @patch("agentic_forge.runner.get_executable")
     def test_run_claude_with_allowed_tools(self, mock_get_exe, mock_run) -> None:
         """Test claude run with allowed tools."""
         mock_get_exe.return_value = "/usr/bin/claude"
@@ -598,8 +598,8 @@ class TestRunClaude:
         cmd = call_args[0][0]
         assert "--allowedTools" in cmd
 
-    @patch("agentic_sdlc.runner.subprocess.run")
-    @patch("agentic_sdlc.runner.get_executable")
+    @patch("agentic_forge.runner.subprocess.run")
+    @patch("agentic_forge.runner.get_executable")
     def test_run_claude_timeout(self, mock_get_exe, mock_run) -> None:
         """Test claude run with timeout."""
         mock_get_exe.return_value = "/usr/bin/claude"
@@ -615,8 +615,8 @@ class TestRunClaude:
         assert result.success is False
         assert "timed out" in result.stderr
 
-    @patch("agentic_sdlc.runner.subprocess.run")
-    @patch("agentic_sdlc.runner.get_executable")
+    @patch("agentic_forge.runner.subprocess.run")
+    @patch("agentic_forge.runner.get_executable")
     def test_run_claude_with_cwd(self, mock_get_exe, mock_run, temp_dir: Path) -> None:
         """Test claude run with working directory."""
         mock_get_exe.return_value = "/usr/bin/claude"
@@ -635,8 +635,8 @@ class TestRunClaude:
 class TestCheckClaudeAvailable:
     """Tests for check_claude_available function."""
 
-    @patch("agentic_sdlc.runner.subprocess.run")
-    @patch("agentic_sdlc.runner.get_executable")
+    @patch("agentic_forge.runner.subprocess.run")
+    @patch("agentic_forge.runner.get_executable")
     def test_claude_available(self, mock_get_exe, mock_run) -> None:
         """Test when claude is available."""
         mock_get_exe.return_value = "/usr/bin/claude"
@@ -644,15 +644,15 @@ class TestCheckClaudeAvailable:
 
         assert check_claude_available() is True
 
-    @patch("agentic_sdlc.runner.get_executable")
+    @patch("agentic_forge.runner.get_executable")
     def test_claude_not_available(self, mock_get_exe) -> None:
         """Test when claude is not available."""
         mock_get_exe.side_effect = FileNotFoundError("not found")
 
         assert check_claude_available() is False
 
-    @patch("agentic_sdlc.runner.subprocess.run")
-    @patch("agentic_sdlc.runner.get_executable")
+    @patch("agentic_forge.runner.subprocess.run")
+    @patch("agentic_forge.runner.get_executable")
     def test_claude_version_fails(self, mock_get_exe, mock_run) -> None:
         """Test when claude --version fails."""
         mock_get_exe.return_value = "/usr/bin/claude"
@@ -673,7 +673,7 @@ class TestAgenticSystemPrompt:
             assert len(prompt) > 0
             assert "sessionId" in prompt or "isSuccess" in prompt
 
-    @patch("agentic_sdlc.runner.AGENTIC_SYSTEM_PROMPT_FILE")
+    @patch("agentic_forge.runner.AGENTIC_SYSTEM_PROMPT_FILE")
     def test_get_agentic_system_prompt_not_exists(self, mock_path) -> None:
         """Test loading system prompt when file doesn't exist."""
         mock_path.exists.return_value = False

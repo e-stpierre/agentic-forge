@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 def cmd_config(args: Namespace) -> None:
     """Get or set configuration values."""
-    from agentic_sdlc.config import get_config_value, set_config_value
+    from agentic_forge.config import get_config_value, set_config_value
 
     if args.config_command == "get":
         value = get_config_value(args.key)
@@ -27,5 +27,5 @@ def cmd_config(args: Namespace) -> None:
         set_config_value(args.key, args.value)
         print(f"Set {args.key} = {args.value}")
     else:
-        print("Usage: agentic-sdlc config get|set <key> [value]", file=sys.stderr)
+        print("Usage: agentic-forge config get|set <key> [value]", file=sys.stderr)
         sys.exit(1)

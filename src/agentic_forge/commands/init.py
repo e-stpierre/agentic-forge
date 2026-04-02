@@ -36,7 +36,7 @@ def cmd_init(args: Namespace) -> None:
         for wf in bundled_workflows:
             print(f"  {wf.name}")
         print()
-        print("Use 'agentic-sdlc init' to copy these to agentic/workflows/")
+        print("Use 'agentic-forge init' to copy these to agentic/workflows/")
         return
 
     # Copy workflows to local directory
@@ -69,12 +69,12 @@ def cmd_init(args: Namespace) -> None:
 
     if copied:
         print("\nYou can now run workflows with:")
-        print("  agentic-sdlc run agentic/workflows/<workflow>.yaml")
+        print("  agentic-forge run agentic/workflows/<workflow>.yaml")
 
 
 def _init_config(agentic_dir: Path, *, force: bool = False) -> None:
     """Create config.json in the agentic directory if it doesn't exist."""
-    from agentic_sdlc.config import get_default_config
+    from agentic_forge.config import get_default_config
 
     config_path = agentic_dir / "config.json"
     if config_path.exists() and not force:
@@ -89,12 +89,12 @@ def _init_config(agentic_dir: Path, *, force: bool = False) -> None:
 
 def cmd_configure(args: Namespace) -> None:
     """Interactive configuration wizard."""
-    from agentic_sdlc.config import load_config
+    from agentic_forge.config import load_config
 
     config = load_config()
     print("Agentic Workflows Configuration")
     print("=" * 40)
     print("\nCurrent settings:")
     print(json.dumps(config, indent=2))
-    print("\nUse 'agentic-sdlc config set <key> <value>' to modify settings.")
-    print("Example: agentic-sdlc config set defaults.maxRetry 5")
+    print("\nUse 'agentic-forge config set <key> <value>' to modify settings.")
+    print("Example: agentic-forge config set defaults.maxRetry 5")

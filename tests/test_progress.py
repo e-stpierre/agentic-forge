@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agentic_sdlc.progress import (
+from agentic_forge.progress import (
     StepProgress,
     StepStatus,
     WorkflowProgress,

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from typing import Any
 
-    from agentic_sdlc.console import ConsoleOutput
+    from agentic_forge.console import ConsoleOutput
 
 
 def get_executable(name: str) -> str:

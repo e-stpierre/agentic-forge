@@ -26,7 +26,7 @@ def get_user_workflows_dir() -> Path:
     else:
         base_dir = Path(environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 
-    return base_dir / "agentic-sdlc" / "workflows"
+    return base_dir / "agentic-forge" / "workflows"
 
 
 def get_project_workflows_dir() -> Path:
@@ -87,7 +87,7 @@ def cmd_workflows(args: Namespace) -> None:
         print(f"  - Project: {get_project_workflows_dir()}")
         print(f"  - User:    {get_user_workflows_dir()}")
         print(f"  - Bundled: {get_bundled_workflows_dir()}")
-        print("\nUse 'agentic-sdlc init' to copy bundled workflows locally.")
+        print("\nUse 'agentic-forge init' to copy bundled workflows locally.")
         return
 
     # Check for --verbose flag
@@ -138,10 +138,10 @@ def cmd_workflows(args: Namespace) -> None:
     print(f"Total: {len(workflows)} workflow(s)")
     print()
     print("Usage:")
-    print("  agentic-sdlc run <workflow-name>")
-    print("  agentic-sdlc run <workflow-name> --var key=value")
+    print("  agentic-forge run <workflow-name>")
+    print("  agentic-forge run <workflow-name> --var key=value")
     print()
     print("Examples:")
-    print('  agentic-sdlc run one-shot --var task="Add login button"')
-    print("  agentic-sdlc run analyze-single --var analysis_type=bug")
-    print('  agentic-sdlc run plan-build-review --var task="Refactor auth"')
+    print('  agentic-forge run one-shot --var task="Add login button"')
+    print("  agentic-forge run analyze-single --var analysis_type=bug")
+    print('  agentic-forge run plan-build-review --var task="Refactor auth"')

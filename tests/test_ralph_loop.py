@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agentic_sdlc.ralph_loop import (
+from agentic_forge.ralph_loop import (
     CompletionResult,
     _parse_ralph_state,
     build_ralph_system_message,

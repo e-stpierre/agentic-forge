@@ -8,11 +8,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from agentic_sdlc.console import ConsoleOutput
-    from agentic_sdlc.logging.logger import WorkflowLogger
-    from agentic_sdlc.parser import StepDefinition, WorkflowSettings
-    from agentic_sdlc.progress import WorkflowProgress
-    from agentic_sdlc.renderer import TemplateRenderer
+    from agentic_forge.console import ConsoleOutput
+    from agentic_forge.logging.logger import WorkflowLogger
+    from agentic_forge.parser import StepDefinition, WorkflowSettings
+    from agentic_forge.progress import WorkflowProgress
+    from agentic_forge.renderer import TemplateRenderer
 
 
 @dataclass

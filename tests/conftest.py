@@ -25,7 +25,7 @@ def temp_dir() -> Generator[Path, None, None]:
 @pytest.fixture
 def mock_subprocess() -> Generator[MagicMock, None, None]:
     """Mock subprocess.Popen for Claude calls."""
-    with patch("agentic_sdlc.runner.subprocess.Popen") as mock:
+    with patch("agentic_forge.runner.subprocess.Popen") as mock:
         process = MagicMock()
         process.communicate.return_value = ('{"success": true}', "")
         process.returncode = 0

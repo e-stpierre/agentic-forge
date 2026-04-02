@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agentic_sdlc.config import (
+from agentic_forge.config import (
     _deep_merge,
     get_config_path,
     get_config_value,

@@ -1,6 +1,6 @@
 """Checkpoint management for agentic workflows."""
 
-from agentic_sdlc.checkpoints.manager import (
+from agentic_forge.checkpoints.manager import (
     create_checkpoint,
     get_checkpoint_path,
     get_latest_checkpoint,

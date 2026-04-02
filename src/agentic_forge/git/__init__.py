@@ -1,6 +1,6 @@
 """Git operations for agentic workflows."""
 
-from agentic_sdlc.git.worktree import (
+from agentic_forge.git.worktree import (
     Worktree,
     create_worktree,
     get_default_branch,

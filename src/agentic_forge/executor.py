@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agentic_sdlc.config import load_config
-from agentic_sdlc.console import ConsoleOutput, OutputLevel
-from agentic_sdlc.logging.logger import WorkflowLogger
-from agentic_sdlc.parser import StepDefinition, StepType, WorkflowDefinition, WorkflowSettings
-from agentic_sdlc.progress import (
+from agentic_forge.config import load_config
+from agentic_forge.console import ConsoleOutput, OutputLevel
+from agentic_forge.logging.logger import WorkflowLogger
+from agentic_forge.parser import StepDefinition, StepType, WorkflowDefinition, WorkflowSettings
+from agentic_forge.progress import (
     StepStatus,
     WorkflowProgress,
     WorkflowStatus,
@@ -20,17 +20,17 @@ from agentic_sdlc.progress import (
     update_step_failed,
     update_step_started,
 )
-from agentic_sdlc.renderer import (
+from agentic_forge.renderer import (
     TemplateRenderer,
     build_template_context,
     render_workflow_output,
 )
-from agentic_sdlc.steps.base import StepContext
-from agentic_sdlc.steps.conditional_step import ConditionalStepExecutor
-from agentic_sdlc.steps.parallel_step import BranchStepExecutor, ParallelStepExecutor
-from agentic_sdlc.steps.prompt_step import PromptStepExecutor
-from agentic_sdlc.steps.ralph_loop_step import RalphLoopStepExecutor
-from agentic_sdlc.steps.serial_step import SerialStepExecutor
+from agentic_forge.steps.base import StepContext
+from agentic_forge.steps.conditional_step import ConditionalStepExecutor
+from agentic_forge.steps.parallel_step import BranchStepExecutor, ParallelStepExecutor
+from agentic_forge.steps.prompt_step import PromptStepExecutor
+from agentic_forge.steps.ralph_loop_step import RalphLoopStepExecutor
+from agentic_forge.steps.serial_step import SerialStepExecutor
 
 
 class WorkflowExecutor:

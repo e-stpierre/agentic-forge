@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from agentic_sdlc.logging.logger import WorkflowLogger
-    from agentic_sdlc.progress import WorkflowProgress
+    from agentic_forge.logging.logger import WorkflowLogger
+    from agentic_forge.progress import WorkflowProgress
 
 
 class SignalManager:
@@ -69,8 +69,8 @@ def handle_graceful_shutdown(
         logger: Workflow logger
         repo_root: Repository root for cleanup
     """
-    from agentic_sdlc.git.worktree import prune_orphaned
-    from agentic_sdlc.progress import WorkflowStatus
+    from agentic_forge.git.worktree import prune_orphaned
+    from agentic_forge.progress import WorkflowStatus
 
     logger.info("orchestrator", "Performing graceful shutdown")
     progress.status = WorkflowStatus.CANCELED.value

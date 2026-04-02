@@ -6,15 +6,15 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from agentic_sdlc.console import ConsoleOutput
-from agentic_sdlc.logging.logger import WorkflowLogger
-from agentic_sdlc.parser import StepDefinition, StepType, WorkflowSettings
-from agentic_sdlc.progress import WorkflowProgress, create_progress
-from agentic_sdlc.renderer import TemplateRenderer
-from agentic_sdlc.steps.base import StepContext, StepExecutor
-from agentic_sdlc.steps.conditional_step import ConditionalStepExecutor
-from agentic_sdlc.steps.prompt_step import PromptStepExecutor
-from agentic_sdlc.steps.serial_step import SerialStepExecutor
+from agentic_forge.console import ConsoleOutput
+from agentic_forge.logging.logger import WorkflowLogger
+from agentic_forge.parser import StepDefinition, StepType, WorkflowSettings
+from agentic_forge.progress import WorkflowProgress, create_progress
+from agentic_forge.renderer import TemplateRenderer
+from agentic_forge.steps.base import StepContext, StepExecutor
+from agentic_forge.steps.conditional_step import ConditionalStepExecutor
+from agentic_forge.steps.prompt_step import PromptStepExecutor
+from agentic_forge.steps.serial_step import SerialStepExecutor
 
 
 @pytest.fixture
@@ -178,7 +178,7 @@ class TestPromptStepExecutor:
         executor = PromptStepExecutor()
         assert executor is not None
 
-    @patch("agentic_sdlc.steps.prompt_step.run_claude")
+    @patch("agentic_forge.steps.prompt_step.run_claude")
     def test_execute_basic_prompt(
         self,
         mock_run,
@@ -214,7 +214,7 @@ class TestPromptStepExecutor:
         prompt_arg = call_args.args[0] if call_args.args else call_args.kwargs.get("prompt", "")
         assert "Test prompt content" in prompt_arg
 
-    @patch("agentic_sdlc.steps.prompt_step.run_claude")
+    @patch("agentic_forge.steps.prompt_step.run_claude")
     def test_execute_prompt_with_variables(
         self,
         mock_run,
@@ -316,7 +316,7 @@ class TestSerialStepExecutor:
         mock_console: ConsoleOutput,
     ) -> None:
         """Test executing serial steps in order."""
-        from agentic_sdlc.steps.base import StepResult
+        from agentic_forge.steps.base import StepResult
 
         branch_executor = MagicMock()
         # Mock the execute method to return success
@@ -343,7 +343,7 @@ class TestSerialStepExecutor:
 class TestStepExecutorRetry:
     """Tests for step retry behavior."""
 
-    @patch("agentic_sdlc.steps.prompt_step.run_claude")
+    @patch("agentic_forge.steps.prompt_step.run_claude")
     def test_prompt_retries_on_failure(
         self,
         mock_run,

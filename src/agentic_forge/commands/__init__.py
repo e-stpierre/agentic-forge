@@ -1,15 +1,15 @@
-"""CLI command handlers for agentic-sdlc."""
+"""CLI command handlers for agentic-forge."""
 
-from agentic_sdlc.commands.config import cmd_config
-from agentic_sdlc.commands.init import cmd_configure, cmd_init
-from agentic_sdlc.commands.release_notes import cmd_release_notes
-from agentic_sdlc.commands.resume import cmd_resume
-from agentic_sdlc.commands.run import cmd_run
-from agentic_sdlc.commands.shortcuts import cmd_input
-from agentic_sdlc.commands.status import cmd_cancel, cmd_list, cmd_status
-from agentic_sdlc.commands.update import cmd_update
-from agentic_sdlc.commands.version import cmd_version
-from agentic_sdlc.commands.workflows import cmd_workflows
+from agentic_forge.commands.config import cmd_config
+from agentic_forge.commands.init import cmd_configure, cmd_init
+from agentic_forge.commands.release_notes import cmd_release_notes
+from agentic_forge.commands.resume import cmd_resume
+from agentic_forge.commands.run import cmd_run
+from agentic_forge.commands.shortcuts import cmd_input
+from agentic_forge.commands.status import cmd_cancel, cmd_list, cmd_status
+from agentic_forge.commands.update import cmd_update
+from agentic_forge.commands.version import cmd_version
+from agentic_forge.commands.workflows import cmd_workflows
 
 __all__ = [
     "cmd_run",

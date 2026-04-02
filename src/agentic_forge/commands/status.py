@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 def cmd_status(args: Namespace) -> None:
     """Show workflow status."""
-    from agentic_sdlc.progress import load_progress
+    from agentic_forge.progress import load_progress
 
     progress = load_progress(args.workflow_id)
     if progress is None:
@@ -52,7 +52,7 @@ def cmd_cancel(args: Namespace) -> None:
     """Cancel a running workflow."""
     from datetime import datetime, timezone
 
-    from agentic_sdlc.progress import WorkflowStatus, load_progress, save_progress
+    from agentic_forge.progress import WorkflowStatus, load_progress, save_progress
 
     progress = load_progress(args.workflow_id)
     if progress is None:

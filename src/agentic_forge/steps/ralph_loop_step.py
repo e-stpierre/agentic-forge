@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from agentic_sdlc.console import extract_summary
-from agentic_sdlc.progress import WorkflowStatus, update_step_completed, update_step_failed
-from agentic_sdlc.ralph_loop import (
+from agentic_forge.console import extract_summary
+from agentic_forge.progress import WorkflowStatus, update_step_completed, update_step_failed
+from agentic_forge.ralph_loop import (
     build_ralph_system_message,
     create_ralph_state,
     deactivate_ralph_state,
@@ -14,14 +14,14 @@ from agentic_sdlc.ralph_loop import (
     load_ralph_state,
     update_ralph_iteration,
 )
-from agentic_sdlc.runner import run_claude
-from agentic_sdlc.steps.base import StepContext, StepExecutor, StepResult
+from agentic_forge.runner import run_claude
+from agentic_forge.steps.base import StepContext, StepExecutor, StepResult
 
 if TYPE_CHECKING:
-    from agentic_sdlc.console import ConsoleOutput
-    from agentic_sdlc.logging.logger import WorkflowLogger
-    from agentic_sdlc.parser import StepDefinition
-    from agentic_sdlc.progress import WorkflowProgress
+    from agentic_forge.console import ConsoleOutput
+    from agentic_forge.logging.logger import WorkflowLogger
+    from agentic_forge.parser import StepDefinition
+    from agentic_forge.progress import WorkflowProgress
 
 
 class RalphLoopStepExecutor(StepExecutor):

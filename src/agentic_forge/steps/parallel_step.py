@@ -8,17 +8,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
-from agentic_sdlc.git.worktree import Worktree, create_worktree, remove_worktree
-from agentic_sdlc.progress import WorkflowStatus, update_step_completed, update_step_failed
-from agentic_sdlc.steps.base import StepContext, StepExecutor, StepResult
+from agentic_forge.git.worktree import Worktree, create_worktree, remove_worktree
+from agentic_forge.progress import WorkflowStatus, update_step_completed, update_step_failed
+from agentic_forge.steps.base import StepContext, StepExecutor, StepResult
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from agentic_sdlc.console import ConsoleOutput
-    from agentic_sdlc.logging.logger import WorkflowLogger
-    from agentic_sdlc.parser import StepDefinition
-    from agentic_sdlc.progress import WorkflowProgress
+    from agentic_forge.console import ConsoleOutput
+    from agentic_forge.logging.logger import WorkflowLogger
+    from agentic_forge.parser import StepDefinition
+    from agentic_forge.progress import WorkflowProgress
 
 
 class ParallelStepExecutor(StepExecutor):
@@ -173,7 +173,7 @@ class ParallelStepExecutor(StepExecutor):
         console: ConsoleOutput,
     ) -> None:
         """Merge successful worktree branches back to base branch."""
-        from agentic_sdlc.git.worktree import _run_git
+        from agentic_forge.git.worktree import _run_git
 
         console.info("Merging parallel branches...")
 

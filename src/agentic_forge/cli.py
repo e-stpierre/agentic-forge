@@ -1,4 +1,4 @@
-"""CLI entry point for agentic-sdlc command."""
+"""CLI entry point for agentic-forge command."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import sys
 from typing import TYPE_CHECKING
 
 # Import command handlers from extracted modules
-from agentic_sdlc.commands import (
+from agentic_forge.commands import (
     cmd_cancel,
     cmd_config,
     cmd_configure,
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 def main() -> None:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(
-        prog="agentic-sdlc",
+        prog="agentic-forge",
         description="Agentic workflow orchestration for Claude Code",
     )
     parser.add_argument(
@@ -143,7 +143,7 @@ def main() -> None:
     )
 
     # update command
-    update_parser = subparsers.add_parser("update", help="Update agentic-sdlc to the latest version")
+    update_parser = subparsers.add_parser("update", help="Update agentic-forge to the latest version")
     update_parser.add_argument(
         "--check",
         action="store_true",

@@ -1,6 +1,6 @@
 """Structured logging for agentic workflows."""
 
-from agentic_sdlc.logging.logger import (
+from agentic_forge.logging.logger import (
     LogEntry,
     LogLevel,
     WorkflowLogger,

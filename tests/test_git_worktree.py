@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from agentic_sdlc.git.worktree import (
+from agentic_forge.git.worktree import (
     Worktree,
     _generate_suffix,
     _run_git,
@@ -152,8 +152,8 @@ class TestSanitizeName:
 class TestRunGit:
     """Tests for _run_git helper."""
 
-    @patch("agentic_sdlc.git.worktree.subprocess.run")
-    @patch("agentic_sdlc.git.worktree.get_executable")
+    @patch("agentic_forge.git.worktree.subprocess.run")
+    @patch("agentic_forge.git.worktree.get_executable")
     def test_run_git_success(self, mock_get_exe, mock_run) -> None:
         """Test successful git command."""
         mock_get_exe.return_value = "/usr/bin/git"
@@ -168,8 +168,8 @@ class TestRunGit:
         assert result.returncode == 0
         mock_run.assert_called_once()
 
-    @patch("agentic_sdlc.git.worktree.subprocess.run")
-    @patch("agentic_sdlc.git.worktree.get_executable")
+    @patch("agentic_forge.git.worktree.subprocess.run")
+    @patch("agentic_forge.git.worktree.get_executable")
     def test_run_git_failure_raises(self, mock_get_exe, mock_run) -> None:
         """Test failed git command raises error."""
         mock_get_exe.return_value = "/usr/bin/git"
@@ -182,8 +182,8 @@ class TestRunGit:
         with pytest.raises(RuntimeError, match="Git command failed"):
             _run_git(["status"])
 
-    @patch("agentic_sdlc.git.worktree.subprocess.run")
-    @patch("agentic_sdlc.git.worktree.get_executable")
+    @patch("agentic_forge.git.worktree.subprocess.run")
+    @patch("agentic_forge.git.worktree.get_executable")
     def test_run_git_failure_no_check(self, mock_get_exe, mock_run) -> None:
         """Test failed git command without check doesn't raise."""
         mock_get_exe.return_value = "/usr/bin/git"
@@ -201,7 +201,7 @@ class TestRunGit:
 class TestGetRepoRoot:
     """Tests for get_repo_root function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_get_repo_root(self, mock_run) -> None:
         """Test getting repository root."""
         mock_run.return_value = MagicMock(stdout="/path/to/repo\n")
@@ -215,7 +215,7 @@ class TestGetRepoRoot:
 class TestGetDefaultBranch:
     """Tests for get_default_branch function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_get_default_branch_from_origin(self, mock_run) -> None:
         """Test getting default branch from origin HEAD."""
         mock_run.return_value = MagicMock(
@@ -227,7 +227,7 @@ class TestGetDefaultBranch:
 
         assert branch == "main"
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_get_default_branch_fallback_main(self, mock_run) -> None:
         """Test fallback to main branch."""
 
@@ -249,7 +249,7 @@ class TestGetDefaultBranch:
 class TestGetCurrentBranch:
     """Tests for get_current_branch function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_get_current_branch(self, mock_run) -> None:
         """Test getting current branch."""
         mock_run.return_value = MagicMock(stdout="feature/my-branch\n")
@@ -262,9 +262,9 @@ class TestGetCurrentBranch:
 class TestCreateWorktree:
     """Tests for create_worktree function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
-    @patch("agentic_sdlc.git.worktree.get_repo_root")
-    @patch("agentic_sdlc.git.worktree.get_default_branch")
+    @patch("agentic_forge.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree.get_repo_root")
+    @patch("agentic_forge.git.worktree.get_default_branch")
     def test_create_worktree(self, mock_default, mock_root, mock_run, temp_dir: Path) -> None:
         """Test creating a worktree."""
         mock_root.return_value = temp_dir
@@ -281,8 +281,8 @@ class TestCreateWorktree:
         assert "analyze-bugs" in worktree.path.name.lower()
         assert worktree.branch.startswith("agentic/")
 
-    @patch("agentic_sdlc.git.worktree._run_git")
-    @patch("agentic_sdlc.git.worktree.get_repo_root")
+    @patch("agentic_forge.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree.get_repo_root")
     def test_create_worktree_custom_base(self, mock_root, mock_run, temp_dir: Path) -> None:
         """Test creating worktree with custom base branch."""
         mock_root.return_value = temp_dir
@@ -300,8 +300,8 @@ class TestCreateWorktree:
 class TestRemoveWorktree:
     """Tests for remove_worktree function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
-    @patch("agentic_sdlc.git.worktree.get_repo_root")
+    @patch("agentic_forge.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree.get_repo_root")
     def test_remove_worktree(self, mock_root, mock_run, temp_dir: Path) -> None:
         """Test removing a worktree."""
         mock_root.return_value = temp_dir
@@ -318,8 +318,8 @@ class TestRemoveWorktree:
         # Should have called git worktree remove and branch delete
         assert mock_run.call_count >= 1
 
-    @patch("agentic_sdlc.git.worktree._run_git")
-    @patch("agentic_sdlc.git.worktree.get_repo_root")
+    @patch("agentic_forge.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree.get_repo_root")
     def test_remove_worktree_keep_branch(self, mock_root, mock_run, temp_dir: Path) -> None:
         """Test removing worktree while keeping branch."""
         mock_root.return_value = temp_dir
@@ -341,8 +341,8 @@ class TestRemoveWorktree:
 class TestListWorktrees:
     """Tests for list_worktrees function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
-    @patch("agentic_sdlc.git.worktree.get_repo_root")
+    @patch("agentic_forge.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree.get_repo_root")
     def test_list_worktrees(self, mock_root, mock_run, temp_dir: Path) -> None:
         """Test listing worktrees."""
         mock_root.return_value = temp_dir
@@ -365,7 +365,7 @@ branch refs/heads/feature/test
 class TestListAgenticWorktrees:
     """Tests for list_agentic_worktrees function."""
 
-    @patch("agentic_sdlc.git.worktree.list_worktrees")
+    @patch("agentic_forge.git.worktree.list_worktrees")
     def test_list_agentic_worktrees(self, mock_list) -> None:
         """Test listing only agentic worktrees."""
         mock_list.return_value = [
@@ -383,8 +383,8 @@ class TestListAgenticWorktrees:
 class TestPruneOrphaned:
     """Tests for prune_orphaned function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
-    @patch("agentic_sdlc.git.worktree.get_repo_root")
+    @patch("agentic_forge.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree.get_repo_root")
     def test_prune_orphaned_empty(self, mock_root, mock_run, temp_dir: Path) -> None:
         """Test pruning when no orphans exist."""
         mock_root.return_value = temp_dir
@@ -394,8 +394,8 @@ class TestPruneOrphaned:
 
         assert cleaned == 0
 
-    @patch("agentic_sdlc.git.worktree._run_git")
-    @patch("agentic_sdlc.git.worktree.get_repo_root")
+    @patch("agentic_forge.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree.get_repo_root")
     def test_prune_orphaned_cleans_stale(self, mock_root, mock_run, temp_dir: Path) -> None:
         """Test pruning removes stale agentic worktrees."""
         mock_root.return_value = temp_dir
@@ -416,8 +416,8 @@ class TestPruneOrphaned:
 class TestCreateBranch:
     """Tests for create_branch function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
-    @patch("agentic_sdlc.git.worktree.get_default_branch")
+    @patch("agentic_forge.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree.get_default_branch")
     def test_create_branch(self, mock_default, mock_run) -> None:
         """Test creating a branch."""
         mock_default.return_value = "main"
@@ -427,7 +427,7 @@ class TestCreateBranch:
         assert branch == "feature/new-branch"
         mock_run.assert_called()
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_create_branch_custom_base(self, mock_run) -> None:
         """Test creating branch with custom base."""
         branch = create_branch("feature/test", base_branch="develop")
@@ -440,7 +440,7 @@ class TestCreateBranch:
 class TestCheckoutBranch:
     """Tests for checkout_branch function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_checkout_branch(self, mock_run) -> None:
         """Test checking out a branch."""
         checkout_branch("feature/test")
@@ -451,7 +451,7 @@ class TestCheckoutBranch:
 class TestCommitChanges:
     """Tests for commit_changes function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_commit_changes_with_changes(self, mock_run) -> None:
         """Test committing when there are changes."""
         mock_run.side_effect = [
@@ -464,7 +464,7 @@ class TestCommitChanges:
 
         assert result is True
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_commit_changes_no_changes(self, mock_run) -> None:
         """Test committing when there are no changes."""
         mock_run.side_effect = [
@@ -476,7 +476,7 @@ class TestCommitChanges:
 
         assert result is False
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_commit_changes_without_add_all(self, mock_run) -> None:
         """Test committing without adding all files."""
         mock_run.side_effect = [
@@ -494,7 +494,7 @@ class TestCommitChanges:
 class TestPushBranch:
     """Tests for push_branch function."""
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_push_branch_with_upstream(self, mock_run) -> None:
         """Test pushing branch with upstream set."""
         push_branch("feature/test")
@@ -504,7 +504,7 @@ class TestPushBranch:
         assert "-u" in call_args
         assert "origin" in call_args
 
-    @patch("agentic_sdlc.git.worktree._run_git")
+    @patch("agentic_forge.git.worktree._run_git")
     def test_push_branch_without_upstream(self, mock_run) -> None:
         """Test pushing branch without setting upstream."""
         push_branch("feature/test", set_upstream=False)

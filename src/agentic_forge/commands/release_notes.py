@@ -23,11 +23,11 @@ def cmd_release_notes(args: argparse.Namespace) -> None:
     # Try to find it relative to the package source
     try:
         # Verify the package is installed (editable or regular)
-        importlib.metadata.distribution("agentic-sdlc")
+        importlib.metadata.distribution("agentic-forge")
         # For editable installs, the package location points to src/
         # We need to go up to the plugin root to find CHANGELOG.md
         package_file = Path(__file__)
-        # Go up from commands/release_notes.py -> commands/ -> agentic_sdlc/ -> src/ -> plugin root
+        # Go up from commands/release_notes.py -> commands/ -> agentic_forge/ -> src/ -> plugin root
         plugin_root = package_file.parent.parent.parent.parent
         candidate_path = plugin_root / "CHANGELOG.md"
         if candidate_path.exists():

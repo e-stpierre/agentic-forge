@@ -6,9 +6,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from agentic_sdlc.executor import WorkflowExecutor
-from agentic_sdlc.parser import StepType, WorkflowParser
-from agentic_sdlc.progress import WorkflowStatus
+from agentic_forge.executor import WorkflowExecutor
+from agentic_forge.parser import StepType, WorkflowParser
+from agentic_forge.progress import WorkflowStatus
 
 
 class TestWorkflowExecutor:
@@ -43,7 +43,7 @@ class TestWorkflowExecutor:
 class TestWorkflowExecutorRun:
     """Tests for workflow execution."""
 
-    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    @patch("agentic_forge.executor.PromptStepExecutor.execute")
     def test_run_minimal_workflow(self, mock_execute, temp_dir: Path, sample_workflow_yaml: str) -> None:
         """Test running a minimal workflow."""
         mock_execute.return_value = None
@@ -57,7 +57,7 @@ class TestWorkflowExecutorRun:
         assert progress.workflow_name == "test-workflow"
         assert progress.status == WorkflowStatus.COMPLETED.value
 
-    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    @patch("agentic_forge.executor.PromptStepExecutor.execute")
     def test_run_creates_progress_file(self, mock_execute, temp_dir: Path, sample_workflow_yaml: str) -> None:
         """Test running creates progress file."""
         mock_execute.return_value = None
@@ -72,7 +72,7 @@ class TestWorkflowExecutorRun:
         assert progress_dir.exists()
         assert (progress_dir / "progress.json").exists()
 
-    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    @patch("agentic_forge.executor.PromptStepExecutor.execute")
     def test_run_with_variables(self, mock_execute, temp_dir: Path) -> None:
         """Test running with custom variables."""
         mock_execute.return_value = None
@@ -101,7 +101,7 @@ steps:
 
         assert progress.variables["custom_var"] == "custom_value"
 
-    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    @patch("agentic_forge.executor.PromptStepExecutor.execute")
     def test_run_with_default_variables(self, mock_execute, temp_dir: Path) -> None:
         """Test running uses default variable values."""
         mock_execute.return_value = None
@@ -150,7 +150,7 @@ steps:
         with pytest.raises(ValueError, match="Missing required variable"):
             executor.run(workflow)
 
-    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    @patch("agentic_forge.executor.PromptStepExecutor.execute")
     def test_run_from_step(self, mock_execute, temp_dir: Path) -> None:
         """Test running from a specific step."""
         mock_execute.return_value = None
@@ -181,7 +181,7 @@ steps:
         # Mock should be called twice (step2 and step3)
         assert mock_execute.call_count == 2
 
-    @patch("agentic_sdlc.executor.PromptStepExecutor.execute")
+    @patch("agentic_forge.executor.PromptStepExecutor.execute")
     def test_run_sets_terminal_output_level(self, mock_execute, temp_dir: Path, sample_workflow_yaml: str) -> None:
         """Test terminal output level is set correctly."""
         mock_execute.return_value = None
@@ -203,7 +203,7 @@ steps:
 class TestWorkflowExecutorStepDispatch:
     """Tests for step dispatch in executor."""
 
-    @patch("agentic_sdlc.steps.prompt_step.PromptStepExecutor.execute")
+    @patch("agentic_forge.steps.prompt_step.PromptStepExecutor.execute")
     def test_dispatch_prompt_step(self, mock_execute, temp_dir: Path) -> None:
         """Test dispatching prompt step to correct executor."""
         workflow_yaml = """
@@ -263,7 +263,7 @@ outputs:
 class TestWorkflowExecutorErrorHandling:
     """Tests for error handling in executor."""
 
-    @patch("agentic_sdlc.steps.prompt_step.PromptStepExecutor.execute")
+    @patch("agentic_forge.steps.prompt_step.PromptStepExecutor.execute")
     def test_step_failure_marks_workflow_failed(self, mock_execute, temp_dir: Path) -> None:
         """Test step failure marks workflow as failed."""
         mock_execute.side_effect = Exception("Step execution failed")
@@ -286,7 +286,7 @@ steps:
         assert progress.status == WorkflowStatus.FAILED.value
         assert len(progress.errors) > 0
 
-    @patch("agentic_sdlc.steps.prompt_step.PromptStepExecutor.execute")
+    @patch("agentic_forge.steps.prompt_step.PromptStepExecutor.execute")
     def test_step_failure_stops_execution(self, mock_execute, temp_dir: Path) -> None:
         """Test step failure stops further execution."""
         call_count = [0]

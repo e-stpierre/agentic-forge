@@ -17,7 +17,7 @@ def get_bundled_workflows_dir() -> Path:
 
 def get_user_workflows_dir() -> Path:
     """Get the user-global workflows directory."""
-    # Use ~/.config/agentic-sdlc/workflows on Unix, %APPDATA%/agentic-sdlc/workflows on Windows
+    # Use ~/.config/agentic-forge/workflows on Unix, %APPDATA%/agentic-forge/workflows on Windows
     from os import environ
 
     if sys.platform == "win32":
@@ -25,7 +25,7 @@ def get_user_workflows_dir() -> Path:
     else:
         base_dir = Path(environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 
-    return base_dir / "agentic-sdlc" / "workflows"
+    return base_dir / "agentic-forge" / "workflows"
 
 
 def get_project_workflows_dir() -> Path:
@@ -38,7 +38,7 @@ def discover_workflow(name: str) -> tuple[Path | None, str]:
 
     Searches in order:
     1. Project-local: ./agentic/workflows/
-    2. User-global: ~/.config/agentic-sdlc/workflows/
+    2. User-global: ~/.config/agentic-forge/workflows/
     3. Bundled: package workflows directory
 
     Args:
@@ -156,17 +156,17 @@ def cmd_run(args: Namespace) -> None:
                 print()
 
         print(f"Total: {len(workflows)} workflow(s)")
-        print("\nUsage: agentic-sdlc run <workflow-name>")
+        print("\nUsage: agentic-forge run <workflow-name>")
         return
 
     # Validate workflow argument is provided
     if not args.workflow:
         print("Error: workflow name or path is required", file=sys.stderr)
-        print("Use 'agentic-sdlc run --list' to see available workflows", file=sys.stderr)
+        print("Use 'agentic-forge run --list' to see available workflows", file=sys.stderr)
         sys.exit(1)
 
-    from agentic_sdlc.executor import WorkflowExecutor
-    from agentic_sdlc.parser import WorkflowParseError, WorkflowParser
+    from agentic_forge.executor import WorkflowExecutor
+    from agentic_forge.parser import WorkflowParseError, WorkflowParser
 
     workflow_path, location_type = resolve_workflow_path(args.workflow)
 
@@ -183,8 +183,8 @@ def cmd_run(args: Namespace) -> None:
         else:
             print("  (no workflows found)", file=sys.stderr)
 
-        print("\nUse 'agentic-sdlc run --list' to see all workflows.", file=sys.stderr)
-        print("Use 'agentic-sdlc init' to copy bundled workflows locally.", file=sys.stderr)
+        print("\nUse 'agentic-forge run --list' to see all workflows.", file=sys.stderr)
+        print("Use 'agentic-forge init' to copy bundled workflows locally.", file=sys.stderr)
         sys.exit(1)
 
     # Show which workflow is being used

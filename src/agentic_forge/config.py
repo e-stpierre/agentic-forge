@@ -1,4 +1,4 @@
-"""Configuration management for agentic-sdlc."""
+"""Configuration management for agentic-forge."""
 
 from __future__ import annotations
 

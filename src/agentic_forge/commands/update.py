@@ -16,17 +16,17 @@ if TYPE_CHECKING:
 
 
 def _get_marketplace_path() -> Path:
-    """Get the marketplace installation path for agentic-sdlc.
+    """Get the marketplace installation path for agentic-forge.
 
     Returns:
-        Path to the agentic-sdlc plugin in the marketplace directory
+        Path to the agentic-forge plugin in the marketplace directory
     """
     if sys.platform == "win32":
         base = Path.home() / ".claude" / "plugins" / "marketplaces"
     else:
         base = Path.home() / ".claude" / "plugins" / "marketplaces"
 
-    return base / "agentic-forge" / "plugins" / "agentic-sdlc"
+    return base / "agentic-forge" / "plugins" / "agentic-forge"
 
 
 def _get_marketplace_version(marketplace_path: Path) -> str | None:
@@ -79,12 +79,12 @@ def _compare_versions(current: str, available: str) -> int:
 
 
 def cmd_update(args: argparse.Namespace) -> None:
-    """Update agentic-sdlc to the latest version from the local marketplace.
+    """Update agentic-forge to the latest version from the local marketplace.
 
     Args:
         args: Parsed command line arguments with optional --check flag
     """
-    package_name = "agentic-sdlc"
+    package_name = "agentic-forge"
 
     # Get current installed version
     try:
@@ -113,7 +113,7 @@ def cmd_update(args: argparse.Namespace) -> None:
         print(f"Available version: {available_version}")
         comparison = _compare_versions(current_version, available_version)
         if comparison < 0:
-            print("A new version is available. Run 'agentic-sdlc update' to install.")
+            print("A new version is available. Run 'agentic-forge update' to install.")
         elif comparison == 0:
             print("You are running the latest version.")
         else:
@@ -139,7 +139,7 @@ def cmd_update(args: argparse.Namespace) -> None:
     if shutil.which("uv"):
         success = _update_with_uv(marketplace_path)
     else:
-        print("Error: uv is required for updating agentic-sdlc")
+        print("Error: uv is required for updating agentic-forge")
         print("Please install uv: https://docs.astral.sh/uv/")
         sys.exit(1)
 

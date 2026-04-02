@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 def cmd_input(args: Namespace) -> None:
     """Provide human input for a wait-for-human step."""
-    from agentic_sdlc.orchestrator import process_human_input
+    from agentic_forge.orchestrator import process_human_input
 
     if process_human_input(args.workflow_id, args.response):
         print(f"Input recorded for workflow: {args.workflow_id}")

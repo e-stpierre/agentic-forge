@@ -2,10 +2,10 @@
 
 __version__ = "0.2.0"
 
-from agentic_sdlc.config import get_default_config, load_config, save_config
-from agentic_sdlc.executor import WorkflowExecutor
-from agentic_sdlc.parser import WorkflowParseError, WorkflowParser
-from agentic_sdlc.runner import ClaudeResult, run_claude
+from agentic_forge.config import get_default_config, load_config, save_config
+from agentic_forge.executor import WorkflowExecutor
+from agentic_forge.parser import WorkflowParseError, WorkflowParser
+from agentic_forge.runner import ClaudeResult, run_claude
 
 __all__ = [
     "run_claude",

@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from agentic_sdlc.progress import WorkflowStatus, update_step_completed, update_step_failed
-from agentic_sdlc.steps.base import StepContext, StepExecutor, StepResult
+from agentic_forge.progress import WorkflowStatus, update_step_completed, update_step_failed
+from agentic_forge.steps.base import StepContext, StepExecutor, StepResult
 
 if TYPE_CHECKING:
-    from agentic_sdlc.console import ConsoleOutput
-    from agentic_sdlc.logging.logger import WorkflowLogger
-    from agentic_sdlc.parser import StepDefinition
-    from agentic_sdlc.progress import WorkflowProgress
-    from agentic_sdlc.steps.parallel_step import BranchStepExecutor
+    from agentic_forge.console import ConsoleOutput
+    from agentic_forge.logging.logger import WorkflowLogger
+    from agentic_forge.parser import StepDefinition
+    from agentic_forge.progress import WorkflowProgress
+    from agentic_forge.steps.parallel_step import BranchStepExecutor
 
 
 class ConditionalStepExecutor(StepExecutor):

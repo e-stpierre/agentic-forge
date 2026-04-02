@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from agentic_sdlc.parser import (
+from agentic_forge.parser import (
     StepType,
     WorkflowParseError,
     WorkflowParser,

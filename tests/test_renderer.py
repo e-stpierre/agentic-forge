@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from agentic_sdlc.renderer import (
+from agentic_forge.renderer import (
     TemplateRenderer,
     _extract_analysis_steps,
     _extract_fix_steps,
