@@ -1,5 +1,5 @@
 ---
-name: create-checkpoint
+name: af-create-checkpoint
 description: Create a checkpoint to track progress and share context
 argument-hint: <workflow-id> <step> <status> <context>
 ---

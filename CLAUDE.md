@@ -122,6 +122,19 @@ Use the `/normalize` command to validate prompt files against templates:
 /normalize --autofix src/agentic_forge/claude/.claude/skills/
 ```
 
+### Shell Commands
+
+Run shell commands directly without prefixing with `cd` to the repository root. The working directory is already set correctly, and unnecessary `cd` prefixes create distinct command strings that trigger extra permission prompts.
+
+```bash
+# Good
+git status
+uv run pytest
+
+# Bad - unnecessary cd causes extra permission approval
+cd "c:/Repositories/agentic-forge" && git status
+```
+
 ### Code Style and Formatting
 
 CI validates format, lint, and tests on all pull requests. Run locally before opening a pull request:

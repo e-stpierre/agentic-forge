@@ -27,7 +27,7 @@ steps:
   - name: create-branch
     type: prompt
     model: haiku
-    prompt: /git-branch {{ variables.type }} {{ variables.task }}
+    prompt: /af-git-branch {{ variables.type }} {{ variables.task }}
 
   - name: execute-task
     type: prompt
@@ -39,11 +39,11 @@ steps:
       Guidelines:
       - Analyze the codebase to understand context
       - Make necessary changes following project conventions
-      - Use /git-commit to commit changes
+      - Use /af-git-commit to commit changes
 
   - name: review
     type: prompt
-    prompt: /sdlc-review "" major
+    prompt: /af-sdlc-review "" major
 
   - name: create-pr
     type: conditional
@@ -51,4 +51,4 @@ steps:
     then:
       - name: open-pr
         type: prompt
-        prompt: /git-pr
+        prompt: /af-git-pr

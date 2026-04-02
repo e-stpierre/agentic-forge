@@ -1,5 +1,5 @@
 ---
-name: orchestrate
+name: af-orchestrate
 description: Evaluate workflow state and determine next action
 ---
 

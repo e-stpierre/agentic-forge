@@ -1,5 +1,5 @@
 ---
-name: sdlc-plan
+name: af-sdlc-plan
 description: Create an implementation plan for a task
 argument-hint: <workflow-id> [type] [output_dir] [explore_agents] <context>
 ---

@@ -1,5 +1,5 @@
 ---
-name: create-skill
+name: af-create-skill
 description: Create a new Claude Code skill following best practices and guidelines
 argument-hint: <skill-name> [context]
 disable-model-invocation: true

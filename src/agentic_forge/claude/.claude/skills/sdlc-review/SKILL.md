@@ -1,5 +1,5 @@
 ---
-name: sdlc-review
+name: af-sdlc-review
 description: Review implementation quality and plan compliance
 argument-hint: <workflow-id> [plan] [output_dir] [severity]
 ---

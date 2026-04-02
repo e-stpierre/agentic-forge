@@ -1,5 +1,5 @@
 ---
-name: git-commit
+name: af-git-commit
 description: Create a git commit with structured message
 argument-hint: [message] [files...] [plan_step]
 ---

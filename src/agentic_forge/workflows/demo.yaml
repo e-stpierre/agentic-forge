@@ -123,12 +123,12 @@ steps:
   - name: git-branch
     type: prompt
     model: haiku
-    prompt: /git-branch demo random-facts
+    prompt: /af-git-branch demo random-facts
 
   - name: git-commit
     type: prompt
     model: haiku
-    prompt: /git-commit "[Demo] Add demo files with random facts"
+    prompt: /af-git-commit "[Demo] Add demo files with random facts"
 
   - name: completion
     type: prompt

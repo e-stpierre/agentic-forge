@@ -1,5 +1,5 @@
 ---
-name: create-log
+name: af-create-log
 description: Add a log entry to the workflow log
 argument-hint: <workflow-id> <level> <step> <message>
 ---

@@ -1,5 +1,5 @@
 ---
-name: fix-analyze
+name: af-fix-analyze
 description: Fix issues from an analysis document iteratively
 argument-hint: <type> <severity> [context]
 ---
