@@ -17,6 +17,7 @@ from agentic_forge.commands import (
     cmd_release_notes,
     cmd_resume,
     cmd_run,
+    cmd_skills_dir,
     cmd_status,
     cmd_update,
     cmd_version,
@@ -142,6 +143,9 @@ def main() -> None:
         help="Show only the most recent version's release notes",
     )
 
+    # skills-dir command
+    subparsers.add_parser("skills-dir", help="Print path to bundled skills directory")
+
     # update command
     update_parser = subparsers.add_parser("update", help="Update agentic-forge to the latest version")
     update_parser.add_argument(
@@ -189,6 +193,8 @@ def main() -> None:
         cmd_version(args)
     elif args.command == "release-notes":
         cmd_release_notes(args)
+    elif args.command == "skills-dir":
+        cmd_skills_dir(args)
     elif args.command == "update":
         cmd_update(args)
     elif args.command == "workflows":
