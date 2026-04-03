@@ -1,0 +1,38 @@
+# Technical Debt Analysis Report
+
+Generated: {{ generated }}
+Scope: {{ scope }}
+
+## Summary
+
+Found {{ summary.total }} technical debt items.
+
+| Priority | Count |
+|----------|-------|
+| High | {{ summary.high }} |
+| Medium | {{ summary.medium }} |
+| Low | {{ summary.low }} |
+
+## Findings
+
+{% for finding in findings %}
+### {{ finding.id }}: {{ finding.title }}
+
+**Priority**: {{ finding.priority }}
+**Category**: {{ finding.category }}
+**File**: {{ finding.file }}{% if finding.line %}:{{ finding.line }}{% endif %}
+
+{{ finding.description }}
+
+**Effort**: {{ finding.effort | default("Unknown") }}
+**Impact**: {{ finding.impact | default("Unknown") }}
+
+**Recommendation**: {{ finding.recommendation }}
+
+---
+
+{% endfor %}
+
+{% if not findings %}
+No technical debt issues found.
+{% endif %}

@@ -1,20 +1,44 @@
 {
   "name": "agentic-forge",
-  "private": true,
+  "version": "1.0.0",
+  "description": "Workflow orchestration engine with bundled skills for Claude Code",
+  "type": "module",
+  "bin": {
+    "agentic-forge": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "lint:md": "markdownlint-cli2 \"**/*.md\"",
-    "lint:py": "ruff check .",
-    "format:prettier": "prettier --check .",
-    "format:py": "ruff format --check .",
-    "lint": "pnpm lint:md && pnpm lint:py",
-    "format": "pnpm format:prettier && pnpm format:py",
-    "check": "pnpm lint && pnpm format",
-    "fix:py": "ruff check --fix . && ruff format .",
-    "fix:prettier": "prettier --write .",
-    "fix": "pnpm fix:prettier && pnpm fix:py"
+    "build": "tsc && node scripts/copy-assets.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "biome check .",
+    "fix": "biome check --fix .",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "js-yaml": "^4.1.0",
+    "nunjucks": "^3.2.4",
+    "proper-lockfile": "^4.1.2"
   },
   "devDependencies": {
-    "markdownlint-cli2": "^0.17.2",
-    "prettier": "^3.7.4"
+    "@biomejs/biome": "^1.9.4",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.13.0",
+    "@types/nunjucks": "^3.2.6",
+    "@types/proper-lockfile": "^4.1.4",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@biomejs/biome",
+      "esbuild"
+    ]
   }
 }

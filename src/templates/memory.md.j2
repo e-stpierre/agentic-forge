@@ -1,0 +1,16 @@
+---
+id: {{ id }}
+created: {{ created }}
+category: {{ category }}
+tags: {{ tags | tojson }}
+{% if source %}
+source:
+  workflow: {{ source.workflow }}
+  step: {{ source.step }}
+{% endif %}
+relevance: {{ relevance }}
+---
+
+# {{ title }}
+
+{{ content }}

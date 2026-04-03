@@ -1,0 +1,56 @@
+name: analyze-single
+version: "1.0"
+description: Run a single type of codebase analysis with optional autofix
+
+settings:
+  max-retry: 2
+  timeout-minutes: 60
+  track-progress: true
+  terminal-output: base
+
+variables:
+  - name: analysis_type
+    type: string
+    required: true
+    description: Type of analysis to run (bug, debt, doc, security, style)
+  - name: autofix
+    type: string
+    required: false
+    default: "none"
+    description: Severity level for automatic fixes (none, low, medium, high, critical)
+  - name: paths
+    type: string
+    required: false
+    default: ""
+    description: Space-separated list of paths to analyze (optional)
+  - name: max_fix_iterations
+    type: number
+    required: false
+    default: 25
+    description: Maximum iterations for fixing issues
+
+steps:
+  - name: run-analysis
+    type: prompt
+    prompt: /af-analyze {{ variables.analysis_type }} {{ variables.paths }}
+
+  - name: check-autofix
+    type: conditional
+    condition: "variables.autofix != 'none'"
+    then:
+      - name: fix-issues
+        type: ralph-loop
+        max-iterations: "{{ variables.max_fix_iterations }}"
+        completion-promise: "ANALYSIS_FIXES_COMPLETE"
+        model: sonnet
+        timeout-minutes: 30
+        prompt: |
+          Use /af-fix-analyze {{ variables.analysis_type }} {{ variables.autofix }}
+
+          Return completion promise "ANALYSIS_FIXES_COMPLETE" when done.
+
+outputs:
+  - name: analysis-report
+    template: analysis/{{ variables.analysis_type }}.md.j2
+    path: "{{ variables.analysis_type }}.md"
+    when: completed
