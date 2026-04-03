@@ -12,3 +12,4 @@ export { PromptStepExecutor } from "./prompt-step.js";
 export { SerialStepExecutor } from "./serial-step.js";
 export { ConditionalStepExecutor } from "./conditional-step.js";
 export { RalphLoopStepExecutor } from "./ralph-loop-step.js";
+export { ParallelStepExecutor } from "./parallel-step.js";
