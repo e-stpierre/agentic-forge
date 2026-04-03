@@ -92,10 +92,28 @@ export class ParallelStepExecutor extends StepExecutor {
 			}
 		};
 
-		// Execute all branches concurrently using Promise.all
-		const results = await Promise.allSettled(
-			step.steps.map((branchStep) => executeBranch(branchStep)),
-		);
+		// Execute branches with concurrency cap from config
+		const execution = context.config?.execution as Record<string, unknown> | undefined;
+		const maxWorkers = (execution?.maxWorkers as number) ?? 4;
+		const settled: PromiseSettledResult<[string, boolean, string, Worktree | null]>[] = [];
+		const branches = [...step.steps];
+		let idx = 0;
+
+		const runNext = async (): Promise<void> => {
+			while (idx < branches.length) {
+				const branchStep = branches[idx++];
+				try {
+					const value = await executeBranch(branchStep);
+					settled.push({ status: "fulfilled", value });
+				} catch (reason) {
+					settled.push({ status: "rejected", reason });
+				}
+			}
+		};
+
+		const workers = Array.from({ length: Math.min(maxWorkers, branches.length) }, () => runNext());
+		await Promise.all(workers);
+		const results = settled;
 
 		for (const result of results) {
 			if (result.status === "fulfilled") {

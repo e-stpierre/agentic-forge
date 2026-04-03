@@ -129,7 +129,6 @@ export class WorkflowExecutor {
 						timeout_minutes: step.stepTimeoutMinutes ?? 5,
 						on_timeout: step.onTimeout,
 					};
-					updateStepStarted(progress, step.name);
 					return { success: true, outputSummary: "Paused for human input" };
 				},
 			},
