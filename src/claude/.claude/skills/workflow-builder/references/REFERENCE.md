@@ -445,7 +445,6 @@ Always use fully qualified names in workflows:
 | `/git-commit`       | Create commit                 |
 | `/git-pr`           | Create pull request           |
 | `/orchestrate`      | Workflow state evaluation     |
-| `/add-improvement`  | Track improvements            |
 
 ## Bundled Workflows
 

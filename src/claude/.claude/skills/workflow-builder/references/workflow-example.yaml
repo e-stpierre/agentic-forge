@@ -405,7 +405,6 @@ outputs:
 #
 # Workflow Support:
 #   - /orchestrate - Workflow state evaluation
-#   - /add-improvement - Track improvements
 #
 # ==================== BUILT-IN VARIABLES ====================
 #
