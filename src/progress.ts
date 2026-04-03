@@ -57,9 +57,14 @@ export function saveProgress(progress: WorkflowProgress, repoRoot?: string): voi
 	const dir = path.dirname(progressPath);
 	mkdirSync(dir, { recursive: true });
 
+	// Ensure the file exists so proper-lockfile can resolve its path
+	if (!existsSync(progressPath)) {
+		writeFileSync(progressPath, "{}", "utf-8");
+	}
+
 	let release: (() => void) | undefined;
 	try {
-		release = lockSync(dir);
+		release = lockSync(progressPath);
 		writeFileSync(progressPath, JSON.stringify(progressToDict(progress), null, 2), "utf-8");
 	} finally {
 		if (release) {

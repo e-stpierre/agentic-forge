@@ -112,6 +112,27 @@ export class WorkflowExecutor {
 			serial: this.serialExecutor,
 			conditional: this.conditionalExecutor,
 			"ralph-loop": this.ralphLoopExecutor,
+			"wait-for-human": {
+				execute: async (
+					step: StepDefinition,
+					progress: WorkflowProgress,
+					_context: StepContext,
+					logger: WorkflowLogger,
+				): Promise<StepResult> => {
+					logger.info(step.name, `Waiting for human input: ${step.message}`);
+					progress.status = WORKFLOW_STATUS.PAUSED;
+					progress.currentStep = {
+						name: step.name,
+						type: "wait-for-human",
+						message: step.message,
+						started_at: new Date().toISOString(),
+						timeout_minutes: step.stepTimeoutMinutes ?? 5,
+						on_timeout: step.onTimeout,
+					};
+					updateStepStarted(progress, step.name);
+					return { success: true, outputSummary: "Paused for human input" };
+				},
+			},
 		};
 	}
 

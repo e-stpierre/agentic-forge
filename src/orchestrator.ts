@@ -393,14 +393,38 @@ export class WorkflowOrchestrator {
 
 			saveProgress(progress, this.repoRoot);
 
-			// Execute branches concurrently
-			const promises = worktrees.map((wt, i) =>
-				this.executeInWorktree(workflow, step.steps[i], progress, wt, logger, console)
-					.then((success) => ({ success, subStep: step.steps[i], wt }))
-					.catch((e) => ({ success: false, subStep: step.steps[i], wt, error: e })),
-			);
+			// Execute branches concurrently with concurrency cap
+			const results: {
+				success: boolean;
+				subStep: StepDefinition;
+				wt: Worktree;
+				error?: unknown;
+			}[] = [];
+			const pending = worktrees.map((wt, i) => ({ wt, i }));
+			let idx = 0;
 
-			const results = await Promise.all(promises);
+			const runNext = async (): Promise<void> => {
+				while (idx < pending.length) {
+					const current = pending[idx++];
+					const { wt, i } = current;
+					try {
+						const success = await this.executeInWorktree(
+							workflow,
+							step.steps[i],
+							progress,
+							wt,
+							logger,
+							console,
+						);
+						results.push({ success, subStep: step.steps[i], wt });
+					} catch (e) {
+						results.push({ success: false, subStep: step.steps[i], wt, error: e });
+					}
+				}
+			};
+
+			const workers = Array.from({ length: Math.min(maxWorkers, pending.length) }, () => runNext());
+			await Promise.all(workers);
 			let allSuccess = true;
 
 			for (const result of results) {
@@ -695,7 +719,7 @@ export class WorkflowOrchestrator {
 		logger: WorkflowLogger,
 		console: ConsoleOutput,
 	): Promise<void> {
-		const step = this.findStep(workflow.steps, action.stepName ?? null);
+		let step = this.findStep(workflow.steps, action.stepName ?? null);
 		if (!step) {
 			logger.error("orchestrator", `Step not found: ${action.stepName}`);
 			console.error(`Step not found: ${action.stepName}`);
@@ -705,7 +729,10 @@ export class WorkflowOrchestrator {
 		console.info(`Retrying step: ${action.stepName}`);
 
 		if (action.errorContext && step.prompt) {
-			step.prompt = `${step.prompt}\n\nPrevious attempt failed:\n${action.errorContext}`;
+			step = {
+				...step,
+				prompt: `${step.prompt}\n\nPrevious attempt failed:\n${action.errorContext}`,
+			};
 		}
 
 		await this.executor.executeStep(step, progress, progress.variables, logger, console);

@@ -396,7 +396,7 @@ export function runClaude(options: RunClaudeOptions): Promise<ClaudeResult> {
 
 	// Set up environment with OTEL tracing if workflow_id is provided
 	const env = workflowId
-		? { ...process.env, OTEL_RESOURCE_ATTRIBUTE: `session=${workflowId}` }
+		? { ...process.env, OTEL_RESOURCE_ATTRIBUTES: `session=${workflowId}` }
 		: undefined;
 
 	if (printOutput) {
