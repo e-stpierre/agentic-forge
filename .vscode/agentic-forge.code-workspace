@@ -14,23 +14,13 @@
     "search.exclude": {
       "**/.git": true
     },
-    "[python]": {
-      "editor.defaultFormatter": "charliermarsh.ruff",
-      "editor.formatOnSave": true,
-      "editor.codeActionsOnSave": {
-        "source.fixAll": "explicit",
-        "source.organizeImports": "explicit"
-      }
-    },
     "markdownlint.run": "onSave",
     "prettier.resolveGlobalModules": false
   },
   "extensions": {
     "recommendations": [
       "esbenp.prettier-vscode",
-      "davidanson.vscode-markdownlint",
-      "charliermarsh.ruff",
-      "ms-python.python"
+      "davidanson.vscode-markdownlint"
     ]
   }
 }
