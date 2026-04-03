@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Agentic Forge is a standalone Python package that provides YAML-based workflow orchestration for Claude Code. It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution.
+Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for Claude Code. It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution.
 
 ## Purpose
 
@@ -14,9 +14,9 @@ The agentic-forge repository aims to:
 
 ## Repository Structure
 
-### `src/agentic_forge/`
+### `src/`
 
-Python source code for the CLI and workflow orchestration engine.
+TypeScript source code for the CLI and workflow orchestration engine.
 
 #### `agents/`
 
@@ -44,7 +44,7 @@ Bundled YAML workflow definitions (7 workflows: `plan-build-review`, `one-shot`,
 
 ### `tests/`
 
-Test suite for all Python source code.
+Vitest test suite for all TypeScript source code.
 
 ### `agentic/`
 
@@ -69,16 +69,16 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 ### File Formats
 
-- **Agents**: Markdown (`.md`) files in `src/agentic_forge/agents/`
-- **Skills**: `SKILL.md` files in skill directories: `src/agentic_forge/claude/.claude/skills/<skill-name>/SKILL.md`
-- **Workflows**: YAML files in `src/agentic_forge/workflows/`
-- **Python Source**: Python packages in `src/agentic_forge/` with root `pyproject.toml`
+- **Agents**: Markdown (`.md`) files in `src/agents/`
+- **Skills**: `SKILL.md` files in skill directories: `src/claude/.claude/skills/<skill-name>/SKILL.md`
+- **Workflows**: YAML files in `src/workflows/`
+- **TypeScript Source**: TypeScript modules in `src/` with root `package.json`
 
 ### Prompt Template Convention
 
 All prompt files (agents, skills) must follow the exact structure defined in their respective template files:
 
-- `src/agentic_forge/claude/.claude/skills/create-skill/template.md` - Structure for skill prompts
+- `src/claude/.claude/skills/create-skill/template.md` - Structure for skill prompts
 
 **Placeholder Convention:**
 
@@ -116,10 +116,10 @@ Use the `/normalize` command to validate prompt files against templates:
 /normalize
 
 # Validate specific files or directories
-/normalize src/agentic_forge/claude/.claude/skills/
+/normalize src/claude/.claude/skills/
 
 # Auto-fix non-compliant files
-/normalize --autofix src/agentic_forge/claude/.claude/skills/
+/normalize --autofix src/claude/.claude/skills/
 ```
 
 ### Shell Commands
@@ -129,7 +129,7 @@ Run shell commands directly without prefixing with `cd` to the repository root. 
 ```bash
 # Good
 git status
-uv run pytest
+pnpm test
 
 # Bad - unnecessary cd causes extra permission approval
 cd "c:/Repositories/agentic-forge" && git status
@@ -140,25 +140,25 @@ cd "c:/Repositories/agentic-forge" && git status
 CI validates format, lint, and tests on all pull requests. Run locally before opening a pull request:
 
 ```bash
-pnpm check          # Format and lint
-uv run pytest       # Python tests
+pnpm check          # Format and lint (biome)
+pnpm test           # Vitest tests
 ```
 
 ## Technical Considerations
 
 ### Workflow Engine Changes
 
-When modifying the workflow engine in `src/agentic_forge/`, you must update the workflow-builder skill reference files to keep them in sync:
+When modifying the workflow engine in `src/`, you must update the workflow-builder skill reference files to keep them in sync:
 
-- `src/agentic_forge/claude/.claude/skills/workflow-builder/references/REFERENCE.md` - Complete schema reference
-- `src/agentic_forge/claude/.claude/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
+- `src/claude/.claude/skills/workflow-builder/references/REFERENCE.md` - Complete schema reference
+- `src/claude/.claude/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
 
 Changes to workflow settings, step types, or features require updates to both files.
 
-### Python Development
+### Node.js Development
 
-- **Always use `uv` for Python commands**: This repository requires `uv` for all Python-related operations (building packages, installing tools, running scripts)
-- **Building packages**: Use `uv build` instead of `python -m build`
-- **Installing tools**: Use `uv tool install` instead of `pip install`
-- **Running scripts**: Use `uv run` for executing Python scripts
-- This ensures consistent Python environments across different systems and avoids Python PATH issues
+- **Always use `pnpm` for package management**: This repository uses pnpm for all Node.js operations
+- **Building**: Use `pnpm build` (runs `tsc` + asset copy script)
+- **Testing**: Use `pnpm test` (runs Vitest)
+- **Linting**: Use `pnpm check` (runs Biome)
+- **Development**: Use `pnpm dev` for TypeScript watch mode

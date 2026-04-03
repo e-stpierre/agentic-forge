@@ -20,7 +20,7 @@
 
 ## Overview
 
-Agentic Forge is a standalone Python package that provides YAML-based workflow orchestration for Claude Code. It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution with parallel execution, conditional logic, and retry mechanisms.
+Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for Claude Code. It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution with parallel execution, conditional logic, and retry mechanisms.
 
 **Best for**: Autonomous development where you prefer Claude works independently.
 
@@ -28,20 +28,21 @@ Agentic Forge is a standalone Python package that provides YAML-based workflow o
 
 ### Prerequisites
 
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- Node.js 20+
+- [pnpm](https://pnpm.io/) (recommended) or npm
 - Claude Code CLI installed and configured
 
 ### Installation
 
 ```bash
-# Install with uv (recommended)
-uv tool install agentic-forge
+# Install globally with npm
+npm install -g agentic-forge
 
 # Or install from source
 git clone https://github.com/e-stpierre/agentic-forge.git
 cd agentic-forge
-uv tool install .
+pnpm install && pnpm build
+npm install -g .
 ```
 
 ### Using Skills in Interactive Claude Sessions
@@ -118,7 +119,7 @@ agentic-forge update
 ## Repository Structure
 
 ```
-src/agentic_forge/
+src/
   agents/              # Bundled agent definitions (explorer, reviewer)
   claude/.claude/      # Skills loaded via --add-dir
     skills/            # 13 bundled skills
@@ -126,7 +127,8 @@ src/agentic_forge/
   prompts/             # System prompt templates
   steps/               # Workflow step handlers
   workflows/           # 7 bundled YAML workflow definitions
-tests/                 # Test suite
+  *.ts                 # Core TypeScript modules
+tests/                 # Vitest test suite
 ```
 
 ## Contributing
