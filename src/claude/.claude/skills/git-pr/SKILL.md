@@ -47,7 +47,7 @@ Create a pull request using the GitHub CLI with a descriptive title and appropri
 
    **Trivial/Small**: Brief description with attribution
 
-   ```
+   ```bash
    gh pr create --title "Fix typo in README" --body "Corrects spelling error
 
    🤖 Generated with [Claude Code](https://claude.com/product/claude-code)"
@@ -55,7 +55,7 @@ Create a pull request using the GitHub CLI with a descriptive title and appropri
 
    **Medium/Large**: Structured description with attribution
 
-   ```
+   ```bash
    gh pr create --title "<title>" --body "## Summary
    <1-2 sentence overview>
 

@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD033 MD041 -->
 <p align="center">
   <img src="agentic-forge-banner.png" alt="Agentic Forge" width="600">
 </p>
@@ -118,7 +119,7 @@ agentic-forge update
 
 ## Repository Structure
 
-```
+```text
 src/
   agents/              # Bundled agent definitions (explorer, reviewer)
   claude/.claude/      # Skills loaded via --add-dir

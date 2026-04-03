@@ -74,12 +74,6 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 - **Workflows**: YAML files in `src/workflows/`
 - **TypeScript Source**: TypeScript modules in `src/` with root `package.json`
 
-### Prompt Template Convention
-
-All prompt files (agents, skills) must follow the exact structure defined in their respective template files:
-
-- `src/claude/.claude/skills/create-skill/template.md` - Structure for skill prompts
-
 **Placeholder Convention:**
 
 Prompt templates use **Mustache/Handlebars-style placeholders** with the following format:

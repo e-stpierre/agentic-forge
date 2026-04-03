@@ -13,8 +13,8 @@
     "build": "tsc && node scripts/copy-assets.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "biome check .",
-    "fix": "biome check --fix .",
+    "check": "biome check . && markdownlint-cli2",
+    "fix": "biome check --fix . && markdownlint-cli2 --fix",
     "dev": "tsc --watch"
   },
   "dependencies": {
@@ -29,6 +29,7 @@
     "@types/node": "^22.13.0",
     "@types/nunjucks": "^3.2.6",
     "@types/proper-lockfile": "^4.1.4",
+    "markdownlint-cli2": "^0.17.2",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },

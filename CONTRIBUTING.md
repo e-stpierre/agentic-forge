@@ -63,7 +63,7 @@ uv run pytest       # Python tests (for plugins with Python code)
 
 All plugins live in the `/plugins/` directory:
 
-```
+```text
 plugins/<plugin-name>/
 ├── agents/         # Sub-agent definitions (.md)
 ├── skills/         # Skill directories with SKILL.md files
