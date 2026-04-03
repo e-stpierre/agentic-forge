@@ -1,0 +1,234 @@
+/** Run and resume command handlers with workflow discovery. */
+
+import { existsSync, readdirSync } from "node:fs";
+import { homedir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export function getBundledWorkflowsDir(): string {
+	return path.join(__dirname, "..", "workflows");
+}
+
+export function getUserWorkflowsDir(): string {
+	if (process.platform === "win32") {
+		const base = process.env.APPDATA ?? path.join(homedir(), "AppData", "Roaming");
+		return path.join(base, "agentic-forge", "workflows");
+	}
+	const base = process.env.XDG_CONFIG_HOME ?? path.join(homedir(), ".config");
+	return path.join(base, "agentic-forge", "workflows");
+}
+
+export function getProjectWorkflowsDir(): string {
+	return path.join(process.cwd(), "agentic", "workflows");
+}
+
+export function discoverWorkflow(name: string): [string | null, string] {
+	const fileName = name.endsWith(".yaml") ? name : `${name}.yaml`;
+
+	const searchLocations: [string, string][] = [
+		[getProjectWorkflowsDir(), "project-local"],
+		[getUserWorkflowsDir(), "user-global"],
+		[getBundledWorkflowsDir(), "bundled"],
+	];
+
+	for (const [directory, locationType] of searchLocations) {
+		const workflowPath = path.join(directory, fileName);
+		if (existsSync(workflowPath)) {
+			return [workflowPath, locationType];
+		}
+	}
+
+	return [null, "not found"];
+}
+
+export function listAvailableWorkflows(): [string, string, string][] {
+	const workflows: [string, string, string][] = [];
+
+	const searchLocations: [string, string][] = [
+		[getProjectWorkflowsDir(), "project-local"],
+		[getUserWorkflowsDir(), "user-global"],
+		[getBundledWorkflowsDir(), "bundled"],
+	];
+
+	for (const [directory, locationType] of searchLocations) {
+		if (existsSync(directory)) {
+			const files = readdirSync(directory)
+				.filter((f) => f.endsWith(".yaml"))
+				.sort();
+			for (const file of files) {
+				const name = path.basename(file, ".yaml");
+				workflows.push([name, path.join(directory, file), locationType]);
+			}
+		}
+	}
+
+	return workflows;
+}
+
+export function resolveWorkflowPath(workflowArg: string): [string, string] {
+	// Check if it's an absolute path
+	if (path.isAbsolute(workflowArg)) {
+		return [workflowArg, "absolute"];
+	}
+
+	// Check if it exists as a relative path from cwd
+	const localPath = path.resolve(process.cwd(), workflowArg);
+	if (existsSync(localPath)) {
+		return [localPath, "relative"];
+	}
+
+	// If the input looks like a bare name (no path separators), try discovery
+	if (!workflowArg.includes("/") && !workflowArg.includes("\\")) {
+		const [discovered, locationType] = discoverWorkflow(workflowArg);
+		if (discovered) {
+			return [discovered, locationType];
+		}
+	}
+
+	// Fallback: return the resolved path (will fail with appropriate error)
+	return [path.resolve(workflowArg), "not found"];
+}
+
+export async function cmdRun(options: {
+	workflow?: string;
+	listWorkflows?: boolean;
+	vars?: string[];
+	fromStep?: string;
+	terminalOutput?: string;
+}): Promise<void> {
+	// Handle --list flag
+	if (options.listWorkflows) {
+		process.stdout.write("Available workflows:\n\n");
+		const workflows = listAvailableWorkflows();
+
+		if (workflows.length === 0) {
+			process.stdout.write("No workflows found.\n");
+			process.stdout.write("\nSearched locations:\n");
+			process.stdout.write(`  - Project: ${getProjectWorkflowsDir()}\n`);
+			process.stdout.write(`  - User:    ${getUserWorkflowsDir()}\n`);
+			process.stdout.write(`  - Bundled: ${getBundledWorkflowsDir()}\n`);
+			return;
+		}
+
+		// Group by location
+		const byLocation: Record<string, [string, string][]> = {};
+		for (const [name, wfPath, location] of workflows) {
+			if (!byLocation[location]) {
+				byLocation[location] = [];
+			}
+			byLocation[location].push([name, wfPath]);
+		}
+
+		for (const location of ["project-local", "user-global", "bundled"]) {
+			if (byLocation[location]) {
+				const label = location.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+				process.stdout.write(`${label}:\n`);
+				for (const [name] of byLocation[location]) {
+					process.stdout.write(`  ${name}\n`);
+				}
+				process.stdout.write("\n");
+			}
+		}
+
+		process.stdout.write(`Total: ${workflows.length} workflow(s)\n`);
+		process.stdout.write("\nUsage: agentic-forge run <workflow-name>\n");
+		return;
+	}
+
+	// Validate workflow argument is provided
+	if (!options.workflow) {
+		process.stderr.write("Error: workflow name or path is required\n");
+		process.stderr.write("Use 'agentic-forge run --list' to see available workflows\n");
+		process.exit(1);
+	}
+
+	const { WorkflowExecutor } = await import("../executor.js");
+	const { WorkflowParser, WorkflowParseError } = await import("../parser.js");
+
+	const [workflowPath, locationType] = resolveWorkflowPath(options.workflow);
+
+	if (!existsSync(workflowPath)) {
+		process.stderr.write(`Error: Workflow not found: ${options.workflow}\n`);
+		process.stderr.write("\nAvailable workflows:\n");
+
+		const workflows = listAvailableWorkflows();
+		if (workflows.length > 0) {
+			for (const [name, , location] of workflows.slice(0, 10)) {
+				process.stderr.write(`  ${name} (${location})\n`);
+			}
+			if (workflows.length > 10) {
+				process.stderr.write(`  ... and ${workflows.length - 10} more\n`);
+			}
+		} else {
+			process.stderr.write("  (no workflows found)\n");
+		}
+
+		process.stderr.write("\nUse 'agentic-forge run --list' to see all workflows.\n");
+		process.stderr.write("Use 'agentic-forge init' to copy bundled workflows locally.\n");
+		process.exit(1);
+	}
+
+	// Show which workflow is being used
+	if (["project-local", "user-global", "bundled"].includes(locationType)) {
+		process.stdout.write(`Using ${locationType} workflow: ${path.basename(workflowPath)}\n`);
+	}
+
+	// Parse variables
+	const variables: Record<string, string> = {};
+	if (options.vars) {
+		for (const v of options.vars) {
+			if (!v.includes("=")) {
+				process.stderr.write(`Error: Invalid variable format: ${v}\n`);
+				process.stderr.write("Expected format: KEY=VALUE\n");
+				process.exit(1);
+			}
+			const eqIndex = v.indexOf("=");
+			variables[v.slice(0, eqIndex)] = v.slice(eqIndex + 1);
+		}
+	}
+
+	let workflow: import("../types.js").WorkflowDefinition;
+	try {
+		const parser = new WorkflowParser();
+		workflow = parser.parseFile(workflowPath);
+	} catch (e) {
+		if (e instanceof WorkflowParseError) {
+			process.stderr.write(`Error parsing workflow: ${e.message}\n`);
+			process.exit(1);
+		}
+		throw e;
+	}
+
+	const executor = new WorkflowExecutor();
+	try {
+		// Resolve terminal_output: CLI override > workflow settings > default "base"
+		let terminalOutput = "base";
+		if (options.terminalOutput != null) {
+			terminalOutput = options.terminalOutput;
+		} else if (workflow.settings?.terminalOutput) {
+			terminalOutput = workflow.settings.terminalOutput;
+		}
+
+		const progress = await executor.run(
+			workflow,
+			variables,
+			options.fromStep ?? null,
+			terminalOutput,
+			path.resolve(workflowPath),
+		);
+		process.stdout.write(`\nWorkflow ${progress.status}: ${progress.workflowId}\n`);
+		if (progress.errors && progress.errors.length > 0) {
+			process.stdout.write("\nErrors:\n");
+			for (const error of progress.errors) {
+				process.stdout.write(
+					`  - ${(error as Record<string, string>).step}: ${(error as Record<string, string>).error}\n`,
+				);
+			}
+		}
+	} catch (e) {
+		process.stderr.write(`Error running workflow: ${(e as Error).message}\n`);
+		process.exit(1);
+	}
+}
