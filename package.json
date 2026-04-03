@@ -1,6 +1,6 @@
 {
   "name": "agentic-forge",
-  "version": "1.0.0",
+  "version": "0.7.0",
   "description": "Workflow orchestration engine with bundled skills for Claude Code",
   "type": "module",
   "bin": {
