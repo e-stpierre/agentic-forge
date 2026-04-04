@@ -60,10 +60,6 @@ pnpm check          # Format and lint (Biome)
 pnpm test           # Vitest tests
 ```
 
-## Internal Tools
-
-- **`/normalize`** - Validate prompt files and READMEs against templates. Use `--autofix` to auto-fix issues.
-
 ## Project Structure
 
 ```text
@@ -85,21 +81,6 @@ tests/                 # Vitest test suite
 - **Skills**: directory name in kebab-case with `SKILL.md` inside (`analyze/SKILL.md`, `git-commit/SKILL.md`)
 - **Workflows**: descriptive kebab-case YAML files (`plan-build-review.yaml`)
 
-### Prompt Templates
-
-All prompts must follow the templates in the repository. Use the `/normalize` command inside Claude Code to validate.
-
-```bash
-# Validate all prompts
-/normalize
-
-# Validate specific files
-/normalize src/claude/.claude/skills/my-skill/
-
-# Auto-fix non-compliant files
-/normalize --autofix src/claude/.claude/skills/
-```
-
 ## Pull Request Process
 
 ### Workflow
@@ -107,18 +88,18 @@ All prompts must follow the templates in the repository. Use the `/normalize` co
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Make your changes
-4. Run `pnpm check` to verify formatting
-5. Run `pnpm test` to run the test suite
-6. Run `/normalize` (inside Claude Code) to validate prompt files
-7. Commit your changes with clear messages
-8. Push to your fork
-9. Open a pull request
+4. Run `pnpm changeset` to create a changeset describing your changes
+5. Run `pnpm changeset version` to bump the version and update the changelog
+6. Run `pnpm check` to verify formatting
+7. Run `pnpm test` to run the test suite
+8. Commit your changes with clear messages
+9. Push to your fork
+10. Open a pull request
 
 ### PR Checklist
 
 - [ ] CI pipeline passes (format, lint, tests)
-- [ ] Prompt templates validated (`/normalize`)
-- [ ] CHANGELOG updated if applicable
+- [ ] Changeset added (`pnpm changeset`) and versioned (`pnpm changeset version`)
 - [ ] Changes tested with Claude Code
 
 ## Reporting Issues

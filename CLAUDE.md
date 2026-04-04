@@ -101,21 +101,6 @@ Instructions:
 - Required sections must be present; optional sections can be omitted
 - Section names must match the template exactly (case-sensitive)
 
-**Validation:**
-
-Use the `/normalize` command to validate prompt files against templates:
-
-```bash
-# Validate all prompts in the repository
-/normalize
-
-# Validate specific files or directories
-/normalize src/claude/.claude/skills/
-
-# Auto-fix non-compliant files
-/normalize --autofix src/claude/.claude/skills/
-```
-
 ### Shell Commands
 
 Run shell commands directly without prefixing with `cd` to the repository root. The working directory is already set correctly, and unnecessary `cd` prefixes create distinct command strings that trigger extra permission prompts.
