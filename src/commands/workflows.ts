@@ -9,7 +9,13 @@ import { getBundledWorkflowsDir, getProjectWorkflowsDir, getUserWorkflowsDir } f
 interface WorkflowMetadata {
 	name: string;
 	description: string;
-	variables: { name: string; required?: boolean }[];
+	variables: {
+		name: string;
+		type?: string;
+		required?: boolean;
+		default?: unknown;
+		description?: string;
+	}[];
 }
 
 function getWorkflowMetadata(filePath: string): WorkflowMetadata {
@@ -105,13 +111,15 @@ export function cmdWorkflows(options: { verbose?: boolean }): void {
 			}
 
 			if (verbose && metadata.variables.length > 0) {
-				const required = metadata.variables.filter((v) => v.required).map((v) => v.name);
-				const optional = metadata.variables.filter((v) => !v.required).map((v) => v.name);
-				if (required.length > 0) {
-					process.stdout.write(`    Required: ${required.join(", ")}\n`);
-				}
-				if (optional.length > 0) {
-					process.stdout.write(`    Optional: ${optional.join(", ")}\n`);
+				process.stdout.write("    Variables:\n");
+				for (const v of metadata.variables) {
+					const req = v.required ? "required" : "optional";
+					const def = v.default !== undefined ? `, default: ${v.default}` : "";
+					const typ = v.type ? ` (${v.type})` : "";
+					process.stdout.write(`      ${v.name}${typ} [${req}${def}]\n`);
+					if (v.description) {
+						process.stdout.write(`        ${v.description}\n`);
+					}
 				}
 			}
 		}
@@ -120,10 +128,10 @@ export function cmdWorkflows(options: { verbose?: boolean }): void {
 
 	process.stdout.write(`Total: ${workflows.length} workflow(s)\n\n`);
 	process.stdout.write("Usage:\n");
-	process.stdout.write("  agentic-forge run <workflow-name>\n");
-	process.stdout.write("  agentic-forge run <workflow-name> --var key=value\n\n");
+	process.stdout.write("  agentic-forge run <workflow> key=value [key=value ...]\n");
+	process.stdout.write("  agentic-forge run <workflow> --var key=value\n\n");
 	process.stdout.write("Examples:\n");
-	process.stdout.write('  agentic-forge run one-shot --var task="Add login button"\n');
-	process.stdout.write("  agentic-forge run analyze-single --var analysis_type=bug\n");
-	process.stdout.write('  agentic-forge run plan-build-review --var task="Refactor auth"\n');
+	process.stdout.write('  agentic-forge run one-shot task="Add login button"\n');
+	process.stdout.write("  agentic-forge run analyze-single analysis_type=bug\n");
+	process.stdout.write('  agentic-forge run plan-build-review task="Refactor auth"\n');
 }

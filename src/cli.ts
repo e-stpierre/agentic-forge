@@ -43,16 +43,20 @@ const program = new Command()
 program
 	.command("run")
 	.argument("[workflow]", "workflow name or path to YAML file")
+	.argument("[vars...]", "workflow variables as key=value pairs")
 	.option("--list", "list all available workflows")
 	.option("--var <key=value...>", "set workflow variable (can be used multiple times)")
 	.option("--from-step <step>", "resume from a specific step")
+	.option("--no-interactive", "disable interactive prompts for missing variables")
 	.option("--terminal-output <mode>", "terminal output granularity (base or all)")
-	.action(async (workflow: string | undefined, opts: Record<string, unknown>) => {
+	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
 			listWorkflows: optBool(opts.list),
 			vars: optStringArray(opts.var),
+			bareVars: optStringArray(vars),
 			fromStep: optString(opts.fromStep),
+			interactive: opts.interactive !== false,
 			terminalOutput: optString(opts.terminalOutput),
 		});
 	});

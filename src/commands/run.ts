@@ -4,6 +4,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { confirm, input } from "@inquirer/prompts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -95,7 +96,9 @@ export async function cmdRun(options: {
 	workflow?: string;
 	listWorkflows?: boolean;
 	vars?: string[];
+	bareVars?: string[];
 	fromStep?: string;
+	interactive?: boolean;
 	terminalOutput?: string;
 }): Promise<void> {
 	// Handle --list flag
@@ -133,7 +136,7 @@ export async function cmdRun(options: {
 		}
 
 		process.stdout.write(`Total: ${workflows.length} workflow(s)\n`);
-		process.stdout.write("\nUsage: agentic-forge run <workflow-name>\n");
+		process.stdout.write("\nUsage: agentic-forge run <workflow> [key=value ...]\n");
 		return;
 	}
 
@@ -177,15 +180,28 @@ export async function cmdRun(options: {
 
 	// Parse variables
 	const variables: Record<string, string> = {};
+
+	function parseVar(v: string): void {
+		if (!v.includes("=")) {
+			process.stderr.write(`Error: Invalid variable format: ${v}\n`);
+			process.stderr.write("Expected format: key=value\n");
+			process.exit(1);
+		}
+		const eqIndex = v.indexOf("=");
+		variables[v.slice(0, eqIndex)] = v.slice(eqIndex + 1);
+	}
+
+	// Bare positional args first (lower precedence)
+	if (options.bareVars) {
+		for (const v of options.bareVars) {
+			parseVar(v);
+		}
+	}
+
+	// --var flags override bare args
 	if (options.vars) {
 		for (const v of options.vars) {
-			if (!v.includes("=")) {
-				process.stderr.write(`Error: Invalid variable format: ${v}\n`);
-				process.stderr.write("Expected format: KEY=VALUE\n");
-				process.exit(1);
-			}
-			const eqIndex = v.indexOf("=");
-			variables[v.slice(0, eqIndex)] = v.slice(eqIndex + 1);
+			parseVar(v);
 		}
 	}
 
@@ -199,6 +215,39 @@ export async function cmdRun(options: {
 			process.exit(1);
 		}
 		throw e;
+	}
+
+	// Prompt for missing required variables (interactive mode only)
+	const isInteractive = options.interactive !== false && process.stdin.isTTY;
+
+	for (const v of workflow.variables) {
+		if (v.name in variables) continue;
+		if (!v.required) continue;
+
+		// Required variable is missing
+		if (!isInteractive) {
+			process.stderr.write(`Error: Missing required variable: ${v.name}\n`);
+			if (v.description) {
+				process.stderr.write(`  Description: ${v.description}\n`);
+			}
+			process.stderr.write(`  Usage: agentic-forge run ${options.workflow} ${v.name}="<value>"\n`);
+			process.exit(1);
+		}
+
+		const label = v.description ?? v.name;
+		if (v.type === "boolean") {
+			const answer = await confirm({
+				message: `${label}:`,
+				default: typeof v.default === "boolean" ? v.default : false,
+			});
+			variables[v.name] = String(answer);
+		} else {
+			const answer = await input({
+				message: `${label}:`,
+				default: v.default != null ? String(v.default) : undefined,
+			});
+			variables[v.name] = answer;
+		}
 	}
 
 	const executor = new WorkflowExecutor();
