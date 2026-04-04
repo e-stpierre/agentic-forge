@@ -2,7 +2,12 @@
 
 import { getConfigValue, setConfigValue } from "../config.js";
 
-export function cmdConfig(configCommand: string, key: string, value?: string): void {
+export function cmdConfig(
+	configCommand: string,
+	key: string,
+	value?: string,
+	scope?: "global" | "local",
+): void {
 	if (configCommand === "get") {
 		const result = getConfigValue(key);
 		if (result === null) {
@@ -19,7 +24,7 @@ export function cmdConfig(configCommand: string, key: string, value?: string): v
 			process.stderr.write("Usage: agentic-forge config set <key> <value>\n");
 			process.exit(1);
 		}
-		setConfigValue(key, value);
+		setConfigValue(key, value, scope);
 		process.stdout.write(`Set ${key} = ${value}\n`);
 	} else {
 		process.stderr.write("Usage: agentic-forge config get|set <key> [value]\n");

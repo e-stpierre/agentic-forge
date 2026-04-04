@@ -1,10 +1,11 @@
 /** Configuration management for agentic-forge. */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
 
 const DEFAULT_CONFIG: Record<string, unknown> = {
-	outputDirectory: "agentic",
+	outputDirectory: "global",
 	logging: {
 		enabled: true,
 		level: "Error",
@@ -27,6 +28,23 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 	},
 };
 
+/**
+ * Returns the platform-native global config file path.
+ * Inlined here to avoid a circular dependency with paths.ts.
+ */
+function getGlobalConfigPath(): string {
+	const platform = process.platform;
+	let base: string;
+	if (platform === "win32") {
+		base = process.env.APPDATA ?? path.join(homedir(), "AppData", "Roaming");
+	} else if (platform === "darwin") {
+		base = path.join(homedir(), "Library", "Application Support");
+	} else {
+		base = process.env.XDG_CONFIG_HOME ?? path.join(homedir(), ".config");
+	}
+	return path.join(base, "agentic-forge", "config.json");
+}
+
 export function getConfigPath(repoRoot?: string): string {
 	const root = repoRoot ?? process.cwd();
 	return path.join(root, "agentic", "config.json");
@@ -36,23 +54,56 @@ export function getDefaultConfig(): Record<string, unknown> {
 	return deepCopy(DEFAULT_CONFIG);
 }
 
+/**
+ * Loads configuration with 3-layer merge: defaults -> global -> local.
+ * @param repoRoot - project root (for local config path)
+ */
 export function loadConfig(repoRoot?: string): Record<string, unknown> {
-	const configPath = getConfigPath(repoRoot);
+	let config = getDefaultConfig();
 
-	if (existsSync(configPath)) {
-		const content = readFileSync(configPath, "utf-8");
-		const userConfig = JSON.parse(content) as Record<string, unknown>;
-		return deepMerge(getDefaultConfig(), userConfig);
+	// Layer 2: global config
+	const globalConfigPath = getGlobalConfigPath();
+	if (existsSync(globalConfigPath)) {
+		const globalConfig = JSON.parse(readFileSync(globalConfigPath, "utf-8")) as Record<
+			string,
+			unknown
+		>;
+		config = deepMerge(config, globalConfig);
 	}
 
-	return getDefaultConfig();
+	// Layer 3: local config
+	const localConfigPath = getConfigPath(repoRoot);
+	if (existsSync(localConfigPath)) {
+		const localConfig = JSON.parse(readFileSync(localConfigPath, "utf-8")) as Record<
+			string,
+			unknown
+		>;
+		config = deepMerge(config, localConfig);
+	}
+
+	return config;
 }
 
-export function saveConfig(config: Record<string, unknown>, repoRoot?: string): void {
-	const configPath = getConfigPath(repoRoot);
-	const dir = path.dirname(configPath);
-	mkdirSync(dir, { recursive: true });
-	writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+/**
+ * Saves configuration to the specified scope.
+ * @param config - config object to write
+ * @param repoRoot - project root (for local writes)
+ * @param scope - "global" writes to global config; "local" or omitted writes locally
+ */
+export function saveConfig(
+	config: Record<string, unknown>,
+	repoRoot?: string,
+	scope?: "global" | "local",
+): void {
+	if (scope === "global") {
+		const globalConfigPath = getGlobalConfigPath();
+		mkdirSync(path.dirname(globalConfigPath), { recursive: true });
+		writeFileSync(globalConfigPath, JSON.stringify(config, null, 2), "utf-8");
+	} else {
+		const configPath = getConfigPath(repoRoot);
+		mkdirSync(path.dirname(configPath), { recursive: true });
+		writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+	}
 }
 
 export function getConfigValue(key: string, repoRoot?: string): unknown {
@@ -74,8 +125,40 @@ export function getConfigValue(key: string, repoRoot?: string): unknown {
 	return value;
 }
 
-export function setConfigValue(key: string, value: string, repoRoot?: string): void {
-	const config = loadConfig(repoRoot);
+/**
+ * Sets a configuration value in the specified scope.
+ * Reads only the target scope's config file, sets the key, and writes it back.
+ * This avoids writing merged values from other layers into a single scope.
+ *
+ * @param key - dot-notation config key
+ * @param value - string value to set (parsed to bool/int when applicable)
+ * @param scopeOrRoot - "global", "local", or a path string (backward-compat repoRoot)
+ * @param repoRoot - project root when scope is explicitly "global" or "local"
+ */
+export function setConfigValue(
+	key: string,
+	value: string,
+	scopeOrRoot?: "global" | "local" | string,
+	repoRoot?: string,
+): void {
+	const scope: "global" | "local" | undefined =
+		scopeOrRoot === "global" || scopeOrRoot === "local" ? scopeOrRoot : undefined;
+	const root = scope !== undefined ? repoRoot : (scopeOrRoot ?? repoRoot);
+
+	// Load only the target scope's config (not the full merged config)
+	let config: Record<string, unknown>;
+	if (scope === "global") {
+		const globalConfigPath = getGlobalConfigPath();
+		config = existsSync(globalConfigPath)
+			? (JSON.parse(readFileSync(globalConfigPath, "utf-8")) as Record<string, unknown>)
+			: {};
+	} else {
+		const localConfigPath = getConfigPath(root);
+		config = existsSync(localConfigPath)
+			? (JSON.parse(readFileSync(localConfigPath, "utf-8")) as Record<string, unknown>)
+			: {};
+	}
+
 	const parts = key.split(".");
 	let target = config;
 	for (const part of parts.slice(0, -1)) {
@@ -95,7 +178,7 @@ export function setConfigValue(key: string, value: string, repoRoot?: string): v
 	}
 
 	target[parts[parts.length - 1]] = parsedValue;
-	saveConfig(config, repoRoot);
+	saveConfig(config, root, scope);
 }
 
 export function deepMerge(

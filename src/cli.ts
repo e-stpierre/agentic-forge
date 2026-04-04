@@ -146,8 +146,15 @@ configCmd
 	.command("set")
 	.argument("<key>", "configuration key (dot notation)")
 	.argument("<value>", "value to set")
-	.action((key: string, value: string) => {
-		cmdConfig("set", key, value);
+	.option("--global", "write to global config")
+	.option("--local", "write to local project config")
+	.action((key: string, value: string, opts: Record<string, unknown>) => {
+		const scope: "global" | "local" | undefined = opts.global
+			? "global"
+			: opts.local
+				? "local"
+				: undefined;
+		cmdConfig("set", key, value, scope);
 	});
 
 // version command
