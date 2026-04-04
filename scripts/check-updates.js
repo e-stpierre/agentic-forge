@@ -49,13 +49,8 @@ function daysAgo(date) {
 }
 
 function formatRow(name, current, latest, age, eligible, skipped) {
-	const tag = eligible
-		? "\x1b[32m✓\x1b[0m"
-		: skipped
-			? "\x1b[33m⊘\x1b[0m"
-			: "\x1b[90m·\x1b[0m";
-	const ageStr =
-		age !== null ? `${age}d ago` : "\x1b[33munknown\x1b[0m";
+	const tag = eligible ? "\x1b[32m✓\x1b[0m" : skipped ? "\x1b[33m⊘\x1b[0m" : "\x1b[90m·\x1b[0m";
+	const ageStr = age !== null ? `${age}d ago` : "\x1b[33munknown\x1b[0m";
 	const skipLabel = skipped ? " \x1b[33m(major ignored)\x1b[0m" : "";
 	return `  ${tag} ${name.padEnd(28)} ${current.padEnd(14)} → ${latest.padEnd(14)} ${ageStr}${skipLabel}`;
 }
@@ -77,8 +72,7 @@ async function main() {
 		const { current, latest, dependencyType } = outdated[name];
 		const publishDate = getPublishDate(name, latest);
 		const age = publishDate ? daysAgo(publishDate) : null;
-		const majorIgnored =
-			IGNORE_MAJOR.includes(name) && isMajorBump(current, latest);
+		const majorIgnored = IGNORE_MAJOR.includes(name) && isMajorBump(current, latest);
 		const eligible = !majorIgnored && age !== null && age >= MIN_AGE_DAYS;
 
 		results.push({
@@ -111,7 +105,7 @@ async function main() {
 
 	if (skipped.length > 0) {
 		if (eligible.length > 0) console.log();
-		console.log(`\x1b[33mMajor version ignored:\x1b[0m`);
+		console.log("\x1b[33mMajor version ignored:\x1b[0m");
 		for (const r of skipped) {
 			console.log(formatRow(r.name, r.current, r.latest, r.age, false, true));
 		}
@@ -136,9 +130,7 @@ async function main() {
 		}
 
 		const deps = eligible.filter((r) => r.dependencyType === "dependencies");
-		const devDeps = eligible.filter(
-			(r) => r.dependencyType === "devDependencies",
-		);
+		const devDeps = eligible.filter((r) => r.dependencyType === "devDependencies");
 
 		if (deps.length > 0) {
 			const pkgs = deps.map((r) => `${r.name}@${r.latest}`).join(" ");
