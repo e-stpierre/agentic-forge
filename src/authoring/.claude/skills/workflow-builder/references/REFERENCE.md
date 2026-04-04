@@ -204,13 +204,13 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
 
 ### conditional
 
-Branch execution based on a Jinja2 condition expression.
+Branch execution based on a Nunjucks condition expression.
 
 **Specific properties:**
 
 | Key         | Type   | Required | Description                                |
 | ----------- | ------ | -------- | ------------------------------------------ |
-| `condition` | string | Yes      | Jinja2 expression evaluating to true/false |
+| `condition` | string | Yes      | Nunjucks expression evaluating to true/false |
 | `then`      | list   | Yes      | Steps to execute if condition is true      |
 | `else`      | list   | No       | Steps to execute if condition is false     |
 
@@ -316,7 +316,7 @@ Human provides input via: `agentic-forge input <workflow-id> "response"`
 
 ## Templating
 
-Workflows use Jinja2 for dynamic content in prompts, conditions, and output paths.
+Workflows use Nunjucks for dynamic content in prompts, conditions, and output paths.
 
 ### Built-in Variables
 
@@ -329,7 +329,7 @@ Workflows use Jinja2 for dynamic content in prompts, conditions, and output path
 | `{{ iteration }}`              | Current ralph-loop iteration (1-based) |
 | `{{ max_iterations }}`         | Max iterations for ralph-loop          |
 
-### Jinja2 Filters
+### Nunjucks Filters
 
 | Filter             | Example                                         | Description         |
 | ------------------ | ----------------------------------------------- | ------------------- |
@@ -371,7 +371,7 @@ Generate files when the workflow completes or fails.
 | Key        | Required | Type   | Default       | Description                           |
 | ---------- | -------- | ------ | ------------- | ------------------------------------- |
 | `name`     | Yes      | string | -             | Output identifier                     |
-| `template` | Yes      | string | -             | Jinja2 template file path             |
+| `template` | Yes      | string | -             | Nunjucks template file path           |
 | `path`     | Yes      | string | -             | Output file path (supports templates) |
 | `when`     | No       | string | `"completed"` | "completed" or "failed"               |
 

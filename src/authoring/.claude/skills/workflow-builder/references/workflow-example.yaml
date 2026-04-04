@@ -15,7 +15,7 @@ description: |
   - Git integration with worktrees
   - Error handling and retries
   - Checkpoints and progress tracking
-  - Variable templating with Jinja2
+  - Variable templating with Nunjucks
   - Output generation
 
 # Optional: Workflow-level settings
@@ -253,11 +253,11 @@ steps:
     checkpoint: true
 
   # ==================== CONDITIONAL STEP ====================
-  # Execute steps based on Jinja2 condition
+  # Execute steps based on Nunjucks condition
   - name: fix-validation-issues
     type: conditional
 
-    # Jinja2 expression that evaluates to true/false
+    # Nunjucks expression that evaluates to true/false
     # This checks if there are any issues with severity >= fix_severity
     condition: "{{ outputs.review_implementation.issues | selectattr('severity', 'ge', variables.fix_severity) | list | length > 0 }}"
 
@@ -339,7 +339,7 @@ steps:
 outputs:
   # Generated when workflow completes successfully
   - name: implementation-report
-    # Jinja2 template file (resolved from workflow dir, agentic/templates/, or bundled templates)
+    # Nunjucks template file (resolved from workflow dir, agentic/templates/, or bundled templates)
     template: implementation-report.md.j2
     # Output file path (relative to workflow directory)
     path: "{{ output_dir }}/report.md"
@@ -415,13 +415,13 @@ outputs:
 #
 # ==================== BUILT-IN VARIABLES ====================
 #
-# Available in all Jinja2 templates:
+# Available in all Nunjucks templates:
 #   - {{ workflow_id }}              - Unique workflow execution ID
 #   - {{ workflow_name }}            - Workflow name from YAML
 #   - {{ variables.name }}           - User-defined variables
 #   - {{ outputs.step_name.field }}  - Step outputs
 #
-# ==================== JINJA2 FILTERS ====================
+# ==================== NUNJUCKS FILTERS ====================
 #
 # Common filters for templating:
 #   - {{ list | length }}            - Get list length

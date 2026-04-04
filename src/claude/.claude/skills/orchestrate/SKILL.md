@@ -21,7 +21,7 @@ You are the workflow orchestrator. Your job is to evaluate the current workflow 
 
 ### Condition Evaluation
 
-For conditional steps, evaluate the Jinja2 condition using the available context:
+For conditional steps, evaluate the Nunjucks condition using the available context:
 
 - `outputs.{step_name}` - Previous step outputs
 - `variables.{var_name}` - Workflow variables
@@ -85,7 +85,7 @@ For conditional steps, evaluate the Jinja2 condition using the available context
 
 3. **Determine Next Action**
    - Based on step dependencies and conditions
-   - Evaluate any Jinja2 conditions
+   - Evaluate any Nunjucks conditions
    - Identify the appropriate action type
 
 4. **Return JSON Decision**
