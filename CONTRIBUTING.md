@@ -88,18 +88,15 @@ tests/                 # Vitest test suite
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Make your changes
-4. Run `pnpm changeset` to create a changeset describing your changes
-5. Run `pnpm changeset version` to bump the version and update the changelog
-6. Run `pnpm check` to verify formatting
-7. Run `pnpm test` to run the test suite
-8. Commit your changes with clear messages
-9. Push to your fork
-10. Open a pull request
+4. Run `pnpm check` to verify formatting
+5. Run `pnpm test` to run the test suite
+6. Commit your changes with clear messages
+7. Push to your fork
+8. Open a pull request
 
 ### PR Checklist
 
 - [ ] CI pipeline passes (format, lint, tests)
-- [ ] Changeset added (`pnpm changeset`) and versioned (`pnpm changeset version`)
 - [ ] Changes tested with Claude Code
 
 ## Reporting Issues

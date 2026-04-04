@@ -11,11 +11,10 @@ concurrency:
 
 jobs:
   publish:
-    name: Version & Publish
+    name: Publish
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
       id-token: write
 
     steps:
@@ -41,14 +40,6 @@ jobs:
 
       - name: Run tests
         run: pnpm test
-
-      - name: Create release PR
-        uses: changesets/action@v1
-        with:
-          title: "Version Packages"
-          commit: "Version Packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to npm
         run: |

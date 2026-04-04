@@ -38,8 +38,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "@changesets/cli": "^2.30.0",
-    "@types/js-yaml": "^4.0.9",
+"@types/js-yaml": "^4.0.9",
     "@types/node": "^22.13.0",
     "@types/nunjucks": "^3.2.6",
     "@types/proper-lockfile": "^4.1.4",
