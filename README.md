@@ -45,24 +45,6 @@ pnpm install && pnpm build
 npm install -g .
 ```
 
-### Using Skills in Interactive Claude Sessions
-
-Agentic Forge bundles 13 skills that extend Claude Code with slash commands like `/sdlc-plan`, `/analyze`, `/git-commit`, and more. To make them available in interactive sessions:
-
-**Option 1: Pass `--add-dir` when launching Claude**
-
-```bash
-claude --add-dir $(agentic-forge skills-dir)
-```
-
-**Option 2: Add to `~/.claude/settings.json` permanently**
-
-```json
-{
-  "additionalDirectories": ["<output of agentic-forge skills-dir>"]
-}
-```
-
 ## Workflows
 
 ### plan-build-review (Full SDLC)
@@ -100,14 +82,42 @@ agentic-forge run analyze-codebase --var "autofix=true"
 ### All Commands
 
 ```bash
-# List available workflows
-agentic-forge workflows
-
 # Run a workflow with variables
 agentic-forge run <workflow> --var "key=value"
 
+# Resume a paused or failed workflow
+agentic-forge resume <workflow_id>
+
+# Check workflow status
+agentic-forge status <workflow_id>
+
+# Cancel a running workflow
+agentic-forge cancel <workflow_id>
+
+# List all workflow runs (optionally filter by status)
+agentic-forge list --status running
+
+# Provide input to a paused workflow waiting for human response
+agentic-forge input <workflow_id> "response text"
+
+# Copy bundled workflow templates to your project
+agentic-forge init
+
+# List available workflows with descriptions
+agentic-forge workflows
+
+# Get or set configuration
+agentic-forge config get <key>
+agentic-forge config set <key> <value>
+
+# Interactive configuration setup
+agentic-forge configure
+
 # Print path to bundled skills directory
 agentic-forge skills-dir
+
+# Show release notes
+agentic-forge release-notes --latest
 
 # Check current version
 agentic-forge version
