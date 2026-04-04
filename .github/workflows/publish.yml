@@ -3,7 +3,6 @@ name: Publish
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -11,16 +10,17 @@ concurrency:
 
 jobs:
   publish:
-    name: Version & Publish
+    name: Publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
       id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -42,16 +42,42 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Debug npm auth
+      - name: Publish to npm
+        id: publish
         run: |
-          npm whoami --registry https://registry.npmjs.org 2>&1 || true
-          npm publish --dry-run --provenance --access public 2>&1 || true
+          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view agentic-forge version 2>/dev/null || echo "0.0.0")
+          if [ "$LOCAL_VERSION" != "$PUBLISHED_VERSION" ]; then
+            echo "Publishing agentic-forge@$LOCAL_VERSION (npm has $PUBLISHED_VERSION)"
+            npm publish --provenance --access public
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "version=$LOCAL_VERSION" >> "$GITHUB_OUTPUT"
+            echo "previous_version=$PUBLISHED_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "agentic-forge@$LOCAL_VERSION is already published, skipping"
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Create release PR or publish
-        uses: changesets/action@v1
-        with:
-          publish: pnpm changeset publish
-          title: "Version Packages"
-          commit: "Version Packages"
+      - name: Create GitHub release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view agentic-forge version 2>/dev/null || echo "0.0.0")
+          if [ "$VERSION" != "$PUBLISHED_VERSION" ]; then
+            echo "Version not on npm yet, skipping release"
+            exit 0
+          fi
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "Release v${VERSION} already exists, skipping"
+            exit 0
+          fi
+          PREVIOUS="${{ steps.publish.outputs.previous_version }}"
+          if [ -z "$PREVIOUS" ]; then
+            PREVIOUS=$(npm view agentic-forge versions --json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).slice(-2)[0] || '0.0.0'")
+          fi
+          if git rev-parse "v${PREVIOUS}" >/dev/null 2>&1; then
+            gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes --notes-start-tag "v${PREVIOUS}"
+          else
+            gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes
+          fi
