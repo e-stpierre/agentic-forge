@@ -92,6 +92,28 @@ export function resolveWorkflowPath(workflowArg: string): [string, string] {
 	return [path.resolve(workflowArg), "not found"];
 }
 
+/**
+ * Parse bare key=value strings and --var flag strings into a variables record.
+ * Bare args are processed first; --var flags override them for the same key.
+ * Throws an Error with a human-readable message on invalid format.
+ */
+export function parseVars(bareVars?: string[], vars?: string[]): Record<string, string> {
+	const variables: Record<string, string> = {};
+
+	function parseOne(v: string): void {
+		if (!v.includes("=")) {
+			throw new Error(`Error: Invalid variable format: ${v}\nExpected format: key=value`);
+		}
+		const eqIndex = v.indexOf("=");
+		variables[v.slice(0, eqIndex)] = v.slice(eqIndex + 1);
+	}
+
+	if (bareVars) for (const v of bareVars) parseOne(v);
+	if (vars) for (const v of vars) parseOne(v);
+
+	return variables;
+}
+
 export async function cmdRun(options: {
 	workflow?: string;
 	listWorkflows?: boolean;
@@ -179,30 +201,13 @@ export async function cmdRun(options: {
 	}
 
 	// Parse variables
-	const variables: Record<string, string> = {};
-
-	function parseVar(v: string): void {
-		if (!v.includes("=")) {
-			process.stderr.write(`Error: Invalid variable format: ${v}\n`);
-			process.stderr.write("Expected format: key=value\n");
-			process.exit(1);
-		}
-		const eqIndex = v.indexOf("=");
-		variables[v.slice(0, eqIndex)] = v.slice(eqIndex + 1);
-	}
-
-	// Bare positional args first (lower precedence)
-	if (options.bareVars) {
-		for (const v of options.bareVars) {
-			parseVar(v);
-		}
-	}
-
-	// --var flags override bare args
-	if (options.vars) {
-		for (const v of options.vars) {
-			parseVar(v);
-		}
+	let variables: Record<string, string>;
+	try {
+		variables = parseVars(options.bareVars, options.vars);
+	} catch (e: unknown) {
+		const msg = e instanceof Error ? e.message : String(e);
+		process.stderr.write(`${msg}\n`);
+		process.exit(1);
 	}
 
 	let workflow: import("../types.js").WorkflowDefinition;
