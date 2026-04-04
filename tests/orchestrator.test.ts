@@ -3,7 +3,7 @@
 import { mkdirSync, mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StepDefinition, WorkflowDefinition } from "../src/types.js";
 
 // Mock runClaude at module level
@@ -116,6 +116,10 @@ describe("parseOrchestratorResponse", () => {
 
 	beforeEach(() => {
 		orchestrator = new WorkflowOrchestrator(tempDir);
+	});
+
+	afterEach(() => {
+		orchestrator.dispose();
 	});
 
 	// Access private method for unit testing
@@ -234,6 +238,10 @@ describe("collectStepNames", () => {
 		orchestrator = new WorkflowOrchestrator(tempDir);
 	});
 
+	afterEach(() => {
+		orchestrator.dispose();
+	});
+
 	function callCollect(steps: StepDefinition[]) {
 		return (
 			orchestrator as unknown as { collectStepNames: (s: StepDefinition[]) => string[] }
@@ -287,6 +295,10 @@ describe("findStep", () => {
 
 	beforeEach(() => {
 		orchestrator = new WorkflowOrchestrator(tempDir);
+	});
+
+	afterEach(() => {
+		orchestrator.dispose();
 	});
 
 	function callFind(steps: StepDefinition[], name: string | null) {
@@ -355,15 +367,21 @@ describe("findStep", () => {
 // --- resolveModel (via private access) ---
 
 describe("resolveModel", () => {
+	let orchestrator: InstanceType<typeof WorkflowOrchestrator>;
+
+	afterEach(() => {
+		orchestrator.dispose();
+	});
+
 	it("should return step model when provided", () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const resolve = (orchestrator as unknown as { resolveModel: (m?: string | null) => string })
 			.resolveModel;
 		expect(resolve.call(orchestrator, "opus")).toBe("opus");
 	});
 
 	it("should fall back to default sonnet", () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const resolve = (orchestrator as unknown as { resolveModel: (m?: string | null) => string })
 			.resolveModel;
 		expect(resolve.call(orchestrator, null)).toBe("sonnet");
@@ -374,8 +392,14 @@ describe("resolveModel", () => {
 // --- workflowToDict (via private access) ---
 
 describe("workflowToDict", () => {
+	let orchestrator: InstanceType<typeof WorkflowOrchestrator>;
+
+	afterEach(() => {
+		orchestrator.dispose();
+	});
+
 	it("should produce a simplified dict with name and step summaries", () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const toDict = (
 			orchestrator as unknown as {
 				workflowToDict: (w: WorkflowDefinition) => Record<string, unknown>;
@@ -474,8 +498,14 @@ function mockDecision(
 }
 
 describe("WorkflowOrchestrator.run", () => {
+	let orchestrator: InstanceType<typeof WorkflowOrchestrator>;
+
+	afterEach(() => {
+		orchestrator.dispose();
+	});
+
 	it("should complete workflow when orchestrator returns completed status", async () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const workflow = makeWorkflow([
 			makeStep({ name: "build", type: "prompt", prompt: "build it" }),
 		]);
@@ -494,7 +524,7 @@ describe("WorkflowOrchestrator.run", () => {
 	});
 
 	it("should mark workflow as failed when orchestrator returns failed status", async () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const workflow = makeWorkflow([
 			makeStep({ name: "build", type: "prompt", prompt: "build it" }),
 		]);
@@ -513,7 +543,7 @@ describe("WorkflowOrchestrator.run", () => {
 	});
 
 	it("should mark workflow as failed when orchestrator decision fails", async () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const workflow = makeWorkflow([
 			makeStep({ name: "build", type: "prompt", prompt: "build it" }),
 		]);
@@ -525,7 +555,7 @@ describe("WorkflowOrchestrator.run", () => {
 	});
 
 	it("should fail when required variable is missing", async () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const workflow = makeWorkflow([makeStep({ name: "build", type: "prompt" })]);
 		workflow.variables = [{ name: "target", type: "string", required: true }];
 
@@ -535,7 +565,7 @@ describe("WorkflowOrchestrator.run", () => {
 	});
 
 	it("should use default values for optional variables", async () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const workflow = makeWorkflow([makeStep({ name: "build", type: "prompt", prompt: "go" })]);
 		workflow.variables = [{ name: "env", type: "string", required: false, default: "dev" }];
 
@@ -553,7 +583,7 @@ describe("WorkflowOrchestrator.run", () => {
 	});
 
 	it("should skip steps before fromStep", async () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const workflow = makeWorkflow([
 			makeStep({ name: "step1", type: "prompt", prompt: "first" }),
 			makeStep({ name: "step2", type: "prompt", prompt: "second" }),
@@ -578,7 +608,7 @@ describe("WorkflowOrchestrator.run", () => {
 	});
 
 	it("should pause workflow on blocked status", async () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const workflow = makeWorkflow([makeStep({ name: "build", type: "prompt", prompt: "go" })]);
 
 		mockDecision(orchestrator, [
@@ -595,7 +625,7 @@ describe("WorkflowOrchestrator.run", () => {
 	});
 
 	it("should abort workflow on abort action", async () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const workflow = makeWorkflow([makeStep({ name: "build", type: "prompt", prompt: "go" })]);
 
 		mockDecision(orchestrator, [
@@ -612,7 +642,7 @@ describe("WorkflowOrchestrator.run", () => {
 	});
 
 	it("should execute a step and continue the decision loop", async () => {
-		const orchestrator = new WorkflowOrchestrator(tempDir);
+		orchestrator = new WorkflowOrchestrator(tempDir);
 		const workflow = makeWorkflow([
 			makeStep({ name: "build", type: "prompt", prompt: "build it" }),
 		]);

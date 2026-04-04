@@ -5,21 +5,31 @@ import type { WorkflowProgress } from "./types.js";
 export class SignalManager {
 	private _shutdownRequested = false;
 	private readonly _onShutdown: (() => void) | null;
+	private readonly _handler: () => void;
 
 	constructor(onShutdown?: () => void) {
 		this._onShutdown = onShutdown ?? null;
+		this._handler = () => this._handleShutdown();
 		this._installHandlers();
 	}
 
 	private _installHandlers(): void {
-		const handler = () => this._handleShutdown();
-
-		process.on("SIGINT", handler);
+		process.on("SIGINT", this._handler);
 
 		if (process.platform !== "win32") {
-			process.on("SIGTERM", handler);
+			process.on("SIGTERM", this._handler);
 		} else {
-			process.on("SIGBREAK", handler);
+			process.on("SIGBREAK", this._handler);
+		}
+	}
+
+	dispose(): void {
+		process.removeListener("SIGINT", this._handler);
+
+		if (process.platform !== "win32") {
+			process.removeListener("SIGTERM", this._handler);
+		} else {
+			process.removeListener("SIGBREAK", this._handler);
 		}
 	}
 

@@ -76,6 +76,10 @@ export class WorkflowOrchestrator {
 		this._signalManager = new SignalManager();
 	}
 
+	dispose(): void {
+		this._signalManager.dispose();
+	}
+
 	private get _shutdownRequested(): boolean {
 		return this._signalManager.shutdownRequested;
 	}
@@ -168,6 +172,7 @@ export class WorkflowOrchestrator {
 		saveProgress(progress, this.repoRoot);
 
 		console.workflowComplete(workflow.name, progress.status);
+		this._signalManager.dispose();
 		return progress;
 	}
 
