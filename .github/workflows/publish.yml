@@ -76,7 +76,7 @@ jobs:
           TAG_NAME="v${VERSION}"
           BODY_ARGS=()
           if [ -n "$PREVIOUS" ] && git rev-parse "v${PREVIOUS}" >/dev/null 2>&1; then
-            BODY_ARGS=(--previous-tag-name "v${PREVIOUS}")
+            BODY_ARGS=(-f previous_tag_name="v${PREVIOUS}")
           fi
           NOTES=$(gh api repos/{owner}/{repo}/releases/generate-notes \
             -f tag_name="$TAG_NAME" -f target_commitish=main "${BODY_ARGS[@]}" \
