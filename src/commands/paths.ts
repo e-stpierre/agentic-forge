@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadConfig } from "../config.js";
-import { getConfigPaths, getGlobalRoot, getOutputRoot } from "../paths.js";
+import { getConfigPaths, getGlobalRoot, getOutputRoot, slugifyCwdName } from "../paths.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,9 +21,10 @@ export function cmdPaths(): void {
 
 	const globalConfigPath = configPaths.global;
 	const globalWorkflowsPath = path.join(globalRoot, "workflows");
-	const globalOutputsPath = path.join(globalRoot, "outputs");
-	const localConfigPath = path.join(cwd, "agentic", "config.json");
+	const globalOutputsPath = path.join(globalRoot, "outputs", slugifyCwdName(cwd));
+	const localConfigPath = configPaths.local ?? path.join(cwd, "agentic", "config.json");
 	const localWorkflowsPath = path.join(cwd, "agentic", "workflows");
+	const localOutputsPath = path.join(cwd, "agentic", "outputs");
 	const bundledWorkflowsPath = path.join(__dirname, "..", "workflows");
 	const outputRoot = getOutputRoot(config, cwd);
 	const outputSource =
@@ -45,6 +46,9 @@ export function cmdPaths(): void {
 	);
 	process.stdout.write(
 		`Local workflows:   ${fmtPath(localWorkflowsPath, existsSync(localWorkflowsPath))}\n`,
+	);
+	process.stdout.write(
+		`Local outputs:     ${fmtPath(localOutputsPath, existsSync(localOutputsPath))}\n`,
 	);
 	process.stdout.write(`Bundled workflows: ${bundledWorkflowsPath}\n`);
 	process.stdout.write(`Output directory:  ${outputRoot} (source: ${outputSource})\n`);

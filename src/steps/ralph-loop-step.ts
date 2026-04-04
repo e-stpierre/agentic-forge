@@ -65,7 +65,8 @@ export class RalphLoopStepExecutor extends StepExecutor {
 
 		const allOutputs: string[] = [];
 
-		const outputDir = getOutputDir(progress.workflowId, context.config, context.repoRoot);
+		const outputDir =
+			context.outputDir ?? getOutputDir(progress.workflowId, context.config, context.repoRoot);
 
 		// Check for existing ralph state to resume from
 		const existingState = loadRalphState(progress.workflowId, step.name, outputDir);

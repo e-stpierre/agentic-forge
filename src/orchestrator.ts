@@ -121,6 +121,7 @@ export class WorkflowOrchestrator {
 		}
 
 		const outputDir = getOutputDir(progress.workflowId, this.config, this.repoRoot);
+		progress.outputDir = outputDir;
 		const logger = new WorkflowLogger(progress.workflowId, outputDir);
 		logger.info("orchestrator", `Starting workflow: ${workflow.name}`);
 		console.workflowStart(workflow.name, progress.workflowId);
@@ -224,6 +225,7 @@ export class WorkflowOrchestrator {
 		}
 
 		const initOutputDir = getOutputDir(workflowId, this.config, this.repoRoot);
+		progress.outputDir = initOutputDir;
 		saveProgress(progress, initOutputDir);
 		return progress;
 	}

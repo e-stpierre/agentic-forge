@@ -4,7 +4,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { loadConfig } from "../config.js";
-import { findOutputDir, getGlobalRoot, getOutputRoot, slugifyCwdName } from "../paths.js";
+import { findOutputDir, getGlobalRoot, slugifyCwdName } from "../paths.js";
 import { WORKFLOW_STATUS, loadProgress, saveProgress } from "../progress.js";
 
 /**

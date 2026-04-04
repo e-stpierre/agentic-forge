@@ -115,9 +115,10 @@ export function getOutputDir(
  */
 export function ensureGlobalDir(): string {
 	const globalRoot = getGlobalRoot();
-	if (!existsSync(globalRoot)) {
-		mkdirSync(path.join(globalRoot, "workflows"), { recursive: true });
-		mkdirSync(path.join(globalRoot, "outputs"), { recursive: true });
+	const isNew = !existsSync(globalRoot);
+	mkdirSync(path.join(globalRoot, "workflows"), { recursive: true });
+	mkdirSync(path.join(globalRoot, "outputs"), { recursive: true });
+	if (isNew) {
 		const defaultConfig = getDefaultConfig();
 		writeFileSync(
 			path.join(globalRoot, "config.json"),
@@ -154,13 +155,13 @@ export function sanitizeSlug(input: string): string {
 	slug = slug.replace(/-+/g, "-");
 	// Remove leading/trailing hyphens
 	slug = slug.replace(/^-+|-+$/g, "");
-	// Truncate to 50 characters
-	if (slug.length > 50) {
-		slug = slug.slice(0, 50).replace(/-+$/, "");
-	}
 	// Suffix Windows reserved names to avoid conflicts
 	if (WINDOWS_RESERVED_NAMES.test(slug)) {
 		slug = `${slug}-dir`;
+	}
+	// Truncate to 50 characters (after reserved name suffix to avoid exceeding limit)
+	if (slug.length > 50) {
+		slug = slug.slice(0, 50).replace(/-+$/, "");
 	}
 	return slug;
 }
