@@ -59,12 +59,23 @@ jobs:
           fi
 
       - name: Create GitHub release
-        if: steps.publish.outputs.published == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.publish.outputs.version }}"
+          VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view agentic-forge version 2>/dev/null || echo "0.0.0")
+          if [ "$VERSION" != "$PUBLISHED_VERSION" ]; then
+            echo "Version not on npm yet, skipping release"
+            exit 0
+          fi
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "Release v${VERSION} already exists, skipping"
+            exit 0
+          fi
           PREVIOUS="${{ steps.publish.outputs.previous_version }}"
+          if [ -z "$PREVIOUS" ]; then
+            PREVIOUS=$(npm view agentic-forge versions --json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).slice(-2)[0] || '0.0.0'")
+          fi
           if git rev-parse "v${PREVIOUS}" >/dev/null 2>&1; then
             gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes --notes-start-tag "v${PREVIOUS}"
           else
