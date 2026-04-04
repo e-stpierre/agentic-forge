@@ -3,6 +3,10 @@
   "version": "0.7.0",
   "description": "YAML-based agentic workflow engine with multi-step execution, parallel orchestration, error recovery, and support for short and long-running operations",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/e-stpierre/agentic-forge.git"
+  },
   "bin": {
     "agentic-forge": "dist/cli.js",
     "af": "dist/cli.js"
