@@ -19,7 +19,7 @@ Create, update, explain, validate, and debug agentic-forge YAML workflows. This 
 
 ### Values
 
-\$ARGUMENTS
+Arguments: $ARGUMENTS
 
 ## Additional Resources
 

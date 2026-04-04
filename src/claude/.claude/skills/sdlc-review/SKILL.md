@@ -21,7 +21,7 @@ Review the implementation against quality standards and optionally against a pla
 
 ### Values
 
-\$ARGUMENTS
+Arguments: $ARGUMENTS
 
 ## Core Principles
 

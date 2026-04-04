@@ -21,7 +21,7 @@ Create a pull request using the GitHub CLI with a descriptive title and appropri
 
 ### Values
 
-\$ARGUMENTS
+Arguments: $ARGUMENTS
 
 ## Core Principles
 

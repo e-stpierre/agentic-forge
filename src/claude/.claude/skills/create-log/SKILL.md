@@ -21,7 +21,7 @@ Add a structured log entry to the workflow's NDJSON log file. Use this skill for
 
 ### Values
 
-\$ARGUMENTS
+Arguments: $ARGUMENTS
 
 ## Core Principles
 

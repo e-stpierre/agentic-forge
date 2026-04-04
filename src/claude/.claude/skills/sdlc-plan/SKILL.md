@@ -22,7 +22,7 @@ Create a structured implementation plan for the given task. This skill analyzes 
 
 ### Values
 
-\$ARGUMENTS
+Arguments: $ARGUMENTS
 
 ## Additional Resources
 
