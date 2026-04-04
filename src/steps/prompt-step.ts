@@ -103,7 +103,7 @@ export class PromptStepExecutor extends StepExecutor {
 					error: result.stderr,
 				});
 				if (progress.currentStep) {
-					(progress.currentStep as Record<string, unknown>).retry_count = attempt + 1;
+					progress.currentStep.retryCount = attempt + 1;
 				}
 			} else {
 				const errorMsg = result.stderr || "Step failed";

@@ -65,7 +65,7 @@ export class ConditionalStepExecutor extends StepExecutor {
 					logger.warning(step.name, `Conditional '${branchName}' branch stopped due to failure`);
 					break;
 				}
-			} catch (e) {
+			} catch (e: unknown) {
 				const errStr = e instanceof Error ? e.message : String(e);
 				logger.error(subStep.name, `Step failed in conditional branch: ${errStr}`);
 				const errorMsg = `Step '${subStep.name}' failed: ${errStr}`;

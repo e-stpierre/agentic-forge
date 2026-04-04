@@ -445,6 +445,9 @@ function runClaudeStreaming(
 			proc.stderr.on("data", (chunk: Buffer) => {
 				stderrData += chunk.toString("utf-8");
 			});
+			proc.stderr.on("error", () => {
+				// Stream error during process execution; stderr data already captured
+			});
 		}
 
 		let lineBuffer = "";
@@ -519,10 +522,18 @@ function runClaudeStreaming(
 			});
 		}
 
+		if (proc.stdout) {
+			proc.stdout.on("error", () => {
+				// Stream error during process execution; stdout data already captured
+			});
+		}
+
 		// Handle timeout
 		let timeoutId: ReturnType<typeof setTimeout> | null = null;
 		if (timeout) {
 			timeoutId = setTimeout(() => {
+				proc.stdout?.destroy();
+				proc.stderr?.destroy();
 				proc.kill();
 			}, timeout * 1000);
 		}
@@ -574,19 +585,21 @@ function runClaudeNonStreaming(
 			proc.stdin.end();
 		}
 
-		let stdoutData = "";
-		let stderrData = "";
+		const stdoutChunks: string[] = [];
+		const stderrChunks: string[] = [];
 
 		if (proc.stdout) {
 			proc.stdout.on("data", (chunk: Buffer) => {
-				stdoutData += chunk.toString("utf-8");
+				stdoutChunks.push(chunk.toString("utf-8"));
 			});
+			proc.stdout.on("error", () => {});
 		}
 
 		if (proc.stderr) {
 			proc.stderr.on("data", (chunk: Buffer) => {
-				stderrData += chunk.toString("utf-8");
+				stderrChunks.push(chunk.toString("utf-8"));
 			});
+			proc.stderr.on("error", () => {});
 		}
 
 		let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -595,6 +608,8 @@ function runClaudeNonStreaming(
 		if (timeout) {
 			timeoutId = setTimeout(() => {
 				timedOut = true;
+				proc.stdout?.destroy();
+				proc.stderr?.destroy();
 				proc.kill();
 			}, timeout * 1000);
 		}
@@ -609,7 +624,16 @@ function runClaudeNonStreaming(
 				return;
 			}
 
-			resolve(new ClaudeResult(code ?? 1, stdoutData, stderrData, prompt, cwd, model));
+			resolve(
+				new ClaudeResult(
+					code ?? 1,
+					stdoutChunks.join(""),
+					stderrChunks.join(""),
+					prompt,
+					cwd,
+					model,
+				),
+			);
 		});
 	});
 }

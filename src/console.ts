@@ -49,11 +49,7 @@ export function colorize(text: string, ...colors: Color[]): string {
 	return `${colorCodes}${text}${Color.RESET}`;
 }
 
-/**
- * Format a model name for display (e.g., "claude-sonnet-4-5-20250929" -> "Sonnet 4.5").
- * This is a simplified version; the full version lives in runner.ts.
- * We accept an optional formatter to avoid circular imports.
- */
+/** Callback to format a model name for display, avoiding circular imports with runner.ts. */
 type ModelFormatter = (model: string) => string | null;
 
 // --- ParallelOutputHandler ---
@@ -406,10 +402,6 @@ export class ConsoleOutput {
 		this._parallelHandler.setBranch(branchName);
 	}
 
-	flushParallelBranch(_branchName: string): void {
-		// No-op, kept for compatibility
-	}
-
 	markParallelBranchDone(branch: string, success = true): void {
 		this._parallelHandler.markBranchDone(branch, success);
 	}
@@ -740,7 +732,9 @@ export function extractJson(output: string): Record<string, unknown> | null {
 
 	try {
 		return JSON.parse(jsonStr) as Record<string, unknown>;
-	} catch {
+	} catch (e: unknown) {
+		const msg = e instanceof Error ? e.message : String(e);
+		process.stderr.write(`[WARN] Failed to parse JSON from output: ${msg}\n`);
 		return null;
 	}
 }

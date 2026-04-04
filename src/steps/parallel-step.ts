@@ -81,13 +81,10 @@ export class ParallelStepExecutor extends StepExecutor {
 					console,
 				);
 
-				console.flushParallelBranch(branchStep.name);
-
 				return [branchStep.name, result.success, result.outputSummary ?? "", worktree];
-			} catch (e) {
+			} catch (e: unknown) {
 				const errStr = e instanceof Error ? (e.stack ?? e.message) : String(e);
 				logger.error(branchStep.name, `Branch failed with exception: ${errStr}`);
-				console.flushParallelBranch(branchStep.name);
 				return [branchStep.name, false, String(e), worktree];
 			}
 		};
@@ -201,9 +198,10 @@ export class ParallelStepExecutor extends StepExecutor {
 				);
 				logger.info(name, `Merged branch ${worktree.branch} into ${worktree.baseBranch}`);
 				console.info(`  Merged '${name}'`);
-			} catch (e) {
-				logger.error(name, `Merge failed: ${e}`);
-				console.error(`  Merge failed for '${name}': ${e}`);
+			} catch (e: unknown) {
+				const errStr = e instanceof Error ? e.message : String(e);
+				logger.error(name, `Merge failed: ${errStr}`);
+				console.error(`  Merge failed for '${name}': ${errStr}`);
 			}
 
 			removeWorktree(worktree, context.repoRoot, true);

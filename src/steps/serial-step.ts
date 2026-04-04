@@ -60,7 +60,7 @@ export class SerialStepExecutor extends StepExecutor {
 					);
 					break;
 				}
-			} catch (e) {
+			} catch (e: unknown) {
 				const errStr = e instanceof Error ? e.message : String(e);
 				logger.error(subStep.name, `Step failed in serial block: ${errStr}`);
 				const errorMsg = `Step '${subStep.name}' failed: ${errStr}`;

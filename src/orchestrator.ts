@@ -66,7 +66,6 @@ export class WorkflowOrchestrator {
 	config: Record<string, unknown>;
 	renderer: TemplateRenderer;
 	executor: WorkflowExecutor;
-	private _runningProcesses: unknown[] = [];
 	private _signalManager: SignalManager;
 
 	constructor(repoRoot?: string) {
@@ -247,8 +246,9 @@ export class WorkflowOrchestrator {
 		let cmdTemplate: string;
 		try {
 			cmdTemplate = readFileSync(cmdPath, "utf-8");
-		} catch {
-			logger.error("orchestrator", "Orchestrate command not found");
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
+			logger.error("orchestrator", `Orchestrate command not found at ${cmdPath}: ${msg}`);
 			return null;
 		}
 
@@ -394,12 +394,13 @@ export class WorkflowOrchestrator {
 			saveProgress(progress, this.repoRoot);
 
 			// Execute branches concurrently with concurrency cap
-			const results: {
+			interface BranchResult {
 				success: boolean;
 				subStep: StepDefinition;
 				wt: Worktree;
-				error?: unknown;
-			}[] = [];
+				error?: Error | unknown;
+			}
+			const results: BranchResult[] = [];
 			const pending = worktrees.map((wt, i) => ({ wt, i }));
 			let idx = 0;
 
@@ -417,7 +418,7 @@ export class WorkflowOrchestrator {
 							console,
 						);
 						results.push({ success, subStep: step.steps[i], wt });
-					} catch (e) {
+					} catch (e: unknown) {
 						results.push({ success: false, subStep: step.steps[i], wt, error: e });
 					}
 				}
@@ -430,7 +431,8 @@ export class WorkflowOrchestrator {
 			for (const result of results) {
 				if (!result.success) {
 					allSuccess = false;
-					const errorMsg = (result as { error?: Error }).error?.message ?? "Parallel branch failed";
+					const errorMsg =
+						result.error instanceof Error ? result.error.message : "Parallel branch failed";
 					logger.error(result.subStep.name, errorMsg);
 					console.stepFailed(result.subStep.name, errorMsg);
 				}
@@ -693,11 +695,12 @@ export class WorkflowOrchestrator {
 
 		progress.currentStep = {
 			name: step.name,
+			retryCount: 0,
+			startedAt: new Date().toISOString(),
 			type: "wait-for-human",
 			message: step.message,
-			started_at: new Date().toISOString(),
-			timeout_minutes: step.stepTimeoutMinutes ?? 5,
-			on_timeout: step.onTimeout,
+			timeoutMinutes: step.stepTimeoutMinutes ?? 5,
+			onTimeout: step.onTimeout,
 		};
 		progress.status = WORKFLOW_STATUS.PAUSED;
 
@@ -804,7 +807,7 @@ export function processHumanInput(
 		return false;
 	}
 
-	progress.currentStep.human_input = response;
+	progress.currentStep.humanInput = response;
 	progress.status = WORKFLOW_STATUS.RUNNING;
 	saveProgress(progress, root);
 

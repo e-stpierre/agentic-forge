@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { lockSync } from "proper-lockfile";
-import type { ParallelBranch, StepProgress, WorkflowProgress } from "./types.js";
+import type { CurrentStepInfo, ParallelBranch, StepProgress, WorkflowProgress } from "./types.js";
 
 // --- Constants ---
 
@@ -111,8 +111,8 @@ export function updateStepStarted(progress: WorkflowProgress, stepName: string):
 	}
 	progress.currentStep = {
 		name: stepName,
-		retry_count: 0,
-		started_at: new Date().toISOString(),
+		retryCount: 0,
+		startedAt: new Date().toISOString(),
 	};
 }
 
@@ -127,19 +127,12 @@ export function updateStepCompleted(
 		progress.runningSteps.splice(runIdx, 1);
 	}
 
-	let startedAt: string | null = null;
-	let retryCount = 0;
-	if (progress.currentStep) {
-		startedAt = (progress.currentStep.started_at as string) ?? null;
-		retryCount = (progress.currentStep.retry_count as number) ?? 0;
-	}
-
 	const step: StepProgress = {
 		name: stepName,
 		status: STEP_STATUS.COMPLETED,
-		startedAt,
+		startedAt: progress.currentStep?.startedAt ?? null,
 		completedAt: new Date().toISOString(),
-		retryCount,
+		retryCount: progress.currentStep?.retryCount ?? 0,
 		outputSummary,
 		error: null,
 		humanInput: null,
@@ -163,19 +156,12 @@ export function updateStepFailed(
 		progress.runningSteps.splice(runIdx, 1);
 	}
 
-	let startedAt: string | null = null;
-	let retryCount = 0;
-	if (progress.currentStep) {
-		startedAt = (progress.currentStep.started_at as string) ?? null;
-		retryCount = (progress.currentStep.retry_count as number) ?? 0;
-	}
-
 	const step: StepProgress = {
 		name: stepName,
 		status: STEP_STATUS.FAILED,
-		startedAt,
+		startedAt: progress.currentStep?.startedAt ?? null,
 		completedAt: new Date().toISOString(),
-		retryCount,
+		retryCount: progress.currentStep?.retryCount ?? 0,
 		error,
 		outputSummary: "",
 		humanInput: null,
@@ -216,7 +202,7 @@ export function prepareForResume(progress: WorkflowProgress): void {
 	}
 
 	if (progress.currentStep) {
-		const stepName = progress.currentStep.name as string | undefined;
+		const stepName = progress.currentStep.name;
 		if (stepName && !progress.pendingSteps.includes(stepName)) {
 			progress.pendingSteps.unshift(stepName);
 		}
@@ -237,7 +223,18 @@ export function progressToDict(progress: WorkflowProgress): Record<string, unkno
 		status: progress.status,
 		started_at: progress.startedAt,
 		completed_at: progress.completedAt,
-		current_step: progress.currentStep,
+		current_step: progress.currentStep
+			? {
+					name: progress.currentStep.name,
+					retry_count: progress.currentStep.retryCount,
+					started_at: progress.currentStep.startedAt,
+					type: progress.currentStep.type,
+					message: progress.currentStep.message,
+					timeout_minutes: progress.currentStep.timeoutMinutes,
+					on_timeout: progress.currentStep.onTimeout,
+					human_input: progress.currentStep.humanInput,
+				}
+			: null,
 		completed_steps: progress.completedSteps.map((s) => ({
 			name: s.name,
 			status: s.status,
@@ -293,7 +290,21 @@ export function dictToProgress(data: Record<string, unknown>): WorkflowProgress 
 		status: (data.status as string) ?? "pending",
 		startedAt: (data.started_at as string) ?? null,
 		completedAt: (data.completed_at as string) ?? null,
-		currentStep: (data.current_step as Record<string, unknown>) ?? null,
+		currentStep: data.current_step
+			? (() => {
+					const cs = data.current_step as Record<string, unknown>;
+					return {
+						name: (cs.name as string) ?? "",
+						retryCount: (cs.retry_count as number) ?? 0,
+						startedAt: (cs.started_at as string) ?? "",
+						type: cs.type as string | undefined,
+						message: (cs.message as string | null) ?? null,
+						timeoutMinutes: cs.timeout_minutes as number | undefined,
+						onTimeout: cs.on_timeout as string | undefined,
+						humanInput: (cs.human_input as string | null) ?? null,
+					} satisfies CurrentStepInfo;
+				})()
+			: null,
 		completedSteps,
 		pendingSteps: (data.pending_steps as string[]) ?? [],
 		runningSteps: (data.running_steps as string[]) ?? [],

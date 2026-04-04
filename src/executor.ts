@@ -4,11 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadConfig } from "./config.js";
-import type { ConsoleOutput } from "./console.js";
-import { OutputLevel } from "./console.js";
-import { ConsoleOutput as ConsoleOutputClass } from "./console.js";
-import type { WorkflowLogger } from "./logging/logger.js";
-import { WorkflowLogger as WorkflowLoggerClass } from "./logging/logger.js";
+import { ConsoleOutput, OutputLevel } from "./console.js";
+import { WorkflowLogger } from "./logging/logger.js";
 import {
 	STEP_STATUS,
 	WORKFLOW_STATUS,
@@ -123,11 +120,12 @@ export class WorkflowExecutor {
 					progress.status = WORKFLOW_STATUS.PAUSED;
 					progress.currentStep = {
 						name: step.name,
+						retryCount: 0,
+						startedAt: new Date().toISOString(),
 						type: "wait-for-human",
 						message: step.message,
-						started_at: new Date().toISOString(),
-						timeout_minutes: step.stepTimeoutMinutes ?? 5,
-						on_timeout: step.onTimeout,
+						timeoutMinutes: step.stepTimeoutMinutes ?? 5,
+						onTimeout: step.onTimeout,
 					};
 					return { success: true, outputSummary: "Paused for human input" };
 				},
@@ -151,7 +149,7 @@ export class WorkflowExecutor {
 
 		// Create console output handler
 		const outputLevel = terminalOutput === "all" ? OutputLevel.ALL : OutputLevel.BASE;
-		const console = new ConsoleOutputClass(outputLevel);
+		const console = new ConsoleOutput(outputLevel);
 
 		let progress: WorkflowProgress;
 		let workflowId: string;
@@ -184,7 +182,7 @@ export class WorkflowExecutor {
 
 		saveProgress(progress, this.repoRoot);
 
-		const logger = new WorkflowLoggerClass(workflowId, this.repoRoot);
+		const logger = new WorkflowLogger(workflowId, this.repoRoot);
 		logger.info("workflow", `Started workflow: ${workflow.name}`);
 
 		console.workflowStart(workflow.name, workflowId);

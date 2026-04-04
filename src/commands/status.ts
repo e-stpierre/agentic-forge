@@ -21,9 +21,8 @@ export function cmdStatus(workflowId: string): void {
 	}
 
 	if (progress.currentStep) {
-		const step = progress.currentStep as Record<string, unknown>;
-		process.stdout.write(`\nCurrent Step: ${step.name}\n`);
-		process.stdout.write(`  Retry Count: ${(step.retry_count as number) ?? 0}\n`);
+		process.stdout.write(`\nCurrent Step: ${progress.currentStep.name}\n`);
+		process.stdout.write(`  Retry Count: ${progress.currentStep.retryCount}\n`);
 	}
 
 	if (progress.completedSteps && progress.completedSteps.length > 0) {

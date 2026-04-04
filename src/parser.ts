@@ -38,9 +38,10 @@ export class WorkflowParser {
 		try {
 			const content = readFileSync(filePath, "utf-8");
 			data = yaml.load(content);
-		} catch (e) {
+		} catch (e: unknown) {
 			if (e instanceof WorkflowParseError) throw e;
-			throw new WorkflowParseError(`Invalid YAML: ${e}`);
+			const msg = e instanceof Error ? e.message : String(e);
+			throw new WorkflowParseError(`Invalid YAML: ${msg}`);
 		}
 
 		this.basePath = path.dirname(filePath);
@@ -51,8 +52,9 @@ export class WorkflowParser {
 		let data: unknown;
 		try {
 			data = yaml.load(content);
-		} catch (e) {
-			throw new WorkflowParseError(`Invalid YAML: ${e}`);
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
+			throw new WorkflowParseError(`Invalid YAML: ${msg}`);
 		}
 		return this.parseDict(data);
 	}

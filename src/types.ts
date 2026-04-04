@@ -122,6 +122,17 @@ export interface ParallelBranch {
 	progressFile: string;
 }
 
+export interface CurrentStepInfo {
+	name: string;
+	retryCount: number;
+	startedAt: string;
+	type?: string;
+	message?: string | null;
+	timeoutMinutes?: number;
+	onTimeout?: string;
+	humanInput?: string | null;
+}
+
 export interface WorkflowProgress {
 	schemaVersion: string;
 	workflowId: string;
@@ -129,7 +140,7 @@ export interface WorkflowProgress {
 	status: string;
 	startedAt: string | null;
 	completedAt: string | null;
-	currentStep: Record<string, unknown> | null;
+	currentStep: CurrentStepInfo | null;
 	completedSteps: StepProgress[];
 	pendingSteps: string[];
 	runningSteps: string[];

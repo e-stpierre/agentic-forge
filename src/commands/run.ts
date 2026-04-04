@@ -193,7 +193,7 @@ export async function cmdRun(options: {
 	try {
 		const parser = new WorkflowParser();
 		workflow = parser.parseFile(workflowPath);
-	} catch (e) {
+	} catch (e: unknown) {
 		if (e instanceof WorkflowParseError) {
 			process.stderr.write(`Error parsing workflow: ${e.message}\n`);
 			process.exit(1);
@@ -227,8 +227,9 @@ export async function cmdRun(options: {
 				);
 			}
 		}
-	} catch (e) {
-		process.stderr.write(`Error running workflow: ${(e as Error).message}\n`);
+	} catch (e: unknown) {
+		const msg = e instanceof Error ? e.message : String(e);
+		process.stderr.write(`Error running workflow: ${msg}\n`);
 		process.exit(1);
 	}
 }

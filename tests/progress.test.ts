@@ -234,7 +234,9 @@ describe("Step updates", () => {
 	it("should preserve retry count", () => {
 		const progress = createProgress("test", "workflow", ["step1"], {});
 		updateStepStarted(progress, "step1");
-		(progress.currentStep as Record<string, unknown>).retry_count = 3;
+		if (progress.currentStep) {
+			progress.currentStep.retryCount = 3;
+		}
 
 		updateStepCompleted(progress, "step1");
 
