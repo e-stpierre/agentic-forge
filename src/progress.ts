@@ -48,8 +48,12 @@ export function loadProgress(workflowId: string, repoRoot?: string): WorkflowPro
 	if (!existsSync(progressPath)) {
 		return null;
 	}
-	const data = JSON.parse(readFileSync(progressPath, "utf-8"));
-	return dictToProgress(data);
+	try {
+		const data = JSON.parse(readFileSync(progressPath, "utf-8"));
+		return dictToProgress(data);
+	} catch {
+		return null;
+	}
 }
 
 export function saveProgress(progress: WorkflowProgress, repoRoot?: string): void {

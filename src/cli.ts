@@ -4,6 +4,18 @@
 
 import { Command } from "commander";
 
+function optString(val: unknown): string | undefined {
+	return typeof val === "string" ? val : undefined;
+}
+
+function optBool(val: unknown): boolean | undefined {
+	return typeof val === "boolean" ? val : undefined;
+}
+
+function optStringArray(val: unknown): string[] | undefined {
+	return Array.isArray(val) && val.every((v) => typeof v === "string") ? val : undefined;
+}
+
 import {
 	cmdCancel,
 	cmdConfig,
@@ -38,10 +50,10 @@ program
 	.action(async (workflow: string | undefined, opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
-			listWorkflows: opts.list as boolean | undefined,
-			vars: opts.var as string[] | undefined,
-			fromStep: opts.fromStep as string | undefined,
-			terminalOutput: opts.terminalOutput as string | undefined,
+			listWorkflows: optBool(opts.list),
+			vars: optStringArray(opts.var),
+			fromStep: optString(opts.fromStep),
+			terminalOutput: optString(opts.terminalOutput),
 		});
 	});
 
@@ -53,7 +65,7 @@ program
 	.action(async (workflowId: string, opts: Record<string, unknown>) => {
 		await cmdResume({
 			workflowId,
-			terminalOutput: opts.terminalOutput as string | undefined,
+			terminalOutput: optString(opts.terminalOutput),
 		});
 	});
 
@@ -78,7 +90,7 @@ program
 	.command("list")
 	.option("--status <status>", "filter by status (running, completed, failed, paused)")
 	.action((opts: Record<string, unknown>) => {
-		cmdList(opts.status as string | undefined);
+		cmdList(optString(opts.status));
 	});
 
 // input command
@@ -106,8 +118,8 @@ program
 	.option("--list", "list available bundled workflows without copying")
 	.action((opts: Record<string, unknown>) => {
 		cmdInit({
-			force: opts.force as boolean | undefined,
-			listOnly: opts.list as boolean | undefined,
+			force: optBool(opts.force),
+			listOnly: optBool(opts.list),
 		});
 	});
 
@@ -145,7 +157,7 @@ program
 	.action((specificVersion: string | undefined, opts: Record<string, unknown>) => {
 		cmdReleaseNotes({
 			specificVersion,
-			latest: opts.latest as boolean | undefined,
+			latest: optBool(opts.latest),
 		});
 	});
 
@@ -164,7 +176,7 @@ program
 	.option("--check", "check for updates without installing")
 	.action((opts: Record<string, unknown>) => {
 		cmdUpdate({
-			check: opts.check as boolean | undefined,
+			check: optBool(opts.check),
 		});
 	});
 
@@ -175,7 +187,7 @@ program
 	.option("-v, --verbose", "show workflow variables and full descriptions")
 	.action((opts: Record<string, unknown>) => {
 		cmdWorkflows({
-			verbose: opts.verbose as boolean | undefined,
+			verbose: optBool(opts.verbose),
 		});
 	});
 

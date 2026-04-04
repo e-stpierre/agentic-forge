@@ -67,7 +67,11 @@ export function parseStreamJsonLine(line: string): Record<string, unknown> | nul
 		return null;
 	}
 	try {
-		return JSON.parse(trimmed) as Record<string, unknown>;
+		const parsed: unknown = JSON.parse(trimmed);
+		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+			return null;
+		}
+		return parsed as Record<string, unknown>;
 	} catch {
 		return null;
 	}
@@ -78,12 +82,15 @@ export function extractModelFromMessage(data: Record<string, unknown>): string |
 	const msgType = data.type;
 
 	if (msgType === "assistant") {
-		const message = data.message as Record<string, unknown> | undefined;
-		return (message?.model as string) ?? null;
+		const message = data.message;
+		if (typeof message !== "object" || message === null) return null;
+		const model = (message as Record<string, unknown>).model;
+		return typeof model === "string" ? model : null;
 	}
 
 	if (msgType === "system") {
-		return (data.model as string) ?? null;
+		const model = data.model;
+		return typeof model === "string" ? model : null;
 	}
 
 	return null;
@@ -135,28 +142,39 @@ export function extractTextFromMessage(data: Record<string, unknown>): Array<[nu
 	const results: Array<[number, string]> = [];
 
 	if (msgType === "assistant") {
-		const message = (data.message ?? {}) as Record<string, unknown>;
-		const content = (message.content ?? []) as Array<Record<string, unknown>>;
+		const message = data.message;
+		if (typeof message !== "object" || message === null) return results;
+		const msg = message as Record<string, unknown>;
+		const contentRaw = msg.content;
+		if (!Array.isArray(contentRaw)) return results;
 
-		for (let idx = 0; idx < content.length; idx++) {
-			const block = content[idx];
-			if (typeof block === "object" && block !== null && block.type === "text") {
-				const text = (block.text as string) ?? "";
-				if (text) {
+		for (let idx = 0; idx < contentRaw.length; idx++) {
+			const block = contentRaw[idx];
+			if (
+				typeof block === "object" &&
+				block !== null &&
+				(block as Record<string, unknown>).type === "text"
+			) {
+				const text = (block as Record<string, unknown>).text;
+				if (typeof text === "string" && text) {
 					results.push([idx, text]);
 				}
 			}
 		}
 	} else if (msgType === "stream_event") {
-		const event = (data.event ?? {}) as Record<string, unknown>;
+		const eventRaw = data.event;
+		if (typeof eventRaw !== "object" || eventRaw === null) return results;
+		const event = eventRaw as Record<string, unknown>;
 		const eventType = event.type;
 
 		if (eventType === "content_block_delta") {
-			const idx = (event.index as number) ?? 0;
-			const delta = (event.delta ?? {}) as Record<string, unknown>;
+			const idx = typeof event.index === "number" ? event.index : 0;
+			const deltaRaw = event.delta;
+			if (typeof deltaRaw !== "object" || deltaRaw === null) return results;
+			const delta = deltaRaw as Record<string, unknown>;
 			if (delta.type === "text_delta") {
-				const text = (delta.text as string) ?? "";
-				if (text) {
+				const text = delta.text;
+				if (typeof text === "string" && text) {
 					results.push([idx, text]);
 				}
 			}
@@ -172,14 +190,21 @@ export function extractUserText(data: Record<string, unknown>): string | null {
 		return null;
 	}
 
-	const message = (data.message ?? {}) as Record<string, unknown>;
-	const content = (message.content ?? []) as Array<Record<string, unknown> | string>;
+	const message = data.message;
+	if (typeof message !== "object" || message === null) return null;
+	const msg = message as Record<string, unknown>;
+	const contentRaw = msg.content;
+	if (!Array.isArray(contentRaw)) return null;
 
 	const texts: string[] = [];
-	for (const block of content) {
-		if (typeof block === "object" && block !== null && block.type === "text") {
-			const text = (block.text as string) ?? "";
-			if (text) {
+	for (const block of contentRaw) {
+		if (
+			typeof block === "object" &&
+			block !== null &&
+			(block as Record<string, unknown>).type === "text"
+		) {
+			const text = (block as Record<string, unknown>).text;
+			if (typeof text === "string" && text) {
 				texts.push(text);
 			}
 		} else if (typeof block === "string") {

@@ -310,21 +310,30 @@ export class WorkflowOrchestrator {
 			jsonStr = output.slice(start, end).trim();
 		}
 
-		const data = JSON.parse(jsonStr) as Record<string, unknown>;
+		const parsed: unknown = JSON.parse(jsonStr);
+		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+			throw new Error("Orchestrator response is not a JSON object");
+		}
+		const data = parsed as Record<string, unknown>;
 
-		const actionData = (data.next_action as Record<string, unknown>) ?? {};
+		const actionRaw = data.next_action;
+		const actionData =
+			typeof actionRaw === "object" && actionRaw !== null && !Array.isArray(actionRaw)
+				? (actionRaw as Record<string, unknown>)
+				: {};
 		const action: OrchestratorAction = {
-			type: (actionData.type as string) ?? "abort",
-			stepName: (actionData.step_name as string) ?? null,
-			contextToPass: (actionData.context_to_pass as string) ?? null,
-			errorContext: (actionData.error_context as string) ?? null,
+			type: typeof actionData.type === "string" ? actionData.type : "abort",
+			stepName: typeof actionData.step_name === "string" ? actionData.step_name : null,
+			contextToPass:
+				typeof actionData.context_to_pass === "string" ? actionData.context_to_pass : null,
+			errorContext: typeof actionData.error_context === "string" ? actionData.error_context : null,
 		};
 
 		return {
-			workflowStatus: (data.workflow_status as string) ?? "failed",
+			workflowStatus: typeof data.workflow_status === "string" ? data.workflow_status : "failed",
 			action,
-			reasoning: (data.reasoning as string) ?? "",
-			progressUpdate: (data.progress_update as string) ?? "",
+			reasoning: typeof data.reasoning === "string" ? data.reasoning : "",
+			progressUpdate: typeof data.progress_update === "string" ? data.progress_update : "",
 		};
 	}
 
@@ -424,7 +433,11 @@ export class WorkflowOrchestrator {
 				}
 			};
 
-			const workers = Array.from({ length: Math.min(maxWorkers, pending.length) }, () => runNext());
+			const workers = Array.from({ length: Math.min(maxWorkers, pending.length) }, () =>
+				runNext().catch((e: unknown) => {
+					logger.error("parallel", `Worker error: ${e instanceof Error ? e.message : String(e)}`);
+				}),
+			);
 			await Promise.all(workers);
 			let allSuccess = true;
 

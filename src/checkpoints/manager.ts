@@ -88,18 +88,22 @@ export function readCheckpoints(workflowId: string, repoRoot?: string): Record<s
 	let i = 1;
 	while (i < parts.length - 1) {
 		const frontmatterStr = parts[i].trim();
+
+		if (!frontmatterStr) {
+			i += 1;
+			continue;
+		}
+
 		const body = i + 1 < parts.length ? parts[i + 1].trim() : "";
 
-		if (frontmatterStr) {
-			try {
-				const frontmatter = yaml.load(frontmatterStr) as Record<string, unknown> | null;
-				if (frontmatter && "checkpoint_id" in frontmatter) {
-					frontmatter.content = body;
-					checkpoints.push(frontmatter);
-				}
-			} catch {
-				// Invalid YAML, skip
+		try {
+			const frontmatter = yaml.load(frontmatterStr) as Record<string, unknown> | null;
+			if (frontmatter && "checkpoint_id" in frontmatter) {
+				frontmatter.content = body;
+				checkpoints.push(frontmatter);
 			}
+		} catch {
+			// Invalid YAML, skip
 		}
 
 		i += 2;
