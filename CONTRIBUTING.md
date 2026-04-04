@@ -5,9 +5,9 @@ Thank you for your interest in contributing! This guide will help you get starte
 ## Ways to Contribute
 
 - **Report bugs** - Found something broken? [Open an issue](https://github.com/e-stpierre/agentic-forge/issues)
-- **Suggest features** - Have an idea for a new plugin or enhancement? [Let us know](https://github.com/e-stpierre/agentic-forge/issues)
+- **Suggest features** - Have an idea for a new workflow or enhancement? [Let us know](https://github.com/e-stpierre/agentic-forge/issues)
 - **Improve docs** - Fix typos, clarify explanations, add examples
-- **Write code** - Bug fixes, new plugins, improvements to existing ones
+- **Write code** - Bug fixes, new skills, improvements to existing ones
 
 ## Development Setup
 
@@ -15,25 +15,34 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 - [Claude Code](https://claude.ai/code) installed
 - Git
-- [uv](https://docs.astral.sh/uv/) recommended for Python development
-- Node.js with pnpm (for formatting checks)
+- Node.js 20+
+- [pnpm](https://pnpm.io/) for package management
 
 ### Local Development
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-org/agentic-forge.git
+git clone https://github.com/e-stpierre/agentic-forge.git
 cd agentic-forge
 
-# Test a plugin locally
-claude --plugin-dir ./plugins/<plugin-name>
+# Install dependencies
+pnpm install
+
+# Build
+pnpm build
+
+# Run tests
+pnpm test
+
+# Run format and lint checks
+pnpm check
 ```
 
 ## Making Changes
 
 ### Branch Naming
 
-- `feature/description` - New features or plugins
+- `feature/description` - New features
 - `fix/description` - Bug fixes
 - `doc/description` - Documentation updates
 - `refactor/description` - Refactoring
@@ -47,54 +56,30 @@ Write clear, concise commit messages that describe the change. For example: `Add
 Run format, lint, and test checks locally before submitting a PR:
 
 ```bash
-pnpm check          # Format and lint
-uv run pytest       # Python tests (for plugins with Python code)
+pnpm check          # Format and lint (Biome)
+pnpm test           # Vitest tests
 ```
 
-## Internal Tools
+## Project Structure
 
-- **`/normalize`** - Validate prompt files and READMEs against templates. Use `--autofix` to auto-fix issues.
-- **`/update-plugin`** - Analyze branch changes and update plugin versions following semantic versioning.
-- **`uv run .claude/re-install-plugins.py`** - Reinstall all plugins from the local marketplace (or specify plugin names to reinstall specific ones).
-
-## Plugin Development
-
-### Structure
-
-All plugins live in the `/plugins/` directory:
-
-```
-plugins/<plugin-name>/
-├── agents/         # Sub-agent definitions (.md)
-├── skills/         # Skill directories with SKILL.md files
-│   └── skill-name/
-│       └── SKILL.md
-├── hooks/          # Runtime hooks (.sh)
-├── src/            # Python source code (optional)
-├── CHANGELOG.md    # Version history (official plugins only)
-└── README.md       # Plugin documentation
+```text
+src/
+  agents/              # Sub-agent definitions (.md)
+  claude/.claude/      # Skills loaded via --add-dir
+    skills/            # Bundled skills (slash commands)
+  commands/            # CLI command implementations
+  prompts/             # System prompt templates
+  steps/               # Workflow step handlers
+  workflows/           # YAML workflow definitions
+  *.ts                 # Core TypeScript modules
+tests/                 # Vitest test suite
 ```
 
 ### Naming Conventions
 
-- **Agents**: descriptive with domain prefix (`devops-agent.md`, `test-agent.md`)
-- **Skills**: directory name in kebab-case with `SKILL.md` inside (`parse-logs/SKILL.md`, `validate-config/SKILL.md`)
-- **Hooks**: include event name (`session-start-hook.sh`)
-
-### Prompt Templates
-
-All prompts must follow the templates in [`docs/templates/`](docs/templates/). Use the `/normalize` command inside Claude Code to validate.
-
-```bash
-# Validate all prompts
-/normalize
-
-# Validate specific files
-/normalize plugins/my-plugin/commands/
-
-# Auto-fix non-compliant files
-/normalize --autofix plugins/my-plugin/
-```
+- **Agents**: descriptive with domain prefix (`explorer.md`, `reviewer.md`)
+- **Skills**: directory name in kebab-case with `SKILL.md` inside (`analyze/SKILL.md`, `git-commit/SKILL.md`)
+- **Workflows**: descriptive kebab-case YAML files (`plan-build-review.yaml`)
 
 ## Pull Request Process
 
@@ -103,19 +88,18 @@ All prompts must follow the templates in [`docs/templates/`](docs/templates/). U
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Make your changes
-4. Run `pnpm check` to verify formatting
-5. Run `uv run pytest` for Python plugins
-6. Run `/normalize` (inside Claude Code) to validate prompt files
-7. Commit your changes with clear messages
-8. Push to your fork
-9. Open a pull request
+4. Run `pnpm changeset` to create a changeset describing your changes
+5. Run `pnpm changeset version` to bump the version and update the changelog
+6. Run `pnpm check` to verify formatting
+7. Run `pnpm test` to run the test suite
+8. Commit your changes with clear messages
+9. Push to your fork
+10. Open a pull request
 
 ### PR Checklist
 
 - [ ] CI pipeline passes (format, lint, tests)
-- [ ] Prompt templates validated (`/normalize`)
-- [ ] Plugin README updated if applicable
-- [ ] CHANGELOG updated (for official plugins only)
+- [ ] Changeset added (`pnpm changeset`) and versioned (`pnpm changeset version`)
 - [ ] Changes tested with Claude Code
 
 ## Reporting Issues
@@ -126,7 +110,7 @@ Include:
 
 - Steps to reproduce
 - Expected vs actual behavior
-- Plugin name and version
+- Agentic Forge version
 - Claude Code version
 
 ### Feature Requests
@@ -135,7 +119,6 @@ Include:
 
 - Description of the feature
 - Use case / motivation
-- Which plugin it applies to (or if it's a new plugin)
 
 ## Code of Conduct
 

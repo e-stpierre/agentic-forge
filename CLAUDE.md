@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository is a collection of modular extensions for Claude Code. It serves as a centralized hub for reusable agents, skills, hooks, configuration templates and Python automation that enhance Claude Code's capabilities across various development scenarios.
+Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for Claude Code. It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution.
 
 ## Purpose
 
@@ -10,52 +10,47 @@ The agentic-forge repository aims to:
 
 1. **Share Best Practices**: Provide battle-tested automation patterns and workflows
 2. **Accelerate Development**: Offer ready-to-use components that solve common problems
-3. **Automate Development**: Offer re-usable and flexible workflows that enable the automation of development task during the whole SLDC life-cycle.
+3. **Automate Development**: Offer reusable and flexible workflows that enable the automation of development tasks during the whole SDLC life-cycle
 
 ## Repository Structure
 
-### `/docs/`
+### `src/`
 
-Comprehensive documentation for plugin development and usage.
-This directory also contains template files for agent and skill. These templates must be respected when creating a new prompt.
-
-### `/plugins/`
-
-Root directory containing all plugins. Each plugin is self-contained within its own subdirectory.
-
-### `/plugins/<plugin-name>/`
-
-Individual plugin directory structure that is organized with one directory per prompt type. Sub-directories can be used within a prompt type to organize its content.
+TypeScript source code for the CLI and workflow orchestration engine.
 
 #### `agents/`
 
-Sub-agent configurations for specialized, autonomous task execution. Agents should be self-contained and focused on a specific domain or task.
+Bundled sub-agent configurations for specialized, autonomous task execution (`explorer.md`, `reviewer.md`). Agents should be self-contained and focused on a specific domain or task.
 
-#### `skills/`
+#### `claude/.claude/skills/`
 
-Reusable skill modules that provide composable functionality. Skills are the primary way to extend Claude Code with custom slash commands.
+Bundled skills loaded via `--add-dir`. Skills are reusable Claude Code slash commands. Each skill is a directory in kebab-case containing a `SKILL.md` file.
 
-#### `hooks/`
+#### `commands/`
 
-Runtime hooks that execute on specific events (session start, tool calls, etc.).
+CLI command implementations (`run`, `init`, `update`, `skills-dir`, `workflows`, etc.).
 
-#### `src/`
+#### `prompts/`
 
-Python source code for CLI tools and orchestration utilities (optional). Used by plugins like `agentic-sdlc` that provide command-line workflows.
+System prompt templates used by the workflow runner.
 
-#### `CHANGELOG.md`
+#### `steps/`
 
-Plugin-specific version history.
+Workflow step handlers (prompt, parallel, serial, conditional, ralph-loop).
 
-#### `README.md`
+#### `workflows/`
 
-Plugin-specific documentation. Should only contain information specific to this plugin, not general marketplace or installation instructions.
+Bundled YAML workflow definitions (7 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `analyze-codebase`, `analyze-codebase-merge`, `analyze-single`, `demo`).
 
-The README must contain an initial section called `Overview` that allow a user to understand the plugin and how to use with a few examples it in 2 minute.
+### `tests/`
 
-The README must also have a complete example section at the end, that covers all the supported commands and arguments, with examples.
+Vitest test suite for all TypeScript source code.
 
-## Plugin Development Guidelines
+### `agentic/`
+
+Runtime directory for workflow configuration, outputs, and logs.
+
+## Development Guidelines
 
 ### Language Style
 
@@ -63,34 +58,21 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 ### Naming Conventions
 
-- **Agents**: Use descriptive names with domain prefix (e.g., `devops-agent.md`, `test-agent.md`)
-- **Skills**: Directory name in kebab-case with `SKILL.md` inside (e.g., `parse-logs/SKILL.md`, `validate-config/SKILL.md`)
-- **Hooks**: Include event name (e.g., `session-start-hook.sh`, `tool-call-hook.sh`)
-- **Templates**: Use project type (e.g., `nodejs-template`, `python-template`)
+- **Agents**: Use descriptive names with domain prefix (e.g., `explorer.md`, `reviewer.md`)
+- **Skills**: Directory name in kebab-case with `SKILL.md` inside (e.g., `analyze/SKILL.md`, `git-commit/SKILL.md`)
+- **Workflows**: Descriptive kebab-case YAML files (e.g., `plan-build-review.yaml`)
 
 ### Documentation Guidelines
 
-- **Keep READMEs concise**: Plugin READMEs should only contain plugin-specific information
-- **Avoid duplication**: Do not repeat information from the root README (installation, marketplace setup, contributing guidelines, license, support)
-- **CHANGELOGs should be brief**: Focus on what changed, not detailed explanations
-- **Link to root docs**: Reference the root README or `/docs/` for general information
 - **Character encoding**: Code files must use ASCII only. Documentation and markdown files (skills, agents, READMEs) may use minimal emojis where they add clarity (e.g., checkmarks, robot emoji for Claude attribution). Avoid decorative emoji use.
 - **Workflow diagrams**: Use arrow notation (`->`) for workflow documentation instead of long multi-line ASCII boxes. Example: `Plan -> Implement -> Review -> Output` is preferred over complex box diagrams
 
 ### File Formats
 
-- **Agents**: Markdown (`.md`) files in `plugins/<plugin-name>/agents/`
-- **Skills**: `SKILL.md` files in skill directories: `plugins/<plugin-name>/skills/<skill-name>/SKILL.md`
-- **Hooks**: Shell scripts (`.sh`) or executable programs in `plugins/<plugin-name>/hooks/`
-- **Python Tools**: Python packages in `plugins/<plugin-name>/src/` with `pyproject.toml`
-
-### Prompt Template Convention
-
-All prompt files (agents, skills) and plugin READMEs must follow the exact structure defined in their respective template files:
-
-- `docs/templates/agent-template.md` - Structure for agent prompts
-- `plugins/agentic-sdlc/skills/create-skill/template.md` - Structure for skill prompts
-- `docs/templates/readme-template.md` - Structure for plugin README files
+- **Agents**: Markdown (`.md`) files in `src/agents/`
+- **Skills**: `SKILL.md` files in skill directories: `src/claude/.claude/skills/<skill-name>/SKILL.md`
+- **Workflows**: YAML files in `src/workflows/`
+- **TypeScript Source**: TypeScript modules in `src/` with root `package.json`
 
 **Placeholder Convention:**
 
@@ -119,19 +101,17 @@ Instructions:
 - Required sections must be present; optional sections can be omitted
 - Section names must match the template exactly (case-sensitive)
 
-**Validation:**
+### Shell Commands
 
-Use the `/normalize` command to validate prompt files against templates:
+Run shell commands directly without prefixing with `cd` to the repository root. The working directory is already set correctly, and unnecessary `cd` prefixes create distinct command strings that trigger extra permission prompts.
 
 ```bash
-# Validate all prompts in the repository
-/normalize
+# Good
+git status
+pnpm test
 
-# Validate specific files or directories
-/normalize plugins/my-plugin/skills/
-
-# Auto-fix non-compliant files
-/normalize --autofix plugins/my-plugin/
+# Bad - unnecessary cd causes extra permission approval
+cd "c:/Repositories/agentic-forge" && git status
 ```
 
 ### Code Style and Formatting
@@ -139,25 +119,25 @@ Use the `/normalize` command to validate prompt files against templates:
 CI validates format, lint, and tests on all pull requests. Run locally before opening a pull request:
 
 ```bash
-pnpm check          # Format and lint
-uv run pytest       # Python tests (for plugins with Python code)
+pnpm check          # Format and lint (biome)
+pnpm test           # Vitest tests
 ```
 
 ## Technical Considerations
 
-### Workflow Engine Changes (agentic-sdlc)
+### Workflow Engine Changes
 
-When modifying the workflow engine in `plugins/agentic-sdlc/src/`, you must update the workflow-builder skill reference files to keep them in sync:
+When modifying the workflow engine in `src/`, you must update the workflow-builder skill reference files to keep them in sync:
 
-- `plugins/agentic-sdlc/skills/workflow-builder/references/REFERENCE.md` - Complete schema reference
-- `plugins/agentic-sdlc/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
+- `src/claude/.claude/skills/workflow-builder/references/REFERENCE.md` - Complete schema reference
+- `src/claude/.claude/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
 
 Changes to workflow settings, step types, or features require updates to both files.
 
-### Python Development
+### Node.js Development
 
-- **Always use `uv` for Python commands**: This repository requires `uv` for all Python-related operations (building packages, installing tools, running scripts)
-- **Building packages**: Use `uv build` instead of `python -m build`
-- **Installing tools**: Use `uv tool install` instead of `pip install`
-- **Running scripts**: Use `uv run` for executing Python scripts
-- This ensures consistent Python environments across different systems and avoids Python PATH issues
+- **Always use `pnpm` for package management**: This repository uses pnpm for all Node.js operations
+- **Building**: Use `pnpm build` (runs `tsc` + asset copy script)
+- **Testing**: Use `pnpm test` (runs Vitest)
+- **Linting**: Use `pnpm check` (runs Biome)
+- **Development**: Use `pnpm dev` for TypeScript watch mode

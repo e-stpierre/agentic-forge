@@ -1,10 +1,6 @@
 # Node
 node_modules/
-
-# Python
-__pycache__/
-.venv/
-venv/
+dist/
 
 # Claude
 .claude/**/*.local.json
