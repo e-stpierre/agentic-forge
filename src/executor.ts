@@ -216,7 +216,10 @@ export class WorkflowExecutor {
 				await this.executeStep(step, progress, vars, logger, console);
 				saveProgress(progress, this.repoRoot);
 
-				if (progress.status === WORKFLOW_STATUS.FAILED) {
+				if (
+					progress.status === WORKFLOW_STATUS.FAILED ||
+					progress.status === WORKFLOW_STATUS.PAUSED
+				) {
 					break;
 				}
 			} catch (e: unknown) {
@@ -233,7 +236,9 @@ export class WorkflowExecutor {
 		if (progress.status === WORKFLOW_STATUS.RUNNING) {
 			progress.status = WORKFLOW_STATUS.COMPLETED;
 		}
-		progress.completedAt = new Date().toISOString();
+		if (progress.status !== WORKFLOW_STATUS.PAUSED) {
+			progress.completedAt = new Date().toISOString();
+		}
 		saveProgress(progress, this.repoRoot);
 
 		this.renderOutputs(workflow, progress, vars, logger);

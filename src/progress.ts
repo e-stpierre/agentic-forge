@@ -210,7 +210,10 @@ export function prepareForResume(progress: WorkflowProgress): void {
 		if (stepName && !progress.pendingSteps.includes(stepName)) {
 			progress.pendingSteps.unshift(stepName);
 		}
-		progress.currentStep = null;
+		// Preserve humanInput so the resumed step can read the response
+		if (!progress.currentStep.humanInput) {
+			progress.currentStep = null;
+		}
 	}
 
 	progress.status = WORKFLOW_STATUS.RUNNING;
