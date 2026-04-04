@@ -65,7 +65,8 @@ jobs:
         run: |
           VERSION="${{ steps.publish.outputs.version }}"
           PREVIOUS="${{ steps.publish.outputs.previous_version }}"
-          gh release create "v${VERSION}" \
-            --title "v${VERSION}" \
-            --generate-notes \
-            --notes-start-tag "v${PREVIOUS}"
+          if git rev-parse "v${PREVIOUS}" >/dev/null 2>&1; then
+            gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes --notes-start-tag "v${PREVIOUS}"
+          else
+            gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes
+          fi
