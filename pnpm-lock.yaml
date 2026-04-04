@@ -42,6 +42,9 @@ importers:
       markdownlint-cli2:
         specifier: ^0.17.2
         version: 0.17.2
+      prettier:
+        specifier: ^3.5.0
+        version: 3.8.1
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -1024,6 +1027,11 @@ packages:
   prettier@2.8.8:
     resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
     engines: {node: '>=10.13.0'}
+    hasBin: true
+
+  prettier@3.8.1:
+    resolution: {integrity: sha512-UOnG6LftzbdaHZcKoPFtOcCKztrQ57WkHDeRD9t/PTQtmT0NHSeWWepj6pS0z/N7+08BHFDQVUrfmfMRcZwbMg==}
+    engines: {node: '>=14'}
     hasBin: true
 
   proper-lockfile@4.1.2:
@@ -2265,6 +2273,8 @@ snapshots:
       source-map-js: 1.2.1
 
   prettier@2.8.8: {}
+
+  prettier@3.8.1: {}
 
   proper-lockfile@4.1.2:
     dependencies:

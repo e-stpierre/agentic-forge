@@ -9,7 +9,9 @@ async function getReleaseLine(changeset) {
     .map((l) => l.trimEnd())
     .filter((l) => l.length > 0);
 
-  return lines.map((line) => (line.startsWith("- ") ? line : `- ${line}`)).join("\n");
+  return lines
+    .map((line) => (line.startsWith("- ") ? line : `- ${line}`))
+    .join("\n");
 }
 
 async function getDependencyReleaseLine() {
@@ -18,5 +20,5 @@ async function getDependencyReleaseLine() {
 
 module.exports = {
   getReleaseLine,
-  getDependencyReleaseLine,
+  getDependencyReleaseLine
 };
