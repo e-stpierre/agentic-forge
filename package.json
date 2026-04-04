@@ -1,6 +1,6 @@
 {
   "name": "agentic-forge",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "YAML-based agentic workflow engine with multi-step execution, parallel orchestration, error recovery, and support for short and long-running operations",
   "type": "module",
   "bin": {

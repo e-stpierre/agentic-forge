@@ -1,6 +1,29 @@
 # Changelog
 
-## 0.6.0 - 2026-02-15
+## 0.7.0
+
+- **Breaking:** Full rewrite from Python to TypeScript/Node.js
+- **Breaking:** Renamed package from `agentic-sdlc` to `agentic-forge` (CLI command also renamed)
+- **Breaking:** Removed Claude Code marketplace dependency; skills now loaded via `--add-dir`
+- **Breaking:** Replaced Jinja2 templates with Nunjucks for template rendering
+- **Breaking:** Distribution changed from PyPI (`uv tool install`) to npm (`npm i -g agentic-forge`)
+- Ported all 14 CLI command handlers to TypeScript with Commander.js
+- Ported workflow executor, orchestrator, and checkpoint manager to TypeScript
+- Ported all step executors (prompt, serial, parallel, conditional, ralph-loop) with shared base class
+- Ported runner module with Claude CLI subprocess management and stream-JSON parsing
+- Ported progress tracking, signal management, and workflow logger
+- Ported parallel step executor with git worktree management
+- Added `skills-dir` command to print bundled skills path for `--add-dir` integration
+- Skills, agents, and prompts bundled as npm package data
+- Repository restructured: flat layout at root instead of `plugins/agentic-sdlc/`
+- Added Biome for TypeScript/JSON linting and formatting
+- Added markdownlint-cli2 for Markdown linting
+- Added Vitest test suite
+- CI updated from Python (pytest, uv) to Node.js (pnpm, vitest, biome)
+- Fixed wait-for-human progress state and parallel concurrency cap
+- Fixed 5 major correctness issues from code review
+
+## 0.6.0
 
 - Added `workflow-builder` skill for creating, updating, explaining, validating, and debugging workflows
 - Added parallel branch display in terminal with multi-branch status updates (BASE mode)
@@ -20,7 +43,7 @@
 - Fixed fix-issues step in plan-build-review reading wrong file for review output
 - Fixed JSON template placeholders in fix-issues step replaced with proper syntax
 
-## 0.5.0 - 2026-01-25
+## 0.5.0
 
 - Converted all CLI commands to skills for consistency and reusability
 - Added `create-skill` skill for generating new skills from templates
@@ -30,7 +53,7 @@
 - Fixed step output and reference handling between workflow steps
 - Fixed full skill name usage in workflows to avoid command conflicts
 
-## 0.4.0 - 2026-01-25
+## 0.4.0
 
 - Added `fix-analysis` skill for iteratively fixing issues from analysis documents
 - Added `workflows` CLI command to list available workflows with descriptions
@@ -39,13 +62,13 @@
 - Removed experimental-plugins directory
 - Fixed `git-pr` command to fetch and compare against remote base branch to avoid stale local branch issues
 
-## 0.3.0 - 2026-01-24
+## 0.3.0
 
 - Standardized US English spelling across all code, commands, and documentation (e.g., `analyse` to `analyze`)
 - Renamed workflow files from `analyse-*.yaml` to `analyze-*.yaml` and `demo-workflow.yaml` to `demo.yaml`
 - Removed interactive-sdlc plugin
 
-## 0.2.0 - 2026-01-21
+## 0.2.0
 
 - Added `version` command to display installed version
 - Added `release-notes` command to display release notes from CHANGELOG.md
@@ -60,7 +83,7 @@
 - Fixed plan output when used in workflow context
 - Fixed plan-build-validate build step failures and ralph failure handling
 
-## 0.1.0 - 2026-01-20
+## 0.1.0
 
 - Initial release of agentic-sdlc
 - YAML-based workflow orchestration with sequential, parallel, and Ralph loop step types
