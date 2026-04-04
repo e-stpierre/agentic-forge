@@ -398,10 +398,7 @@ export class WorkflowOrchestrator {
 					status: "running",
 					worktreePath: wt.path,
 					progressFile: path.join(
-						wt.path,
-						"agentic",
-						"outputs",
-						progress.workflowId,
+						getOutputDir(progress.workflowId, { outputDirectory: "local" }, wt.path),
 						"progress.json",
 					),
 				};
@@ -491,7 +488,7 @@ export class WorkflowOrchestrator {
 		const wtExecutor = new WorkflowExecutor(worktree.path);
 		// Force local output for worktrees: they are ephemeral and output stays within the worktree
 		wtExecutor.config = { ...wtExecutor.config, outputDirectory: "local" };
-		const wtOutputDir = path.join(worktree.path, "agentic", "outputs", parentProgress.workflowId);
+		const wtOutputDir = getOutputDir(parentProgress.workflowId, wtExecutor.config, worktree.path);
 		const wtLogger = new WorkflowLogger(parentProgress.workflowId, wtOutputDir);
 
 		try {

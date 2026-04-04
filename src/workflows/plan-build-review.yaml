@@ -48,7 +48,7 @@ steps:
   - name: plan
     type: prompt
     model: opus
-    prompt: /af-sdlc-plan {{ workflow_id }} {{ variables.type }} "agentic/outputs/{{ workflow_id }}" {{ variables.explore_agents }} {{ variables.task }}
+    prompt: /af-sdlc-plan {{ workflow_id }} {{ variables.type }} "{{ output_dir }}" {{ variables.explore_agents }} {{ variables.task }}
     checkpoint: true
 
   - name: create-branch
@@ -64,7 +64,7 @@ steps:
       You are in an iterative implementation loop. Each iteration starts a fresh session.
 
       ## Your Task This Iteration
-      Read the plan at agentic/outputs/{{ workflow_id }}/plan.md and implement the NEXT INCOMPLETE milestone.
+      Read the plan at {{ output_dir }}/plan.md and implement the NEXT INCOMPLETE milestone.
 
       ## How Iterations Work
       - Each iteration is a FRESH SESSION - you have no memory of previous iterations
@@ -96,7 +96,7 @@ steps:
 
   - name: review
     type: prompt
-    prompt: /af-sdlc-review {{ workflow_id }} "agentic/outputs/{{ workflow_id }}/plan.md" "agentic/outputs/{{ workflow_id }}" minor
+    prompt: /af-sdlc-review {{ workflow_id }} "{{ output_dir }}/plan.md" "{{ output_dir }}" minor
     agent: agents/reviewer.md
 
   - name: fix-issues
@@ -105,8 +105,8 @@ steps:
       ## Fix Review Issues
 
       Read both documents from the workflow output directory:
-      - Plan: `agentic/outputs/{{ workflow_id }}/plan.md`
-      - Review: `agentic/outputs/{{ workflow_id }}/review.md`
+      - Plan: `{{ output_dir }}/plan.md`
+      - Review: `{{ output_dir }}/review.md`
 
       ### Task
 
@@ -122,7 +122,7 @@ steps:
          - Track which issues were fixed and which could not be fixed
       5. **After attempting fixes**:
          - Use /af-git-commit to commit all fixes
-         - Re-run /af-sdlc-review {{ workflow_id }} "agentic/outputs/{{ workflow_id }}/plan.md" to update the Review section
+         - Re-run /af-sdlc-review {{ workflow_id }} "{{ output_dir }}/plan.md" to update the Review section
 
       ### Critical Requirement
 

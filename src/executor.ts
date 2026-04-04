@@ -344,6 +344,8 @@ export class WorkflowExecutor {
 			renderer: this.renderer,
 			workflowSettings: this.workflowSettings,
 			workflowId: progress.workflowId,
+			outputDir:
+				progress.outputDir ?? getOutputDir(progress.workflowId, this.config, this.repoRoot),
 			variables,
 			outputs: progress.stepOutputs,
 		};

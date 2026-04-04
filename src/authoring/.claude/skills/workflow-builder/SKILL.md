@@ -76,7 +76,7 @@ Arguments: $ARGUMENTS
 
 1. Read the workflow YAML and any error output
 2. Check for common issues (undefined variables, incorrect conditions, missing fields)
-3. Check `agentic/outputs/<workflow-id>/progress.json` if available
+3. Check `agentic-forge status <workflow-id>` or look in the output directory for `progress.json`
 4. Suggest specific fixes
 
 ### Step Type Selection Guide

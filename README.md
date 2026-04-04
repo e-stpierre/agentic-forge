@@ -85,6 +85,9 @@ agentic-forge run analyze-codebase --var "autofix=true"
 # Run a workflow with variables
 agentic-forge run <workflow> --var "key=value"
 
+# Run with a custom slug for the output directory name
+agentic-forge run <workflow> --slug "my-feature"
+
 # Resume a paused or failed workflow
 agentic-forge resume <workflow_id>
 
@@ -100,15 +103,22 @@ agentic-forge list --status running
 # Provide input to a paused workflow waiting for human response
 agentic-forge input <workflow_id> "response text"
 
-# Copy bundled workflow templates to your project
+# Initialize global config and workflow directory (default)
 agentic-forge init
+
+# Initialize project-local agentic/ directory
+agentic-forge init --local
+
+# Show all resolved directory and config paths
+agentic-forge paths
 
 # List available workflows with descriptions
 agentic-forge workflows
 
-# Get or set configuration
+# Get or set configuration (global by default)
 agentic-forge config get <key>
 agentic-forge config set <key> <value>
+agentic-forge config set <key> <value> --local
 
 # Interactive configuration setup
 agentic-forge configure
@@ -128,6 +138,45 @@ agentic-forge version
 # Update to latest version
 agentic-forge update
 ```
+
+## Directory Structure
+
+Agentic Forge uses a 3-tier directory structure:
+
+```text
+Global (platform-native):
+  Windows:  %APPDATA%\agentic-forge\
+  macOS:    ~/Library/Application Support/agentic-forge/
+  Linux:    $XDG_CONFIG_HOME/agentic-forge/ (or ~/.config/agentic-forge/)
+    workflows/   # User-level workflow overrides
+    outputs/     # Default output location (one subdirectory per project)
+    config.json  # Global configuration
+
+Project-local (optional):
+  <project>/agentic/
+    workflows/   # Project-specific workflow overrides
+    outputs/     # Used when outputDirectory: "local" is set
+    config.json  # Local config overrides (merged on top of global)
+
+Bundled (read-only):
+  Built-in workflows and defaults shipped with the package
+```
+
+### Config layering
+
+Config merges in order: built-in defaults -> global config -> local config. Local values always win.
+
+```bash
+# Set output to local for a specific project
+agentic-forge config set outputDirectory local --local
+
+# Set a global default model
+agentic-forge config set model opus --global
+```
+
+### Workflow discovery
+
+Workflows resolve in order: project-local > user-global > bundled. This lets you override any bundled workflow without modifying the package.
 
 ## Repository Structure
 

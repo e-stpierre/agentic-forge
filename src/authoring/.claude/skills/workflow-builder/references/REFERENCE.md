@@ -252,7 +252,7 @@ Iterative prompt execution with completion detection. Each iteration runs in a f
 **How it works:**
 
 1. Each iteration runs in a fresh Claude session (no context accumulation)
-2. State persists in `agentic/outputs/{workflow-id}/ralph-{step-name}.md`
+2. State persists in `{output_dir}/ralph-{step-name}.md`
 3. Loop exits when Claude outputs completion JSON or max iterations reached
 4. Additional template variables: `{{ iteration }}` (current), `{{ max_iterations }}` (max)
 
@@ -274,7 +274,7 @@ The `completion-promise` setting must match the `promise` value in Claude's JSON
 - name: implement-milestones
   type: ralph-loop
   prompt: |
-    Read the plan at agentic/outputs/{{ workflow_id }}/plan.md.
+    Read the plan at {{ output_dir }}/plan.md.
     Implement the next incomplete milestone.
 
     When ALL milestones are complete, output:
@@ -307,7 +307,7 @@ Human provides input via: `agentic-forge input <workflow-id> "response"`
 - name: get-approval
   type: wait-for-human
   message: |
-    Review the implementation at agentic/outputs/{{ workflow_id }}/plan.md.
+    Review the implementation at {{ output_dir }}/plan.md.
     Respond with "approved" to continue or provide feedback.
   polling-interval: 30
   on-timeout: abort
@@ -381,17 +381,19 @@ Template resolution order:
 2. `agentic/templates/`
 3. Bundled plugin templates
 
+Step prompt template variables: `{{ workflow_id }}`, `{{ output_dir }}` (absolute path to the workflow output directory), `{{ variables.* }}`, `{{ outputs.* }}`
+
 Template context variables: `workflow`, `variables`, `outputs`, `progress`, `steps`, `analysis_steps`, `fix_steps`, `files_changed`, `branches`, `pull_requests`, `inputs`
 
 ```yaml
 outputs:
   - name: report
     template: report.md.j2
-    path: agentic/outputs/{{ workflow_id }}/report.md
+    path: report.md
     when: completed
   - name: error-log
     template: error.md.j2
-    path: agentic/outputs/{{ workflow_id }}/error.md
+    path: error.md
     when: failed
 ```
 
