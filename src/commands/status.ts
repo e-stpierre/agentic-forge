@@ -81,9 +81,13 @@ export function cmdList(statusFilter?: string): void {
 		if (entry.isDirectory()) {
 			const progressFile = path.join(outputsDir, entry.name, "progress.json");
 			if (existsSync(progressFile)) {
-				const data = JSON.parse(readFileSync(progressFile, "utf-8")) as Record<string, unknown>;
-				if (statusFilter == null || data.status === statusFilter) {
-					workflows.push(data);
+				try {
+					const data = JSON.parse(readFileSync(progressFile, "utf-8")) as Record<string, unknown>;
+					if (statusFilter == null || data.status === statusFilter) {
+						workflows.push(data);
+					}
+				} catch {
+					// Skip corrupted progress files
 				}
 			}
 		}

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -106,5 +106,20 @@ describe("readLogs", () => {
 		expect(entries).toHaveLength(2);
 		expect(entries[0].step).toBe("s1");
 		expect(entries[1].step).toBe("s2");
+	});
+
+	it("should skip corrupted log lines", () => {
+		const tempDir = makeTempDir();
+		const logger = new WorkflowLogger("test-corrupted", tempDir);
+
+		logger.info("s1", "msg1");
+		// Append a corrupted line directly
+		appendFileSync(logger.logPath, "not valid json\n", "utf-8");
+		logger.info("s3", "msg3");
+
+		const entries = readLogs("test-corrupted", tempDir);
+		expect(entries).toHaveLength(2);
+		expect(entries[0].step).toBe("s1");
+		expect(entries[1].step).toBe("s3");
 	});
 });

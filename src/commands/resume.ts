@@ -81,7 +81,7 @@ export async function cmdResume(options: {
 
 		const result = await executor.run(
 			workflow,
-			undefined,
+			progress.variables as Record<string, unknown> | undefined,
 			null,
 			terminalOutput,
 			path.resolve(workflowPath),

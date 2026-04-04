@@ -93,12 +93,12 @@ export class ParallelStepExecutor extends StepExecutor {
 		const execution = context.config?.execution as Record<string, unknown> | undefined;
 		const maxWorkers = (execution?.maxWorkers as number) ?? 4;
 		const settled: PromiseSettledResult<[string, boolean, string, Worktree | null]>[] = [];
-		const branches = [...step.steps];
-		let idx = 0;
+		const queue = [...step.steps];
 
 		const runNext = async (): Promise<void> => {
-			while (idx < branches.length) {
-				const branchStep = branches[idx++];
+			while (queue.length > 0) {
+				const branchStep = queue.shift();
+				if (!branchStep) break;
 				try {
 					const value = await executeBranch(branchStep);
 					settled.push({ status: "fulfilled", value });
@@ -108,7 +108,7 @@ export class ParallelStepExecutor extends StepExecutor {
 			}
 		};
 
-		const workers = Array.from({ length: Math.min(maxWorkers, branches.length) }, () => runNext());
+		const workers = Array.from({ length: Math.min(maxWorkers, queue.length) }, () => runNext());
 		await Promise.all(workers);
 		const results = settled;
 
@@ -139,7 +139,15 @@ export class ParallelStepExecutor extends StepExecutor {
 
 		// Handle merge modes
 		if (step.mergeMode === "merge" && Object.keys(worktrees).length > 0) {
-			this.mergeWorktreeBranches(step, worktrees, failedBranches, context, logger, console);
+			const mergeFailures = this.mergeWorktreeBranches(
+				step,
+				worktrees,
+				failedBranches,
+				context,
+				logger,
+				console,
+			);
+			failedBranches.push(...mergeFailures);
 		}
 
 		if (step.mergeMode === "independent" && Object.keys(worktrees).length > 0) {
@@ -170,7 +178,11 @@ export class ParallelStepExecutor extends StepExecutor {
 			return { success: true, outputSummary };
 		}
 
-		return { success: true, outputSummary: "Parallel execution completed" };
+		const outputSummary = "Parallel execution completed";
+		updateStepCompleted(progress, step.name, outputSummary);
+		console.stepComplete(step.name, outputSummary);
+		logger.info(step.name, outputSummary);
+		return { success: true, outputSummary };
 	}
 
 	private mergeWorktreeBranches(
@@ -180,8 +192,9 @@ export class ParallelStepExecutor extends StepExecutor {
 		context: StepContext,
 		logger: WorkflowLogger,
 		console: ConsoleOutput,
-	): void {
+	): string[] {
 		console.info("Merging parallel branches...");
+		const mergeFailures: string[] = [];
 
 		for (const [name, worktree] of Object.entries(worktrees)) {
 			if (failedBranches.includes(name)) {
@@ -202,10 +215,13 @@ export class ParallelStepExecutor extends StepExecutor {
 				const errStr = e instanceof Error ? e.message : String(e);
 				logger.error(name, `Merge failed: ${errStr}`);
 				console.error(`  Merge failed for '${name}': ${errStr}`);
+				mergeFailures.push(name);
 			}
 
 			removeWorktree(worktree, context.repoRoot, true);
 			logger.info(name, "Worktree and branch cleaned up");
 		}
+
+		return mergeFailures;
 	}
 }

@@ -18,6 +18,7 @@ import {
 	resolveModel,
 } from "../src/steps/base.js";
 import { ConditionalStepExecutor } from "../src/steps/conditional-step.js";
+import { ParallelStepExecutor } from "../src/steps/parallel-step.js";
 import { SerialStepExecutor } from "../src/steps/serial-step.js";
 import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../src/types.js";
 
@@ -408,5 +409,129 @@ describe("StepExecutor retry", () => {
 		await executor.execute(step, progress, context, mockLogger, consoleOut);
 
 		expect(mockRunClaude).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe("ParallelStepExecutor", () => {
+	it("should execute all branches exactly once with queue-based concurrency", async () => {
+		const executedBranches: string[] = [];
+		const branchExecutor = vi.fn<BranchStepExecutor>(async (step) => {
+			executedBranches.push(step.name);
+			return { success: true, outputSummary: `Done ${step.name}` };
+		});
+
+		const executor = new ParallelStepExecutor(branchExecutor);
+		const innerSteps = [
+			makeStepDef({ name: "branch-a", type: "prompt", prompt: "A" }),
+			makeStepDef({ name: "branch-b", type: "prompt", prompt: "B" }),
+			makeStepDef({ name: "branch-c", type: "prompt", prompt: "C" }),
+			makeStepDef({ name: "branch-d", type: "prompt", prompt: "D" }),
+			makeStepDef({ name: "branch-e", type: "prompt", prompt: "E" }),
+		];
+
+		const step = makeStepDef({
+			name: "parallel-step",
+			type: "parallel",
+			steps: innerSteps,
+			mergeStrategy: "wait-all",
+		});
+
+		const context = createStepContext({
+			config: { defaults: {}, execution: { maxWorkers: 2 } },
+		});
+		const progress = createProgress("test-wf", "test-workflow", ["parallel-step"], {});
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		const result = await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		expect(result.success).toBe(true);
+		// Every branch must execute exactly once
+		expect(executedBranches.sort()).toEqual([
+			"branch-a",
+			"branch-b",
+			"branch-c",
+			"branch-d",
+			"branch-e",
+		]);
+		expect(branchExecutor).toHaveBeenCalledTimes(5);
+	});
+
+	it("should call updateStepCompleted for non-wait-all merge strategy", async () => {
+		const branchExecutor = vi.fn<BranchStepExecutor>(async () => {
+			return { success: true, outputSummary: "Done" };
+		});
+
+		const executor = new ParallelStepExecutor(branchExecutor);
+		const innerSteps = [makeStepDef({ name: "branch-a", type: "prompt", prompt: "A" })];
+
+		const step = makeStepDef({
+			name: "parallel-step",
+			type: "parallel",
+			steps: innerSteps,
+			mergeStrategy: "first-success" as StepDefinition["mergeStrategy"],
+		});
+
+		const context = createStepContext();
+		const progress = createProgress("test-wf", "test-workflow", ["parallel-step"], {});
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		const result = await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		expect(result.success).toBe(true);
+		// currentStep should be cleared by updateStepCompleted
+		expect(progress.currentStep).toBeNull();
+		// Step should appear in completedSteps
+		expect(progress.completedSteps.some((s) => s.name === "parallel-step")).toBe(true);
+	});
+
+	it("should handle empty steps", async () => {
+		const branchExecutor: BranchStepExecutor = vi.fn();
+		const executor = new ParallelStepExecutor(branchExecutor);
+
+		const step = makeStepDef({
+			name: "parallel-step",
+			type: "parallel",
+			steps: [],
+		});
+
+		const context = createStepContext();
+		const progress = createProgress("test-wf", "test-workflow", ["parallel-step"], {});
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		const result = await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		expect(result.success).toBe(true);
+		expect(result.outputSummary).toContain("No sub-steps");
+	});
+
+	it("should track failed branches in wait-all strategy", async () => {
+		const branchExecutor = vi.fn<BranchStepExecutor>(async (step) => {
+			if (step.name === "branch-b") {
+				return { success: false, error: "Branch B failed" };
+			}
+			return { success: true, outputSummary: "Done" };
+		});
+
+		const executor = new ParallelStepExecutor(branchExecutor);
+		const innerSteps = [
+			makeStepDef({ name: "branch-a", type: "prompt", prompt: "A" }),
+			makeStepDef({ name: "branch-b", type: "prompt", prompt: "B" }),
+		];
+
+		const step = makeStepDef({
+			name: "parallel-step",
+			type: "parallel",
+			steps: innerSteps,
+			mergeStrategy: "wait-all",
+		});
+
+		const context = createStepContext();
+		const progress = createProgress("test-wf", "test-workflow", ["parallel-step"], {});
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		const result = await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("branch-b");
 	});
 });

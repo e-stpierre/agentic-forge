@@ -83,7 +83,11 @@ export function readLogs(workflowId: string, repoRoot?: string): LogEntry[] {
 	for (const line of content.split("\n")) {
 		const trimmed = line.trim();
 		if (trimmed) {
-			entries.push(JSON.parse(trimmed) as LogEntry);
+			try {
+				entries.push(JSON.parse(trimmed) as LogEntry);
+			} catch {
+				// Skip corrupted log lines
+			}
 		}
 	}
 	return entries;
