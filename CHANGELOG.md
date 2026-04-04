@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1
+
+- Added bare `key=value` argument support for passing workflow variables without the `--var` flag
+- Added interactive prompts for missing required workflow variables when running in a TTY
+- Added `--no-interactive` flag to disable interactive prompts in scripts and CI
+- Updated `workflows --verbose` to show variable type, default value, and description per variable
+- Added `authoring-dir` command to print path to interactive authoring skills (e.g., `workflow-builder`)
+- Moved `workflow-builder` skill from workflow execution skills to dedicated authoring skills directory
+- Updated usage examples in CLI help and `workflows` command output
+- Fixed interactive prompt for variables with defaults and empty descriptions
+
 ## 0.7.0
 
 - **Breaking:** Full rewrite from Python to TypeScript/Node.js

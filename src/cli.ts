@@ -17,6 +17,8 @@ function optStringArray(val: unknown): string[] | undefined {
 }
 
 import {
+	CliExitError,
+	cmdAuthoringDir,
 	cmdCancel,
 	cmdConfig,
 	cmdConfigure,
@@ -42,17 +44,24 @@ const program = new Command()
 // run command
 program
 	.command("run")
+	.description(
+		"Run a workflow with optional key=value variables (prompts for missing required vars)",
+	)
 	.argument("[workflow]", "workflow name or path to YAML file")
+	.argument("[vars...]", "workflow variables as key=value pairs")
 	.option("--list", "list all available workflows")
 	.option("--var <key=value...>", "set workflow variable (can be used multiple times)")
 	.option("--from-step <step>", "resume from a specific step")
+	.option("--no-interactive", "disable interactive prompts for missing variables")
 	.option("--terminal-output <mode>", "terminal output granularity (base or all)")
-	.action(async (workflow: string | undefined, opts: Record<string, unknown>) => {
+	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
 			listWorkflows: optBool(opts.list),
 			vars: optStringArray(opts.var),
+			bareVars: optStringArray(vars),
 			fromStep: optString(opts.fromStep),
+			interactive: opts.interactive !== false,
 			terminalOutput: optString(opts.terminalOutput),
 		});
 	});
@@ -169,6 +178,14 @@ program
 		cmdSkillsDir();
 	});
 
+// authoring-dir command
+program
+	.command("authoring-dir")
+	.description("Print path to interactive authoring skills directory")
+	.action(() => {
+		cmdAuthoringDir();
+	});
+
 // update command
 program
 	.command("update")
@@ -191,4 +208,10 @@ program
 		});
 	});
 
-program.parse();
+program.parseAsync().catch((err: unknown) => {
+	if (err instanceof CliExitError) {
+		process.stderr.write(`${err.message}\n`);
+		process.exit(err.exitCode);
+	}
+	throw err;
+});

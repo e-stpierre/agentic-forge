@@ -1,6 +1,7 @@
 /** Command handler exports. */
 
 export {
+	CliExitError,
 	cmdRun,
 	discoverWorkflow,
 	listAvailableWorkflows,
@@ -17,5 +18,6 @@ export { cmdVersion, getVersion } from "./version.js";
 export { cmdUpdate } from "./update.js";
 export { cmdReleaseNotes } from "./release-notes.js";
 export { cmdSkillsDir } from "./skills-dir.js";
+export { cmdAuthoringDir } from "./authoring-dir.js";
 export { cmdWorkflows } from "./workflows.js";
 export { cmdInput } from "./shortcuts.js";

@@ -22,13 +22,17 @@ TypeScript source code for the CLI and workflow orchestration engine.
 
 Bundled sub-agent configurations for specialized, autonomous task execution (`explorer.md`, `reviewer.md`). Agents should be self-contained and focused on a specific domain or task.
 
+#### `authoring/.claude/skills/`
+
+Interactive authoring skills for users to create and manage workflows (e.g., `workflow-builder`). Exposed via the `authoring-dir` CLI command. These are not used by the workflow engine.
+
 #### `claude/.claude/skills/`
 
-Bundled skills loaded via `--add-dir`. Skills are reusable Claude Code slash commands. Each skill is a directory in kebab-case containing a `SKILL.md` file.
+Bundled workflow execution skills loaded via `--add-dir`. Skills are reusable Claude Code slash commands. Each skill is a directory in kebab-case containing a `SKILL.md` file. These are used by the workflow engine during execution.
 
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `skills-dir`, `workflows`, etc.).
+CLI command implementations (`run`, `init`, `update`, `skills-dir`, `authoring-dir`, `workflows`, etc.).
 
 #### `prompts/`
 
@@ -116,8 +120,8 @@ pnpm test           # Vitest tests
 
 When modifying the workflow engine in `src/`, you must update the workflow-builder skill reference files to keep them in sync:
 
-- `src/claude/.claude/skills/workflow-builder/references/REFERENCE.md` - Complete schema reference
-- `src/claude/.claude/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
+- `src/authoring/.claude/skills/workflow-builder/references/REFERENCE.md` - Complete schema reference
+- `src/authoring/.claude/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
 
 Changes to workflow settings, step types, or features require updates to both files.
 

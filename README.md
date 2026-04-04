@@ -113,8 +113,11 @@ agentic-forge config set <key> <value>
 # Interactive configuration setup
 agentic-forge configure
 
-# Print path to bundled skills directory
+# Print path to bundled workflow skills directory
 agentic-forge skills-dir
+
+# Print path to interactive authoring skills directory
+agentic-forge authoring-dir
 
 # Show release notes
 agentic-forge release-notes --latest
@@ -131,8 +134,10 @@ agentic-forge update
 ```text
 src/
   agents/              # Bundled agent definitions (explorer, reviewer)
-  claude/.claude/      # Skills loaded via --add-dir
-    skills/            # 13 bundled skills
+  authoring/.claude/   # Interactive authoring skills (workflow-builder)
+    skills/            # Skills for users to create and manage workflows
+  claude/.claude/      # Workflow execution skills loaded via --add-dir
+    skills/            # Bundled skills used by workflows
   commands/            # CLI command implementations
   prompts/             # System prompt templates
   steps/               # Workflow step handlers
@@ -140,6 +145,31 @@ src/
   *.ts                 # Core TypeScript modules
 tests/                 # Vitest test suite
 ```
+
+### Skills directories
+
+Agentic Forge separates skills into two directories:
+
+- **Workflow skills** (`skills-dir`) — Skills used by the workflow engine during execution. Loaded automatically when running workflows.
+- **Authoring skills** (`authoring-dir`) — Interactive skills for users to create and manage workflows. Add them to your Claude Code session manually:
+
+```bash
+claude --add-dir $(agentic-forge authoring-dir)
+```
+
+#### Using the workflow-builder skill
+
+Once the authoring skills are loaded, use the `/af-workflow-builder` slash command to create, update, explain, validate, or debug workflows:
+
+```text
+/af-workflow-builder create a workflow that plans and reviews a feature
+/af-workflow-builder validate my-workflow.yaml
+/af-workflow-builder explain how ralph-loop works
+/af-workflow-builder update my-workflow.yaml to add a parallel step
+/af-workflow-builder debug why my conditional always takes the else branch
+```
+
+The skill has full knowledge of the workflow schema, all step types, and bundled skills.
 
 ## Contributing
 

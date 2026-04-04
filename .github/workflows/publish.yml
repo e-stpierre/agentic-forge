@@ -73,8 +73,16 @@ jobs:
             exit 0
           fi
           PREVIOUS="${{ steps.publish.outputs.previous_version }}"
+          TAG_NAME="v${VERSION}"
+          BODY_ARGS=()
           if [ -n "$PREVIOUS" ] && git rev-parse "v${PREVIOUS}" >/dev/null 2>&1; then
-            gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes --notes-start-tag "v${PREVIOUS}"
-          else
-            gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes
+            BODY_ARGS=(--previous-tag-name "v${PREVIOUS}")
           fi
+          NOTES=$(gh api repos/{owner}/{repo}/releases/generate-notes \
+            -f tag_name="$TAG_NAME" -f target_commitish=main "${BODY_ARGS[@]}" \
+            --jq '.body')
+          CHANGELOG=$(sed -n "/^## ${VERSION}$/,/^## /{ /^## ${VERSION}$/d; /^## /d; p; }" CHANGELOG.md)
+          if [ -n "$CHANGELOG" ]; then
+            printf -v NOTES '%s\n\n---\n\n## Changelog\n\n%s' "$NOTES" "$CHANGELOG"
+          fi
+          gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "$NOTES"

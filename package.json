@@ -1,6 +1,6 @@
 {
   "name": "agentic-forge",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "YAML-based agentic workflow engine with multi-step execution, parallel orchestration, error recovery, and support for short and long-running operations",
   "type": "module",
   "license": "MIT",
@@ -31,6 +31,8 @@
     "updates:fix": "node scripts/check-updates.js fix"
   },
   "dependencies": {
+    "@inquirer/confirm": "^6.0.10",
+    "@inquirer/input": "^5.0.10",
     "commander": "^14.0.3",
     "js-yaml": "^4.1.1",
     "nunjucks": "^3.2.4",
