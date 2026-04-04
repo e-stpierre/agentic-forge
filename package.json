@@ -4,7 +4,8 @@
   "description": "YAML-based agentic workflow engine with multi-step execution, parallel orchestration, error recovery, and support for short and long-running operations",
   "type": "module",
   "bin": {
-    "agentic-forge": "dist/cli.js"
+    "agentic-forge": "dist/cli.js",
+    "af": "dist/cli.js"
   },
   "files": [
     "dist",
