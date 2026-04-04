@@ -28,6 +28,9 @@ jobs:
           node-version: "22"
           registry-url: https://registry.npmjs.org
 
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@^11.5.1
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
         with:
@@ -49,7 +52,7 @@ jobs:
           PUBLISHED_VERSION=$(npm view agentic-forge version 2>/dev/null || echo "0.0.0")
           if [ "$LOCAL_VERSION" != "$PUBLISHED_VERSION" ]; then
             echo "Publishing agentic-forge@$LOCAL_VERSION (npm has $PUBLISHED_VERSION)"
-            npm publish --provenance --access public
+            npm publish --access public
             echo "published=true" >> "$GITHUB_OUTPUT"
             echo "version=$LOCAL_VERSION" >> "$GITHUB_OUTPUT"
             echo "previous_version=$PUBLISHED_VERSION" >> "$GITHUB_OUTPUT"
