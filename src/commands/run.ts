@@ -228,6 +228,7 @@ export async function cmdRun(options: {
 	for (const v of workflow.variables) {
 		if (v.name in variables) continue;
 		if (!v.required) continue;
+		if (v.default !== undefined) continue;
 
 		// Required variable is missing
 		if (!isInteractive) {
@@ -239,7 +240,7 @@ export async function cmdRun(options: {
 			process.exit(1);
 		}
 
-		const label = v.description ?? v.name;
+		const label = v.description || v.name;
 		if (v.type === "boolean") {
 			const answer = await confirm({
 				message: `${label}:`,
