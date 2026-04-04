@@ -7,16 +7,15 @@
 
 <p align="center">
   <a href="https://github.com/e-stpierre/agentic-forge/releases"><img src="https://img.shields.io/github/v/release/e-stpierre/agentic-forge?include_prereleases" alt="GitHub release"></a>
-  <a href="https://claude.ai/code"><img src="https://img.shields.io/badge/Built%20for-Claude%20Code-orange" alt="Built for Claude Code"></a>
   <a href="https://github.com/e-stpierre/agentic-forge/blob/main/LICENSE"><img src="https://img.shields.io/github/license/e-stpierre/agentic-forge" alt="License"></a>
 </p>
 
 <p align="center">
-  <strong>Autonomous workflow orchestration for Claude Code</strong>
+  <strong>YAML-based agentic workflow engine</strong>
 </p>
 
 <p align="center">
-  YAML-defined workflows | Multi-step execution | Progress tracking | Error recovery
+  Multi-step execution | Parallel orchestration | Error recovery | Short and long-running operations
 </p>
 
 ## Overview
