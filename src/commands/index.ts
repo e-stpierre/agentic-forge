@@ -1,6 +1,7 @@
 /** Command handler exports. */
 
 export {
+	CliExitError,
 	cmdRun,
 	discoverWorkflow,
 	listAvailableWorkflows,

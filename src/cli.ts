@@ -17,6 +17,7 @@ function optStringArray(val: unknown): string[] | undefined {
 }
 
 import {
+	CliExitError,
 	cmdAuthoringDir,
 	cmdCancel,
 	cmdConfig,
@@ -43,6 +44,9 @@ const program = new Command()
 // run command
 program
 	.command("run")
+	.description(
+		"Run a workflow with optional key=value variables (prompts for missing required vars)",
+	)
 	.argument("[workflow]", "workflow name or path to YAML file")
 	.argument("[vars...]", "workflow variables as key=value pairs")
 	.option("--list", "list all available workflows")
@@ -204,4 +208,10 @@ program
 		});
 	});
 
-program.parse();
+program.parseAsync().catch((err: unknown) => {
+	if (err instanceof CliExitError) {
+		process.stderr.write(`${err.message}\n`);
+		process.exit(err.exitCode);
+	}
+	throw err;
+});

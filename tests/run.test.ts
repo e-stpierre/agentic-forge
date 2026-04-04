@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseVars } from "../src/commands/run.js";
+import { CliExitError, parseVars } from "../src/commands/run.js";
 
 // Top-level mock so it's properly hoisted
 const mockExecutorRun = vi.fn();
@@ -13,6 +13,15 @@ vi.mock("../src/executor.js", () => ({
 	WorkflowExecutor: class {
 		run = mockExecutorRun;
 	},
+}));
+
+const mockConfirm = vi.fn();
+const mockInput = vi.fn();
+vi.mock("@inquirer/confirm", () => ({
+	default: (...args: unknown[]) => mockConfirm(...args),
+}));
+vi.mock("@inquirer/input", () => ({
+	default: (...args: unknown[]) => mockInput(...args),
 }));
 
 // --- parseVars unit tests ---
@@ -38,11 +47,13 @@ describe("parseVars", () => {
 		expect(result).toEqual({ a: "1", b: "2", c: "3" });
 	});
 
-	it("throws on bare arg without equals sign", () => {
+	it("throws CliExitError on bare arg without equals sign", () => {
+		expect(() => parseVars(["invalid"])).toThrow(CliExitError);
 		expect(() => parseVars(["invalid"])).toThrow("Invalid variable format: invalid");
 	});
 
-	it("throws on --var without equals sign", () => {
+	it("throws CliExitError on --var without equals sign", () => {
+		expect(() => parseVars(undefined, ["noequalssign"])).toThrow(CliExitError);
 		expect(() => parseVars(undefined, ["noequalssign"])).toThrow(
 			"Invalid variable format: noequalssign",
 		);
@@ -69,12 +80,18 @@ describe("parseVars", () => {
 	});
 });
 
+// --- Helper to write a temp workflow ---
+
+function writeTempWorkflow(tempDir: string, name: string, yaml: string): string {
+	const filePath = path.join(tempDir, `${name}.yaml`);
+	writeFileSync(filePath, yaml);
+	return filePath;
+}
+
 // --- cmdRun non-interactive error path tests ---
 
 describe("cmdRun non-interactive mode", () => {
 	let tempDir: string;
-	let exitSpy: ReturnType<typeof vi.spyOn>;
-	let stderrSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		tempDir = mkdtempSync(path.join(os.tmpdir(), "run-test-"));
@@ -85,22 +102,17 @@ describe("cmdRun non-interactive mode", () => {
 			variables: {},
 			errors: [],
 		});
-
-		// Mock process.exit to throw instead of actually exiting
-		exitSpy = vi.spyOn(process, "exit").mockImplementation((code) => {
-			throw new Error(`process.exit(${code})`);
-		});
-
-		// Capture stderr output
-		stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 	});
 
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
 
-	it("exits with error when required variable is missing in non-interactive mode", async () => {
-		const yamlContent = `
+	it("throws CliExitError when required variable is missing in non-interactive mode", async () => {
+		const workflowPath = writeTempWorkflow(
+			tempDir,
+			"required-var",
+			`
 name: required-var-workflow
 version: "1.0"
 description: Workflow with required variable
@@ -113,26 +125,26 @@ steps:
   - name: test
     type: prompt
     prompt: "{{ variables.task }}"
-`;
-		const workflowPath = path.join(tempDir, "required-var-workflow.yaml");
-		writeFileSync(workflowPath, yamlContent);
+`,
+		);
 
 		const { cmdRun } = await import("../src/commands/run.js");
 
-		await expect(
-			cmdRun({
-				workflow: workflowPath,
-				interactive: false,
-			}),
-		).rejects.toThrow("process.exit(1)");
+		const err = await cmdRun({
+			workflow: workflowPath,
+			interactive: false,
+		}).catch((e) => e);
 
-		const stderrOutput = stderrSpy.mock.calls.map((c) => c[0]).join("");
-		expect(stderrOutput).toContain("Missing required variable: task");
-		expect(stderrOutput).toContain("Description: The task to perform");
+		expect(err).toBeInstanceOf(CliExitError);
+		expect(err.message).toContain("Missing required variable: task");
+		expect(err.message).toContain("Description: The task to perform");
 	});
 
 	it("shows usage hint in error message for missing required variable", async () => {
-		const yamlContent = `
+		const workflowPath = writeTempWorkflow(
+			tempDir,
+			"hint-test",
+			`
 name: hint-test-workflow
 version: "1.0"
 description: Test usage hint
@@ -144,26 +156,26 @@ steps:
   - name: test
     type: prompt
     prompt: "{{ variables.my_var }}"
-`;
-		const workflowPath = path.join(tempDir, "hint-test-workflow.yaml");
-		writeFileSync(workflowPath, yamlContent);
+`,
+		);
 
 		const { cmdRun } = await import("../src/commands/run.js");
 
-		await expect(
-			cmdRun({
-				workflow: workflowPath,
-				interactive: false,
-			}),
-		).rejects.toThrow("process.exit(1)");
+		const err = await cmdRun({
+			workflow: workflowPath,
+			interactive: false,
+		}).catch((e) => e);
 
-		const stderrOutput = stderrSpy.mock.calls.map((c) => c[0]).join("");
-		expect(stderrOutput).toContain("my_var");
-		expect(stderrOutput).toContain("agentic-forge run");
+		expect(err).toBeInstanceOf(CliExitError);
+		expect(err.message).toContain("my_var");
+		expect(err.message).toContain("agentic-forge run");
 	});
 
-	it("does not prompt or error when all required variables are provided via bareVars", async () => {
-		const yamlContent = `
+	it("does not throw when all required variables are provided via bareVars", async () => {
+		const workflowPath = writeTempWorkflow(
+			tempDir,
+			"all-vars-provided",
+			`
 name: all-vars-provided
 version: "1.0"
 description: All variables provided test
@@ -175,25 +187,23 @@ steps:
   - name: test
     type: prompt
     prompt: "{{ variables.task }}"
-`;
-		const workflowPath = path.join(tempDir, "all-vars-provided.yaml");
-		writeFileSync(workflowPath, yamlContent);
+`,
+		);
 
 		const { cmdRun } = await import("../src/commands/run.js");
 
-		// Should not throw — all required vars are provided
 		await cmdRun({
 			workflow: workflowPath,
 			bareVars: ["task=hello"],
 			interactive: false,
 		});
-
-		// process.exit should not have been called
-		expect(exitSpy).not.toHaveBeenCalled();
 	});
 
 	it("does not error for optional variables when not provided", async () => {
-		const yamlContent = `
+		const workflowPath = writeTempWorkflow(
+			tempDir,
+			"optional-vars",
+			`
 name: optional-vars-workflow
 version: "1.0"
 description: Optional variable test
@@ -205,18 +215,218 @@ steps:
   - name: test
     type: prompt
     prompt: "Test"
-`;
-		const workflowPath = path.join(tempDir, "optional-vars-workflow.yaml");
-		writeFileSync(workflowPath, yamlContent);
+`,
+		);
 
 		const { cmdRun } = await import("../src/commands/run.js");
 
-		// Optional variable missing — should not error or prompt
 		await cmdRun({
 			workflow: workflowPath,
 			interactive: false,
 		});
+	});
+});
 
-		expect(exitSpy).not.toHaveBeenCalled();
+// --- cmdRun interactive prompt tests ---
+
+describe("cmdRun interactive mode", () => {
+	let tempDir: string;
+	const originalIsTTY = process.stdin.isTTY;
+
+	beforeEach(() => {
+		tempDir = mkdtempSync(path.join(os.tmpdir(), "run-test-interactive-"));
+		mockExecutorRun.mockResolvedValue({
+			status: "completed",
+			workflowId: "test-id",
+			workflowName: "test-workflow",
+			variables: {},
+			errors: [],
+		});
+		mockConfirm.mockReset();
+		mockInput.mockReset();
+		// Simulate TTY for interactive tests
+		Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+	});
+
+	afterEach(() => {
+		Object.defineProperty(process.stdin, "isTTY", {
+			value: originalIsTTY,
+			configurable: true,
+		});
+		vi.restoreAllMocks();
+	});
+
+	it("prompts for missing required string variable with input()", async () => {
+		mockInput.mockResolvedValue("user-provided-value");
+
+		const workflowPath = writeTempWorkflow(
+			tempDir,
+			"interactive-string",
+			`
+name: interactive-string
+version: "1.0"
+description: Interactive string test
+variables:
+  - name: task
+    type: string
+    required: true
+    description: The task to perform
+steps:
+  - name: test
+    type: prompt
+    prompt: "{{ variables.task }}"
+`,
+		);
+
+		const { cmdRun } = await import("../src/commands/run.js");
+
+		await cmdRun({
+			workflow: workflowPath,
+			interactive: true,
+		});
+
+		expect(mockInput).toHaveBeenCalledWith({ message: "The task to perform:" });
+		expect(mockExecutorRun).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ task: "user-provided-value" }),
+			null,
+			"base",
+			expect.any(String),
+		);
+	});
+
+	it("prompts for missing required boolean variable with confirm()", async () => {
+		mockConfirm.mockResolvedValue(true);
+
+		const workflowPath = writeTempWorkflow(
+			tempDir,
+			"interactive-bool",
+			`
+name: interactive-bool
+version: "1.0"
+description: Interactive boolean test
+variables:
+  - name: create_pr
+    type: boolean
+    required: true
+    description: Create a pull request?
+steps:
+  - name: test
+    type: prompt
+    prompt: "{{ variables.create_pr }}"
+`,
+		);
+
+		const { cmdRun } = await import("../src/commands/run.js");
+
+		await cmdRun({
+			workflow: workflowPath,
+			interactive: true,
+		});
+
+		expect(mockConfirm).toHaveBeenCalledWith({
+			message: "Create a pull request?:",
+			default: false,
+		});
+		expect(mockExecutorRun).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ create_pr: "true" }),
+			null,
+			"base",
+			expect.any(String),
+		);
+	});
+
+	it("uses variable name as label when description is absent", async () => {
+		mockInput.mockResolvedValue("val");
+
+		const workflowPath = writeTempWorkflow(
+			tempDir,
+			"interactive-no-desc",
+			`
+name: interactive-no-desc
+version: "1.0"
+description: No description test
+variables:
+  - name: my_var
+    type: string
+    required: true
+steps:
+  - name: test
+    type: prompt
+    prompt: "{{ variables.my_var }}"
+`,
+		);
+
+		const { cmdRun } = await import("../src/commands/run.js");
+
+		await cmdRun({
+			workflow: workflowPath,
+			interactive: true,
+		});
+
+		expect(mockInput).toHaveBeenCalledWith({ message: "my_var:" });
+	});
+
+	it("does not prompt for variables already provided", async () => {
+		const workflowPath = writeTempWorkflow(
+			tempDir,
+			"interactive-provided",
+			`
+name: interactive-provided
+version: "1.0"
+description: Provided variable test
+variables:
+  - name: task
+    type: string
+    required: true
+steps:
+  - name: test
+    type: prompt
+    prompt: "{{ variables.task }}"
+`,
+		);
+
+		const { cmdRun } = await import("../src/commands/run.js");
+
+		await cmdRun({
+			workflow: workflowPath,
+			bareVars: ["task=already-set"],
+			interactive: true,
+		});
+
+		expect(mockInput).not.toHaveBeenCalled();
+		expect(mockConfirm).not.toHaveBeenCalled();
+	});
+
+	it("does not prompt for required variables with defaults", async () => {
+		const workflowPath = writeTempWorkflow(
+			tempDir,
+			"interactive-default",
+			`
+name: interactive-default
+version: "1.0"
+description: Default value test
+variables:
+  - name: task
+    type: string
+    required: true
+    default: fallback-value
+steps:
+  - name: test
+    type: prompt
+    prompt: "{{ variables.task }}"
+`,
+		);
+
+		const { cmdRun } = await import("../src/commands/run.js");
+
+		await cmdRun({
+			workflow: workflowPath,
+			interactive: true,
+		});
+
+		expect(mockInput).not.toHaveBeenCalled();
+		expect(mockConfirm).not.toHaveBeenCalled();
 	});
 });

@@ -4,9 +4,21 @@ import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { confirm, input } from "@inquirer/prompts";
+import confirm from "@inquirer/confirm";
+import input from "@inquirer/input";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Error that signals the CLI should exit with a specific code. */
+export class CliExitError extends Error {
+	constructor(
+		message: string,
+		public readonly exitCode: number = 1,
+	) {
+		super(message);
+		this.name = "CliExitError";
+	}
+}
 
 export function getBundledWorkflowsDir(): string {
 	return path.join(__dirname, "..", "workflows");
@@ -102,7 +114,7 @@ export function parseVars(bareVars?: string[], vars?: string[]): Record<string, 
 
 	function parseOne(v: string): void {
 		if (!v.includes("=")) {
-			throw new Error(`Error: Invalid variable format: ${v}\nExpected format: key=value`);
+			throw new CliExitError(`Error: Invalid variable format: ${v}\nExpected format: key=value`);
 		}
 		const eqIndex = v.indexOf("=");
 		variables[v.slice(0, eqIndex)] = v.slice(eqIndex + 1);
@@ -164,9 +176,9 @@ export async function cmdRun(options: {
 
 	// Validate workflow argument is provided
 	if (!options.workflow) {
-		process.stderr.write("Error: workflow name or path is required\n");
-		process.stderr.write("Use 'agentic-forge run --list' to see available workflows\n");
-		process.exit(1);
+		throw new CliExitError(
+			"Error: workflow name or path is required\nUse 'agentic-forge run --list' to see available workflows",
+		);
 	}
 
 	const { WorkflowExecutor } = await import("../executor.js");
@@ -175,24 +187,23 @@ export async function cmdRun(options: {
 	const [workflowPath, locationType] = resolveWorkflowPath(options.workflow);
 
 	if (!existsSync(workflowPath)) {
-		process.stderr.write(`Error: Workflow not found: ${options.workflow}\n`);
-		process.stderr.write("\nAvailable workflows:\n");
+		const lines = [`Error: Workflow not found: ${options.workflow}`, "", "Available workflows:"];
 
 		const workflows = listAvailableWorkflows();
 		if (workflows.length > 0) {
 			for (const [name, , location] of workflows.slice(0, 10)) {
-				process.stderr.write(`  ${name} (${location})\n`);
+				lines.push(`  ${name} (${location})`);
 			}
 			if (workflows.length > 10) {
-				process.stderr.write(`  ... and ${workflows.length - 10} more\n`);
+				lines.push(`  ... and ${workflows.length - 10} more`);
 			}
 		} else {
-			process.stderr.write("  (no workflows found)\n");
+			lines.push("  (no workflows found)");
 		}
 
-		process.stderr.write("\nUse 'agentic-forge run --list' to see all workflows.\n");
-		process.stderr.write("Use 'agentic-forge init' to copy bundled workflows locally.\n");
-		process.exit(1);
+		lines.push("", "Use 'agentic-forge run --list' to see all workflows.");
+		lines.push("Use 'agentic-forge init' to copy bundled workflows locally.");
+		throw new CliExitError(lines.join("\n"));
 	}
 
 	// Show which workflow is being used
@@ -201,14 +212,7 @@ export async function cmdRun(options: {
 	}
 
 	// Parse variables
-	let variables: Record<string, string>;
-	try {
-		variables = parseVars(options.bareVars, options.vars);
-	} catch (e: unknown) {
-		const msg = e instanceof Error ? e.message : String(e);
-		process.stderr.write(`${msg}\n`);
-		process.exit(1);
-	}
+	const variables = parseVars(options.bareVars, options.vars);
 
 	let workflow: import("../types.js").WorkflowDefinition;
 	try {
@@ -216,8 +220,7 @@ export async function cmdRun(options: {
 		workflow = parser.parseFile(workflowPath);
 	} catch (e: unknown) {
 		if (e instanceof WorkflowParseError) {
-			process.stderr.write(`Error parsing workflow: ${e.message}\n`);
-			process.exit(1);
+			throw new CliExitError(`Error parsing workflow: ${e.message}`);
 		}
 		throw e;
 	}
@@ -232,25 +235,24 @@ export async function cmdRun(options: {
 
 		// Required variable is missing
 		if (!isInteractive) {
-			process.stderr.write(`Error: Missing required variable: ${v.name}\n`);
+			const lines = [`Error: Missing required variable: ${v.name}`];
 			if (v.description) {
-				process.stderr.write(`  Description: ${v.description}\n`);
+				lines.push(`  Description: ${v.description}`);
 			}
-			process.stderr.write(`  Usage: agentic-forge run ${options.workflow} ${v.name}="<value>"\n`);
-			process.exit(1);
+			lines.push(`  Usage: agentic-forge run ${options.workflow} ${v.name}="<value>"`);
+			throw new CliExitError(lines.join("\n"));
 		}
 
 		const label = v.description || v.name;
 		if (v.type === "boolean") {
 			const answer = await confirm({
 				message: `${label}:`,
-				default: typeof v.default === "boolean" ? v.default : false,
+				default: false,
 			});
 			variables[v.name] = String(answer);
 		} else {
 			const answer = await input({
 				message: `${label}:`,
-				default: v.default != null ? String(v.default) : undefined,
 			});
 			variables[v.name] = answer;
 		}
@@ -284,7 +286,6 @@ export async function cmdRun(options: {
 		}
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
-		process.stderr.write(`Error running workflow: ${msg}\n`);
-		process.exit(1);
+		throw new CliExitError(`Error running workflow: ${msg}`);
 	}
 }
