@@ -3,6 +3,7 @@ name: Publish
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -40,6 +41,11 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Debug npm auth
+        run: |
+          npm whoami --registry https://registry.npmjs.org 2>&1 || true
+          npm publish --dry-run --provenance --access public 2>&1 || true
 
       - name: Create release PR or publish
         uses: changesets/action@v1
