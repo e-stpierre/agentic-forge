@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0
+## 0.7.1
 
 - Added bare `key=value` argument support for passing workflow variables without the `--var` flag
 - Added interactive prompts for missing required workflow variables when running in a TTY
