@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
 import { ConsoleOutput, OutputLevel } from "./console.js";
 import { WorkflowLogger } from "./logging/logger.js";
-import { getOutputDir } from "./paths.js";
+import { getOutputDir, resolveOutputDir } from "./paths.js";
 import {
 	STEP_STATUS,
 	WORKFLOW_STATUS,
@@ -141,6 +141,7 @@ export class WorkflowExecutor {
 		terminalOutput = "base",
 		workflowFile = "",
 		resumeProgress?: WorkflowProgress | null,
+		slug?: string,
 	): Promise<WorkflowProgress> {
 		let vars = variables ? { ...variables } : {};
 		this.workflowSettings = workflow.settings;
@@ -176,12 +177,16 @@ export class WorkflowExecutor {
 				}
 			}
 
-			workflowId = generateWorkflowId(workflow.name);
+			workflowId = generateWorkflowId(workflow.name, slug);
 			const stepNames = workflow.steps.map((s) => s.name);
 			progress = createProgress(workflowId, workflow.name, stepNames, vars, workflowFile);
 		}
 
-		const outputDir = getOutputDir(workflowId, this.config, this.repoRoot);
+		// Resolve output dir, handling collisions with resolveOutputDir
+		const baseOutputDir =
+			resumeProgress?.outputDir ?? getOutputDir(workflowId, this.config, this.repoRoot);
+		const outputDir = resumeProgress ? baseOutputDir : resolveOutputDir(baseOutputDir);
+		progress.outputDir = outputDir;
 		saveProgress(progress, outputDir);
 
 		const logger = new WorkflowLogger(workflowId, outputDir);
@@ -290,7 +295,8 @@ export class WorkflowExecutor {
 		const pluginTemplates = path.join(__dirname, "templates");
 		const templateDirs = [pluginTemplates, this.repoRoot];
 
-		const outputDir = getOutputDir(progress.workflowId, this.config, this.repoRoot);
+		const outputDir =
+			progress.outputDir ?? getOutputDir(progress.workflowId, this.config, this.repoRoot);
 
 		for (const output of workflow.outputs) {
 			if (output.when === "completed" && progress.status !== WORKFLOW_STATUS.COMPLETED) {
@@ -347,7 +353,10 @@ export class WorkflowExecutor {
 		logger.info(step.name, `Starting step: ${step.name}`);
 		console.stepStart(step.name, step.type, resolvedModel);
 		updateStepStarted(progress, step.name);
-		saveProgress(progress, getOutputDir(progress.workflowId, this.config, this.repoRoot));
+		saveProgress(
+			progress,
+			progress.outputDir ?? getOutputDir(progress.workflowId, this.config, this.repoRoot),
+		);
 
 		const executor = this.executors[step.type];
 		if (!executor) {

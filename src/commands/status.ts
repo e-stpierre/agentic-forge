@@ -4,12 +4,23 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { loadConfig } from "../config.js";
-import { getOutputDir } from "../paths.js";
+import { findOutputDir, getGlobalRoot, getOutputRoot, slugifyCwdName } from "../paths.js";
 import { WORKFLOW_STATUS, loadProgress, saveProgress } from "../progress.js";
 
+/**
+ * Locates the output directory for a workflow by searching both local and global locations.
+ * If the progress.json contains a stored outputDir, that is used directly.
+ */
+function resolveWorkflowOutputDir(workflowId: string): string | null {
+	return findOutputDir(workflowId, process.cwd());
+}
+
 export function cmdStatus(workflowId: string): void {
-	const config = loadConfig(process.cwd());
-	const outputDir = getOutputDir(workflowId, config, process.cwd());
+	const outputDir = resolveWorkflowOutputDir(workflowId);
+	if (outputDir === null) {
+		process.stderr.write(`Error: Workflow not found: ${workflowId}\n`);
+		process.exit(1);
+	}
 	const progress = loadProgress(workflowId, outputDir);
 	if (progress === null) {
 		process.stderr.write(`Error: Workflow not found: ${workflowId}\n`);
@@ -54,8 +65,11 @@ export function cmdStatus(workflowId: string): void {
 }
 
 export function cmdCancel(workflowId: string): void {
-	const config = loadConfig(process.cwd());
-	const outputDir = getOutputDir(workflowId, config, process.cwd());
+	const outputDir = resolveWorkflowOutputDir(workflowId);
+	if (outputDir === null) {
+		process.stderr.write(`Error: Workflow not found: ${workflowId}\n`);
+		process.exit(1);
+	}
 	const progress = loadProgress(workflowId, outputDir);
 	if (progress === null) {
 		process.stderr.write(`Error: Workflow not found: ${workflowId}\n`);
@@ -74,23 +88,29 @@ export function cmdCancel(workflowId: string): void {
 	process.stdout.write(`Workflow canceled: ${workflowId}\n`);
 }
 
-export function cmdList(statusFilter?: string): void {
-	const outputsDir = path.join(process.cwd(), "agentic", "outputs");
-	if (!existsSync(outputsDir)) {
-		process.stdout.write("No workflows found.\n");
-		return;
-	}
+interface WorkflowEntry {
+	data: Record<string, unknown>;
+	location: "local" | "global";
+}
 
-	const workflows: Record<string, unknown>[] = [];
-	const entries = readdirSync(outputsDir, { withFileTypes: true });
-	for (const entry of entries) {
+function scanOutputsDir(
+	outputsDir: string,
+	location: "local" | "global",
+	statusFilter?: string,
+): WorkflowEntry[] {
+	const entries: WorkflowEntry[] = [];
+	if (!existsSync(outputsDir)) {
+		return entries;
+	}
+	const dirs = readdirSync(outputsDir, { withFileTypes: true });
+	for (const entry of dirs) {
 		if (entry.isDirectory()) {
 			const progressFile = path.join(outputsDir, entry.name, "progress.json");
 			if (existsSync(progressFile)) {
 				try {
 					const data = JSON.parse(readFileSync(progressFile, "utf-8")) as Record<string, unknown>;
 					if (statusFilter == null || data.status === statusFilter) {
-						workflows.push(data);
+						entries.push({ data, location });
 					}
 				} catch {
 					// Skip corrupted progress files
@@ -98,24 +118,73 @@ export function cmdList(statusFilter?: string): void {
 			}
 		}
 	}
+	return entries;
+}
 
-	if (workflows.length === 0) {
+export function cmdList(statusFilter?: string): void {
+	const cwd = process.cwd();
+	const config = loadConfig(cwd);
+	const localOutputsDir = path.join(cwd, "agentic", "outputs");
+	const globalOutputsDir = path.join(getGlobalRoot(), "outputs", slugifyCwdName(cwd));
+
+	const localEntries = scanOutputsDir(localOutputsDir, "local", statusFilter);
+	const globalEntries = scanOutputsDir(globalOutputsDir, "global", statusFilter);
+
+	// Deduplicate: if same workflow_id appears in both, prefer local (already first)
+	const seenIds = new Set<string>();
+	const allEntries: WorkflowEntry[] = [];
+	for (const entry of [...localEntries, ...globalEntries]) {
+		const id = String(entry.data.workflow_id ?? "");
+		if (!seenIds.has(id)) {
+			seenIds.add(id);
+			allEntries.push(entry);
+		}
+	}
+
+	if (allEntries.length === 0) {
 		const suffix = statusFilter ? ` (status=${statusFilter})` : "";
 		process.stdout.write(`No workflows found.${suffix}\n`);
 		return;
 	}
 
-	process.stdout.write(
-		`${"ID".padEnd(12)} ${"Name".padEnd(25)} ${"Status".padEnd(12)} ${"Started".padEnd(20)}\n`,
-	);
-	process.stdout.write(`${"-".repeat(70)}\n`);
-	for (const wf of workflows) {
-		const id = String(wf.workflow_id ?? "").padEnd(12);
-		const name = String(wf.workflow_name ?? "")
-			.slice(0, 25)
-			.padEnd(25);
-		const status = String(wf.status ?? "").padEnd(12);
-		const started = wf.started_at ? String(wf.started_at).slice(0, 19).padEnd(20) : "".padEnd(20);
-		process.stdout.write(`${id} ${name} ${status} ${started}\n`);
+	// Group by location for display
+	const byLocation: Record<string, WorkflowEntry[]> = { local: [], global: [] };
+	for (const entry of allEntries) {
+		byLocation[entry.location].push(entry);
 	}
+
+	const header = `${"ID".padEnd(32)} ${"Name".padEnd(25)} ${"Status".padEnd(12)} ${"Started".padEnd(20)}\n`;
+	const divider = `${"-".repeat(90)}\n`;
+
+	let hasOutput = false;
+
+	if (byLocation.local.length > 0) {
+		process.stdout.write("Local runs:\n");
+		process.stdout.write(header);
+		process.stdout.write(divider);
+		for (const { data: wf } of byLocation.local) {
+			writeWorkflowRow(wf);
+		}
+		hasOutput = true;
+	}
+
+	if (byLocation.global.length > 0) {
+		if (hasOutput) process.stdout.write("\n");
+		process.stdout.write("Global runs:\n");
+		process.stdout.write(header);
+		process.stdout.write(divider);
+		for (const { data: wf } of byLocation.global) {
+			writeWorkflowRow(wf);
+		}
+	}
+}
+
+function writeWorkflowRow(wf: Record<string, unknown>): void {
+	const id = String(wf.workflow_id ?? "").padEnd(32);
+	const name = String(wf.workflow_name ?? "")
+		.slice(0, 25)
+		.padEnd(25);
+	const status = String(wf.status ?? "").padEnd(12);
+	const started = wf.started_at ? String(wf.started_at).slice(0, 19).padEnd(20) : "".padEnd(20);
+	process.stdout.write(`${id} ${name} ${status} ${started}\n`);
 }

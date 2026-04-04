@@ -166,6 +166,24 @@ export function sanitizeSlug(input: string): string {
 }
 
 /**
+ * Searches both local and global output directories for a workflow's progress file.
+ * Local is checked first, then global. Returns the matching output dir path or null.
+ */
+export function findOutputDir(workflowId: string, cwd?: string): string | null {
+	const cWd = cwd ?? process.cwd();
+	const candidates = [
+		path.join(cWd, "agentic", "outputs", workflowId),
+		path.join(getGlobalRoot(), "outputs", slugifyCwdName(cWd), workflowId),
+	];
+	for (const dir of candidates) {
+		if (existsSync(path.join(dir, "progress.json"))) {
+			return dir;
+		}
+	}
+	return null;
+}
+
+/**
  * Returns a non-colliding output directory path.
  * If baseDir exists, appends -2, -3, etc. until a free path is found.
  */

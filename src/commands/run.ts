@@ -134,6 +134,7 @@ export async function cmdRun(options: {
 	fromStep?: string;
 	interactive?: boolean;
 	terminalOutput?: string;
+	slug?: string;
 }): Promise<void> {
 	// Handle --list flag
 	if (options.listWorkflows) {
@@ -274,6 +275,8 @@ export async function cmdRun(options: {
 			options.fromStep ?? null,
 			terminalOutput,
 			path.resolve(workflowPath),
+			null,
+			options.slug,
 		);
 		process.stdout.write(`\nWorkflow ${progress.status}: ${progress.workflowId}\n`);
 		if (progress.errors && progress.errors.length > 0) {

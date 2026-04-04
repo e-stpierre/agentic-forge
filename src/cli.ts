@@ -25,6 +25,7 @@ import {
 	cmdInit,
 	cmdInput,
 	cmdList,
+	cmdPaths,
 	cmdReleaseNotes,
 	cmdResume,
 	cmdRun,
@@ -54,6 +55,7 @@ program
 	.option("--from-step <step>", "resume from a specific step")
 	.option("--no-interactive", "disable interactive prompts for missing variables")
 	.option("--terminal-output <mode>", "terminal output granularity (base or all)")
+	.option("--slug <slug>", "custom slug appended to the workflow run ID")
 	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
@@ -63,6 +65,7 @@ program
 			fromStep: optString(opts.fromStep),
 			interactive: opts.interactive !== false,
 			terminalOutput: optString(opts.terminalOutput),
+			slug: optString(opts.slug),
 		});
 	});
 
@@ -122,13 +125,23 @@ program
 // init command
 program
 	.command("init")
-	.description("Copy bundled workflow templates to local project")
-	.option("--force", "overwrite existing workflow files")
+	.description("Initialize agentic-forge directory (global by default, or --local for project)")
+	.option("--force", "overwrite existing workflow files and config")
 	.option("--list", "list available bundled workflows without copying")
+	.option("--local", "initialize project-local directory (cwd/agentic/)")
+	.option("--global", "initialize global user directory (default)")
+	.option("--config-only", "only create config, skip workflow copy")
+	.option("--workflows-only", "only copy workflows, skip config creation")
+	.option("--workflow <name>", "copy only the named bundled workflow")
 	.action((opts: Record<string, unknown>) => {
 		cmdInit({
 			force: optBool(opts.force),
 			listOnly: optBool(opts.list),
+			local: optBool(opts.local),
+			global: optBool(opts.global),
+			configOnly: optBool(opts.configOnly),
+			workflowsOnly: optBool(opts.workflowsOnly),
+			workflow: optString(opts.workflow),
 		});
 	});
 
@@ -175,6 +188,14 @@ program
 			specificVersion,
 			latest: optBool(opts.latest),
 		});
+	});
+
+// paths command
+program
+	.command("paths")
+	.description("Show resolved path configuration (global, local, and bundled directories)")
+	.action(() => {
+		cmdPaths();
 	});
 
 // skills-dir command

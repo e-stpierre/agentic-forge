@@ -149,4 +149,5 @@ export interface WorkflowProgress {
 	variables: Record<string, unknown>;
 	stepOutputs: Record<string, unknown>;
 	workflowFile: string;
+	outputDir?: string;
 }

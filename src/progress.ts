@@ -3,6 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { lockSync } from "proper-lockfile";
+import { sanitizeSlug } from "./paths.js";
 import type { CurrentStepInfo, ParallelBranch, StepProgress, WorkflowProgress } from "./types.js";
 
 // --- Constants ---
@@ -26,13 +27,18 @@ export const STEP_STATUS = {
 
 // --- ID and path helpers ---
 
-export function generateWorkflowId(workflowName: string): string {
+export function generateWorkflowId(workflowName: string, slug?: string): string {
 	const now = new Date();
 	const pad = (n: number, len = 2) => String(n).padStart(len, "0");
 	const timestamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}`;
 
 	let safeName = workflowName.toLowerCase().replace(/ /g, "-").replace(/_/g, "-");
 	safeName = safeName.replace(/[^a-z0-9-]/g, "");
+
+	if (slug) {
+		const safeSlug = sanitizeSlug(slug);
+		return `${timestamp}-${safeName}-${safeSlug}`;
+	}
 	return `${timestamp}-${safeName}`;
 }
 
@@ -263,6 +269,7 @@ export function progressToDict(progress: WorkflowProgress): Record<string, unkno
 		variables: progress.variables,
 		step_outputs: progress.stepOutputs,
 		workflow_file: progress.workflowFile,
+		output_dir: progress.outputDir,
 	};
 }
 
@@ -319,5 +326,6 @@ export function dictToProgress(data: Record<string, unknown>): WorkflowProgress 
 		variables: (data.variables as Record<string, unknown>) ?? {},
 		stepOutputs: (data.step_outputs as Record<string, unknown>) ?? {},
 		workflowFile: (data.workflow_file as string) ?? "",
+		outputDir: (data.output_dir as string) ?? undefined,
 	};
 }
