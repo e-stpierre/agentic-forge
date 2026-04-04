@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- Added bare `key=value` argument support for passing workflow variables without the `--var` flag
+- Added interactive prompts for missing required workflow variables when running in a TTY
+- Added `--no-interactive` flag to disable interactive prompts in scripts and CI
+- Updated `workflows --verbose` to show variable type, default value, and description per variable
+- Updated usage examples in CLI help and `workflows` command output
+
 ## 0.7.0
 
 - **Breaking:** Full rewrite from Python to TypeScript/Node.js
