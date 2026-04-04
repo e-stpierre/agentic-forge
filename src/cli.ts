@@ -17,6 +17,7 @@ function optStringArray(val: unknown): string[] | undefined {
 }
 
 import {
+	cmdAuthoringDir,
 	cmdCancel,
 	cmdConfig,
 	cmdConfigure,
@@ -171,6 +172,14 @@ program
 	.description("Print path to bundled skills directory")
 	.action(() => {
 		cmdSkillsDir();
+	});
+
+// authoring-dir command
+program
+	.command("authoring-dir")
+	.description("Print path to interactive authoring skills directory")
+	.action(() => {
+		cmdAuthoringDir();
 	});
 
 // update command

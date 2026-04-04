@@ -22,13 +22,17 @@ TypeScript source code for the CLI and workflow orchestration engine.
 
 Bundled sub-agent configurations for specialized, autonomous task execution (`explorer.md`, `reviewer.md`). Agents should be self-contained and focused on a specific domain or task.
 
+#### `authoring/.claude/skills/`
+
+Interactive authoring skills for users to create and manage workflows (e.g., `workflow-builder`). Exposed via the `authoring-dir` CLI command. These are not used by the workflow engine.
+
 #### `claude/.claude/skills/`
 
-Bundled skills loaded via `--add-dir`. Skills are reusable Claude Code slash commands. Each skill is a directory in kebab-case containing a `SKILL.md` file.
+Bundled workflow execution skills loaded via `--add-dir`. Skills are reusable Claude Code slash commands. Each skill is a directory in kebab-case containing a `SKILL.md` file. These are used by the workflow engine during execution.
 
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `skills-dir`, `workflows`, etc.).
+CLI command implementations (`run`, `init`, `update`, `skills-dir`, `authoring-dir`, `workflows`, etc.).
 
 #### `prompts/`
 
