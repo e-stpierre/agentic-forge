@@ -7,7 +7,8 @@
     "agentic-forge": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "agentic-forge-banner.png"
   ],
   "scripts": {
     "build": "tsc && node scripts/copy-assets.js",
