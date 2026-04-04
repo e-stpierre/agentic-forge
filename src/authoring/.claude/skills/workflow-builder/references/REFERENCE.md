@@ -57,7 +57,7 @@ settings:
 
 ## Variables
 
-Define input parameters for the workflow. Passed via `--var "name=value"` on the CLI.
+Define input parameters for the workflow. Passed as bare `key=value` args or via `--var "name=value"` on the CLI. Missing required variables are prompted interactively when running in a TTY (disable with `--no-interactive`).
 
 | Key           | Required | Type   | Default    | Description                           |
 | ------------- | -------- | ------ | ---------- | ------------------------------------- |
@@ -398,8 +398,8 @@ outputs:
 ## CLI Commands
 
 ```bash
-# Run a workflow
-agentic-forge run <workflow-name-or-path> --var "key=value" [--from-step <name>] [--terminal-output base|all]
+# Run a workflow (bare key=value args or --var flag)
+agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--from-step <name>] [--no-interactive] [--terminal-output base|all]
 
 # Resume a paused/failed workflow
 agentic-forge resume <workflow-id>
@@ -421,6 +421,12 @@ agentic-forge workflows [-v]
 
 # Copy bundled workflows to local project
 agentic-forge init [--force] [--list]
+
+# Print path to bundled workflow skills directory
+agentic-forge skills-dir
+
+# Print path to interactive authoring skills directory
+agentic-forge authoring-dir
 
 # Configuration
 agentic-forge config get <key>

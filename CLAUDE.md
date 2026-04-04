@@ -120,8 +120,8 @@ pnpm test           # Vitest tests
 
 When modifying the workflow engine in `src/`, you must update the workflow-builder skill reference files to keep them in sync:
 
-- `src/claude/.claude/skills/workflow-builder/references/REFERENCE.md` - Complete schema reference
-- `src/claude/.claude/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
+- `src/authoring/.claude/skills/workflow-builder/references/REFERENCE.md` - Complete schema reference
+- `src/authoring/.claude/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
 
 Changes to workflow settings, step types, or features require updates to both files.
 

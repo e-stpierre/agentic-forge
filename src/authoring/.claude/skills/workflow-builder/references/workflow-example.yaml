@@ -354,24 +354,31 @@ outputs:
 
 # ==================== USAGE EXAMPLES ====================
 #
-# Run with required variable:
+# Run with bare key=value args (preferred):
+#   agentic-forge run workflow-example.yaml task="Add user authentication"
+#
+# Run with --var flag (equivalent):
 #   agentic-forge run workflow-example.yaml --var "task=Add user authentication"
 #
-# Run with custom variables:
+# Run with multiple variables:
 #   agentic-forge run workflow-example.yaml \
-#     --var "task=Fix login bug" \
-#     --var "plan_type=bug" \
-#     --var "create_pr=true" \
-#     --var "max_iterations=15"
+#     task="Fix login bug" \
+#     plan_type=bug \
+#     create_pr=true \
+#     max_iterations=15
 #
 # Run with verbose output:
 #   agentic-forge run workflow-example.yaml \
-#     --var "task=Implement feature" \
+#     task="Implement feature" \
 #     --terminal-output all
+#
+# Disable interactive prompts (for CI/scripts):
+#   agentic-forge run workflow-example.yaml --no-interactive \
+#     task="Implement feature"
 #
 # Resume from specific step:
 #   agentic-forge run workflow-example.yaml \
-#     --var "task=Implement feature" \
+#     task="Implement feature" \
 #     --from-step review-implementation
 #
 # Provide human input:

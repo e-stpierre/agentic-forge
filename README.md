@@ -157,6 +157,20 @@ Agentic Forge separates skills into two directories:
 claude --add-dir $(agentic-forge authoring-dir)
 ```
 
+#### Using the workflow-builder skill
+
+Once the authoring skills are loaded, use the `/af-workflow-builder` slash command to create, update, explain, validate, or debug workflows:
+
+```text
+/af-workflow-builder create a workflow that plans and reviews a feature
+/af-workflow-builder validate my-workflow.yaml
+/af-workflow-builder explain how ralph-loop works
+/af-workflow-builder update my-workflow.yaml to add a parallel step
+/af-workflow-builder debug why my conditional always takes the else branch
+```
+
+The skill has full knowledge of the workflow schema, all step types, and bundled skills.
+
 ## Contributing
 
 - **Bug reports and suggestions** - [Open an issue](https://github.com/e-stpierre/agentic-forge/issues) on GitHub
