@@ -36,15 +36,14 @@ export function generateWorkflowId(workflowName: string): string {
 	return `${timestamp}-${safeName}`;
 }
 
-export function getProgressPath(workflowId: string, repoRoot?: string): string {
-	const root = repoRoot ?? process.cwd();
-	return path.join(root, "agentic", "outputs", workflowId, "progress.json");
+export function getProgressPath(workflowId: string, outputDir: string): string {
+	return path.join(outputDir, "progress.json");
 }
 
 // --- CRUD operations ---
 
-export function loadProgress(workflowId: string, repoRoot?: string): WorkflowProgress | null {
-	const progressPath = getProgressPath(workflowId, repoRoot);
+export function loadProgress(workflowId: string, outputDir: string): WorkflowProgress | null {
+	const progressPath = getProgressPath(workflowId, outputDir);
 	if (!existsSync(progressPath)) {
 		return null;
 	}
@@ -56,8 +55,8 @@ export function loadProgress(workflowId: string, repoRoot?: string): WorkflowPro
 	}
 }
 
-export function saveProgress(progress: WorkflowProgress, repoRoot?: string): void {
-	const progressPath = getProgressPath(progress.workflowId, repoRoot);
+export function saveProgress(progress: WorkflowProgress, outputDir: string): void {
+	const progressPath = getProgressPath(progress.workflowId, outputDir);
 	const dir = path.dirname(progressPath);
 	mkdirSync(dir, { recursive: true });
 

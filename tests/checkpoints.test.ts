@@ -29,14 +29,14 @@ beforeEach(() => {
 // --- getCheckpointPath ---
 
 describe("getCheckpointPath", () => {
-	it("should return path under agentic/outputs/<id>/checkpoint.md", () => {
+	it("should return checkpoint.md inside the given outputDir", () => {
 		const result = getCheckpointPath("wf-001", tempDir);
-		expect(result).toBe(path.join(tempDir, "agentic", "outputs", "wf-001", "checkpoint.md"));
+		expect(result).toBe(path.join(tempDir, "checkpoint.md"));
 	});
 
-	it("should default to process.cwd() when no repoRoot provided", () => {
-		const result = getCheckpointPath("wf-001");
-		expect(result).toBe(path.join(process.cwd(), "agentic", "outputs", "wf-001", "checkpoint.md"));
+	it("should always end with checkpoint.md", () => {
+		const result = getCheckpointPath("wf-001", tempDir);
+		expect(result).toMatch(/checkpoint\.md$/);
 	});
 });
 
@@ -77,29 +77,21 @@ describe("readCheckpoints", () => {
 
 describe("createCheckpoint", () => {
 	it("should create checkpoint file and return checkpoint id", () => {
-		const id = createCheckpoint("wf-001", "build", "some context", "50%", "", "", tempDir);
+		const id = createCheckpoint("wf-001", "build", "some context", "50%", tempDir);
 		expect(id).toBe("chk-001");
 		const chkPath = getCheckpointPath("wf-001", tempDir);
 		expect(existsSync(chkPath)).toBe(true);
 	});
 
 	it("should increment checkpoint number for subsequent checkpoints", () => {
-		const id1 = createCheckpoint("wf-002", "step1", "ctx1", "25%", "", "", tempDir);
-		const id2 = createCheckpoint("wf-002", "step2", "ctx2", "75%", "", "", tempDir);
+		const id1 = createCheckpoint("wf-002", "step1", "ctx1", "25%", tempDir);
+		const id2 = createCheckpoint("wf-002", "step2", "ctx2", "75%", tempDir);
 		expect(id1).toBe("chk-001");
 		expect(id2).toBe("chk-002");
 	});
 
 	it("should include context and progress sections", () => {
-		createCheckpoint(
-			"wf-003",
-			"build",
-			"Build context here",
-			"Build progress here",
-			"",
-			"",
-			tempDir,
-		);
+		createCheckpoint("wf-003", "build", "Build context here", "Build progress here", tempDir);
 		const content = readFileSync(getCheckpointPath("wf-003", tempDir), "utf-8");
 		expect(content).toContain("## Context");
 		expect(content).toContain("Build context here");
@@ -108,33 +100,33 @@ describe("createCheckpoint", () => {
 	});
 
 	it("should include notes section when provided", () => {
-		createCheckpoint("wf-004", "build", "ctx", "prog", "Some notes", "", tempDir);
+		createCheckpoint("wf-004", "build", "ctx", "prog", tempDir, "Some notes");
 		const content = readFileSync(getCheckpointPath("wf-004", tempDir), "utf-8");
 		expect(content).toContain("## Notes for Next Session");
 		expect(content).toContain("Some notes");
 	});
 
 	it("should not include notes section when empty", () => {
-		createCheckpoint("wf-005", "build", "ctx", "prog", "", "", tempDir);
+		createCheckpoint("wf-005", "build", "ctx", "prog", tempDir);
 		const content = readFileSync(getCheckpointPath("wf-005", tempDir), "utf-8");
 		expect(content).not.toContain("## Notes for Next Session");
 	});
 
 	it("should include issues section when provided", () => {
-		createCheckpoint("wf-006", "build", "ctx", "prog", "", "Bug found", tempDir);
+		createCheckpoint("wf-006", "build", "ctx", "prog", tempDir, "", "Bug found");
 		const content = readFileSync(getCheckpointPath("wf-006", tempDir), "utf-8");
 		expect(content).toContain("## Issues Discovered");
 		expect(content).toContain("Bug found");
 	});
 
 	it("should not include issues section when empty", () => {
-		createCheckpoint("wf-007", "build", "ctx", "prog", "", "", tempDir);
+		createCheckpoint("wf-007", "build", "ctx", "prog", tempDir);
 		const content = readFileSync(getCheckpointPath("wf-007", tempDir), "utf-8");
 		expect(content).not.toContain("## Issues Discovered");
 	});
 
 	it("should include frontmatter with step and workflow_id", () => {
-		createCheckpoint("wf-008", "deploy", "ctx", "prog", "", "", tempDir);
+		createCheckpoint("wf-008", "deploy", "ctx", "prog", tempDir);
 		const content = readFileSync(getCheckpointPath("wf-008", tempDir), "utf-8");
 		expect(content).toContain("step: deploy");
 		expect(content).toContain("workflow_id: wf-008");
@@ -145,7 +137,7 @@ describe("createCheckpoint", () => {
 	it("should create intermediate directories", () => {
 		const deepDir = path.join(tempDir, "deep", "nested");
 		// Don't create deepDir — let createCheckpoint handle it
-		const id = createCheckpoint("wf-009", "build", "ctx", "prog", "", "", deepDir);
+		const id = createCheckpoint("wf-009", "build", "ctx", "prog", deepDir);
 		expect(id).toBe("chk-001");
 		expect(existsSync(getCheckpointPath("wf-009", deepDir))).toBe(true);
 	});
@@ -155,7 +147,7 @@ describe("createCheckpoint", () => {
 
 describe("readCheckpoints with created data", () => {
 	it("should parse back a created checkpoint", () => {
-		createCheckpoint("wf-read", "build", "my context", "my progress", "", "", tempDir);
+		createCheckpoint("wf-read", "build", "my context", "my progress", tempDir);
 		const checkpoints = readCheckpoints("wf-read", tempDir);
 		expect(checkpoints).toHaveLength(1);
 		expect(checkpoints[0].checkpoint_id).toBe("chk-001");
@@ -166,9 +158,9 @@ describe("readCheckpoints with created data", () => {
 	});
 
 	it("should parse multiple checkpoints in order", () => {
-		createCheckpoint("wf-multi", "step1", "ctx1", "prog1", "", "", tempDir);
-		createCheckpoint("wf-multi", "step2", "ctx2", "prog2", "", "", tempDir);
-		createCheckpoint("wf-multi", "step3", "ctx3", "prog3", "", "", tempDir);
+		createCheckpoint("wf-multi", "step1", "ctx1", "prog1", tempDir);
+		createCheckpoint("wf-multi", "step2", "ctx2", "prog2", tempDir);
+		createCheckpoint("wf-multi", "step3", "ctx3", "prog3", tempDir);
 		const checkpoints = readCheckpoints("wf-multi", tempDir);
 		expect(checkpoints).toHaveLength(3);
 		expect(checkpoints[0].checkpoint_id).toBe("chk-001");
@@ -189,8 +181,8 @@ describe("getLatestCheckpoint", () => {
 	});
 
 	it("should return the last checkpoint", () => {
-		createCheckpoint("wf-latest", "step1", "ctx1", "prog1", "", "", tempDir);
-		createCheckpoint("wf-latest", "step2", "ctx2", "prog2", "", "", tempDir);
+		createCheckpoint("wf-latest", "step1", "ctx1", "prog1", tempDir);
+		createCheckpoint("wf-latest", "step2", "ctx2", "prog2", tempDir);
 		const latest = getLatestCheckpoint("wf-latest", tempDir);
 		expect(latest).not.toBeNull();
 		expect(latest?.checkpoint_id).toBe("chk-002");
@@ -198,7 +190,7 @@ describe("getLatestCheckpoint", () => {
 	});
 
 	it("should return the only checkpoint when there is one", () => {
-		createCheckpoint("wf-single", "only-step", "ctx", "prog", "", "", tempDir);
+		createCheckpoint("wf-single", "only-step", "ctx", "prog", tempDir);
 		const latest = getLatestCheckpoint("wf-single", tempDir);
 		expect(latest).not.toBeNull();
 		expect(latest?.checkpoint_id).toBe("chk-001");

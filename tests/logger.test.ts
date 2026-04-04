@@ -23,11 +23,10 @@ describe("LOG_LEVEL constants", () => {
 });
 
 describe("getLogPath", () => {
-	it("should return correct path", () => {
+	it("should return logs.ndjson inside the given outputDir", () => {
 		const tempDir = makeTempDir();
 		const p = getLogPath("test-workflow", tempDir);
-		const expected = path.join(tempDir, "agentic", "outputs", "test-workflow", "logs.ndjson");
-		expect(p).toBe(expected);
+		expect(p).toBe(path.join(tempDir, "logs.ndjson"));
 	});
 });
 

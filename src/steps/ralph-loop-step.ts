@@ -3,6 +3,7 @@
 import type { ConsoleOutput } from "../console.js";
 import { extractSummary } from "../console.js";
 import type { WorkflowLogger } from "../logging/logger.js";
+import { getOutputDir } from "../paths.js";
 import { WORKFLOW_STATUS, updateStepCompleted, updateStepFailed } from "../progress.js";
 import {
 	buildRalphSystemMessage,
@@ -64,8 +65,10 @@ export class RalphLoopStepExecutor extends StepExecutor {
 
 		const allOutputs: string[] = [];
 
+		const outputDir = getOutputDir(progress.workflowId, context.config, context.repoRoot);
+
 		// Check for existing ralph state to resume from
-		const existingState = loadRalphState(progress.workflowId, step.name, context.repoRoot);
+		const existingState = loadRalphState(progress.workflowId, step.name, outputDir);
 		let startIteration: number;
 		if (existingState?.active) {
 			startIteration = existingState.iteration;
@@ -99,7 +102,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 					prompt,
 					maxIterations,
 					completionPromise,
-					context.repoRoot,
+					outputDir,
 				);
 			}
 
@@ -126,10 +129,10 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				logger.warning(step.name, `Iteration ${iteration} failed: ${result.stderr}`);
 				console.ralphIteration(step.name, iteration, maxIterations, `Failed: ${errorSummary}`);
 				if (iteration < maxIterations) {
-					updateRalphIteration(progress.workflowId, step.name, context.repoRoot);
+					updateRalphIteration(progress.workflowId, step.name, outputDir);
 					continue;
 				}
-				deactivateRalphState(progress.workflowId, step.name, context.repoRoot);
+				deactivateRalphState(progress.workflowId, step.name, outputDir);
 				const errorMsg = `Ralph loop failed after ${maxIterations} iterations`;
 				console.stepFailed(step.name, errorMsg);
 				updateStepFailed(progress, step.name, errorMsg);
@@ -149,7 +152,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 			if (completionResult.isFailed) {
 				const errorMsg = `Ralph loop failed: ${completionResult.failureReason}`;
 				logger.error(step.name, errorMsg);
-				deactivateRalphState(progress.workflowId, step.name, context.repoRoot);
+				deactivateRalphState(progress.workflowId, step.name, outputDir);
 				const combinedOutput = allOutputs.join("\n\n---\n\n");
 				console.stepFailed(step.name, errorMsg);
 				updateStepFailed(progress, step.name, errorMsg);
@@ -159,7 +162,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 
 			if (completionResult.isComplete && completionResult.promiseMatched) {
 				logger.info(step.name, `Ralph loop completed at iteration ${iteration}`);
-				deactivateRalphState(progress.workflowId, step.name, context.repoRoot);
+				deactivateRalphState(progress.workflowId, step.name, outputDir);
 				const combinedOutput = allOutputs.join("\n\n---\n\n");
 				const outputSummary = `Completed in ${iteration} iterations`;
 				updateStepCompleted(progress, step.name, outputSummary, combinedOutput);
@@ -168,7 +171,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 			}
 
 			if (iteration < maxIterations) {
-				updateRalphIteration(progress.workflowId, step.name, context.repoRoot);
+				updateRalphIteration(progress.workflowId, step.name, outputDir);
 			}
 		}
 
@@ -176,7 +179,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 			step.name,
 			`Ralph loop reached max iterations (${maxIterations}) without completion`,
 		);
-		deactivateRalphState(progress.workflowId, step.name, context.repoRoot);
+		deactivateRalphState(progress.workflowId, step.name, outputDir);
 		const combinedOutput = allOutputs.join("\n\n---\n\n");
 		const outputSummary = `Max iterations (${maxIterations}) reached without completion promise`;
 		updateStepCompleted(progress, step.name, outputSummary, combinedOutput);

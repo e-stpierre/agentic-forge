@@ -3,6 +3,8 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { loadConfig } from "../config.js";
+import { getOutputDir } from "../paths.js";
 import { WORKFLOW_STATUS, loadProgress, prepareForResume, saveProgress } from "../progress.js";
 import { discoverWorkflow } from "./run.js";
 
@@ -13,7 +15,9 @@ export async function cmdResume(options: {
 	const { WorkflowExecutor } = await import("../executor.js");
 	const { WorkflowParser, WorkflowParseError } = await import("../parser.js");
 
-	const progress = loadProgress(options.workflowId);
+	const config = loadConfig(process.cwd());
+	const outputDir = getOutputDir(options.workflowId, config, process.cwd());
+	const progress = loadProgress(options.workflowId, outputDir);
 	if (progress === null) {
 		process.stderr.write(`Error: Workflow not found: ${options.workflowId}\n`);
 		process.exit(1);
@@ -67,7 +71,7 @@ export async function cmdResume(options: {
 
 	// Normalize state for resume
 	prepareForResume(progress);
-	saveProgress(progress);
+	saveProgress(progress, outputDir);
 
 	// Execute with resume
 	const executor = new WorkflowExecutor();

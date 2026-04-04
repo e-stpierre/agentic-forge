@@ -30,10 +30,9 @@ export class WorkflowLogger {
 	readonly workflowId: string;
 	readonly logPath: string;
 
-	constructor(workflowId: string, repoRoot?: string) {
+	constructor(workflowId: string, outputDir: string) {
 		this.workflowId = workflowId;
-		const root = repoRoot ?? process.cwd();
-		this.logPath = path.join(root, "agentic", "outputs", workflowId, "logs.ndjson");
+		this.logPath = path.join(outputDir, "logs.ndjson");
 		mkdirSync(path.dirname(this.logPath), { recursive: true });
 	}
 
@@ -72,8 +71,8 @@ export class WorkflowLogger {
 
 // --- Utility functions ---
 
-export function readLogs(workflowId: string, repoRoot?: string): LogEntry[] {
-	const logPath = getLogPath(workflowId, repoRoot);
+export function readLogs(workflowId: string, outputDir: string): LogEntry[] {
+	const logPath = getLogPath(workflowId, outputDir);
 	if (!existsSync(logPath)) {
 		return [];
 	}
@@ -93,7 +92,6 @@ export function readLogs(workflowId: string, repoRoot?: string): LogEntry[] {
 	return entries;
 }
 
-export function getLogPath(workflowId: string, repoRoot?: string): string {
-	const root = repoRoot ?? process.cwd();
-	return path.join(root, "agentic", "outputs", workflowId, "logs.ndjson");
+export function getLogPath(workflowId: string, outputDir: string): string {
+	return path.join(outputDir, "logs.ndjson");
 }

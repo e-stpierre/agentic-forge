@@ -3,10 +3,14 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
+import { loadConfig } from "../config.js";
+import { getOutputDir } from "../paths.js";
 import { WORKFLOW_STATUS, loadProgress, saveProgress } from "../progress.js";
 
 export function cmdStatus(workflowId: string): void {
-	const progress = loadProgress(workflowId);
+	const config = loadConfig(process.cwd());
+	const outputDir = getOutputDir(workflowId, config, process.cwd());
+	const progress = loadProgress(workflowId, outputDir);
 	if (progress === null) {
 		process.stderr.write(`Error: Workflow not found: ${workflowId}\n`);
 		process.exit(1);
@@ -50,7 +54,9 @@ export function cmdStatus(workflowId: string): void {
 }
 
 export function cmdCancel(workflowId: string): void {
-	const progress = loadProgress(workflowId);
+	const config = loadConfig(process.cwd());
+	const outputDir = getOutputDir(workflowId, config, process.cwd());
+	const progress = loadProgress(workflowId, outputDir);
 	if (progress === null) {
 		process.stderr.write(`Error: Workflow not found: ${workflowId}\n`);
 		process.exit(1);
@@ -63,7 +69,7 @@ export function cmdCancel(workflowId: string): void {
 
 	progress.status = WORKFLOW_STATUS.CANCELED;
 	progress.completedAt = new Date().toISOString();
-	saveProgress(progress);
+	saveProgress(progress, outputDir);
 
 	process.stdout.write(`Workflow canceled: ${workflowId}\n`);
 }

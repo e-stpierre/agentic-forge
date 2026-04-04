@@ -26,9 +26,9 @@ export interface CompletionResult {
 
 // --- State path ---
 
-export function getRalphStatePath(workflowId: string, stepName: string, repoRoot: string): string {
+export function getRalphStatePath(workflowId: string, stepName: string, outputDir: string): string {
 	const safeName = stepName.replace(/[^\w-]/g, "_");
-	return path.join(repoRoot, "agentic", "outputs", workflowId, `ralph-${safeName}.md`);
+	return path.join(outputDir, `ralph-${safeName}.md`);
 }
 
 // --- State management ---
@@ -39,7 +39,7 @@ export function createRalphState(
 	prompt: string,
 	maxIterations: number,
 	completionPromise: string,
-	repoRoot: string,
+	outputDir: string,
 ): RalphLoopState {
 	const state: RalphLoopState = {
 		active: true,
@@ -50,16 +50,16 @@ export function createRalphState(
 		prompt,
 	};
 
-	saveRalphState(workflowId, stepName, state, repoRoot);
+	saveRalphState(workflowId, stepName, state, outputDir);
 	return state;
 }
 
 export function loadRalphState(
 	workflowId: string,
 	stepName: string,
-	repoRoot: string,
+	outputDir: string,
 ): RalphLoopState | null {
-	const statePath = getRalphStatePath(workflowId, stepName, repoRoot);
+	const statePath = getRalphStatePath(workflowId, stepName, outputDir);
 	if (!existsSync(statePath)) return null;
 
 	const content = readFileSync(statePath, "utf-8");
@@ -69,26 +69,30 @@ export function loadRalphState(
 export function updateRalphIteration(
 	workflowId: string,
 	stepName: string,
-	repoRoot: string,
+	outputDir: string,
 ): RalphLoopState | null {
-	const state = loadRalphState(workflowId, stepName, repoRoot);
+	const state = loadRalphState(workflowId, stepName, outputDir);
 	if (!state) return null;
 
 	state.iteration += 1;
-	saveRalphState(workflowId, stepName, state, repoRoot);
+	saveRalphState(workflowId, stepName, state, outputDir);
 	return state;
 }
 
-export function deactivateRalphState(workflowId: string, stepName: string, repoRoot: string): void {
-	const state = loadRalphState(workflowId, stepName, repoRoot);
+export function deactivateRalphState(
+	workflowId: string,
+	stepName: string,
+	outputDir: string,
+): void {
+	const state = loadRalphState(workflowId, stepName, outputDir);
 	if (state) {
 		state.active = false;
-		saveRalphState(workflowId, stepName, state, repoRoot);
+		saveRalphState(workflowId, stepName, state, outputDir);
 	}
 }
 
-export function deleteRalphState(workflowId: string, stepName: string, repoRoot: string): void {
-	const statePath = getRalphStatePath(workflowId, stepName, repoRoot);
+export function deleteRalphState(workflowId: string, stepName: string, outputDir: string): void {
+	const statePath = getRalphStatePath(workflowId, stepName, outputDir);
 	if (existsSync(statePath)) {
 		unlinkSync(statePath);
 	}
@@ -100,9 +104,9 @@ function saveRalphState(
 	workflowId: string,
 	stepName: string,
 	state: RalphLoopState,
-	repoRoot: string,
+	outputDir: string,
 ): void {
-	const statePath = getRalphStatePath(workflowId, stepName, repoRoot);
+	const statePath = getRalphStatePath(workflowId, stepName, outputDir);
 	const dir = path.dirname(statePath);
 	mkdirSync(dir, { recursive: true });
 
