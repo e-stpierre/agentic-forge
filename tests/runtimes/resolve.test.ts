@@ -91,4 +91,16 @@ describe("resolveRuntime", () => {
 		// Empty string is falsy, so falls through to config default
 		expect(result).toBe("codex");
 	});
+
+	it("workflow settings.runtime is used when step is empty object (orchestrator pattern)", () => {
+		// The orchestrator calls resolveRuntime({}, workflow.settings, config, override)
+		// with an empty step object. settings.runtime must still be honored.
+		const result = resolveRuntime({}, { runtime: "codex" }, makeConfig("claude"), null);
+		expect(result).toBe("codex");
+	});
+
+	it("workflow settings.runtime is used when step is null", () => {
+		const result = resolveRuntime(null, { runtime: "codex" }, makeConfig("claude"), null);
+		expect(result).toBe("codex");
+	});
 });

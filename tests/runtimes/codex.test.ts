@@ -144,11 +144,13 @@ describe("CodexAdapter.parseStreamLine", () => {
 		expect(event?.text).toBe("Here is the result");
 	});
 
-	it("parses turn.completed as result event", () => {
+	it("parses turn.completed as result event with no text", () => {
 		const line = JSON.stringify({ type: "turn.completed" });
 		const event = adapter.parseStreamLine(line);
 		expect(event).not.toBeNull();
 		expect(event?.type).toBe("result");
+		// text must be undefined so process-runner falls back to accumulated streamed content
+		expect(event?.text).toBeUndefined();
 	});
 
 	it("parses error event", () => {

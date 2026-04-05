@@ -115,11 +115,12 @@ export class CodexAdapter implements RuntimeAdapter {
 			}
 		}
 
-		// Handle turn completion (end of response)
+		// Handle turn completion (end of response).
+		// text is omitted so process-runner uses the accumulated streamed content
+		// instead of overwriting it with an empty string.
 		if (eventType === "turn.completed") {
 			return {
 				type: "result",
-				text: "",
 			};
 		}
 

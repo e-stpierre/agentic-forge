@@ -288,7 +288,12 @@ export class WorkflowOrchestrator {
 
 		const defaults = this.config.defaults as Record<string, unknown> | undefined;
 		const maxRetry = (defaults?.maxRetry as number) ?? 3;
-		const orchestratorRuntimeId = resolveRuntime({}, {}, this.config, this.runtimeOverride);
+		const orchestratorRuntimeId = resolveRuntime(
+			{},
+			workflow.settings,
+			this.config,
+			this.runtimeOverride,
+		);
 		const orchestratorAdapter = getAdapter(orchestratorRuntimeId);
 		const orchestratorModel = this.resolveModel(null, orchestratorRuntimeId);
 
