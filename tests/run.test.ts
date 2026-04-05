@@ -92,16 +92,14 @@ function writeTempWorkflow(tempDir: string, name: string, yaml: string): string 
 // --- generateWorkflowId slug tests ---
 
 describe("generateWorkflowId with slug", () => {
-	it("includes slug in the workflow ID", () => {
+	it("uses slug as the workflow ID when provided", () => {
 		const id = generateWorkflowId("my-workflow", "my-slug");
-		expect(id).toMatch(/^\d{8}-\d{6}-my-workflow-my-slug$/);
+		expect(id).toBe("my-slug");
 	});
 
 	it("sanitizes the slug", () => {
 		const id = generateWorkflowId("demo", "Hello World!");
-		expect(id).toContain("hello-world");
-		expect(id).not.toContain(" ");
-		expect(id).not.toContain("!");
+		expect(id).toBe("hello-world");
 	});
 
 	it("generates ID without slug when not provided", () => {

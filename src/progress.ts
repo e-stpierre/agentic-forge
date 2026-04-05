@@ -36,8 +36,7 @@ export function generateWorkflowId(workflowName: string, slug?: string): string 
 	safeName = safeName.replace(/[^a-z0-9-]/g, "");
 
 	if (slug) {
-		const safeSlug = sanitizeSlug(slug);
-		return `${timestamp}-${safeName}-${safeSlug}`;
+		return sanitizeSlug(slug);
 	}
 	return `${timestamp}-${safeName}`;
 }

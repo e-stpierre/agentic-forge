@@ -49,8 +49,10 @@ af run demo
 Run a real workflow:
 
 ```bash
-af run plan-build-review --var "task=Add dark mode support"
+af run plan-build-review --var "task=Add dark mode support" --slug "dark-mode"
 ```
+
+The `--slug` flag names the output directory (e.g., `dark-mode/` instead of a generated timestamp ID), making it easy to find results later.
 
 ### Project Setup
 
