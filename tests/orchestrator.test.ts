@@ -6,13 +6,36 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StepDefinition, WorkflowDefinition } from "../src/types.js";
 
-// Mock runClaude at module level
-const mockRunClaude = vi.fn();
-vi.mock("../src/runner.js", async (importOriginal) => {
-	const original = await importOriginal<typeof import("../src/runner.js")>();
+// Mock runRuntime at module level
+const mockRunRuntime = vi.fn();
+vi.mock("../src/runtimes/process-runner.js", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../src/runtimes/process-runner.js")>();
 	return {
 		...original,
-		runClaude: mockRunClaude,
+		runRuntime: mockRunRuntime,
+	};
+});
+
+// Mock loadConfig to return predictable defaults
+vi.mock("../src/config.js", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../src/config.js")>();
+	return {
+		...original,
+		loadConfig: vi.fn(() => ({
+			outputDirectory: "global",
+			logging: { enabled: true, level: "Error" },
+			git: { mainBranch: "main", autoCommit: true, autoPr: true },
+			defaults: {
+				model: "sonnet",
+				runtime: "claude",
+				maxRetry: 3,
+				timeoutMinutes: 60,
+				trackProgress: true,
+				terminalOutput: "base",
+			},
+			codex: { sandbox: "workspace-write" },
+			execution: { maxWorkers: 4, pollingIntervalSeconds: 5 },
+		})),
 	};
 });
 

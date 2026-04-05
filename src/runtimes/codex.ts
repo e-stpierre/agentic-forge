@@ -3,8 +3,8 @@
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
-	RuntimeRunOptions,
 	RuntimeResult,
+	RuntimeRunOptions,
 	StreamEvent,
 } from "./types.js";
 import { SessionOutput } from "./types.js";
@@ -41,7 +41,7 @@ export class CodexAdapter implements RuntimeAdapter {
 		}
 	}
 
-	buildCommand(options: RuntimeRunOptions, sandbox: string = "workspace-write"): RuntimeCommand {
+	buildCommand(options: RuntimeRunOptions, sandbox = "workspace-write"): RuntimeCommand {
 		const { model = "gpt-4o", skipPermissions = false, cwd, outputDir } = options;
 
 		const args: string[] = ["--full-auto", "--sandbox", sandbox, "exec"];
@@ -74,7 +74,7 @@ export class CodexAdapter implements RuntimeAdapter {
 		}
 
 		// System prompt is prepended to the user prompt (no CLI flag equivalent)
-		let prompt = options.prompt;
+		const prompt = options.prompt;
 		if (options.appendSystemPrompt) {
 			// System prompt would be prepended here if available
 			// For now, we just use the prompt as-is since Codex doesn't have a

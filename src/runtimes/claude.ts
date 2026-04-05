@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
-	RuntimeRunOptions,
 	RuntimeResult,
+	RuntimeRunOptions,
 	StreamEvent,
 } from "./types.js";
 import { SessionOutput } from "./types.js";
@@ -52,8 +52,12 @@ export class ClaudeAdapter implements RuntimeAdapter {
 	}
 
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {
-		const { model = "sonnet", skipPermissions = false, appendSystemPrompt = true, outputDir } =
-			options;
+		const {
+			model = "sonnet",
+			skipPermissions = false,
+			appendSystemPrompt = true,
+			outputDir,
+		} = options;
 
 		const args: string[] = ["--print"];
 
