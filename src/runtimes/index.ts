@@ -12,9 +12,6 @@ export function getAdapter(runtimeId: RuntimeId): RuntimeAdapter {
 			return new ClaudeAdapter();
 		case "codex":
 			return new CodexAdapter();
-		default:
-			// @ts-expect-error - exhaustiveness check
-			throw new Error(`Unknown runtime: ${runtimeId}`);
 	}
 }
 

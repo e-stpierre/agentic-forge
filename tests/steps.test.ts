@@ -10,6 +10,8 @@ import { ConsoleOutput } from "../src/console.js";
 import { WorkflowLogger } from "../src/logging/logger.js";
 import { createProgress } from "../src/progress.js";
 import { TemplateRenderer } from "../src/renderer.js";
+import type { RuntimeAdapter } from "../src/runtimes/index.js";
+import type { RuntimeResult, SessionOutput } from "../src/runtimes/index.js";
 import {
 	type BranchStepExecutor,
 	type StepContext,
@@ -22,13 +24,13 @@ import { ParallelStepExecutor } from "../src/steps/parallel-step.js";
 import { SerialStepExecutor } from "../src/steps/serial-step.js";
 import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../src/types.js";
 
-// Mock runClaude at module level
-const mockRunClaude = vi.fn();
-vi.mock("../src/runner.js", async (importOriginal) => {
-	const original = await importOriginal<typeof import("../src/runner.js")>();
+// Mock runRuntime at module level
+const mockRunRuntime = vi.fn();
+vi.mock("../src/runtimes/process-runner.js", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../src/runtimes/process-runner.js")>();
 	return {
 		...original,
-		runClaude: (...args: unknown[]) => mockRunClaude(...args),
+		runRuntime: (...args: unknown[]) => mockRunRuntime(...args),
 	};
 });
 
@@ -97,6 +99,35 @@ beforeEach(() => {
 	mockLogger = new WorkflowLogger("test-workflow-id", tempDir);
 });
 
+function createMockAdapter(): RuntimeAdapter {
+	return {
+		id: "claude",
+		executableName: "claude",
+		checkAvailable: () => true,
+		buildCommand: () => ({
+			executable: "claude",
+			args: [],
+			stdinInput: "",
+		}),
+		parseStreamLine: () => null,
+		buildFinalResult: (
+			returncode,
+			stdout,
+			stderr,
+			options,
+		): RuntimeResult => ({
+			returncode,
+			stdout,
+			stderr,
+			prompt: options.prompt,
+			cwd: options.cwd ?? null,
+			model: options.model ?? null,
+			success: returncode === 0,
+			sessionOutput: { sessionId: null, isSuccess: false, context: "" },
+		}),
+	};
+}
+
 function createStepContext(overrides?: Partial<StepContext>): StepContext {
 	return {
 		repoRoot: tempDir,
@@ -108,6 +139,7 @@ function createStepContext(overrides?: Partial<StepContext>): StepContext {
 			},
 		},
 		renderer: new TemplateRenderer(),
+		runtimeAdapter: createMockAdapter(),
 		workflowSettings: defaultSettings(),
 		workflowId: "test-workflow-id",
 		variables: { test_var: "test_value" },
@@ -189,7 +221,7 @@ describe("PromptStepExecutor", () => {
 	});
 
 	it("should execute a basic prompt", async () => {
-		mockRunClaude.mockResolvedValue({
+		mockRunRuntime.mockResolvedValue({
 			success: true,
 			stdout: "Output",
 			stderr: "",
@@ -213,13 +245,13 @@ describe("PromptStepExecutor", () => {
 		const executor = new PromptStepExecutor();
 		await executor.execute(step, progress, context, mockLogger, consoleOut);
 
-		expect(mockRunClaude).toHaveBeenCalledOnce();
-		const callArgs = mockRunClaude.mock.calls[0][0];
+		expect(mockRunRuntime).toHaveBeenCalledOnce();
+		const callArgs = mockRunRuntime.mock.calls[0][1];
 		expect(callArgs.prompt).toContain("Test prompt content");
 	});
 
 	it("should execute a prompt with variable interpolation", async () => {
-		mockRunClaude.mockResolvedValue({
+		mockRunRuntime.mockResolvedValue({
 			success: true,
 			stdout: "Output",
 			stderr: "",
@@ -243,7 +275,7 @@ describe("PromptStepExecutor", () => {
 		const executor = new PromptStepExecutor();
 		await executor.execute(step, progress, context, mockLogger, consoleOut);
 
-		const callArgs = mockRunClaude.mock.calls[0][0];
+		const callArgs = mockRunRuntime.mock.calls[0][1];
 		expect(callArgs.prompt).toContain("test_value");
 	});
 });
@@ -379,7 +411,7 @@ describe("SerialStepExecutor", () => {
 
 describe("StepExecutor retry", () => {
 	it("should retry on failure then succeed", async () => {
-		mockRunClaude
+		mockRunRuntime
 			.mockResolvedValueOnce({
 				success: false,
 				returncode: 1,
@@ -408,7 +440,7 @@ describe("StepExecutor retry", () => {
 		const executor = new PromptStepExecutor();
 		await executor.execute(step, progress, context, mockLogger, consoleOut);
 
-		expect(mockRunClaude).toHaveBeenCalledTimes(2);
+		expect(mockRunRuntime).toHaveBeenCalledTimes(2);
 	});
 });
 
