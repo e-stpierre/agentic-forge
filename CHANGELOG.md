@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.0
+
+- Added multi-runtime support with `RuntimeAdapter` interface for pluggable coding agent backends
+- Added `ClaudeAdapter` for Claude Code CLI with stream-JSON parsing
+- Added `CodexAdapter` for Codex CLI with JSONL streaming
+- Added `process-runner.ts` shared subprocess execution layer for all runtimes
+- Added runtime resolution chain: step → CLI flag → workflow settings → config defaults → `"claude"`
+- Added `codex-demo`, `multi-demo`, and `multi-plan-build-review` bundled workflows
+- Renamed `demo` workflow to `claude-demo` for clarity
+- Added `docs/coding-agents.md` guide covering supported runtimes and configuration
+- Updated workflow YAML schema to support `runtime` field in settings and step level
+- Updated authoring skill references to document multi-runtime options
+
 ## 0.8.0
 
 - Added `paths.ts` central path resolver as single source of truth for all directory resolution
