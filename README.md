@@ -35,64 +35,6 @@ Agentic Forge orchestrates workflows across multiple coding agent runtimes. Each
 
 The default runtime is Claude Code. Use `--runtime codex` on the CLI or set `defaults.runtime: codex` in config to switch. Per-step `runtime:` fields always take precedence over the invocation default.
 
-## Architecture
-
-### System Overview
-
-Agentic Forge is a TypeScript/Node.js workflow engine that sits between a developer's CLI and one or more coding agent runtimes. The CLI discovers and parses YAML workflow definitions, then hands them to `WorkflowExecutor`, which iterates through steps and dispatches each to a type-specific executor. The executor delegates the actual code generation work to a runtime adapter. The adapter spawns the appropriate coding agent CLI (Claude Code or Codex), streams its output, and returns a normalized result used to update workflow progress.
-
-### Workflow Engine
-
-The core execution pipeline consists of three collaborating components:
-
-- `WorkflowParser` loads YAML workflow files into typed `WorkflowDefinition` objects
-- `WorkflowExecutor` is the main entry point — it iterates workflow steps and dispatches each to the correct type-specific executor
-- `WorkflowOrchestrator` wraps `WorkflowExecutor` with a runtime-driven decision loop (`execute_step`, `retry_step`, `wait_for_human`, `abort`) for AI-driven step selection workflows
-
-Six step types are supported:
-
-| Type             | Description                                                                         |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| `prompt`         | Single coding agent invocation with a rendered prompt                               |
-| `serial`         | Executes a list of sub-steps sequentially                                           |
-| `parallel`       | Runs branches concurrently, with optional worktree isolation (`git.worktree: true`) |
-| `conditional`    | Evaluates a Nunjucks expression and routes to `then` or `else` branches             |
-| `ralph-loop`     | Iterative loop that keeps invoking the agent until a completion promise is detected |
-| `wait-for-human` | Pauses the workflow and waits for external input via `af input`                     |
-
-### Runtime Adapters
-
-The `RuntimeAdapter` interface abstracts all coding agent interactions behind three methods: `buildCommand()` constructs the CLI invocation, `parseStreamLine()` normalizes streaming output into `StreamEvent` objects, and `buildFinalResult()` assembles the final `RuntimeResult`.
-
-Two adapters are provided out of the box:
-
-- `ClaudeAdapter` — drives Claude Code (`claude` CLI), supports `--add-dir` skill injection
-- `CodexAdapter` — drives Codex CLI (`codex`), streams JSONL output
-
-The shared `runRuntime()` function in `process-runner.ts` handles process spawning, output streaming, and timeout enforcement for both adapters. Runtime resolution follows this order:
-
-```
-step.runtime -> CLI --runtime flag -> workflow settings.runtime -> config defaults.runtime -> "claude"
-```
-
-Skills (bundled `/af-*` slash commands) are injected via `--add-dir` and work only with the `claude` runtime. The `codex` runtime does not support skill injection.
-
-### Configuration & Resolution
-
-Agentic Forge uses a 3-tier resolution model for all user-facing resources:
-
-- **Config**: built-in defaults -> global config (`getGlobalRoot()/config.json`) -> local config (`agentic/config.json`)
-- **Workflows**: project-local (`agentic/workflows/`) -> user-global (`getGlobalRoot()/workflows/`) -> bundled
-- **Outputs**: global by default (`getGlobalRoot()/outputs/<project-slug>/`), or local (`agentic/outputs/`) when `outputDirectory: "local"`
-
-The global directory is lazy-initialized on first use; no `af init` is required to run workflows.
-
-### Data Flow
-
-```
-CLI (af run) -> Workflow Discovery -> YAML Parser -> WorkflowExecutor -> Step Executors -> Runtime Adapters -> Coding Agent CLI -> Output & Progress Tracking
-```
-
 ## Getting Started
 
 ### Prerequisites
