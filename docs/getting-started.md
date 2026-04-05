@@ -4,7 +4,8 @@
 
 - Node.js 20+
 - [pnpm](https://pnpm.io/) (recommended) or npm
-- Claude Code CLI installed and configured
+- Claude Code CLI installed and configured (required — the default runtime)
+- Codex CLI installed and configured (optional — only needed for `codex` runtime workflows)
 
 ## Installation
 
@@ -23,7 +24,7 @@ After installation, two CLI aliases are available: `agentic-forge` and `af`.
 
 ## Quick Tour
 
-Agentic Forge is a YAML-based workflow engine for Claude Code. You define multi-step workflows in YAML, and the engine orchestrates Claude Code sessions to execute them autonomously.
+Agentic Forge is a YAML-based workflow engine for coding agents. You define multi-step workflows in YAML, and the engine orchestrates Claude Code (or Codex CLI) sessions to execute them autonomously. The default runtime is Claude; Codex is opt-in via config or the `--runtime` flag.
 
 Key concepts:
 
@@ -38,10 +39,10 @@ Key concepts:
 No setup or initialization is required. Agentic Forge ships with bundled workflows you can run immediately:
 
 ```bash
-af run demo
+af run claude-demo
 ```
 
-This runs the `demo` workflow, which:
+This runs the `claude-demo` workflow, which:
 
 1. Displays a welcome message
 2. Creates two demo files (`demo-1.md`, `demo-2.md`) in parallel
@@ -50,6 +51,12 @@ This runs the `demo` workflow, which:
 5. Validates that everything worked correctly
 
 Watch the terminal output to see each step execute. When complete, the workflow reports success or lists any issues.
+
+If you have Codex CLI installed and authenticated, you can also run the Codex demo:
+
+```bash
+af run codex-demo
+```
 
 ## Understanding Global vs Local
 
@@ -112,7 +119,7 @@ The local config defaults to `outputDirectory: "local"`, so workflow outputs are
 
 After initializing locally, you can edit any workflow in `agentic/workflows/`. Let's customize the demo workflow:
 
-1. Open `agentic/workflows/demo.yaml` in your editor
+1. Open `agentic/workflows/claude-demo.yaml` in your editor
 2. Modify a step, change the number of random facts, or adjust the welcome message
 3. Run it:
 
@@ -154,3 +161,4 @@ af run my-workflow --var "key=value"
 - [CLI Reference](cli.md) for the complete list of commands and options
 - [Workflows](workflows.md) for details on all bundled workflows
 - [Configuration](configuration.md) for all available settings
+- [Coding Agents](coding-agents.md) for multi-runtime support (Claude + Codex)

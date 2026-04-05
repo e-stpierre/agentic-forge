@@ -1,6 +1,10 @@
 # Workflows
 
-Agentic Forge ships with 7 bundled workflows. You can run any of them immediately without initialization. Use `af workflows --verbose` to see all available workflows and their variables.
+Agentic Forge ships with 10 bundled workflows. You can run any of them immediately without initialization. Use `af workflows --verbose` to see all available workflows and their variables.
+
+Workflows support a `runtime` field on individual steps and in `settings`. See [Coding Agents](coding-agents.md) for the runtime resolution order and per-runtime capabilities.
+
+> **Note**: Skill-based prompts (`/af-git-commit`, `/af-sdlc-plan`, etc.) only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
 
 ## plan-build-review
 
@@ -182,11 +186,13 @@ af run analyze-single --var "analysis_type=style" --var "autofix=low" --var "pat
 af run analyze-single --var "analysis_type=bug" --var "autofix=low" --var "max_fix_iterations=50"
 ```
 
-## demo
+## claude-demo
 
-Validates that your agentic-forge installation and configuration are working correctly.
+Validates that your agentic-forge installation and Claude Code configuration are working correctly.
 
-**Use cases**: First-time setup verification, troubleshooting, learning how the engine works.
+**Use cases**: First-time setup verification, troubleshooting, learning how the engine works with Claude.
+
+**Runtime**: Claude (default)
 
 **Flow**: Welcome -> Create Demo Files (parallel) -> Random Facts Loop (5 iterations) -> Git Branch -> Git Commit -> Validation
 
@@ -197,10 +203,87 @@ None. This workflow has no configurable variables.
 ### Examples
 
 ```bash
-af run demo
+af run claude-demo
 ```
 
 The demo creates `demo-1.md` and `demo-2.md`, adds 3 random facts iteratively, creates a branch (`demo/random-facts`), commits, and validates everything. Follow the cleanup instructions printed at the end to remove demo artifacts.
+
+## codex-demo
+
+Validates that your Codex CLI configuration is working correctly with agentic-forge.
+
+**Use cases**: First-time Codex setup verification, testing Codex runtime integration.
+
+**Runtime**: Codex (set at workflow level via `settings.runtime: codex`)
+
+**Flow**: Welcome -> Create Demo Files (parallel) -> Random Facts Loop (5 iterations) -> Git Branch -> Git Commit -> Validation
+
+### Variables
+
+None. This workflow has no configurable variables.
+
+### Examples
+
+```bash
+af run codex-demo
+```
+
+Requires Codex CLI installed and authenticated. Creates `codex-demo-1.md` and `codex-demo-2.md`, runs the same loop as `claude-demo` but using the Codex runtime. Note that Codex steps use inline instructions instead of skill invocations.
+
+## multi-demo
+
+Demonstrates mixed-runtime execution with Claude and Codex running in parallel at the step level.
+
+**Use cases**: Validating multi-runtime support, learning how per-step `runtime` fields work.
+
+**Runtime**: Mixed — `runtime: claude` and `runtime: codex` on individual steps (no workflow-level default)
+
+**Flow**: Welcome (claude) -> Create Demo Files (parallel: claude + codex) -> Validate (claude)
+
+### Variables
+
+None. This workflow has no configurable variables.
+
+### Examples
+
+```bash
+af run multi-demo
+```
+
+Requires both Claude Code and Codex CLI installed and authenticated. Creates `multi-demo-claude.md` (Claude runtime) and `multi-demo-codex.md` (Codex runtime) in parallel, then validates both files exist.
+
+## multi-plan-build-review
+
+Full SDLC workflow using mixed runtimes — Claude for planning and implementation, Codex for independent plan and code review.
+
+**Use cases**: Feature development where you want a second opinion from a different AI agent at review stages.
+
+**Runtime**: Mixed — Claude for planning/implementation/branch/PR, Codex for plan review and code review
+
+**Flow**: Plan (claude/opus) -> Plan Review (codex) -> Create Branch (claude/haiku) -> Implement (claude, loop) -> Parallel Review (claude + codex) -> Fix Issues (claude) -> Create PR (claude, conditional)
+
+### Variables
+
+| Variable         | Type    | Required | Default | Description                                     |
+| ---------------- | ------- | -------- | ------- | ----------------------------------------------- |
+| `task`           | string  | Yes      |         | Feature or task description                     |
+| `type`           | string  | No       | `auto`  | Task type: `feature`, `bug`, `chore`, or `auto` |
+| `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                   |
+| `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel) |
+| `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop      |
+| `create_pr`      | boolean | No       | `false` | Create a PR after completion                    |
+
+### Examples
+
+```bash
+# Feature development with dual review
+af run multi-plan-build-review --var "task=Add dark mode support"
+
+# Bug fix with PR creation
+af run multi-plan-build-review --var "task=Fix login timeout" --var "type=bug" --var "create_pr=true"
+```
+
+Requires both Claude Code and Codex CLI installed and authenticated. The Codex runtime reviews the plan after Claude creates it, and independently reviews the code after implementation.
 
 ## Custom Workflows
 
