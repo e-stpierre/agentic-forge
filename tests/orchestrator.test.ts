@@ -517,6 +517,10 @@ function mockDecision(
 describe("WorkflowOrchestrator.run", () => {
 	let orchestrator: InstanceType<typeof WorkflowOrchestrator>;
 
+	beforeEach(() => {
+		setupLocalOutput(tempDir);
+	});
+
 	afterEach(() => {
 		orchestrator.dispose();
 	});
