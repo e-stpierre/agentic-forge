@@ -52,6 +52,7 @@ export async function runRuntime(
 		}
 
 		const collectedText: string[] = [];
+		const rawStdout: string[] = [];
 		let resultText: string | null = null;
 		const accumulatedText: Map<number, string> = new Map();
 		let hasStreamedContent = false;
@@ -79,7 +80,11 @@ export async function runRuntime(
 
 				for (const line of lines) {
 					const event = adapter.parseStreamLine(line);
-					if (!event) continue;
+					if (!event) {
+						// Accumulate raw stdout for non-streaming output paths
+						if (line) rawStdout.push(line);
+						continue;
+					}
 
 					// When a new assistant message starts, complete the previous one
 					if (event.type === "text" && hasStreamedContent && options.console) {
@@ -163,6 +168,8 @@ export async function runRuntime(
 				const event = adapter.parseStreamLine(lineBuffer);
 				if (event && event.type === "result") {
 					resultText = event.text ?? null;
+				} else if (lineBuffer.trim()) {
+					rawStdout.push(lineBuffer);
 				}
 			}
 
@@ -170,7 +177,8 @@ export async function runRuntime(
 				options.console.streamComplete();
 			}
 
-			const finalOutput = resultText ?? collectedText.join("");
+			const streamOutput = collectedText.join("");
+			const finalOutput = resultText ?? (streamOutput || rawStdout.join("\n"));
 
 			const result = adapter.buildFinalResult(code ?? 1, finalOutput, stderrData, options);
 

@@ -96,7 +96,21 @@ export class WorkflowExecutor {
 			if (!executor) {
 				throw new Error(`Step type not yet implemented: ${step.type}`);
 			}
-			return executor.execute(step, progress, context, logger, console);
+
+			// Re-resolve runtime for each child step so step-level runtime: is honored
+			const childRuntimeId = resolveRuntime(
+				step,
+				this.workflowSettings ?? {},
+				this.config,
+				this.runtimeOverride,
+			);
+			const childAdapter = getAdapter(childRuntimeId);
+			const childContext: StepContext = {
+				...context,
+				runtimeAdapter: childAdapter,
+			};
+
+			return executor.execute(step, progress, childContext, logger, console);
 		};
 
 		this.parallelExecutor = new ParallelStepExecutor(branchExecute);

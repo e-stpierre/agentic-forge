@@ -1,6 +1,6 @@
 /** Claude runtime adapter. */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,6 +17,7 @@ import {
 	extractResultText,
 	extractTextFromMessage,
 	extractUserText,
+	getAgenticSystemPrompt,
 	getExecutable,
 	parseStreamJsonLine,
 } from "./utils.js";
@@ -25,17 +26,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Path to the bundled skills directory for --add-dir. */
 const SKILLS_DIR = path.join(__dirname, "..", "claude");
-
-/** Path to the agentic system prompt file. */
-const AGENTIC_SYSTEM_PROMPT_FILE = path.join(__dirname, "..", "prompts", "agentic-system.md");
-
-/** Get the agentic system prompt. */
-function getAgenticSystemPrompt(): string | null {
-	if (existsSync(AGENTIC_SYSTEM_PROMPT_FILE)) {
-		return readFileSync(AGENTIC_SYSTEM_PROMPT_FILE, "utf-8");
-	}
-	return null;
-}
 
 /** Claude CLI adapter. */
 export class ClaudeAdapter implements RuntimeAdapter {

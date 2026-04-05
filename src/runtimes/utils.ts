@@ -1,6 +1,14 @@
 /** Shared utility functions for runtime adapters. */
 
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Path to the agentic system prompt file. */
+const AGENTIC_SYSTEM_PROMPT_FILE = path.join(__dirname, "..", "prompts", "agentic-system.md");
 
 /** Custom error for missing executables. */
 export class FileNotFoundError extends Error {
@@ -194,4 +202,12 @@ export function extractResultText(data: Record<string, unknown>): string | null 
 		return null;
 	}
 	return (data.result as string) ?? null;
+}
+
+/** Get the agentic system prompt. */
+export function getAgenticSystemPrompt(): string | null {
+	if (existsSync(AGENTIC_SYSTEM_PROMPT_FILE)) {
+		return readFileSync(AGENTIC_SYSTEM_PROMPT_FILE, "utf-8");
+	}
+	return null;
 }

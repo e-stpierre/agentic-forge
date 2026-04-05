@@ -18,6 +18,8 @@ export interface RuntimeRunOptions {
 	appendSystemPrompt?: boolean;
 	workflowId?: string | null;
 	outputDir?: string | null;
+	/** Codex sandbox mode (e.g., "workspace-write", "read-only", "danger-full-access"). */
+	sandbox?: string | null;
 }
 
 /** Result from runtime execution. */

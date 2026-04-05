@@ -8,7 +8,6 @@ import type { ConsoleOutput } from "../console.js";
 import { extractJson, extractSummary } from "../console.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import { WORKFLOW_STATUS, updateStepCompleted, updateStepFailed } from "../progress.js";
-import { resolveRuntime } from "../runtimes/index.js";
 import { runRuntime } from "../runtimes/process-runner.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import {
@@ -61,6 +60,9 @@ export class PromptStepExecutor extends StepExecutor {
 		// Always enable streaming when console is provided
 		const printOutput = true;
 
+		const codexConfig = context.config.codex as Record<string, unknown> | undefined;
+		const sandbox = (codexConfig?.sandbox as string) ?? null;
+
 		for (let attempt = 0; attempt <= maxRetry; attempt++) {
 			const result = await runRuntime(context.runtimeAdapter, {
 				prompt,
@@ -73,6 +75,7 @@ export class PromptStepExecutor extends StepExecutor {
 				console,
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,
+				sandbox,
 			});
 
 			if (result.success) {

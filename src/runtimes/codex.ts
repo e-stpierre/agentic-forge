@@ -1,9 +1,5 @@
 /** Codex runtime adapter. */
 
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -12,20 +8,7 @@ import type {
 	StreamEvent,
 } from "./types.js";
 import { SessionOutput } from "./types.js";
-import { getExecutable } from "./utils.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-/** Path to the agentic system prompt file. */
-const AGENTIC_SYSTEM_PROMPT_FILE = path.join(__dirname, "..", "prompts", "agentic-system.md");
-
-/** Get the agentic system prompt. */
-function getAgenticSystemPrompt(): string | null {
-	if (existsSync(AGENTIC_SYSTEM_PROMPT_FILE)) {
-		return readFileSync(AGENTIC_SYSTEM_PROMPT_FILE, "utf-8");
-	}
-	return null;
-}
+import { getAgenticSystemPrompt, getExecutable } from "./utils.js";
 
 /** Parse a single JSONL line from Codex output. */
 function parseCodexJsonLine(line: string): Record<string, unknown> | null {
@@ -58,8 +41,9 @@ export class CodexAdapter implements RuntimeAdapter {
 		}
 	}
 
-	buildCommand(options: RuntimeRunOptions, sandbox = "workspace-write"): RuntimeCommand {
+	buildCommand(options: RuntimeRunOptions): RuntimeCommand {
 		const { model = "gpt-4o", skipPermissions = false, cwd, outputDir } = options;
+		const sandbox = options.sandbox ?? "workspace-write";
 
 		const args: string[] = ["--full-auto", "--sandbox", sandbox, "exec"];
 

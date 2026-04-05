@@ -285,6 +285,9 @@ export class WorkflowOrchestrator {
 
 		const defaults = this.config.defaults as Record<string, unknown> | undefined;
 		const maxRetry = (defaults?.maxRetry as number) ?? 3;
+		const orchestratorModel = (defaults?.model as string) ?? "sonnet";
+		const codexConfig = this.config.codex as Record<string, unknown> | undefined;
+		const sandbox = (codexConfig?.sandbox as string) ?? null;
 
 		const orchestratorRuntimeId = resolveRuntime({}, {}, this.config, this.runtimeOverride);
 		const orchestratorAdapter = getAdapter(orchestratorRuntimeId);
@@ -293,9 +296,10 @@ export class WorkflowOrchestrator {
 			const result = await runRuntime(orchestratorAdapter, {
 				prompt,
 				cwd: this.repoRoot,
-				model: "sonnet",
+				model: orchestratorModel,
 				timeout: 120,
 				printOutput: false,
+				sandbox,
 			});
 
 			if (!result.success) {
@@ -641,6 +645,7 @@ export class WorkflowOrchestrator {
 				this.runtimeOverride,
 			);
 			const ralphAdapter = getAdapter(ralphRuntimeId);
+			const codexCfg = this.config.codex as Record<string, unknown> | undefined;
 			const result = await runRuntime(ralphAdapter, {
 				prompt: fullPrompt,
 				cwd: this.repoRoot,
@@ -649,6 +654,7 @@ export class WorkflowOrchestrator {
 				printOutput,
 				skipPermissions: true,
 				console,
+				sandbox: (codexCfg?.sandbox as string) ?? null,
 			});
 
 			if (!result.success) {

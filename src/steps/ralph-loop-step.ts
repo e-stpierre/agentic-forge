@@ -113,6 +113,9 @@ export class RalphLoopStepExecutor extends StepExecutor {
 			// Display iteration header BEFORE running runtime
 			console.ralphIterationStart(step.name, iteration, maxIterations);
 
+			const codexConfig = context.config.codex as Record<string, unknown> | undefined;
+			const sandbox = (codexConfig?.sandbox as string) ?? null;
+
 			const result = await runRuntime(context.runtimeAdapter, {
 				prompt: fullPrompt,
 				cwd: context.repoRoot,
@@ -124,6 +127,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				console,
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,
+				sandbox,
 			});
 
 			if (!result.success) {

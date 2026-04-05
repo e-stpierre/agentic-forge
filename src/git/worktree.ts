@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
-import { getExecutable } from "../runner.js";
+import { getExecutable } from "../runtimes/utils.js";
 
 // --- Worktree data ---
 

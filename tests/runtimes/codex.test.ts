@@ -27,7 +27,7 @@ describe("CodexAdapter.buildCommand", () => {
 	});
 
 	it("accepts custom sandbox value", () => {
-		const cmd = adapter.buildCommand({ prompt: "hello" }, "read-only");
+		const cmd = adapter.buildCommand({ prompt: "hello", sandbox: "read-only" });
 		const idx = cmd.args.indexOf("--sandbox");
 		expect(cmd.args[idx + 1]).toBe("read-only");
 	});
