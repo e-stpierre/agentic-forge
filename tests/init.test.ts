@@ -110,14 +110,14 @@ describe("cmdInit --local", () => {
 	});
 
 	it("--workflow <name> should copy only the named workflow", () => {
-		cmdInit({ force: false, listOnly: false, local: true, workflow: "demo" });
+		cmdInit({ force: false, listOnly: false, local: true, workflow: "claude-demo" });
 
 		const workflowsDir = path.join(tempDir, "agentic", "workflows");
 		expect(existsSync(workflowsDir)).toBe(true);
 
 		const files = readdirSync(workflowsDir).filter((f: string) => f.endsWith(".yaml"));
 		expect(files).toHaveLength(1);
-		expect(files[0]).toBe("demo.yaml");
+		expect(files[0]).toBe("claude-demo.yaml");
 	});
 });
 

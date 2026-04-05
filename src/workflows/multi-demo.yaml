@@ -1,0 +1,111 @@
+name: multi-demo
+version: "1.0"
+description: Demo workflow showcasing mixed-runtime execution with Claude and Codex at the step level
+
+settings:
+  track-progress: true
+  terminal-output: all
+  bypass-permissions: false
+  git:
+    enabled: false
+    worktree: false
+
+steps:
+  - name: welcome
+    type: prompt
+    runtime: claude
+    model: haiku
+    prompt: |
+      # Welcome to the agentic-forge Multi-Runtime Demo Workflow
+
+      This workflow demonstrates mixed-runtime execution. Different steps will run
+      using different coding agents (Claude Code and Codex CLI) at the step level.
+
+      Please acknowledge this welcome message by saying: "Multi-runtime demo workflow started successfully."
+
+  - name: create-demo-files
+    type: parallel
+    merge-strategy: wait-all
+    merge-mode: independent
+    git:
+      worktree: false
+    steps:
+      - name: create-claude-file
+        type: prompt
+        runtime: claude
+        model: haiku
+        prompt: |
+          Create a file named `multi-demo-claude.md` at the repository root.
+
+          The file should contain:
+          ```markdown
+          # Multi-Runtime Demo - Claude File
+
+          Created by: Claude Code (claude runtime)
+          Timestamp: [current timestamp]
+          Step: create-claude-file
+
+          This file was created by the Claude runtime to demonstrate mixed-runtime workflows.
+          ```
+
+          Use the Write tool to create this file.
+
+          IMPORTANT: If you encounter a permission error when trying to write this file,
+          you MUST stop immediately and report: "PERMISSION ERROR: Unable to write multi-demo-claude.md"
+          Do not attempt any workarounds.
+
+      - name: create-codex-file
+        type: prompt
+        runtime: codex
+        prompt: |
+          Create a file named `multi-demo-codex.md` at the repository root.
+
+          The file should contain:
+          ```markdown
+          # Multi-Runtime Demo - Codex File
+
+          Created by: Codex CLI (codex runtime)
+          Timestamp: [current timestamp]
+          Step: create-codex-file
+
+          This file was created by the Codex runtime to demonstrate mixed-runtime workflows.
+          ```
+
+          Use the Write tool to create this file.
+
+          IMPORTANT: If you encounter a permission error when trying to write this file,
+          you MUST stop immediately and report: "PERMISSION ERROR: Unable to write multi-demo-codex.md"
+          Do not attempt any workarounds.
+
+  - name: validate
+    type: prompt
+    runtime: claude
+    model: haiku
+    prompt: |
+      # Multi-Runtime Demo Validation
+
+      Verify that both demo files were created successfully by different runtimes.
+
+      ## Validation Tasks
+
+      1. Read `multi-demo-claude.md` and confirm it exists and was created by the Claude runtime
+      2. Read `multi-demo-codex.md` and confirm it exists and was created by the Codex runtime
+
+      ## Reporting
+
+      After reading both files, report:
+
+      If BOTH files exist and contain the expected content:
+      "MULTI-RUNTIME DEMO COMPLETED SUCCESSFULLY - Both Claude and Codex runtimes created their files!
+
+      Validation Summary:
+      - multi-demo-claude.md: Created by Claude runtime
+      - multi-demo-codex.md: Created by Codex runtime
+      - Mixed-runtime execution: Working correctly"
+
+      If ANY file is missing or has unexpected content, report which validation failed and end with:
+      "MULTI-RUNTIME DEMO COMPLETED WITH ISSUES - Please review the errors above."
+
+      Remind the user to clean up by deleting:
+      - multi-demo-claude.md
+      - multi-demo-codex.md
