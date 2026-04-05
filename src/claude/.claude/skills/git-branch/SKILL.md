@@ -1,7 +1,7 @@
 ---
 name: af-git-branch
 description: Create a git branch following naming convention
-argument-hint: [category] [name] [base]
+argument-hint: "[category] [name] [base]"
 ---
 
 # Git Branch
