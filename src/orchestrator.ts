@@ -10,7 +10,7 @@ import { ConsoleOutput, OutputLevel, extractSummary } from "./console.js";
 import { WorkflowExecutor } from "./executor.js";
 import { type Worktree, createWorktree, pruneOrphaned, removeWorktree } from "./git/worktree.js";
 import { WorkflowLogger } from "./logging/logger.js";
-import { getOutputDir } from "./paths.js";
+import { findOutputDir, getOutputDir } from "./paths.js";
 import {
 	WORKFLOW_STATUS,
 	createProgress,
@@ -493,14 +493,14 @@ export class WorkflowOrchestrator {
 		const wtOutputDir = getOutputDir(parentProgress.workflowId, wtExecutor.config, worktree.path);
 		const wtLogger = new WorkflowLogger(parentProgress.workflowId, wtOutputDir);
 
+		// Clone progress so worktree branches write to their own output dir, not the parent's
+		const wtProgress: WorkflowProgress = {
+			...parentProgress,
+			outputDir: wtOutputDir,
+		};
+
 		try {
-			await wtExecutor.executeStep(
-				step,
-				parentProgress,
-				parentProgress.variables,
-				wtLogger,
-				console,
-			);
+			await wtExecutor.executeStep(step, wtProgress, parentProgress.variables, wtLogger, console);
 			return true;
 		} catch (e: unknown) {
 			const errorMsg = e instanceof Error ? e.message : String(e);
@@ -814,8 +814,11 @@ export function processHumanInput(
 	repoRoot?: string,
 ): boolean {
 	const root = repoRoot ?? process.cwd();
-	const config = loadConfig(root);
-	const humanOutputDir = getOutputDir(workflowId, config, root);
+	const humanOutputDir = findOutputDir(workflowId, root);
+	if (!humanOutputDir) {
+		process.stdout.write(`Workflow not found: ${workflowId}\n`);
+		return false;
+	}
 	const progress = loadProgress(workflowId, humanOutputDir);
 
 	if (!progress) {
