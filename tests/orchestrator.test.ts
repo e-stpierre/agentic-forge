@@ -1,6 +1,6 @@
 /** Tests for workflow orchestrator. */
 
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,7 +22,7 @@ vi.mock("../src/config.js", async (importOriginal) => {
 	return {
 		...original,
 		loadConfig: vi.fn(() => ({
-			outputDirectory: "global",
+			outputDirectory: "local",
 			logging: { enabled: true, level: "Error" },
 			git: { mainBranch: "main", autoCommit: true, autoPr: true },
 			defaults: {
@@ -73,6 +73,10 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockPromptExecute.mockResolvedValue({ success: true, outputSummary: "done" });
 	tempDir = mkdtempSync(path.join(os.tmpdir(), "orchestrator-test-"));
+});
+
+afterEach(() => {
+	rmSync(tempDir, { recursive: true, force: true });
 });
 
 function makeStep(
