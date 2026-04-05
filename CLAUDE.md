@@ -62,6 +62,15 @@ Central path resolver module. Single source of truth for all directory resolutio
 - `ensureGlobalDir()` — lazy-initializes global directory on first use
 - `sanitizeSlug(input)` — cleans user-provided slugs for safe directory names
 
+### `docs/`
+
+User-facing documentation, linked from the README via GitHub `blob/main/` URLs. Not included in the npm package.
+
+- `getting-started.md` — Installation, quick tour, init, and first workflow creation
+- `cli.md` — Complete CLI reference with all commands, arguments, and options
+- `workflows.md` — Bundled workflows with use cases, variables, and examples
+- `configuration.md` — All configuration options, defaults, and layering behavior
+
 ### `agentic/`
 
 Optional project-local directory for workflow configuration and outputs. Created by `agentic-forge init --local`. When `outputDirectory` is set to `"global"` (the default), outputs go to the global directory instead.
@@ -148,6 +157,15 @@ When modifying the workflow engine in `src/`, you must update the workflow-build
 - `src/authoring/.claude/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
 
 Changes to workflow settings, step types, or features require updates to both files.
+
+### Documentation Updates
+
+When modifying CLI commands, configuration options, workflow variables, or user-facing behavior, update the corresponding documentation in `docs/`:
+
+- CLI changes (new commands, arguments, options) -> `docs/cli.md`
+- Workflow changes (new workflows, variable changes) -> `docs/workflows.md`
+- Configuration changes (new keys, default changes) -> `docs/configuration.md`
+- Setup or init flow changes -> `docs/getting-started.md`
 
 ### Node.js Development
 
