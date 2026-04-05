@@ -31,7 +31,12 @@ All settings are optional with sensible defaults.
 | `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts                   |
 | `strict-mode`        | bool   | `false`    | true/false                   | Fail on undefined template variables             |
 | `model`              | string | `"sonnet"` | sonnet, haiku, opus          | Default model for all steps                      |
+| `runtime`            | string | `null`     | claude, codex                | Default coding agent runtime for all steps       |
 | `required-tools`     | list   | `[]`       | Tool names                   | Tools Claude can use without prompting           |
+
+**Runtime resolution order:** `step.runtime` > `--runtime` CLI flag > `settings.runtime` > `config.defaults.runtime` > `"claude"`
+
+**Note:** Skill invocations (`/sdlc-plan`, `/git-commit`, etc.) only work with `runtime: claude`. Codex does not support bundled skill injection.
 
 ### Git Settings
 
@@ -100,6 +105,7 @@ These properties apply to all step types:
 | `name`            | string | **required** | kebab-case                                                        | Unique step identifier       |
 | `type`            | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type                    |
 | `model`           | string | null         | sonnet, haiku, opus                                               | Override workflow model      |
+| `runtime`         | string | null         | claude, codex                                                     | Override runtime for this step (never overridden by CLI flag) |
 | `timeout-minutes` | int    | null         | 1+                                                                | Override workflow timeout    |
 | `max-retry`       | int    | null         | 0+                                                                | Override workflow max-retry  |
 | `on-error`        | string | `"retry"`    | retry, skip, fail                                                 | Error handling strategy      |
@@ -108,7 +114,7 @@ These properties apply to all step types:
 
 ### prompt
 
-Execute a prompt in a Claude session. The most common step type.
+Execute a prompt in a coding agent session. The most common step type.
 
 **Specific properties:**
 
@@ -128,7 +134,7 @@ Execute a prompt in a Claude session. The most common step type.
   on-error: retry
   checkpoint: true
 
-# Skill invocation (always use fully qualified names)
+# Skill invocation (always use fully qualified names; claude runtime only)
 - name: generate-plan
   type: prompt
   prompt: /sdlc-plan --type {{ variables.plan_type }} {{ variables.task }}
@@ -239,7 +245,7 @@ Branch execution based on a Nunjucks condition expression.
 
 ### ralph-loop
 
-Iterative prompt execution with completion detection. Each iteration runs in a fresh Claude session.
+Iterative prompt execution with completion detection. Each iteration runs in a fresh coding agent session.
 
 **Specific properties:**
 
@@ -251,24 +257,24 @@ Iterative prompt execution with completion detection. Each iteration runs in a f
 
 **How it works:**
 
-1. Each iteration runs in a fresh Claude session (no context accumulation)
+1. Each iteration runs in a fresh coding agent session (no context accumulation)
 2. State persists in `{output_dir}/ralph-{step-name}.md`
-3. Loop exits when Claude outputs completion JSON or max iterations reached
+3. Loop exits when the agent outputs completion JSON or max iterations reached
 4. Additional template variables: `{{ iteration }}` (current), `{{ max_iterations }}` (max)
 
-**Completion JSON format** (Claude must output this when done):
+**Completion JSON format** (agent must output this when done):
 
 ```json
 { "ralph_complete": true, "promise": "YOUR_PROMISE_TEXT" }
 ```
 
-**Failure signal** (Claude outputs this if stuck):
+**Failure signal** (agent outputs this if stuck):
 
 ```json
 { "ralph_complete": false }
 ```
 
-The `completion-promise` setting must match the `promise` value in Claude's JSON output.
+The `completion-promise` setting must match the `promise` value in the agent's JSON output.
 
 ````yaml
 - name: implement-milestones
@@ -401,7 +407,7 @@ outputs:
 
 ```bash
 # Run a workflow (bare key=value args or --var flag)
-agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--from-step <name>] [--no-interactive] [--terminal-output base|all]
+agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex]
 
 # Resume a paused/failed workflow
 agentic-forge resume <workflow-id>
@@ -438,6 +444,8 @@ agentic-forge configure
 
 ## Available Skills for Prompt Steps
 
+Skills only work with `runtime: claude` (the default). The Codex runtime does not support bundled skill injection.
+
 Always use fully qualified names in workflows:
 
 | Skill               | Description                   |
@@ -460,9 +468,12 @@ Available via `agentic-forge init` or `agentic-forge run <name>`:
 
 | Workflow                 | Description                                                             |
 | ------------------------ | ----------------------------------------------------------------------- |
-| `demo`                   | Validation workflow for installation testing                            |
+| `claude-demo`              | Validation workflow for installation testing (Claude runtime)           |
+| `codex-demo`               | Validation workflow for installation testing (Codex runtime)            |
+| `multi-demo`               | Demonstrates mixed-runtime execution at step level                      |
 | `one-shot`               | Complete a single task with optional PR                                 |
-| `plan-build-review`      | Full SDLC: plan -> implement -> review -> fix -> PR                     |
+| `plan-build-review`        | Full SDLC: plan -> implement -> review -> fix -> PR                     |
+| `multi-plan-build-review`  | Full SDLC with mixed Claude/Codex runtimes per phase                    |
 | `ralph-loop`             | Generic iterative loop for any task                                     |
 | `analyze-codebase`       | Parallel analysis (5 types) with optional autofix, independent branches |
 | `analyze-codebase-merge` | Parallel analysis with autofix, branch merge, validation, and PR        |
@@ -493,3 +504,4 @@ When validating a workflow, check for these issues:
 - Non-qualified skill names in prompt steps (e.g., `/sdlc-plan` instead of `/sdlc-plan`)
 - Step name not in kebab-case
 - Variable name not in snake_case
+- Skill invocation used with `runtime: codex` (skills not supported by Codex)

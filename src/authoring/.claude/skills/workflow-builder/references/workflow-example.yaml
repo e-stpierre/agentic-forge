@@ -45,6 +45,11 @@ settings:
   # Steps can override this with their own model setting
   model: sonnet
 
+  # Default coding agent runtime for all steps: claude, codex (default: claude)
+  # Runtime resolution order: step.runtime > --runtime CLI flag > settings.runtime > config.defaults.runtime > "claude"
+  # Note: skill invocations (/sdlc-plan, /git-commit, etc.) only work with runtime: claude
+  runtime: claude
+
   # Tools Claude can use without prompting (default: [])
   required-tools:
     - "Bash"
@@ -135,6 +140,11 @@ steps:
 
     # Optional: Create checkpoint after this step completes
     checkpoint: false
+
+    # Optional: Override the runtime for this specific step
+    # This is NEVER overridden by the --runtime CLI flag - step.runtime always wins
+    # Example: run this analysis step with codex
+    runtime: codex
 
   # ==================== SKILL INVOCATION ====================
   # Invoke a Claude slash command skill
