@@ -113,6 +113,7 @@ export interface StepProgress {
 	outputSummary: string;
 	error: string | null;
 	humanInput: string | null;
+	sessionId?: string | null;
 }
 
 export interface ParallelBranch {

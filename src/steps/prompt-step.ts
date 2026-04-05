@@ -71,6 +71,7 @@ export class PromptStepExecutor extends StepExecutor {
 				allowedTools,
 				console,
 				workflowId: context.workflowId,
+				outputDir: context.outputDir,
 			});
 
 			if (result.success) {
@@ -90,7 +91,7 @@ export class PromptStepExecutor extends StepExecutor {
 				const stepOutput = result.stdout ? extractJson(result.stdout) : null;
 				const outputValue = stepOutput ?? result.stdout;
 
-				updateStepCompleted(progress, step.name, outputSummary, outputValue);
+				updateStepCompleted(progress, step.name, outputSummary, outputValue, sessionOut.sessionId);
 				console.stepComplete(step.name, outputSummary);
 				logger.info(step.name, "Step completed successfully");
 				return { success: true, outputSummary, fullOutput: result.stdout };

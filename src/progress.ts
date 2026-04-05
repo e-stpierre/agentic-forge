@@ -130,6 +130,7 @@ export function updateStepCompleted(
 	stepName: string,
 	outputSummary = "",
 	output?: unknown,
+	sessionId?: string | null,
 ): void {
 	const runIdx = progress.runningSteps.indexOf(stepName);
 	if (runIdx !== -1) {
@@ -145,6 +146,7 @@ export function updateStepCompleted(
 		outputSummary,
 		error: null,
 		humanInput: null,
+		sessionId: sessionId ?? null,
 	};
 	progress.completedSteps.push(step);
 

@@ -123,6 +123,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				allowedTools,
 				console,
 				workflowId: context.workflowId,
+				outputDir: context.outputDir,
 			});
 
 			if (!result.success) {
