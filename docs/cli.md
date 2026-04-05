@@ -40,14 +40,14 @@ af run <workflow> [vars...] [options]
 
 ### Options
 
-| Option                     | Description                                       |
-| -------------------------- | ------------------------------------------------- |
-| `--var <key=value>`        | Set workflow variable (repeatable)                |
+| Option                     | Description                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `--var <key=value>`        | Set workflow variable (repeatable)                                                                            |
 | `--slug <slug>`            | Use this slug as the output directory name instead of a generated timestamp ID. Auto-increments on collision. |
-| `--from-step <step>`       | Resume from a specific step                       |
-| `--no-interactive`         | Disable interactive prompts for missing variables |
-| `--terminal-output <mode>` | Terminal output granularity: `base` or `all`      |
-| `--list`                   | List all available workflows                      |
+| `--from-step <step>`       | Resume from a specific step                                                                                   |
+| `--no-interactive`         | Disable interactive prompts for missing variables                                                             |
+| `--terminal-output <mode>` | Terminal output granularity: `base` or `all`                                                                  |
+| `--list`                   | List all available workflows                                                                                  |
 
 ### Examples
 

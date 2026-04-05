@@ -295,8 +295,7 @@ export class WorkflowExecutor {
 		const pluginTemplates = path.join(__dirname, "templates");
 		const templateDirs = [pluginTemplates, this.repoRoot];
 
-		const outputDir =
-			progress.outputDir ?? getOutputDir(progress.workflowId, this.config, this.repoRoot);
+		const outputDir = this.resolveOutputDir(progress);
 
 		for (const output of workflow.outputs) {
 			if (output.when === "completed" && progress.status !== WORKFLOW_STATUS.COMPLETED) {
@@ -331,6 +330,10 @@ export class WorkflowExecutor {
 		}
 	}
 
+	private resolveOutputDir(progress: WorkflowProgress): string {
+		return progress.outputDir ?? getOutputDir(progress.workflowId, this.config, this.repoRoot);
+	}
+
 	async executeStep(
 		step: StepDefinition,
 		progress: WorkflowProgress,
@@ -338,14 +341,14 @@ export class WorkflowExecutor {
 		logger: WorkflowLogger,
 		console: ConsoleOutput,
 	): Promise<void> {
+		const outputDir = this.resolveOutputDir(progress);
 		const context: StepContext = {
 			repoRoot: this.repoRoot,
 			config: this.config,
 			renderer: this.renderer,
 			workflowSettings: this.workflowSettings,
 			workflowId: progress.workflowId,
-			outputDir:
-				progress.outputDir ?? getOutputDir(progress.workflowId, this.config, this.repoRoot),
+			outputDir,
 			variables,
 			outputs: progress.stepOutputs,
 		};
@@ -355,10 +358,7 @@ export class WorkflowExecutor {
 		logger.info(step.name, `Starting step: ${step.name}`);
 		console.stepStart(step.name, step.type, resolvedModel);
 		updateStepStarted(progress, step.name);
-		saveProgress(
-			progress,
-			progress.outputDir ?? getOutputDir(progress.workflowId, this.config, this.repoRoot),
-		);
+		saveProgress(progress, outputDir);
 
 		const executor = this.executors[step.type];
 		if (!executor) {

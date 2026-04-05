@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -260,46 +260,65 @@ describe("Config values", () => {
 	});
 
 	it("should set simple config value", () => {
-		setConfigValue("outputDirectory", "new-output", tempDir);
+		setConfigValue("outputDirectory", "new-output", undefined, tempDir);
 		const value = getConfigValue("outputDirectory", tempDir);
 		expect(value).toBe("new-output");
 	});
 
 	it("should set nested config value", () => {
-		setConfigValue("defaults.model", "opus", tempDir);
+		setConfigValue("defaults.model", "opus", undefined, tempDir);
 		const value = getConfigValue("defaults.model", tempDir);
 		expect(value).toBe("opus");
 	});
 
 	it("should create nested structure when setting value", () => {
-		setConfigValue("new.nested.key", "value", tempDir);
+		setConfigValue("new.nested.key", "value", undefined, tempDir);
 		const value = getConfigValue("new.nested.key", tempDir);
 		expect(value).toBe("value");
 	});
 
 	it("should parse boolean true value", () => {
-		setConfigValue("logging.enabled", "true", tempDir);
+		setConfigValue("logging.enabled", "true", undefined, tempDir);
 		const value = getConfigValue("logging.enabled", tempDir);
 		expect(value).toBe(true);
 	});
 
 	it("should parse boolean false value", () => {
-		setConfigValue("logging.enabled", "false", tempDir);
+		setConfigValue("logging.enabled", "false", undefined, tempDir);
 		const value = getConfigValue("logging.enabled", tempDir);
 		expect(value).toBe(false);
 	});
 
 	it("should parse integer value", () => {
-		setConfigValue("defaults.maxRetry", "10", tempDir);
+		setConfigValue("defaults.maxRetry", "10", undefined, tempDir);
 		const value = getConfigValue("defaults.maxRetry", tempDir);
 		expect(value).toBe(10);
 	});
 
-	it("should write only to local scope when set without explicit scope", () => {
+	it("should auto-detect global scope when no local config exists", () => {
 		const projectDir = makeTempDir();
-		setConfigValue("outputDirectory", "local", projectDir);
+		// No local config at projectDir/agentic/config.json
+		setConfigValue("outputDirectory", "local", undefined, projectDir);
 
-		// Local config should exist and contain only the set key
+		// Should have written to global, not local
+		const localConfigPath = getConfigPath(projectDir);
+		expect(existsSync(localConfigPath)).toBe(false);
+
+		const globalRoot = path.join(tempDir, "agentic-forge");
+		const globalConfigPath = path.join(globalRoot, "config.json");
+		const globalConfig = JSON.parse(readFileSync(globalConfigPath, "utf-8"));
+		expect(globalConfig.outputDirectory).toBe("local");
+	});
+
+	it("should auto-detect local scope when local config exists", () => {
+		const projectDir = makeTempDir();
+		// Create a local config so auto-detect picks local
+		const localConfigDir = path.join(projectDir, "agentic");
+		mkdirSync(localConfigDir, { recursive: true });
+		writeFileSync(path.join(localConfigDir, "config.json"), JSON.stringify({}), "utf-8");
+
+		setConfigValue("outputDirectory", "local", undefined, projectDir);
+
 		const localConfigPath = getConfigPath(projectDir);
 		const localConfig = JSON.parse(readFileSync(localConfigPath, "utf-8"));
 		expect(localConfig.outputDirectory).toBe("local");

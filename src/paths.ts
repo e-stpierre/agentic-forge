@@ -125,7 +125,7 @@ export function ensureGlobalDir(): string {
 			JSON.stringify(defaultConfig, null, 2),
 			"utf-8",
 		);
-		console.log(`Initialized global config at ${globalRoot}`);
+		process.stderr.write(`Initialized global config at ${globalRoot}\n`);
 	}
 	return globalRoot;
 }

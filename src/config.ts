@@ -130,30 +130,26 @@ export function getConfigValue(key: string, repoRoot?: string): unknown {
  * Reads only the target scope's config file, sets the key, and writes it back.
  * This avoids writing merged values from other layers into a single scope.
  *
- * @param key - dot-notation config key
- * @param value - string value to set (parsed to bool/int when applicable)
- * @param scopeOrRoot - "global", "local", or a path string (backward-compat repoRoot)
- * @param repoRoot - project root when scope is explicitly "global" or "local"
+ * When no scope is specified: writes to local config if it exists, otherwise global.
  */
 export function setConfigValue(
 	key: string,
 	value: string,
-	scopeOrRoot?: "global" | "local" | string,
+	scope?: "global" | "local",
 	repoRoot?: string,
 ): void {
-	const scope: "global" | "local" | undefined =
-		scopeOrRoot === "global" || scopeOrRoot === "local" ? scopeOrRoot : undefined;
-	const root = scope !== undefined ? repoRoot : (scopeOrRoot ?? repoRoot);
+	// Auto-detect scope: local if local config exists, otherwise global
+	const effectiveScope = scope ?? (existsSync(getConfigPath(repoRoot)) ? "local" : "global");
 
 	// Load only the target scope's config (not the full merged config)
 	let config: Record<string, unknown>;
-	if (scope === "global") {
+	if (effectiveScope === "global") {
 		const globalConfigPath = getGlobalConfigPath();
 		config = existsSync(globalConfigPath)
 			? (JSON.parse(readFileSync(globalConfigPath, "utf-8")) as Record<string, unknown>)
 			: {};
 	} else {
-		const localConfigPath = getConfigPath(root);
+		const localConfigPath = getConfigPath(repoRoot);
 		config = existsSync(localConfigPath)
 			? (JSON.parse(readFileSync(localConfigPath, "utf-8")) as Record<string, unknown>)
 			: {};
@@ -178,7 +174,7 @@ export function setConfigValue(
 	}
 
 	target[parts[parts.length - 1]] = parsedValue;
-	saveConfig(config, root, scope);
+	saveConfig(config, repoRoot, effectiveScope);
 }
 
 export function deepMerge(
