@@ -38,6 +38,11 @@ variables:
     required: false
     default: 25
     description: Maximum iterations for implementation and review fixes loops
+  - name: create_branch
+    type: boolean
+    required: false
+    default: true
+    description: Whether to create a new branch before implementation
   - name: create_pr
     type: boolean
     required: false
@@ -52,9 +57,13 @@ steps:
     checkpoint: true
 
   - name: create-branch
-    type: prompt
-    model: haiku
-    prompt: /af-git-branch {{ variables.type }} {{ variables.task }}
+    type: conditional
+    condition: "variables.create_branch"
+    then:
+      - name: run-create-branch
+        type: prompt
+        model: haiku
+        prompt: /af-git-branch {{ variables.type }} {{ variables.task }}
 
   - name: implement
     type: ralph-loop

@@ -38,6 +38,11 @@ variables:
     required: false
     default: 25
     description: Maximum iterations for implementation and review fixes loops
+  - name: create_branch
+    type: boolean
+    required: false
+    default: true
+    description: Whether to create a new branch before implementation
   - name: create_pr
     type: boolean
     required: false
@@ -60,31 +65,50 @@ steps:
 
       Read the implementation plan at `{{ output_dir }}/plan.md`.
 
-      Your task is to review the plan and provide refinements:
+      Your task is to review the plan for medium and higher severity issues, and fix
+      them directly in the plan. The implementation loop reads milestones sequentially,
+      so changes must be applied inline where the issue exists.
 
-      1. **Read the plan** carefully, paying attention to:
-         - Milestone structure and task breakdown
-         - Dependencies between milestones
-         - Technical feasibility of each task
-         - Missing edge cases or error handling
-         - Test coverage gaps
+      ### Review Criteria (medium+ severity only)
 
-      2. **Append a "Codex Review" section** at the end of the plan file with:
-         - Any gaps or risks you identified
-         - Suggested improvements to the milestone breakdown
-         - Any additional tasks that should be included
-         - Confidence assessment for each milestone (high/medium/low)
+      Focus on issues that would cause implementation to fail or produce incorrect results:
+      - **Critical**: Missing steps that would break the build, incorrect dependencies,
+        security vulnerabilities in the design
+      - **Major**: Wrong task ordering, missing error handling for likely failure paths,
+        incomplete milestone scope, feasibility issues
+      - **Medium**: Missing edge cases that are reasonably likely, test coverage gaps
+        for core functionality
 
-      3. **If the plan looks solid**, still append the section confirming it and noting
-         any minor improvements.
+      **Skip minor issues** like naming suggestions, stylistic preferences, or
+      hypothetical edge cases.
 
-      Use the Write tool to update the plan file with your review section.
+      ### Instructions
+
+      1. **Read the plan** carefully, milestone by milestone
+      2. **Identify real issues** at medium severity or above - be conservative,
+         only flag things that would genuinely cause problems during implementation
+      3. **Fix issues directly in the plan**: modify milestone descriptions, add missing
+         tasks, reorder steps, fix dependencies - edit the content inline where the
+         issue lives
+      4. **Append a brief "Plan Review Summary" section** at the very end with:
+         - Number of issues found and fixed
+         - A short bullet list of what was changed and why
+         - If no issues were found, state that the plan passed review unchanged
+
+      This summary section is for debugging only - the implementation loop may not read it.
+      All meaningful fixes must be applied directly to the milestone content above.
+
+      Use the Write tool to update the plan file.
 
   - name: create-branch
-    type: prompt
-    runtime: claude
-    model: haiku
-    prompt: /af-git-branch {{ variables.type }} {{ variables.task }}
+    type: conditional
+    condition: "variables.create_branch"
+    then:
+      - name: run-create-branch
+        type: prompt
+        runtime: claude
+        model: haiku
+        prompt: /af-git-branch {{ variables.type }} {{ variables.task }}
 
   - name: implement
     type: ralph-loop
