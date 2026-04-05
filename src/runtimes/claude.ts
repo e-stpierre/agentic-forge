@@ -112,15 +112,6 @@ export class ClaudeAdapter implements RuntimeAdapter {
 
 		const msgType = data.type;
 
-		// Extract model info
-		const extractedModel = extractModelFromMessage(data);
-		if (extractedModel) {
-			return {
-				type: "model_info",
-				model: extractedModel,
-			};
-		}
-
 		// Handle user messages
 		const userText = extractUserText(data);
 		if (userText) {
@@ -130,15 +121,30 @@ export class ClaudeAdapter implements RuntimeAdapter {
 			};
 		}
 
-		// Extract text from assistant messages
+		// Extract text from assistant or stream_event messages.
+		// Check text BEFORE model_info so assistant messages with both
+		// model and content don't lose their text to an early return.
 		const textParts = extractTextFromMessage(data);
 		if (textParts.length > 0) {
-			// Return first text part (normally there's only one per line)
-			const [, text] = textParts[0];
+			const extractedModel = extractModelFromMessage(data);
+			const isDelta = msgType === "stream_event";
+			const [idx, text] = textParts[0];
 			return {
 				type: "text",
 				text,
-				index: textParts[0][0],
+				index: idx,
+				model: extractedModel ?? undefined,
+				isNewTurn: msgType === "assistant",
+				isDelta,
+			};
+		}
+
+		// Extract model info (for messages without text content, e.g. system)
+		const extractedModel = extractModelFromMessage(data);
+		if (extractedModel) {
+			return {
+				type: "model_info",
+				model: extractedModel,
 			};
 		}
 

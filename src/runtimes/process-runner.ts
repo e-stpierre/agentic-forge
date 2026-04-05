@@ -100,6 +100,7 @@ export async function runRuntime(
 		let resultText: string | null = null;
 		const accumulatedText: Map<number, string> = new Map();
 		let hasStreamedContent = false;
+		let currentModel: string | null = null;
 		let stderrData = "";
 
 		// Collect stderr
@@ -130,8 +131,13 @@ export async function runRuntime(
 						continue;
 					}
 
-					// When a new assistant message starts, complete the previous one
-					if (event.type === "text" && hasStreamedContent && options.console) {
+					// Track model across events
+					if (event.model) {
+						currentModel = event.model;
+					}
+
+					// When a new assistant turn starts, complete the previous one
+					if (event.isNewTurn && hasStreamedContent && options.console) {
 						options.console.streamComplete();
 						hasStreamedContent = false;
 						accumulatedText.clear();
@@ -149,24 +155,25 @@ export async function runRuntime(
 						options.console.streamComplete();
 					}
 
-					// Handle model info
-					if (event.type === "model_info" && event.model && options.console) {
-						// Model info can be logged separately if needed
-					}
-
 					// Stream text content
 					if (event.type === "text" && event.text) {
 						const idx = event.index ?? 0;
 						const text = event.text;
 
-						// Calculate delta (difference from previous)
-						const prevText = accumulatedText.get(idx) ?? "";
-						const delta = text.startsWith(prevText) ? text.slice(prevText.length) : text;
-						accumulatedText.set(idx, text);
+						// Stream-event deltas are already incremental;
+						// assistant (verbose) messages carry cumulative text.
+						let delta: string;
+						if (event.isDelta) {
+							delta = text;
+						} else {
+							const prevText = accumulatedText.get(idx) ?? "";
+							delta = text.startsWith(prevText) ? text.slice(prevText.length) : text;
+							accumulatedText.set(idx, text);
+						}
 
 						if (delta) {
 							if (options.printOutput && options.console) {
-								options.console.streamText(delta, "assistant", event.model);
+								options.console.streamText(delta, "assistant", currentModel);
 								hasStreamedContent = true;
 							} else {
 								process.stdout.write(delta);

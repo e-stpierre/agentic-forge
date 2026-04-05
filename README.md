@@ -39,15 +39,15 @@ The default runtime is Claude Code. Use `--runtime codex` on the CLI or set `def
 
 ### System Overview
 
-Agentic Forge is a TypeScript/Node.js workflow engine that sits between a developer's CLI and one or more coding agent runtimes. The CLI discovers and parses YAML workflow definitions, then drives an orchestrator decision loop that determines which step to execute next. Each step is dispatched to a type-specific executor, which delegates the actual code generation work to a runtime adapter. The adapter spawns the appropriate coding agent CLI (Claude Code or Codex), streams its output, and returns a normalized result that the orchestrator uses to update workflow progress and decide the next action.
+Agentic Forge is a TypeScript/Node.js workflow engine that sits between a developer's CLI and one or more coding agent runtimes. The CLI discovers and parses YAML workflow definitions, then hands them to `WorkflowExecutor`, which iterates through steps and dispatches each to a type-specific executor. The executor delegates the actual code generation work to a runtime adapter. The adapter spawns the appropriate coding agent CLI (Claude Code or Codex), streams its output, and returns a normalized result used to update workflow progress.
 
 ### Workflow Engine
 
 The core execution pipeline consists of three collaborating components:
 
 - `WorkflowParser` loads YAML workflow files into typed `WorkflowDefinition` objects
-- `WorkflowOrchestrator` runs the decision loop: after each step it calls a runtime to evaluate progress and determine the next action (`execute_step`, `retry_step`, `wait_for_human`, `abort`, `completed`, or `failed`)
-- `WorkflowExecutor` receives a step and dispatches it to the correct type-specific executor
+- `WorkflowExecutor` is the main entry point — it iterates workflow steps and dispatches each to the correct type-specific executor
+- `WorkflowOrchestrator` wraps `WorkflowExecutor` with a runtime-driven decision loop (`execute_step`, `retry_step`, `wait_for_human`, `abort`) for AI-driven step selection workflows
 
 Six step types are supported:
 
@@ -55,7 +55,7 @@ Six step types are supported:
 | ---------------- | ----------------------------------------------------------------------------------- |
 | `prompt`         | Single coding agent invocation with a rendered prompt                               |
 | `serial`         | Executes a list of sub-steps sequentially                                           |
-| `parallel`       | Runs branches concurrently, each in an isolated git worktree                        |
+| `parallel`       | Runs branches concurrently, with optional worktree isolation (`git.worktree: true`) |
 | `conditional`    | Evaluates a Nunjucks expression and routes to `then` or `else` branches             |
 | `ralph-loop`     | Iterative loop that keeps invoking the agent until a completion promise is detected |
 | `wait-for-human` | Pauses the workflow and waits for external input via `af input`                     |
@@ -90,7 +90,7 @@ The global directory is lazy-initialized on first use; no `af init` is required 
 ### Data Flow
 
 ```
-CLI (af run) -> Workflow Discovery -> YAML Parser -> Orchestrator Decision Loop -> Step Executors -> Runtime Adapters -> Coding Agent CLI -> Output & Progress Tracking
+CLI (af run) -> Workflow Discovery -> YAML Parser -> WorkflowExecutor -> Step Executors -> Runtime Adapters -> Coding Agent CLI -> Output & Progress Tracking
 ```
 
 ## Getting Started
