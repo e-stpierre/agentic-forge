@@ -115,7 +115,7 @@ Priority: step `model` > `settings.model` > config default > `sonnet`
 | Symptom                                | Likely Cause                                   | Fix                                                              |
 | -------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------- |
 | "Missing required variable"            | Variable not passed via CLI                    | Add `name=value` arg, `--var "name=value"`, or set `default`     |
-| Conditional always takes else          | Condition expression evaluates to falsy        | Check Nunjucks expression syntax and variable names                |
+| Conditional always takes else          | Condition expression evaluates to falsy        | Check Nunjucks expression syntax and variable names              |
 | Ralph loop never completes             | Completion JSON not output or promise mismatch | Verify `completion-promise` matches the `promise` field in JSON  |
 | Template variable shows as `{{ ... }}` | Undefined variable in lenient mode             | Define the variable or enable `strict-mode: true` to catch early |
 | Step timeout                           | Task exceeds `timeout-minutes`                 | Increase step or workflow `timeout-minutes`                      |

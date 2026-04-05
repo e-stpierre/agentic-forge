@@ -208,11 +208,11 @@ Branch execution based on a Nunjucks condition expression.
 
 **Specific properties:**
 
-| Key         | Type   | Required | Description                                |
-| ----------- | ------ | -------- | ------------------------------------------ |
+| Key         | Type   | Required | Description                                  |
+| ----------- | ------ | -------- | -------------------------------------------- |
 | `condition` | string | Yes      | Nunjucks expression evaluating to true/false |
-| `then`      | list   | Yes      | Steps to execute if condition is true      |
-| `else`      | list   | No       | Steps to execute if condition is false     |
+| `then`      | list   | Yes      | Steps to execute if condition is true        |
+| `else`      | list   | No       | Steps to execute if condition is false       |
 
 **Condition evaluation supports:**
 
