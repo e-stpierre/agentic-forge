@@ -252,6 +252,76 @@ steps: []
 
 		expect(workflow.settings.model).toBeNull();
 	});
+
+	it("should parse workflow-level runtime setting", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+settings:
+  runtime: codex
+steps: []
+`);
+
+		expect(workflow.settings.runtime).toBe("codex");
+	});
+
+	it("should default runtime to null when not specified", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString("name: test\nsteps: []");
+
+		expect(workflow.settings.runtime).toBeNull();
+	});
+});
+
+describe("WorkflowParser runtime field on steps", () => {
+	it("should parse runtime field on prompt step", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+steps:
+  - name: my-step
+    type: prompt
+    runtime: codex
+    prompt: "Hello"
+`);
+
+		expect(workflow.steps[0].runtime).toBe("codex");
+	});
+
+	it("should default step runtime to null when not specified", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+steps:
+  - name: my-step
+    type: prompt
+    prompt: "Hello"
+`);
+
+		expect(workflow.steps[0].runtime).toBeNull();
+	});
+
+	it("should parse runtime field on parallel step branches", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+steps:
+  - name: parallel-step
+    type: parallel
+    steps:
+      - name: branch-a
+        type: prompt
+        runtime: claude
+        prompt: "Branch A"
+      - name: branch-b
+        type: prompt
+        runtime: codex
+        prompt: "Branch B"
+`);
+
+		expect(workflow.steps[0].steps[0].runtime).toBe("claude");
+		expect(workflow.steps[0].steps[1].runtime).toBe("codex");
+	});
 });
 
 describe("WorkflowParser outputs", () => {

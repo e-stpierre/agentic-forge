@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
 	ClaudeResult,
 	FileNotFoundError,
-	MODEL_MAP,
 	SessionOutput,
 	checkClaudeAvailable,
 	extractModelFromMessage,
@@ -34,22 +33,6 @@ describe("getExecutable", () => {
 		const result = getExecutable("node");
 		// Should contain path separators
 		expect(result.includes("/") || result.includes("\\")).toBe(true);
-	});
-});
-
-// --- MODEL_MAP ---
-
-describe("MODEL_MAP", () => {
-	it("should contain all expected models", () => {
-		expect("sonnet" in MODEL_MAP).toBe(true);
-		expect("haiku" in MODEL_MAP).toBe(true);
-		expect("opus" in MODEL_MAP).toBe(true);
-	});
-
-	it("should have correct values", () => {
-		expect(MODEL_MAP.sonnet).toBe("sonnet");
-		expect(MODEL_MAP.haiku).toBe("haiku");
-		expect(MODEL_MAP.opus).toBe("opus");
 	});
 });
 
