@@ -31,6 +31,11 @@ export function getAdapter(runtimeId: RuntimeId): RuntimeAdapter {
 	return adapter;
 }
 
+/** Clear the adapter cache (for test isolation). */
+export function clearAdapterCache(): void {
+	adapterCache.clear();
+}
+
 /** Resolve which runtime to use based on configuration hierarchy. */
 export function resolveRuntime(
 	step: Pick<StepDefinition, "runtime"> | null | undefined,

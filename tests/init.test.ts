@@ -39,7 +39,7 @@ describe("cmdInit --local", () => {
 		const config = JSON.parse(readFileSync(configPath, "utf-8"));
 		expect(config).toHaveProperty("outputDirectory");
 		expect(config).toHaveProperty("defaults");
-		expect(config.defaults.model).toBe("sonnet");
+		expect(config.claude.model).toBe("sonnet");
 	});
 
 	it("should copy workflows to local directory", () => {
@@ -56,26 +56,26 @@ describe("cmdInit --local", () => {
 		const configDir = path.join(tempDir, "agentic");
 		mkdirSync(configDir, { recursive: true });
 		const configPath = path.join(configDir, "config.json");
-		const customConfig = { outputDirectory: "custom", defaults: { model: "opus" } };
+		const customConfig = { outputDirectory: "custom", claude: { model: "opus" } };
 		writeFileSync(configPath, JSON.stringify(customConfig));
 
 		cmdInit({ force: false, listOnly: false, local: true });
 
 		const config = JSON.parse(readFileSync(configPath, "utf-8"));
-		expect(config.defaults.model).toBe("opus");
+		expect(config.claude.model).toBe("opus");
 	});
 
 	it("should overwrite config with --force", () => {
 		const configDir = path.join(tempDir, "agentic");
 		mkdirSync(configDir, { recursive: true });
 		const configPath = path.join(configDir, "config.json");
-		const customConfig = { outputDirectory: "custom", defaults: { model: "opus" } };
+		const customConfig = { outputDirectory: "custom", claude: { model: "opus" } };
 		writeFileSync(configPath, JSON.stringify(customConfig));
 
 		cmdInit({ force: true, listOnly: false, local: true });
 
 		const config = JSON.parse(readFileSync(configPath, "utf-8"));
-		expect(config.defaults.model).toBe("sonnet");
+		expect(config.claude.model).toBe("sonnet");
 	});
 
 	it("should not create config with --list", () => {

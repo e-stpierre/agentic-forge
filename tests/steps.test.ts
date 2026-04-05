@@ -128,8 +128,8 @@ function createStepContext(overrides?: Partial<StepContext>): StepContext {
 	return {
 		repoRoot: tempDir,
 		config: {
+			claude: { model: "sonnet" },
 			defaults: {
-				model: "sonnet",
 				maxRetry: 3,
 				timeoutMinutes: 60,
 			},
@@ -199,6 +199,24 @@ describe("resolveModel", () => {
 			workflowSettings: defaultSettings(),
 		});
 		expect(resolveModel(context, null)).toBe("sonnet");
+	});
+
+	it("should resolve per-runtime model from config", () => {
+		const codexAdapter = { ...createMockAdapter(), id: "codex" as const, defaultModel: "gpt-5.4" };
+		const context = createStepContext({
+			config: { codex: { model: "gpt-5.4" } },
+			runtimeAdapter: codexAdapter,
+			workflowSettings: defaultSettings(),
+		});
+		expect(resolveModel(context, null)).toBe("gpt-5.4");
+	});
+
+	it("should fall back to defaults.model for backward compatibility", () => {
+		const context = createStepContext({
+			config: { defaults: { model: "opus" } },
+			workflowSettings: defaultSettings(),
+		});
+		expect(resolveModel(context, null)).toBe("opus");
 	});
 });
 

@@ -159,6 +159,7 @@ export class WorkflowParser {
 			pollingInterval: 15,
 			onTimeout: "abort",
 			model: null,
+			runtime: null,
 			stepTimeoutMinutes: null,
 			stepMaxRetry: null,
 			onError: "retry",

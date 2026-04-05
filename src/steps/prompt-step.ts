@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { getSandboxMode } from "../config.js";
 import type { ConsoleOutput } from "../console.js";
 import { extractJson, extractSummary } from "../console.js";
 import type { WorkflowLogger } from "../logging/logger.js";
@@ -60,9 +61,6 @@ export class PromptStepExecutor extends StepExecutor {
 		// Always enable streaming when console is provided
 		const printOutput = true;
 
-		const codexConfig = context.config.codex as Record<string, unknown> | undefined;
-		const sandbox = (codexConfig?.sandbox as string) ?? null;
-
 		for (let attempt = 0; attempt <= maxRetry; attempt++) {
 			const result = await runRuntime(context.runtimeAdapter, {
 				prompt,
@@ -75,7 +73,7 @@ export class PromptStepExecutor extends StepExecutor {
 				console,
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,
-				sandbox,
+				sandbox: getSandboxMode(context.config),
 			});
 
 			if (result.success) {

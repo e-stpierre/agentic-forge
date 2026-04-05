@@ -16,14 +16,17 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		autoPr: true,
 	},
 	defaults: {
-		model: "sonnet",
 		runtime: "claude",
 		maxRetry: 3,
 		timeoutMinutes: 60,
 		trackProgress: true,
 		terminalOutput: "base",
 	},
+	claude: {
+		model: "sonnet",
+	},
 	codex: {
+		model: "gpt-5.4",
 		sandbox: "workspace-write",
 	},
 	execution: {
@@ -209,4 +212,25 @@ export function deepMerge(
 
 function deepCopy(obj: Record<string, unknown>): Record<string, unknown> {
 	return JSON.parse(JSON.stringify(obj)) as Record<string, unknown>;
+}
+
+/** Resolve the default model for a given runtime from config, with backward compatibility. */
+export function getRuntimeModel(config: Record<string, unknown>, runtimeId: string): string | null {
+	// Per-runtime config: config[runtimeId].model
+	const runtimeConfig = config[runtimeId] as Record<string, unknown> | undefined;
+	if (runtimeConfig?.model) {
+		return runtimeConfig.model as string;
+	}
+	// Backward compat: config.defaults.model
+	const defaults = config.defaults as Record<string, unknown> | undefined;
+	if (defaults?.model) {
+		return defaults.model as string;
+	}
+	return null;
+}
+
+/** Extract the Codex sandbox mode from config. */
+export function getSandboxMode(config: Record<string, unknown>): string | null {
+	const codexConfig = config.codex as Record<string, unknown> | undefined;
+	return (codexConfig?.sandbox as string) ?? null;
 }

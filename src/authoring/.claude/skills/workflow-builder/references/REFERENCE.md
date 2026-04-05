@@ -41,7 +41,7 @@ All settings are optional with sensible defaults.
 - Claude: `haiku`, `sonnet`, `opus` (or full IDs like `claude-opus-4-6`)
 - Codex: `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.2`, `gpt-5.1-codex-max`, `gpt-5.1-codex-mini`
 
-**Important:** When a step uses a runtime different from the configured default, you **must** specify the `model` explicitly on that step (or in `settings.model` if the entire workflow uses a non-default runtime). The default model belongs to the default runtime's namespace and will cause errors if passed to a different runtime.
+**Per-runtime default models:** Each runtime resolves its own default model from config (`claude.model` or `codex.model`). Steps that use a non-default runtime no longer need an explicit model unless you want to override the per-runtime default.
 
 **Note:** Skill invocations (`/sdlc-plan`, `/git-commit`, etc.) only work with `runtime: claude`. Codex does not support bundled skill injection.
 
@@ -111,7 +111,7 @@ These properties apply to all step types:
 | ----------------- | ------ | ------------ | ----------------------------------------------------------------- | ------------------------------------------------------------- |
 | `name`            | string | **required** | kebab-case                                                        | Unique step identifier                                        |
 | `type`            | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type                                                     |
-| `model`           | string | null         | Runtime-dependent (see Model Names)                               | Override model; required when step uses a non-default runtime |
+| `model`           | string | null         | Runtime-dependent (see Model Names)                               | Override model for this step                                  |
 | `runtime`         | string | null         | claude, codex                                                     | Override runtime for this step (never overridden by CLI flag) |
 | `timeout-minutes` | int    | null         | 1+                                                                | Override workflow timeout                                     |
 | `max-retry`       | int    | null         | 0+                                                                | Override workflow max-retry                                   |
@@ -512,4 +512,3 @@ When validating a workflow, check for these issues:
 - Step name not in kebab-case
 - Variable name not in snake_case
 - Skill invocation used with `runtime: codex` (skills not supported by Codex)
-- Step uses a different runtime than the default but has no explicit `model` (will inherit the wrong model namespace)

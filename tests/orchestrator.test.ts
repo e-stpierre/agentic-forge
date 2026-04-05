@@ -26,14 +26,14 @@ vi.mock("../src/config.js", async (importOriginal) => {
 			logging: { enabled: true, level: "Error" },
 			git: { mainBranch: "main", autoCommit: true, autoPr: true },
 			defaults: {
-				model: "sonnet",
 				runtime: "claude",
 				maxRetry: 3,
 				timeoutMinutes: 60,
 				trackProgress: true,
 				terminalOutput: "base",
 			},
-			codex: { sandbox: "workspace-write" },
+			claude: { model: "sonnet" },
+			codex: { model: "gpt-5.4", sandbox: "workspace-write" },
 			execution: { maxWorkers: 4, pollingIntervalSeconds: 5 },
 		})),
 	};
@@ -402,15 +402,21 @@ describe("resolveModel", () => {
 
 	it("should return step model when provided", () => {
 		orchestrator = new WorkflowOrchestrator(tempDir);
-		const resolve = (orchestrator as unknown as { resolveModel: (m?: string | null) => string })
-			.resolveModel;
+		const resolve = (
+			orchestrator as unknown as {
+				resolveModel: (m?: string | null, r?: string) => string;
+			}
+		).resolveModel;
 		expect(resolve.call(orchestrator, "opus")).toBe("opus");
 	});
 
 	it("should fall back to default sonnet", () => {
 		orchestrator = new WorkflowOrchestrator(tempDir);
-		const resolve = (orchestrator as unknown as { resolveModel: (m?: string | null) => string })
-			.resolveModel;
+		const resolve = (
+			orchestrator as unknown as {
+				resolveModel: (m?: string | null, r?: string) => string;
+			}
+		).resolveModel;
 		expect(resolve.call(orchestrator, null)).toBe("sonnet");
 		expect(resolve.call(orchestrator, undefined)).toBe("sonnet");
 	});

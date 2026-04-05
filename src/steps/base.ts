@@ -1,5 +1,6 @@
 /** Base class and types for step executors. */
 
+import { getRuntimeModel } from "../config.js";
 import type { ConsoleOutput } from "../console.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import type { TemplateRenderer } from "../renderer.js";
@@ -39,8 +40,10 @@ export function resolveModel(context: StepContext, stepModel?: string | null): s
 	if (context.workflowSettings?.model) {
 		return context.workflowSettings.model;
 	}
-	const defaults = context.config.defaults as Record<string, unknown> | undefined;
-	return (defaults?.model as string) ?? context.runtimeAdapter.defaultModel;
+	return (
+		getRuntimeModel(context.config, context.runtimeAdapter.id) ??
+		context.runtimeAdapter.defaultModel
+	);
 }
 
 // --- Step result ---

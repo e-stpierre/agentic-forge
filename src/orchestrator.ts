@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 
-import { loadConfig } from "./config.js";
+import { getRuntimeModel, getSandboxMode, loadConfig } from "./config.js";
 import { ConsoleOutput, OutputLevel, extractSummary } from "./console.js";
 import { WorkflowExecutor } from "./executor.js";
 import { type Worktree, createWorktree, pruneOrphaned, removeWorktree } from "./git/worktree.js";
@@ -88,10 +88,13 @@ export class WorkflowOrchestrator {
 		return this._signalManager.shutdownRequested;
 	}
 
-	private resolveModel(stepModel?: string | null): string {
+	private resolveModel(stepModel?: string | null, runtimeId?: string): string {
 		if (stepModel) return stepModel;
-		const defaults = this.config.defaults as Record<string, unknown> | undefined;
-		return (defaults?.model as string) ?? "sonnet";
+		const effectiveRuntime =
+			runtimeId ??
+			((this.config.defaults as Record<string, unknown> | undefined)?.runtime as string) ??
+			"claude";
+		return getRuntimeModel(this.config, effectiveRuntime) ?? "sonnet";
 	}
 
 	async run(
@@ -285,12 +288,9 @@ export class WorkflowOrchestrator {
 
 		const defaults = this.config.defaults as Record<string, unknown> | undefined;
 		const maxRetry = (defaults?.maxRetry as number) ?? 3;
-		const orchestratorModel = (defaults?.model as string) ?? "sonnet";
-		const codexConfig = this.config.codex as Record<string, unknown> | undefined;
-		const sandbox = (codexConfig?.sandbox as string) ?? null;
-
 		const orchestratorRuntimeId = resolveRuntime({}, {}, this.config, this.runtimeOverride);
 		const orchestratorAdapter = getAdapter(orchestratorRuntimeId);
+		const orchestratorModel = this.resolveModel(null, orchestratorRuntimeId);
 
 		for (let attempt = 0; attempt < maxRetry; attempt++) {
 			const result = await runRuntime(orchestratorAdapter, {
@@ -299,7 +299,7 @@ export class WorkflowOrchestrator {
 				model: orchestratorModel,
 				timeout: 120,
 				printOutput: false,
-				sandbox,
+				sandbox: getSandboxMode(this.config),
 			});
 
 			if (!result.success) {
@@ -645,16 +645,15 @@ export class WorkflowOrchestrator {
 				this.runtimeOverride,
 			);
 			const ralphAdapter = getAdapter(ralphRuntimeId);
-			const codexCfg = this.config.codex as Record<string, unknown> | undefined;
 			const result = await runRuntime(ralphAdapter, {
 				prompt: fullPrompt,
 				cwd: this.repoRoot,
-				model: this.resolveModel(step.model),
+				model: this.resolveModel(step.model, ralphRuntimeId),
 				timeout,
 				printOutput,
 				skipPermissions: true,
 				console,
-				sandbox: (codexCfg?.sandbox as string) ?? null,
+				sandbox: getSandboxMode(this.config),
 			});
 
 			if (!result.success) {
