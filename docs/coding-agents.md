@@ -106,7 +106,7 @@ steps:
   - name: codex-step
     type: prompt
     runtime: codex
-    model: gpt-5.4          # Required: default model (e.g. "sonnet") won't work with codex
+    model: gpt-5.4 # Required: default model (e.g. "sonnet") won't work with codex
     prompt: ...
 ```
 
