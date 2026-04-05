@@ -23,6 +23,7 @@ Full SDLC workflow: plan, implement iteratively, review, fix, and optionally cre
 | `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                   |
 | `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel) |
 | `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop      |
+| `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation       |
 | `create_pr`      | boolean | No       | `false` | Create a PR after completion                    |
 
 ### Examples
@@ -271,6 +272,7 @@ Full SDLC workflow using mixed runtimes — Claude for planning and implementati
 | `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                   |
 | `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel) |
 | `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop      |
+| `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation       |
 | `create_pr`      | boolean | No       | `false` | Create a PR after completion                    |
 
 ### Examples

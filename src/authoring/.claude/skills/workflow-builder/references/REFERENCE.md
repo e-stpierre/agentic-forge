@@ -414,7 +414,7 @@ outputs:
 
 ```bash
 # Run a workflow (bare key=value args or --var flag)
-agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex]
+agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex]
 
 # Resume a paused/failed workflow
 agentic-forge resume <workflow-id>

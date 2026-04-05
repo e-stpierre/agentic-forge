@@ -55,7 +55,7 @@ npm install -g agentic-forge
 No setup required. Run the demo workflow to verify your installation:
 
 ```bash
-af run demo
+af run claude-demo
 ```
 
 Run a real workflow:
@@ -91,6 +91,7 @@ Then use `/af-workflow-builder` to create, validate, explain, or debug workflows
 | [Getting Started](https://github.com/e-stpierre/agentic-forge/blob/main/docs/getting-started.md) | Installation, quick tour, initialization, and creating your first workflow |
 | [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md)               | Complete list of commands with all arguments and options                   |
 | [Workflows](https://github.com/e-stpierre/agentic-forge/blob/main/docs/workflows.md)             | Bundled workflows, their use cases, variables, and examples                |
+| [Coding Agents](https://github.com/e-stpierre/agentic-forge/blob/main/docs/coding-agents.md)     | Supported runtimes, per-step configuration, and model names                |
 | [Configuration](https://github.com/e-stpierre/agentic-forge/blob/main/docs/configuration.md)     | All configuration options, defaults, and layering behavior                 |
 
 ## Contributing

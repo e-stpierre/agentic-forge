@@ -47,7 +47,6 @@ Runtime adapter layer for coding agent integrations:
 - `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
 - `process-runner.ts` — `runRuntime()` shared process spawning
 - `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
-- `session-output.ts` — `SessionOutput` class
 - `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
 
 #### `steps/`
@@ -81,6 +80,7 @@ User-facing documentation, linked from the README via GitHub `blob/main/` URLs. 
 - `getting-started.md` — Installation, quick tour, init, and first workflow creation
 - `cli.md` — Complete CLI reference with all commands, arguments, and options
 - `workflows.md` — Bundled workflows with use cases, variables, and examples
+- `coding-agents.md` — Supported runtimes, per-step configuration, and model names
 - `configuration.md` — All configuration options, defaults, and layering behavior
 
 ### `agentic/`
