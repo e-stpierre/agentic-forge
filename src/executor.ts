@@ -17,6 +17,7 @@ import {
 	updateStepStarted,
 } from "./progress.js";
 import { TemplateRenderer, buildTemplateContext, renderWorkflowOutput } from "./renderer.js";
+import { getAdapter, resolveRuntime } from "./runtimes/index.js";
 import { type StepContext, type StepResult, resolveModel } from "./steps/base.js";
 import { ConditionalStepExecutor } from "./steps/conditional-step.js";
 import { ParallelStepExecutor } from "./steps/parallel-step.js";
@@ -38,6 +39,7 @@ export class WorkflowExecutor {
 	repoRoot: string;
 	config: Record<string, unknown>;
 	strictMode: boolean;
+	runtimeOverride: string | null;
 	renderer: TemplateRenderer;
 	workflowSettings: WorkflowSettings | null = null;
 	executors: Record<
@@ -55,10 +57,11 @@ export class WorkflowExecutor {
 	serialExecutor: SerialStepExecutor;
 	conditionalExecutor: ConditionalStepExecutor;
 
-	constructor(repoRoot?: string, strictMode = false) {
+	constructor(repoRoot?: string, strictMode = false, runtimeOverride?: string | null) {
 		this.repoRoot = repoRoot ?? process.cwd();
 		this.config = loadConfig(this.repoRoot);
 		this.strictMode = strictMode;
+		this.runtimeOverride = runtimeOverride ?? null;
 		this.renderer = new TemplateRenderer(undefined, strictMode);
 
 		// Initialize step executors
@@ -342,10 +345,16 @@ export class WorkflowExecutor {
 		console: ConsoleOutput,
 	): Promise<void> {
 		const outputDir = this.resolveOutputDir(progress);
+
+		// Resolve runtime and get adapter
+		const runtimeId = resolveRuntime(step, this.workflowSettings ?? {}, this.config, this.runtimeOverride);
+		const runtimeAdapter = getAdapter(runtimeId);
+
 		const context: StepContext = {
 			repoRoot: this.repoRoot,
 			config: this.config,
 			renderer: this.renderer,
+			runtimeAdapter,
 			workflowSettings: this.workflowSettings,
 			workflowId: progress.workflowId,
 			outputDir,

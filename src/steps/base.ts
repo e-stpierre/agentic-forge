@@ -3,6 +3,7 @@
 import type { ConsoleOutput } from "../console.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import type { TemplateRenderer } from "../renderer.js";
+import type { RuntimeAdapter } from "../runtimes/index.js";
 import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../types.js";
 
 // --- Step context ---
@@ -11,6 +12,7 @@ export interface StepContext {
 	repoRoot: string;
 	config: Record<string, unknown>;
 	renderer: TemplateRenderer;
+	runtimeAdapter: RuntimeAdapter;
 	workflowSettings: WorkflowSettings | null;
 	workflowId: string;
 	outputDir?: string;

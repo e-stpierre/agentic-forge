@@ -108,6 +108,7 @@ export class WorkflowParser {
 			bypassPermissions: (data["bypass-permissions"] as boolean) ?? false,
 			strictMode: (data["strict-mode"] as boolean) ?? false,
 			model: (data.model as string) ?? null,
+			runtime: (data.runtime as string) ?? null,
 			requiredTools: (data["required-tools"] as string[]) ?? [],
 			git,
 		};
@@ -207,6 +208,7 @@ export class WorkflowParser {
 		}
 
 		step.model = (data.model as string) ?? null;
+		step.runtime = (data.runtime as string) ?? null;
 		step.stepTimeoutMinutes = (data["timeout-minutes"] as number) ?? step.stepTimeoutMinutes;
 		step.stepMaxRetry = (data["max-retry"] as number) ?? null;
 		step.onError = (data["on-error"] as string) ?? "retry";

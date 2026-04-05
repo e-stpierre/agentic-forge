@@ -8,7 +8,8 @@ import type { ConsoleOutput } from "../console.js";
 import { extractJson, extractSummary } from "../console.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import { WORKFLOW_STATUS, updateStepCompleted, updateStepFailed } from "../progress.js";
-import { runClaude } from "../runner.js";
+import { runRuntime } from "../runtimes/process-runner.js";
+import { resolveRuntime } from "../runtimes/index.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import {
 	type StepContext,
@@ -61,7 +62,7 @@ export class PromptStepExecutor extends StepExecutor {
 		const printOutput = true;
 
 		for (let attempt = 0; attempt <= maxRetry; attempt++) {
-			const result = await runClaude({
+			const result = await runRuntime(context.runtimeAdapter, {
 				prompt,
 				cwd,
 				model: resolveModel(context, step.model),

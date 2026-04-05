@@ -17,10 +17,14 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 	},
 	defaults: {
 		model: "sonnet",
+		runtime: "claude",
 		maxRetry: 3,
 		timeoutMinutes: 60,
 		trackProgress: true,
 		terminalOutput: "base",
+	},
+	codex: {
+		sandbox: "workspace-write",
 	},
 	execution: {
 		maxWorkers: 4,

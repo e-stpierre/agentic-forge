@@ -130,6 +130,7 @@ export async function cmdRun(options: {
 	fromStep?: string;
 	interactive?: boolean;
 	terminalOutput?: string;
+	runtime?: string;
 	slug?: string;
 }): Promise<void> {
 	// Handle --list flag
@@ -255,7 +256,7 @@ export async function cmdRun(options: {
 		}
 	}
 
-	const executor = new WorkflowExecutor();
+	const executor = new WorkflowExecutor(undefined, false, options.runtime);
 	try {
 		// Resolve terminal_output: CLI override > workflow settings > default "base"
 		let terminalOutput = "base";
