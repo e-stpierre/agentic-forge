@@ -40,6 +40,10 @@ export interface StreamEvent {
 	text?: string;
 	model?: string;
 	index?: number;
+	/** True when this event starts a new assistant turn (triggers streamComplete). */
+	isNewTurn?: boolean;
+	/** True when text is an incremental delta; false/undefined for cumulative text. */
+	isDelta?: boolean;
 }
 
 /** Command descriptor returned by adapter.buildCommand(). */
