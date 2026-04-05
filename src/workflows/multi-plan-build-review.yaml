@@ -60,6 +60,7 @@ steps:
   - name: plan-review
     type: prompt
     runtime: codex
+    model: gpt-5.4
     prompt: |
       ## Plan Review and Refinement
 
@@ -163,6 +164,7 @@ steps:
       - name: codex-review
         type: prompt
         runtime: codex
+        model: gpt-5.4
         prompt: |
           ## Code Review
 

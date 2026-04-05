@@ -103,6 +103,7 @@ function createMockAdapter(): RuntimeAdapter {
 	return {
 		id: "claude",
 		executableName: "claude",
+		defaultModel: "sonnet",
 		checkAvailable: () => true,
 		buildCommand: () => ({
 			executable: "claude",
@@ -192,7 +193,7 @@ describe("resolveModel", () => {
 		expect(resolveModel(context, null)).toBe("opus");
 	});
 
-	it("should fall back to sonnet when nothing is configured", () => {
+	it("should fall back to adapter default when nothing is configured", () => {
 		const context = createStepContext({
 			config: { defaults: {} },
 			workflowSettings: defaultSettings(),

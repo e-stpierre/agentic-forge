@@ -1,10 +1,26 @@
 /** Shared process runner for all runtime adapters. */
 
 import { spawn } from "node:child_process";
+import { appendFileSync, mkdirSync } from "node:fs";
+import path from "node:path";
 
 import type { ConsoleOutput } from "../console.js";
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions, StreamEvent } from "./types.js";
 import { resolveCmdScript } from "./utils.js";
+
+/** Write a debug entry to spawn-debug.log in the output directory when AF_DEBUG_SPAWN is set. */
+function spawnDebug(outputDir: string | null | undefined, label: string, data: unknown): void {
+	if (!process.env.AF_DEBUG_SPAWN || !outputDir) return;
+	try {
+		mkdirSync(outputDir, { recursive: true });
+		const logPath = path.join(outputDir, "spawn-debug.log");
+		const ts = new Date().toISOString();
+		const line = `[${ts}] ${label}: ${typeof data === "string" ? data : JSON.stringify(data)}\n`;
+		appendFileSync(logPath, line);
+	} catch {
+		// Debug logging must never break the workflow
+	}
+}
 
 /**
  * Run a workflow step using the specified runtime adapter.
@@ -45,6 +61,15 @@ export async function runRuntime(
 		// does not see an open pipe and try to read from it (e.g. Codex).
 		const useStdin = stdinInput && stdinInput.length > 0;
 
+		spawnDebug(options.outputDir, "SPAWN", {
+			exe: spawnExe,
+			args: spawnArgs.map((a, i) => (a.length > 100 ? `[${i}](${a.length}ch)` : `[${i}]${a}`)),
+			stdin: useStdin ? "pipe" : "ignore",
+			cwd: options.cwd,
+			adapterId: adapter.id,
+			originalExe: executable,
+		});
+
 		const proc = spawn(spawnExe, spawnArgs, {
 			cwd: options.cwd ?? undefined,
 			env,
@@ -53,6 +78,7 @@ export async function runRuntime(
 
 		// Handle spawn errors (e.g., executable not found at runtime)
 		proc.on("error", (err) => {
+			spawnDebug(options.outputDir, "SPAWN_ERROR", err.message);
 			const result = adapter.buildFinalResult(-1, "", err.message, options);
 			resolve(result);
 		});
@@ -180,6 +206,15 @@ export async function runRuntime(
 
 		proc.on("close", (code) => {
 			if (timeoutId) clearTimeout(timeoutId);
+
+			spawnDebug(options.outputDir, "CLOSE", {
+				exitCode: code,
+				stderrLength: stderrData.length,
+				stderrPreview: stderrData.slice(0, 500),
+				stdoutLines: rawStdout.length,
+				collectedTextLength: collectedText.join("").length,
+				hasResultText: resultText !== null,
+			});
 
 			// Process any remaining data in the line buffer
 			if (lineBuffer.trim()) {

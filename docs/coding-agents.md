@@ -91,7 +91,9 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 Model values are passed to the underlying CLI as raw strings. Agentic Forge does not validate model names. Use the model identifier expected by the specific runtime:
 
 - Claude: `haiku`, `sonnet`, `opus` (or full model IDs like `claude-opus-4-6`)
-- Codex: `codex-mini`, `o3`, or any model supported by the Codex CLI
+- Codex: `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.2`, `gpt-5.1-codex-max`, `gpt-5.1-codex-mini`
+
+> **Important**: When a step uses a runtime different from the configured default (e.g., a `codex` step in a workflow where the default runtime is `claude`), you **must** specify the `model` explicitly. The config/workflow default model belongs to the default runtime's model namespace and will not work with a different runtime.
 
 ```yaml
 steps:
@@ -104,7 +106,7 @@ steps:
   - name: codex-step
     type: prompt
     runtime: codex
-    model: codex-mini
+    model: gpt-5.4          # Required: default model (e.g. "sonnet") won't work with codex
     prompt: ...
 ```
 

@@ -57,6 +57,7 @@ steps:
       - name: create-codex-file
         type: prompt
         runtime: codex
+        model: gpt-5.4
         prompt: |
           Create a file named `multi-demo-codex.md` at the repository root.
 
@@ -130,6 +131,7 @@ steps:
       - name: codex-facts-loop
         type: ralph-loop
         runtime: codex
+        model: gpt-5.4
         max-iterations: 5
         completion-promise: THREE_FACTS_WRITTEN
         prompt: |

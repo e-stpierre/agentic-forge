@@ -181,6 +181,8 @@ export async function cmdRun(options: {
 
 	const { WorkflowExecutor } = await import("../executor.js");
 	const { WorkflowParser, WorkflowParseError } = await import("../parser.js");
+	const { resolveRuntime } = await import("../runtimes/index.js");
+	const { loadConfig } = await import("../config.js");
 
 	const [workflowPath, locationType] = resolveWorkflowPath(options.workflow);
 
@@ -221,6 +223,38 @@ export async function cmdRun(options: {
 			throw new CliExitError(`Error parsing workflow: ${e.message}`);
 		}
 		throw e;
+	}
+
+	// Validate: steps using a non-default runtime must specify a model explicitly
+	const config = loadConfig(process.cwd());
+	const defaultRuntimeId = resolveRuntime(null, workflow.settings, config, options.runtime);
+
+	function collectStepsMissingModel(steps: import("../types.js").StepDefinition[]): string[] {
+		const issues: string[] = [];
+		for (const step of steps) {
+			if (step.type === "prompt" || step.type === "ralph-loop") {
+				const stepRuntimeId = resolveRuntime(step, workflow.settings, config, options.runtime);
+				if (stepRuntimeId !== defaultRuntimeId && !step.model) {
+					issues.push(
+						`Step '${step.name}' uses runtime '${stepRuntimeId}' but has no model. The default model is for the '${defaultRuntimeId}' runtime and won't work with '${stepRuntimeId}'. Add an explicit 'model' to this step.`,
+					);
+				}
+			}
+			// Recurse into nested steps
+			if (step.steps?.length) issues.push(...collectStepsMissingModel(step.steps));
+			if (step.thenSteps?.length) issues.push(...collectStepsMissingModel(step.thenSteps));
+			if (step.elseSteps?.length) issues.push(...collectStepsMissingModel(step.elseSteps));
+		}
+		return issues;
+	}
+
+	const modelIssues = collectStepsMissingModel(workflow.steps);
+	if (modelIssues.length > 0) {
+		const lines = [
+			"Error: Runtime/model mismatch detected:",
+			...modelIssues.map((i) => `  - ${i}`),
+		];
+		throw new CliExitError(lines.join("\n"));
 	}
 
 	// Prompt for missing required variables (interactive mode only)

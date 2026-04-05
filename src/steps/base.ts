@@ -32,6 +32,7 @@ export function buildTemplateContext(context: StepContext): Record<string, unkno
 }
 
 export function resolveModel(context: StepContext, stepModel?: string | null): string {
+	// Step-level model always takes priority
 	if (stepModel) {
 		return stepModel;
 	}
@@ -39,7 +40,7 @@ export function resolveModel(context: StepContext, stepModel?: string | null): s
 		return context.workflowSettings.model;
 	}
 	const defaults = context.config.defaults as Record<string, unknown> | undefined;
-	return (defaults?.model as string) ?? "sonnet";
+	return (defaults?.model as string) ?? context.runtimeAdapter.defaultModel;
 }
 
 // --- Step result ---

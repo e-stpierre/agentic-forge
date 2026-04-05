@@ -31,6 +31,7 @@ function parseCodexJsonLine(line: string): Record<string, unknown> | null {
 export class CodexAdapter implements RuntimeAdapter {
 	readonly id = "codex" as const;
 	readonly executableName = "codex";
+	readonly defaultModel = "gpt-5.4";
 
 	checkAvailable(): boolean {
 		try {

@@ -146,6 +146,11 @@ steps:
     # Example: run this analysis step with codex
     runtime: codex
 
+    # IMPORTANT: When using a different runtime than the default, you MUST specify
+    # a model compatible with that runtime. The default model (e.g. "sonnet") belongs
+    # to the default runtime's namespace and will cause errors with other runtimes.
+    model: gpt-5.4
+
   # ==================== SKILL INVOCATION ====================
   # Invoke a Claude slash command skill
   # IMPORTANT: Always use fully qualified skill names in workflows (e.g., /sdlc-plan)

@@ -31,6 +31,7 @@ const SKILLS_DIR = path.join(__dirname, "..", "claude");
 export class ClaudeAdapter implements RuntimeAdapter {
 	readonly id = "claude" as const;
 	readonly executableName = "claude";
+	readonly defaultModel = "sonnet";
 
 	checkAvailable(): boolean {
 		try {

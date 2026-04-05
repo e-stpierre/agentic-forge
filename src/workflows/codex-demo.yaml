@@ -4,6 +4,7 @@ description: Demo workflow using the Codex runtime to validate multi-runtime sup
 
 settings:
   runtime: codex
+  model: gpt-5.4
   track-progress: true
   terminal-output: all
   bypass-permissions: false

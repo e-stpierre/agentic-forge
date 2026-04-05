@@ -59,6 +59,8 @@ export interface RuntimeCommand {
 export interface RuntimeAdapter {
 	readonly id: RuntimeId;
 	readonly executableName: string;
+	/** Default model for this runtime, used when no explicit model is configured. */
+	readonly defaultModel: string;
 	checkAvailable(): boolean;
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand;
 	parseStreamLine(line: string): StreamEvent | null;
