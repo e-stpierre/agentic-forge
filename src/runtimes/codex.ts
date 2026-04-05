@@ -42,7 +42,7 @@ export class CodexAdapter implements RuntimeAdapter {
 	}
 
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {
-		const { model = "gpt-4o", skipPermissions = false, cwd, outputDir } = options;
+		const { model = "gpt-5.4", skipPermissions = false, cwd, outputDir } = options;
 		const sandbox = options.sandbox ?? "workspace-write";
 
 		const args: string[] = ["--full-auto", "--sandbox", sandbox, "exec"];
@@ -76,13 +76,16 @@ export class CodexAdapter implements RuntimeAdapter {
 
 		// System prompt is prepended to the user prompt (Codex has no --append-system-prompt flag)
 		const systemPrompt = options.appendSystemPrompt ? getAgenticSystemPrompt() : null;
-		const stdinInput = systemPrompt ? `${systemPrompt}\n\n${options.prompt}` : options.prompt;
+		const prompt = systemPrompt ? `${systemPrompt}\n\n${options.prompt}` : options.prompt;
+
+		// Codex exec takes the prompt as a positional argument, not via stdin
+		args.push(prompt);
 
 		return {
 			executable: getExecutable(this.executableName),
 			args,
 			env: Object.keys(env).length > 0 ? env : undefined,
-			stdinInput,
+			stdinInput: "",
 		};
 	}
 

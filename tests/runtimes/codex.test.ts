@@ -79,11 +79,11 @@ describe("CodexAdapter.buildCommand", () => {
 		expect(cmd.args[idx + 1]).toBe("gpt-4o");
 	});
 
-	it("defaults to gpt-4o model", () => {
+	it("defaults to gpt-5.4 model", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello" });
 		const idx = cmd.args.indexOf("--model");
 		expect(idx).toBeGreaterThan(-1);
-		expect(cmd.args[idx + 1]).toBe("gpt-4o");
+		expect(cmd.args[idx + 1]).toBe("gpt-5.4");
 	});
 
 	it("adds --add-dir when outputDir is provided", () => {
@@ -93,9 +93,10 @@ describe("CodexAdapter.buildCommand", () => {
 		expect(cmd.args[idx + 1]).toBe("/out/dir");
 	});
 
-	it("sets stdinInput to prompt text", () => {
+	it("passes prompt as positional arg and leaves stdinInput empty", () => {
 		const cmd = adapter.buildCommand({ prompt: "my prompt" });
-		expect(cmd.stdinInput).toBe("my prompt");
+		expect(cmd.args[cmd.args.length - 1]).toBe("my prompt");
+		expect(cmd.stdinInput).toBe("");
 	});
 
 	it("sets OTEL_RESOURCE_ATTRIBUTES env when workflowId provided", () => {

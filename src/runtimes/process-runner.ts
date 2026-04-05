@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 
 import type { ConsoleOutput } from "../console.js";
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions, StreamEvent } from "./types.js";
+import { resolveCmdScript } from "./utils.js";
 
 /**
  * Run a workflow step using the specified runtime adapter.
@@ -27,10 +28,27 @@ export async function runRuntime(
 		// Merge extra env vars with process.env
 		const env = extraEnv ? { ...process.env, ...extraEnv } : process.env;
 
-		const proc = spawn(executable, args, {
+		// On Windows, .cmd wrappers from npm cannot be spawned directly by
+		// Node's spawn(). Resolve the underlying .js entry point and run it
+		// with node, which avoids shell quoting issues with multi-line prompts.
+		let spawnExe = executable;
+		let spawnArgs = args;
+		if (process.platform === "win32" && /\.(cmd|bat)$/i.test(executable)) {
+			const script = resolveCmdScript(executable);
+			if (script) {
+				spawnExe = process.execPath;
+				spawnArgs = [script, ...args];
+			}
+		}
+
+		// When there is no stdin input, use "ignore" so the child process
+		// does not see an open pipe and try to read from it (e.g. Codex).
+		const useStdin = stdinInput && stdinInput.length > 0;
+
+		const proc = spawn(spawnExe, spawnArgs, {
 			cwd: options.cwd ?? undefined,
 			env,
-			stdio: ["pipe", "pipe", "pipe"],
+			stdio: [useStdin ? "pipe" : "ignore", "pipe", "pipe"],
 		});
 
 		// Handle spawn errors (e.g., executable not found at runtime)
@@ -40,7 +58,7 @@ export async function runRuntime(
 		});
 
 		// Write prompt to stdin
-		if (proc.stdin) {
+		if (useStdin && proc.stdin) {
 			proc.stdin.write(stdinInput);
 			proc.stdin.end();
 		}

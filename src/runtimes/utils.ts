@@ -10,6 +10,34 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Path to the agentic system prompt file. */
 const AGENTIC_SYSTEM_PROMPT_FILE = path.join(__dirname, "..", "prompts", "agentic-system.md");
 
+/**
+ * Resolve a Windows .cmd npm wrapper to its underlying Node.js script.
+ *
+ * npm-installed .cmd files follow the pattern:
+ *   "%_prog%" "%dp0%\node_modules\pkg\bin\script.js" %*
+ * where %dp0% is the directory containing the .cmd file.
+ *
+ * Returns the resolved script path, or null if the .cmd doesn't match
+ * the expected pattern.
+ */
+export function resolveCmdScript(cmdPath: string): string | null {
+	try {
+		const content = readFileSync(cmdPath, "utf-8");
+		// Match the JS file reference: "%dp0%\...\something.js"
+		const match = /%dp0%\\([^"]+\.js)/.exec(content);
+		if (match) {
+			const cmdDir = path.dirname(cmdPath);
+			const scriptPath = path.join(cmdDir, match[1]);
+			if (existsSync(scriptPath)) {
+				return scriptPath;
+			}
+		}
+	} catch {
+		// Fall through
+	}
+	return null;
+}
+
 /** Custom error for missing executables. */
 export class FileNotFoundError extends Error {
 	constructor(message: string) {
@@ -31,11 +59,28 @@ export function getExecutable(name: string): string {
 			encoding: "utf-8",
 			stdio: ["pipe", "pipe", "pipe"],
 		});
-		const firstLine = result.trim().split(/\r?\n/)[0];
-		if (firstLine) {
-			return firstLine;
+		const lines = result
+			.trim()
+			.split(/\r?\n/)
+			.filter((l) => l.length > 0);
+
+		if (lines.length === 0) {
+			throw new FileNotFoundError(`Executable not found in PATH: ${name}`);
 		}
-	} catch {
+
+		// On Windows, `where` may return a POSIX shell shim before the .cmd wrapper.
+		// Node's spawn() with shell:false cannot execute extensionless POSIX scripts,
+		// so prefer .cmd or .exe entries when available.
+		if (process.platform === "win32" && lines.length > 1) {
+			const windowsEntry = lines.find((l) => /\.(cmd|exe)$/i.test(l));
+			if (windowsEntry) {
+				return windowsEntry;
+			}
+		}
+
+		return lines[0];
+	} catch (err) {
+		if (err instanceof FileNotFoundError) throw err;
 		// Fall through to error
 	}
 	throw new FileNotFoundError(`Executable not found in PATH: ${name}`);
