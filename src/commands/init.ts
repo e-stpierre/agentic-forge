@@ -116,7 +116,7 @@ export function cmdInit(options: InitOptions): void {
 
 	// Create config.json (unless --workflows-only)
 	if (!options.workflowsOnly) {
-		initConfig(targetDir, options.force ?? false);
+		initConfig(targetDir, options.force ?? false, isLocal);
 	}
 
 	process.stdout.write(`\nInitialized ${locationLabel}\n`);
@@ -124,7 +124,7 @@ export function cmdInit(options: InitOptions): void {
 	process.stdout.write("  agentic-forge run <workflow-name>\n");
 }
 
-function initConfig(agenticDir: string, force: boolean): void {
+function initConfig(agenticDir: string, force: boolean, isLocal: boolean): void {
 	const configPath = path.join(agenticDir, "config.json");
 	if (existsSync(configPath) && !force) {
 		process.stdout.write(`\nConfig already exists: ${configPath}\n`);
@@ -133,6 +133,9 @@ function initConfig(agenticDir: string, force: boolean): void {
 
 	mkdirSync(agenticDir, { recursive: true });
 	const config = getDefaultConfig();
+	if (isLocal) {
+		config.outputDirectory = "local";
+	}
 	writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
 	process.stdout.write(`\nCreated config: ${configPath}\n`);
 }

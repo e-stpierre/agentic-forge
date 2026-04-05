@@ -102,9 +102,11 @@ This creates:
 ```text
 agentic/
   workflows/   # Project-specific workflow overrides
-  outputs/     # Used when outputDirectory is "local"
+  outputs/     # Workflow outputs stored locally
   config.json  # Local config (merged on top of global)
 ```
+
+The local config defaults to `outputDirectory: "local"`, so workflow outputs are stored inside the project rather than the global directory.
 
 ## Customize and Run a Local Workflow
 
