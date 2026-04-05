@@ -51,12 +51,7 @@ describe("resolveRuntime", () => {
 	});
 
 	it("workflow settings override config default", () => {
-		const result = resolveRuntime(
-			makeStep(null),
-			{ runtime: "codex" },
-			makeConfig("claude"),
-			null,
-		);
+		const result = resolveRuntime(makeStep(null), { runtime: "codex" }, makeConfig("claude"), null);
 		expect(result).toBe("codex");
 	});
 

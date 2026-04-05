@@ -20,9 +20,20 @@
 
 ## Overview
 
-Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for Claude Code. It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution with parallel execution, conditional logic, and retry mechanisms.
+Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for coding agents. It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution with parallel execution, conditional logic, and retry mechanisms.
 
-**Best for**: Autonomous development where you prefer Claude works independently.
+**Best for**: Autonomous development where you prefer the coding agent works independently.
+
+## Supported Runtimes
+
+Agentic Forge orchestrates workflows across multiple coding agent runtimes. Each runtime must be installed and authenticated independently before use.
+
+| Runtime     | CLI      | Default |
+| ----------- | -------- | ------- |
+| Claude Code | `claude` | Yes     |
+| Codex CLI   | `codex`  | No      |
+
+The default runtime is Claude Code. Use `--runtime codex` on the CLI or set `defaults.runtime: codex` in config to switch. Per-step `runtime:` fields always take precedence over the invocation default.
 
 ## Getting Started
 
@@ -30,7 +41,8 @@ Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow 
 
 - Node.js 20+
 - [pnpm](https://pnpm.io/) (recommended) or npm
-- Claude Code CLI installed and configured
+- Claude Code CLI installed and configured (required for default runtime)
+- Codex CLI installed and configured (optional, required for `runtime: codex` steps)
 
 ### Installation
 

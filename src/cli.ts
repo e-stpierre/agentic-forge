@@ -40,7 +40,7 @@ import {
 const program = new Command()
 	.name("agentic-forge")
 	.version(getVersion())
-	.description("Agentic workflow orchestration for Claude Code");
+	.description("Agentic workflow orchestration for coding agents");
 
 // run command
 program
