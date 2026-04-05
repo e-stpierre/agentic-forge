@@ -50,9 +50,30 @@ Bundled YAML workflow definitions (7 workflows: `plan-build-review`, `one-shot`,
 
 Vitest test suite for all TypeScript source code.
 
+### `src/paths.ts`
+
+Central path resolver module. Single source of truth for all directory resolution:
+
+- `getGlobalRoot()` — platform-native global directory (`%APPDATA%`, `~/Library/Application Support`, `$XDG_CONFIG_HOME`)
+- `getOutputRoot(config, cwd)` — resolves output base dir (global default, local override)
+- `getOutputDir(workflowId, config, cwd)` — full output path for a workflow run
+- `getWorkflowDirs(bundledDir)` — ordered workflow search path (project-local > user-global > bundled)
+- `getConfigPaths()` — global and local config file paths
+- `ensureGlobalDir()` — lazy-initializes global directory on first use
+- `sanitizeSlug(input)` — cleans user-provided slugs for safe directory names
+
+### `docs/`
+
+User-facing documentation, linked from the README via GitHub `blob/main/` URLs. Not included in the npm package.
+
+- `getting-started.md` — Installation, quick tour, init, and first workflow creation
+- `cli.md` — Complete CLI reference with all commands, arguments, and options
+- `workflows.md` — Bundled workflows with use cases, variables, and examples
+- `configuration.md` — All configuration options, defaults, and layering behavior
+
 ### `agentic/`
 
-Runtime directory for workflow configuration, outputs, and logs.
+Optional project-local directory for workflow configuration and outputs. Created by `agentic-forge init --local`. When `outputDirectory` is set to `"global"` (the default), outputs go to the global directory instead.
 
 ## Development Guidelines
 
@@ -116,6 +137,18 @@ pnpm test           # Vitest tests
 
 ## Technical Considerations
 
+### Path Resolution
+
+All directory resolution flows through `src/paths.ts`. The system uses a 3-tier model:
+
+- **Config**: built-in defaults -> global (`getGlobalRoot()/config.json`) -> local (`agentic/config.json`)
+- **Workflows**: project-local (`agentic/workflows/`) -> user-global (`getGlobalRoot()/workflows/`) -> bundled
+- **Outputs**: global by default (`getGlobalRoot()/outputs/<project-slug>/`), or local (`agentic/outputs/`) when `outputDirectory: "local"`
+
+The global directory is lazy-initialized by `ensureGlobalDir()` on first use. No `init` is required to run workflows.
+
+Worktrees always use local output (`outputDirectory: "local"`) since they are ephemeral.
+
 ### Workflow Engine Changes
 
 When modifying the workflow engine in `src/`, you must update the workflow-builder skill reference files to keep them in sync:
@@ -124,6 +157,15 @@ When modifying the workflow engine in `src/`, you must update the workflow-build
 - `src/authoring/.claude/skills/workflow-builder/references/workflow-example.yaml` - Annotated reference workflow
 
 Changes to workflow settings, step types, or features require updates to both files.
+
+### Documentation Updates
+
+When modifying CLI commands, configuration options, workflow variables, or user-facing behavior, update the corresponding documentation in `docs/`:
+
+- CLI changes (new commands, arguments, options) -> `docs/cli.md`
+- Workflow changes (new workflows, variable changes) -> `docs/workflows.md`
+- Configuration changes (new keys, default changes) -> `docs/configuration.md`
+- Setup or init flow changes -> `docs/getting-started.md`
 
 ### Node.js Development
 

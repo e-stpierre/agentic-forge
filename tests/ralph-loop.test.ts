@@ -34,13 +34,7 @@ afterEach(() => {
 describe("getRalphStatePath", () => {
 	it("follows expected format", () => {
 		const result = getRalphStatePath("workflow-123", "apply-fixes", tempDir);
-		const expected = path.join(
-			tempDir,
-			"agentic",
-			"outputs",
-			"workflow-123",
-			"ralph-apply-fixes.md",
-		);
+		const expected = path.join(tempDir, "ralph-apply-fixes.md");
 		expect(result).toBe(expected);
 	});
 

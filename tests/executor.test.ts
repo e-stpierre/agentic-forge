@@ -1,6 +1,6 @@
 /** Tests for workflow executor. */
 
-import { existsSync, mkdirSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Writable } from "node:stream";
@@ -45,6 +45,13 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockPromptExecute.mockResolvedValue({ success: true, outputSummary: "done" });
 	tempDir = mkdtempSync(path.join(os.tmpdir(), "executor-test-"));
+	// Create local config so output goes to tempDir/agentic/outputs/ (predictable for tests)
+	mkdirSync(path.join(tempDir, "agentic"), { recursive: true });
+	writeFileSync(
+		path.join(tempDir, "agentic", "config.json"),
+		JSON.stringify({ outputDirectory: "local" }),
+		"utf-8",
+	);
 });
 
 const sampleWorkflowYaml = `

@@ -1,11 +1,12 @@
 /** Run and resume command handlers with workflow discovery. */
 
 import { existsSync, readdirSync } from "node:fs";
-import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import confirm from "@inquirer/confirm";
 import input from "@inquirer/input";
+
+import { getGlobalRoot } from "../paths.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,12 +26,7 @@ export function getBundledWorkflowsDir(): string {
 }
 
 export function getUserWorkflowsDir(): string {
-	if (process.platform === "win32") {
-		const base = process.env.APPDATA ?? path.join(homedir(), "AppData", "Roaming");
-		return path.join(base, "agentic-forge", "workflows");
-	}
-	const base = process.env.XDG_CONFIG_HOME ?? path.join(homedir(), ".config");
-	return path.join(base, "agentic-forge", "workflows");
+	return path.join(getGlobalRoot(), "workflows");
 }
 
 export function getProjectWorkflowsDir(): string {
@@ -134,6 +130,7 @@ export async function cmdRun(options: {
 	fromStep?: string;
 	interactive?: boolean;
 	terminalOutput?: string;
+	slug?: string;
 }): Promise<void> {
 	// Handle --list flag
 	if (options.listWorkflows) {
@@ -274,6 +271,8 @@ export async function cmdRun(options: {
 			options.fromStep ?? null,
 			terminalOutput,
 			path.resolve(workflowPath),
+			null,
+			options.slug,
 		);
 		process.stdout.write(`\nWorkflow ${progress.status}: ${progress.workflowId}\n`);
 		if (progress.errors && progress.errors.length > 0) {

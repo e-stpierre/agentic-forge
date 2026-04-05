@@ -13,6 +13,7 @@ export interface StepContext {
 	renderer: TemplateRenderer;
 	workflowSettings: WorkflowSettings | null;
 	workflowId: string;
+	outputDir?: string;
 	variables: Record<string, unknown>;
 	outputs: Record<string, unknown>;
 	cwdOverride?: string | null;
@@ -23,6 +24,7 @@ export function buildTemplateContext(context: StepContext): Record<string, unkno
 		variables: context.variables,
 		outputs: context.outputs,
 		workflow_id: context.workflowId,
+		output_dir: context.outputDir ?? "",
 		...(context.variables as Record<string, unknown>),
 	};
 }

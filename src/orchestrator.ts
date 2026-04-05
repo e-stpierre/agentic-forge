@@ -10,6 +10,7 @@ import { ConsoleOutput, OutputLevel, extractSummary } from "./console.js";
 import { WorkflowExecutor } from "./executor.js";
 import { type Worktree, createWorktree, pruneOrphaned, removeWorktree } from "./git/worktree.js";
 import { WorkflowLogger } from "./logging/logger.js";
+import { findOutputDir, getOutputDir } from "./paths.js";
 import {
 	WORKFLOW_STATUS,
 	createProgress,
@@ -119,7 +120,9 @@ export class WorkflowOrchestrator {
 			progress = this.initProgress(workflow, vars, fromStep ?? null, workflowFile);
 		}
 
-		const logger = new WorkflowLogger(progress.workflowId, this.repoRoot);
+		const outputDir = getOutputDir(progress.workflowId, this.config, this.repoRoot);
+		progress.outputDir = outputDir;
+		const logger = new WorkflowLogger(progress.workflowId, outputDir);
 		logger.info("orchestrator", `Starting workflow: ${workflow.name}`);
 		console.workflowStart(workflow.name, progress.workflowId);
 
@@ -160,7 +163,7 @@ export class WorkflowOrchestrator {
 				break;
 			}
 
-			saveProgress(progress, this.repoRoot);
+			saveProgress(progress, outputDir);
 
 			if (this._shutdownRequested) {
 				await this.handleShutdown(progress, logger);
@@ -169,7 +172,7 @@ export class WorkflowOrchestrator {
 		}
 
 		progress.completedAt = new Date().toISOString();
-		saveProgress(progress, this.repoRoot);
+		saveProgress(progress, outputDir);
 
 		console.workflowComplete(workflow.name, progress.status);
 		this._signalManager.dispose();
@@ -221,7 +224,9 @@ export class WorkflowOrchestrator {
 			progress.pendingSteps = newPending;
 		}
 
-		saveProgress(progress, this.repoRoot);
+		const initOutputDir = getOutputDir(workflowId, this.config, this.repoRoot);
+		progress.outputDir = initOutputDir;
+		saveProgress(progress, initOutputDir);
 		return progress;
 	}
 
@@ -395,17 +400,14 @@ export class WorkflowOrchestrator {
 					status: "running",
 					worktreePath: wt.path,
 					progressFile: path.join(
-						wt.path,
-						"agentic",
-						"outputs",
-						progress.workflowId,
+						getOutputDir(progress.workflowId, { outputDirectory: "local" }, wt.path),
 						"progress.json",
 					),
 				};
 				progress.parallelBranches.push(branch);
 			}
 
-			saveProgress(progress, this.repoRoot);
+			saveProgress(progress, getOutputDir(progress.workflowId, this.config, this.repoRoot));
 
 			// Execute branches concurrently with concurrency cap
 			interface BranchResult {
@@ -486,16 +488,19 @@ export class WorkflowOrchestrator {
 		console: ConsoleOutput,
 	): Promise<boolean> {
 		const wtExecutor = new WorkflowExecutor(worktree.path);
-		const wtLogger = new WorkflowLogger(parentProgress.workflowId, worktree.path);
+		// Force local output for worktrees: they are ephemeral and output stays within the worktree
+		wtExecutor.config = { ...wtExecutor.config, outputDirectory: "local" };
+		const wtOutputDir = getOutputDir(parentProgress.workflowId, wtExecutor.config, worktree.path);
+		const wtLogger = new WorkflowLogger(parentProgress.workflowId, wtOutputDir);
+
+		// Clone progress so worktree branches write to their own output dir, not the parent's
+		const wtProgress: WorkflowProgress = {
+			...parentProgress,
+			outputDir: wtOutputDir,
+		};
 
 		try {
-			await wtExecutor.executeStep(
-				step,
-				parentProgress,
-				parentProgress.variables,
-				wtLogger,
-				console,
-			);
+			await wtExecutor.executeStep(step, wtProgress, parentProgress.variables, wtLogger, console);
 			return true;
 		} catch (e: unknown) {
 			const errorMsg = e instanceof Error ? e.message : String(e);
@@ -588,7 +593,8 @@ export class WorkflowOrchestrator {
 		}
 
 		// Check for existing state to resume
-		const existingState = loadRalphState(progress.workflowId, step.name, this.repoRoot);
+		const ralphOutputDir = getOutputDir(progress.workflowId, this.config, this.repoRoot);
+		const existingState = loadRalphState(progress.workflowId, step.name, ralphOutputDir);
 		let state: RalphLoopState;
 		if (existingState?.active) {
 			state = existingState;
@@ -601,7 +607,7 @@ export class WorkflowOrchestrator {
 				prompt,
 				maxIterations,
 				completionPromise,
-				this.repoRoot,
+				ralphOutputDir,
 			);
 		}
 
@@ -641,7 +647,7 @@ export class WorkflowOrchestrator {
 					maxIterations,
 					`Failed: ${errorSummary}`,
 				);
-				const newState = updateRalphIteration(progress.workflowId, step.name, this.repoRoot);
+				const newState = updateRalphIteration(progress.workflowId, step.name, ralphOutputDir);
 				if (!newState) break;
 				state = newState;
 				continue;
@@ -656,7 +662,7 @@ export class WorkflowOrchestrator {
 				logger.info(step.name, `Completion promise matched after ${state.iteration} iterations`);
 				finalOutput = result.stdout;
 				completed = true;
-				deactivateRalphState(progress.workflowId, step.name, this.repoRoot);
+				deactivateRalphState(progress.workflowId, step.name, ralphOutputDir);
 				break;
 			}
 
@@ -670,7 +676,7 @@ export class WorkflowOrchestrator {
 				);
 			}
 
-			const newState = updateRalphIteration(progress.workflowId, step.name, this.repoRoot);
+			const newState = updateRalphIteration(progress.workflowId, step.name, ralphOutputDir);
 			if (!newState) {
 				logger.error(step.name, "Failed to update Ralph state");
 				console.error("Failed to update Ralph state");
@@ -693,7 +699,7 @@ export class WorkflowOrchestrator {
 			updateStepFailed(progress, step.name, "Interrupted by shutdown");
 		} else {
 			logger.warning(step.name, `Max iterations (${maxIterations}) reached without completion`);
-			deactivateRalphState(progress.workflowId, step.name, this.repoRoot);
+			deactivateRalphState(progress.workflowId, step.name, ralphOutputDir);
 			updateStepFailed(
 				progress,
 				step.name,
@@ -808,7 +814,12 @@ export function processHumanInput(
 	repoRoot?: string,
 ): boolean {
 	const root = repoRoot ?? process.cwd();
-	const progress = loadProgress(workflowId, root);
+	const humanOutputDir = findOutputDir(workflowId, root);
+	if (!humanOutputDir) {
+		process.stdout.write(`Workflow not found: ${workflowId}\n`);
+		return false;
+	}
+	const progress = loadProgress(workflowId, humanOutputDir);
 
 	if (!progress) {
 		process.stdout.write(`Workflow not found: ${workflowId}\n`);
@@ -827,7 +838,7 @@ export function processHumanInput(
 
 	progress.currentStep.humanInput = response;
 	progress.status = WORKFLOW_STATUS.RUNNING;
-	saveProgress(progress, root);
+	saveProgress(progress, humanOutputDir);
 
 	process.stdout.write(
 		`Input received. Resume workflow with: agentic-forge resume ${workflowId}\n`,

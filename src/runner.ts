@@ -363,6 +363,7 @@ export interface RunClaudeOptions {
 	console?: ConsoleOutput | null;
 	appendSystemPrompt?: boolean;
 	workflowId?: string | null;
+	outputDir?: string | null;
 }
 
 // --- Main run function ---
@@ -380,6 +381,7 @@ export function runClaude(options: RunClaudeOptions): Promise<ClaudeResult> {
 		console: consoleOutput = null,
 		appendSystemPrompt = true,
 		workflowId = null,
+		outputDir = null,
 	} = options;
 
 	const claudePath = getExecutable("claude");
@@ -388,6 +390,11 @@ export function runClaude(options: RunClaudeOptions): Promise<ClaudeResult> {
 	// Add bundled skills directory for skill discovery
 	if (existsSync(SKILLS_DIR)) {
 		cmd.push("--add-dir", SKILLS_DIR);
+	}
+
+	// Add output directory so Claude can write workflow outputs there
+	if (outputDir && existsSync(outputDir)) {
+		cmd.push("--add-dir", outputDir);
 	}
 
 	// Use stream-json format when streaming output for real-time parsing

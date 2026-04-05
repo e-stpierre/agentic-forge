@@ -35,141 +35,51 @@ Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow 
 ### Installation
 
 ```bash
-# Install globally with npm
 npm install -g agentic-forge
-
-# Or install from source
-git clone https://github.com/e-stpierre/agentic-forge.git
-cd agentic-forge
-pnpm install && pnpm build
-npm install -g .
 ```
 
-## Workflows
+### Run Your First Workflow
 
-### plan-build-review (Full SDLC)
-
-Plan -> Create Branch -> Implement (iterative) -> Review -> Fix Issues -> Create PR
+No setup required. Run the demo workflow to verify your installation:
 
 ```bash
-agentic-forge run plan-build-review --var "task=Add dark mode support"
+af run demo
 ```
 
-### one-shot (Single Task)
-
-Create Branch -> Execute Task -> Review -> Create PR
+Run a real workflow:
 
 ```bash
-agentic-forge run one-shot --var "task=Add user authentication"
+af run plan-build-review --var "task=Add dark mode support" --slug "dark-mode"
 ```
 
-### ralph-loop (Iterative Execution)
+The `--slug` flag names the output directory (e.g., `dark-mode/` instead of a generated timestamp ID), making it easy to find results later.
 
-Generic iterative loop where each iteration runs in a fresh session.
+### Project Setup
+
+Initialize a local `agentic/` directory to customize workflows and config for your project:
 
 ```bash
-agentic-forge run ralph-loop --var "task=Follow the improvement plan" --var "max_iterations=20"
+af init --local
 ```
 
-### analyze-codebase (Parallel Analysis)
+### Workflow Builder
 
-Run 5 parallel analysis types (bug, debt, doc, security, style) with optional autofix.
+Load authoring skills into Claude Code to create and manage workflows interactively:
 
 ```bash
-agentic-forge run analyze-codebase --var "autofix=true"
+claude --add-dir $(af authoring-dir)
 ```
 
-### All Commands
+Then use `/af-workflow-builder` to create, validate, explain, or debug workflows.
 
-```bash
-# Run a workflow with variables
-agentic-forge run <workflow> --var "key=value"
+## Documentation
 
-# Resume a paused or failed workflow
-agentic-forge resume <workflow_id>
-
-# Check workflow status
-agentic-forge status <workflow_id>
-
-# Cancel a running workflow
-agentic-forge cancel <workflow_id>
-
-# List all workflow runs (optionally filter by status)
-agentic-forge list --status running
-
-# Provide input to a paused workflow waiting for human response
-agentic-forge input <workflow_id> "response text"
-
-# Copy bundled workflow templates to your project
-agentic-forge init
-
-# List available workflows with descriptions
-agentic-forge workflows
-
-# Get or set configuration
-agentic-forge config get <key>
-agentic-forge config set <key> <value>
-
-# Interactive configuration setup
-agentic-forge configure
-
-# Print path to bundled workflow skills directory
-agentic-forge skills-dir
-
-# Print path to interactive authoring skills directory
-agentic-forge authoring-dir
-
-# Show release notes
-agentic-forge release-notes --latest
-
-# Check current version
-agentic-forge version
-
-# Update to latest version
-agentic-forge update
-```
-
-## Repository Structure
-
-```text
-src/
-  agents/              # Bundled agent definitions (explorer, reviewer)
-  authoring/.claude/   # Interactive authoring skills (workflow-builder)
-    skills/            # Skills for users to create and manage workflows
-  claude/.claude/      # Workflow execution skills loaded via --add-dir
-    skills/            # Bundled skills used by workflows
-  commands/            # CLI command implementations
-  prompts/             # System prompt templates
-  steps/               # Workflow step handlers
-  workflows/           # 7 bundled YAML workflow definitions
-  *.ts                 # Core TypeScript modules
-tests/                 # Vitest test suite
-```
-
-### Skills directories
-
-Agentic Forge separates skills into two directories:
-
-- **Workflow skills** (`skills-dir`) — Skills used by the workflow engine during execution. Loaded automatically when running workflows.
-- **Authoring skills** (`authoring-dir`) — Interactive skills for users to create and manage workflows. Add them to your Claude Code session manually:
-
-```bash
-claude --add-dir $(agentic-forge authoring-dir)
-```
-
-#### Using the workflow-builder skill
-
-Once the authoring skills are loaded, use the `/af-workflow-builder` slash command to create, update, explain, validate, or debug workflows:
-
-```text
-/af-workflow-builder create a workflow that plans and reviews a feature
-/af-workflow-builder validate my-workflow.yaml
-/af-workflow-builder explain how ralph-loop works
-/af-workflow-builder update my-workflow.yaml to add a parallel step
-/af-workflow-builder debug why my conditional always takes the else branch
-```
-
-The skill has full knowledge of the workflow schema, all step types, and bundled skills.
+| Document                                                                                         | Description                                                                |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| [Getting Started](https://github.com/e-stpierre/agentic-forge/blob/main/docs/getting-started.md) | Installation, quick tour, initialization, and creating your first workflow |
+| [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md)               | Complete list of commands with all arguments and options                   |
+| [Workflows](https://github.com/e-stpierre/agentic-forge/blob/main/docs/workflows.md)             | Bundled workflows, their use cases, variables, and examples                |
+| [Configuration](https://github.com/e-stpierre/agentic-forge/blob/main/docs/configuration.md)     | All configuration options, defaults, and layering behavior                 |
 
 ## Contributing
 

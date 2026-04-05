@@ -3,6 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { lockSync } from "proper-lockfile";
+import { sanitizeSlug } from "./paths.js";
 import type { CurrentStepInfo, ParallelBranch, StepProgress, WorkflowProgress } from "./types.js";
 
 // --- Constants ---
@@ -26,25 +27,28 @@ export const STEP_STATUS = {
 
 // --- ID and path helpers ---
 
-export function generateWorkflowId(workflowName: string): string {
+export function generateWorkflowId(workflowName: string, slug?: string): string {
 	const now = new Date();
 	const pad = (n: number, len = 2) => String(n).padStart(len, "0");
 	const timestamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}`;
 
 	let safeName = workflowName.toLowerCase().replace(/ /g, "-").replace(/_/g, "-");
 	safeName = safeName.replace(/[^a-z0-9-]/g, "");
+
+	if (slug) {
+		return sanitizeSlug(slug);
+	}
 	return `${timestamp}-${safeName}`;
 }
 
-export function getProgressPath(workflowId: string, repoRoot?: string): string {
-	const root = repoRoot ?? process.cwd();
-	return path.join(root, "agentic", "outputs", workflowId, "progress.json");
+export function getProgressPath(workflowId: string, outputDir: string): string {
+	return path.join(outputDir, "progress.json");
 }
 
 // --- CRUD operations ---
 
-export function loadProgress(workflowId: string, repoRoot?: string): WorkflowProgress | null {
-	const progressPath = getProgressPath(workflowId, repoRoot);
+export function loadProgress(workflowId: string, outputDir: string): WorkflowProgress | null {
+	const progressPath = getProgressPath(workflowId, outputDir);
 	if (!existsSync(progressPath)) {
 		return null;
 	}
@@ -56,8 +60,8 @@ export function loadProgress(workflowId: string, repoRoot?: string): WorkflowPro
 	}
 }
 
-export function saveProgress(progress: WorkflowProgress, repoRoot?: string): void {
-	const progressPath = getProgressPath(progress.workflowId, repoRoot);
+export function saveProgress(progress: WorkflowProgress, outputDir: string): void {
+	const progressPath = getProgressPath(progress.workflowId, outputDir);
 	const dir = path.dirname(progressPath);
 	mkdirSync(dir, { recursive: true });
 
@@ -125,6 +129,7 @@ export function updateStepCompleted(
 	stepName: string,
 	outputSummary = "",
 	output?: unknown,
+	sessionId?: string | null,
 ): void {
 	const runIdx = progress.runningSteps.indexOf(stepName);
 	if (runIdx !== -1) {
@@ -140,6 +145,7 @@ export function updateStepCompleted(
 		outputSummary,
 		error: null,
 		humanInput: null,
+		sessionId: sessionId ?? null,
 	};
 	progress.completedSteps.push(step);
 
@@ -264,6 +270,7 @@ export function progressToDict(progress: WorkflowProgress): Record<string, unkno
 		variables: progress.variables,
 		step_outputs: progress.stepOutputs,
 		workflow_file: progress.workflowFile,
+		output_dir: progress.outputDir,
 	};
 }
 
@@ -320,5 +327,6 @@ export function dictToProgress(data: Record<string, unknown>): WorkflowProgress 
 		variables: (data.variables as Record<string, unknown>) ?? {},
 		stepOutputs: (data.step_outputs as Record<string, unknown>) ?? {},
 		workflowFile: (data.workflow_file as string) ?? "",
+		outputDir: (data.output_dir as string) ?? undefined,
 	};
 }

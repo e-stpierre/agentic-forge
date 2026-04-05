@@ -6,6 +6,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CliExitError, parseVars } from "../src/commands/run.js";
+import { generateWorkflowId } from "../src/progress.js";
 
 // Top-level mock so it's properly hoisted
 const mockExecutorRun = vi.fn();
@@ -87,6 +88,25 @@ function writeTempWorkflow(tempDir: string, name: string, yaml: string): string 
 	writeFileSync(filePath, yaml);
 	return filePath;
 }
+
+// --- generateWorkflowId slug tests ---
+
+describe("generateWorkflowId with slug", () => {
+	it("uses slug as the workflow ID when provided", () => {
+		const id = generateWorkflowId("my-workflow", "my-slug");
+		expect(id).toBe("my-slug");
+	});
+
+	it("sanitizes the slug", () => {
+		const id = generateWorkflowId("demo", "Hello World!");
+		expect(id).toBe("hello-world");
+	});
+
+	it("generates ID without slug when not provided", () => {
+		const id = generateWorkflowId("my-workflow");
+		expect(id).toMatch(/^\d{8}-\d{6}-my-workflow$/);
+	});
+});
 
 // --- cmdRun non-interactive error path tests ---
 
@@ -292,6 +312,8 @@ steps:
 			null,
 			"base",
 			expect.any(String),
+			null,
+			undefined,
 		);
 	});
 
@@ -334,6 +356,8 @@ steps:
 			null,
 			"base",
 			expect.any(String),
+			null,
+			undefined,
 		);
 	});
 

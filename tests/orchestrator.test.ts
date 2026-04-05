@@ -1,6 +1,6 @@
 /** Tests for workflow orchestrator. */
 
-import { mkdirSync, mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -420,8 +420,22 @@ describe("workflowToDict", () => {
 
 // --- processHumanInput ---
 
+function setupLocalOutput(dir: string): void {
+	mkdirSync(path.join(dir, "agentic"), { recursive: true });
+	writeFileSync(
+		path.join(dir, "agentic", "config.json"),
+		JSON.stringify({ outputDirectory: "local" }),
+		"utf-8",
+	);
+}
+
+function localOutputDir(dir: string, workflowId: string): string {
+	return path.join(dir, "agentic", "outputs", workflowId);
+}
+
 describe("processHumanInput", () => {
 	it("should return false when workflow not found", () => {
+		setupLocalOutput(tempDir);
 		const stdoutWrite = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 		const result = processHumanInput("nonexistent", "response", tempDir);
 		expect(result).toBe(false);
@@ -429,10 +443,11 @@ describe("processHumanInput", () => {
 	});
 
 	it("should return false when workflow is not paused", () => {
+		setupLocalOutput(tempDir);
 		const stdoutWrite = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 		const progress = createProgress("wf-running", "test", ["step1"], {});
 		progress.status = "running";
-		saveProgress(progress, tempDir);
+		saveProgress(progress, localOutputDir(tempDir, "wf-running"));
 
 		const result = processHumanInput("wf-running", "response", tempDir);
 		expect(result).toBe(false);
@@ -440,11 +455,12 @@ describe("processHumanInput", () => {
 	});
 
 	it("should return false when workflow is paused but not waiting for human", () => {
+		setupLocalOutput(tempDir);
 		const stdoutWrite = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 		const progress = createProgress("wf-paused", "test", ["step1"], {});
 		progress.status = WORKFLOW_STATUS.PAUSED;
 		progress.currentStep = null;
-		saveProgress(progress, tempDir);
+		saveProgress(progress, localOutputDir(tempDir, "wf-paused"));
 
 		const result = processHumanInput("wf-paused", "response", tempDir);
 		expect(result).toBe(false);
@@ -452,6 +468,7 @@ describe("processHumanInput", () => {
 	});
 
 	it("should accept input when workflow is paused and waiting for human", () => {
+		setupLocalOutput(tempDir);
 		const stdoutWrite = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 		const progress = createProgress("wf-waiting", "test", ["step1"], {});
 		progress.status = WORKFLOW_STATUS.PAUSED;
@@ -462,7 +479,7 @@ describe("processHumanInput", () => {
 			type: "wait-for-human",
 			message: "Please review",
 		};
-		saveProgress(progress, tempDir);
+		saveProgress(progress, localOutputDir(tempDir, "wf-waiting"));
 
 		const result = processHumanInput("wf-waiting", "approved", tempDir);
 		expect(result).toBe(true);
@@ -499,6 +516,10 @@ function mockDecision(
 
 describe("WorkflowOrchestrator.run", () => {
 	let orchestrator: InstanceType<typeof WorkflowOrchestrator>;
+
+	beforeEach(() => {
+		setupLocalOutput(tempDir);
+	});
 
 	afterEach(() => {
 		orchestrator.dispose();

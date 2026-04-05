@@ -113,6 +113,7 @@ export interface StepProgress {
 	outputSummary: string;
 	error: string | null;
 	humanInput: string | null;
+	sessionId?: string | null;
 }
 
 export interface ParallelBranch {
@@ -149,4 +150,5 @@ export interface WorkflowProgress {
 	variables: Record<string, unknown>;
 	stepOutputs: Record<string, unknown>;
 	workflowFile: string;
+	outputDir?: string;
 }

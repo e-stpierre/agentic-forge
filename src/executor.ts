@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
 import { ConsoleOutput, OutputLevel } from "./console.js";
 import { WorkflowLogger } from "./logging/logger.js";
+import { getOutputDir, resolveOutputDir } from "./paths.js";
 import {
 	STEP_STATUS,
 	WORKFLOW_STATUS,
@@ -140,6 +141,7 @@ export class WorkflowExecutor {
 		terminalOutput = "base",
 		workflowFile = "",
 		resumeProgress?: WorkflowProgress | null,
+		slug?: string,
 	): Promise<WorkflowProgress> {
 		let vars = variables ? { ...variables } : {};
 		this.workflowSettings = workflow.settings;
@@ -175,14 +177,19 @@ export class WorkflowExecutor {
 				}
 			}
 
-			workflowId = generateWorkflowId(workflow.name);
+			workflowId = generateWorkflowId(workflow.name, slug);
 			const stepNames = workflow.steps.map((s) => s.name);
 			progress = createProgress(workflowId, workflow.name, stepNames, vars, workflowFile);
 		}
 
-		saveProgress(progress, this.repoRoot);
+		// Resolve output dir, handling collisions with resolveOutputDir
+		const baseOutputDir =
+			resumeProgress?.outputDir ?? getOutputDir(workflowId, this.config, this.repoRoot);
+		const outputDir = resumeProgress ? baseOutputDir : resolveOutputDir(baseOutputDir);
+		progress.outputDir = outputDir;
+		saveProgress(progress, outputDir);
 
-		const logger = new WorkflowLogger(workflowId, this.repoRoot);
+		const logger = new WorkflowLogger(workflowId, outputDir);
 		logger.info("workflow", `Started workflow: ${workflow.name}`);
 
 		console.workflowStart(workflow.name, workflowId);
@@ -214,7 +221,7 @@ export class WorkflowExecutor {
 
 			try {
 				await this.executeStep(step, progress, vars, logger, console);
-				saveProgress(progress, this.repoRoot);
+				saveProgress(progress, outputDir);
 
 				if (
 					progress.status === WORKFLOW_STATUS.FAILED ||
@@ -228,7 +235,7 @@ export class WorkflowExecutor {
 				console.stepFailed(step.name, errorMsg);
 				updateStepFailed(progress, step.name, errorMsg);
 				progress.status = WORKFLOW_STATUS.FAILED;
-				saveProgress(progress, this.repoRoot);
+				saveProgress(progress, outputDir);
 				break;
 			}
 		}
@@ -239,7 +246,7 @@ export class WorkflowExecutor {
 		if (progress.status !== WORKFLOW_STATUS.PAUSED) {
 			progress.completedAt = new Date().toISOString();
 		}
-		saveProgress(progress, this.repoRoot);
+		saveProgress(progress, outputDir);
 
 		this.renderOutputs(workflow, progress, vars, logger);
 
@@ -288,7 +295,7 @@ export class WorkflowExecutor {
 		const pluginTemplates = path.join(__dirname, "templates");
 		const templateDirs = [pluginTemplates, this.repoRoot];
 
-		const outputDir = path.join(this.repoRoot, "agentic", "outputs", progress.workflowId);
+		const outputDir = this.resolveOutputDir(progress);
 
 		for (const output of workflow.outputs) {
 			if (output.when === "completed" && progress.status !== WORKFLOW_STATUS.COMPLETED) {
@@ -323,6 +330,10 @@ export class WorkflowExecutor {
 		}
 	}
 
+	private resolveOutputDir(progress: WorkflowProgress): string {
+		return progress.outputDir ?? getOutputDir(progress.workflowId, this.config, this.repoRoot);
+	}
+
 	async executeStep(
 		step: StepDefinition,
 		progress: WorkflowProgress,
@@ -330,12 +341,14 @@ export class WorkflowExecutor {
 		logger: WorkflowLogger,
 		console: ConsoleOutput,
 	): Promise<void> {
+		const outputDir = this.resolveOutputDir(progress);
 		const context: StepContext = {
 			repoRoot: this.repoRoot,
 			config: this.config,
 			renderer: this.renderer,
 			workflowSettings: this.workflowSettings,
 			workflowId: progress.workflowId,
+			outputDir,
 			variables,
 			outputs: progress.stepOutputs,
 		};
@@ -345,7 +358,7 @@ export class WorkflowExecutor {
 		logger.info(step.name, `Starting step: ${step.name}`);
 		console.stepStart(step.name, step.type, resolvedModel);
 		updateStepStarted(progress, step.name);
-		saveProgress(progress, this.repoRoot);
+		saveProgress(progress, outputDir);
 
 		const executor = this.executors[step.type];
 		if (!executor) {

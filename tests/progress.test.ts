@@ -89,22 +89,15 @@ describe("generateWorkflowId", () => {
 });
 
 describe("getProgressPath", () => {
-	it("should return correct path", () => {
+	it("should return progress.json inside the given outputDir", () => {
 		const tempDir = makeTempDir();
 		const p = getProgressPath("20260111-143052-test-workflow", tempDir);
-		const expected = path.join(
-			tempDir,
-			"agentic",
-			"outputs",
-			"20260111-143052-test-workflow",
-			"progress.json",
-		);
-		expect(p).toBe(expected);
+		expect(p).toBe(path.join(tempDir, "progress.json"));
 	});
 
-	it("should use cwd when no root specified", () => {
-		const p = getProgressPath("test-workflow");
-		expect(p).toContain("test-workflow");
+	it("should always end with progress.json", () => {
+		const tempDir = makeTempDir();
+		const p = getProgressPath("test-workflow", tempDir);
 		expect(p).toMatch(/progress\.json$/);
 	});
 });
@@ -162,11 +155,11 @@ describe("saveProgress and loadProgress", () => {
 
 	it("should create directories when saving", () => {
 		const tempDir = makeTempDir();
+		const outputDir = path.join(tempDir, "nested", "outputdir");
 		const progress = createProgress("new-workflow", "test", [], {});
-		saveProgress(progress, tempDir);
+		saveProgress(progress, outputDir);
 
-		const expectedPath = path.join(tempDir, "agentic", "outputs", "new-workflow", "progress.json");
-		expect(existsSync(expectedPath)).toBe(true);
+		expect(existsSync(path.join(outputDir, "progress.json"))).toBe(true);
 	});
 
 	it("should write valid JSON", () => {

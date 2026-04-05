@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.0
+
+- Added `paths.ts` central path resolver as single source of truth for all directory resolution
+- Added `paths` CLI command to display resolved global, local, and bundled directory paths
+- Added 3-layer config loading: built-in defaults → global config → local config
+- Added `saveConfig()` with `--global`/`--local` scope support for targeted config writes
+- Updated `init` command to default to global directory; added `--local` flag for project-local init
+- Added `--config-only`, `--workflows-only`, and `--workflow <name>` flags to `init` command
+- Added `--global`/`--local` scope flags to `config set` command
+- Added `--slug` flag to `run` command for custom workflow run ID suffix
+- Updated output directory to default to global (`%APPDATA%/agentic-forge/outputs/<project>/`) with local override via config
+- Updated `status` command to show output directory source and resolved paths
+
 ## 0.7.1
 
 - Added bare `key=value` argument support for passing workflow variables without the `--var` flag

@@ -6,9 +6,8 @@ import yaml from "js-yaml";
 
 // --- Path helper ---
 
-export function getCheckpointPath(workflowId: string, repoRoot?: string): string {
-	const root = repoRoot ?? process.cwd();
-	return path.join(root, "agentic", "outputs", workflowId, "checkpoint.md");
+export function getCheckpointPath(workflowId: string, outputDir: string): string {
+	return path.join(outputDir, "checkpoint.md");
 }
 
 // --- Create checkpoint ---
@@ -18,15 +17,15 @@ export function createCheckpoint(
 	step: string,
 	context: string,
 	progress: string,
+	outputDir: string,
 	notes = "",
 	issues = "",
-	repoRoot?: string,
 ): string {
-	const checkpointPath = getCheckpointPath(workflowId, repoRoot);
+	const checkpointPath = getCheckpointPath(workflowId, outputDir);
 	const dir = path.dirname(checkpointPath);
 	mkdirSync(dir, { recursive: true });
 
-	const existing = readCheckpoints(workflowId, repoRoot);
+	const existing = readCheckpoints(workflowId, outputDir);
 	const checkpointNum = existing.length + 1;
 	const checkpointId = `chk-${String(checkpointNum).padStart(3, "0")}`;
 
@@ -73,8 +72,8 @@ export function createCheckpoint(
 
 // --- Read checkpoints ---
 
-export function readCheckpoints(workflowId: string, repoRoot?: string): Record<string, unknown>[] {
-	const checkpointPath = getCheckpointPath(workflowId, repoRoot);
+export function readCheckpoints(workflowId: string, outputDir: string): Record<string, unknown>[] {
+	const checkpointPath = getCheckpointPath(workflowId, outputDir);
 
 	if (!existsSync(checkpointPath)) {
 		return [];
@@ -116,8 +115,8 @@ export function readCheckpoints(workflowId: string, repoRoot?: string): Record<s
 
 export function getLatestCheckpoint(
 	workflowId: string,
-	repoRoot?: string,
+	outputDir: string,
 ): Record<string, unknown> | null {
-	const checkpoints = readCheckpoints(workflowId, repoRoot);
+	const checkpoints = readCheckpoints(workflowId, outputDir);
 	return checkpoints.length > 0 ? checkpoints[checkpoints.length - 1] : null;
 }

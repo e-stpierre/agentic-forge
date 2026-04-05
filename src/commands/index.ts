@@ -13,6 +13,7 @@ export {
 export { cmdResume } from "./resume.js";
 export { cmdStatus, cmdCancel, cmdList } from "./status.js";
 export { cmdInit, cmdConfigure } from "./init.js";
+export { cmdPaths } from "./paths.js";
 export { cmdConfig } from "./config-cmd.js";
 export { cmdVersion, getVersion } from "./version.js";
 export { cmdUpdate } from "./update.js";
