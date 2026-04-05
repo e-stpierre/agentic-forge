@@ -1,8 +1,16 @@
 /** Tests for CodexAdapter. */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CodexAdapter } from "../../src/runtimes/codex.js";
 import type { RuntimeRunOptions } from "../../src/runtimes/types.js";
+
+vi.mock("../../src/runtimes/utils.js", async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>;
+	return {
+		...actual,
+		getExecutable: (name: string) => `/usr/bin/${name}`,
+	};
+});
 
 const adapter = new CodexAdapter();
 
