@@ -52,6 +52,7 @@ export interface WorkflowSettings {
 	bypassPermissions: boolean;
 	strictMode: boolean;
 	model: string | null;
+	runtime?: string | null;
 	requiredTools: string[];
 	git: GitSettings;
 }
@@ -73,6 +74,7 @@ export interface StepDefinition {
 	pollingInterval: number;
 	onTimeout: string;
 	model?: string | null;
+	runtime?: string | null;
 	stepTimeoutMinutes?: number | null;
 	stepMaxRetry?: number | null;
 	onError: string;

@@ -1,7 +1,7 @@
 ---
 name: af-git-pr
 description: Create a pull request with contextual title and description
-argument-hint: [title] [body] [base] [--draft]
+argument-hint: "[title] [body] [base] [--draft]"
 ---
 
 # Git PR

@@ -62,9 +62,14 @@ describe("Config defaults", () => {
 		expect(config).toHaveProperty("execution");
 	});
 
-	it("should have sonnet as default model", () => {
+	it("should have sonnet as default claude model", () => {
 		const config = getDefaultConfig();
-		expect((config.defaults as Record<string, unknown>).model).toBe("sonnet");
+		expect((config.claude as Record<string, unknown>).model).toBe("sonnet");
+	});
+
+	it("should have gpt-5.4 as default codex model", () => {
+		const config = getDefaultConfig();
+		expect((config.codex as Record<string, unknown>).model).toBe("gpt-5.4");
 	});
 
 	it("should have global as default outputDirectory", () => {
@@ -104,7 +109,7 @@ describe("Load config", () => {
 		const config = loadConfig(tempDir);
 
 		expect(config.outputDirectory).toBe("global");
-		expect((config.defaults as Record<string, unknown>).model).toBe("sonnet");
+		expect((config.claude as Record<string, unknown>).model).toBe("sonnet");
 	});
 
 	it("should load existing local config file", () => {
@@ -114,14 +119,14 @@ describe("Load config", () => {
 			path.join(configDir, "config.json"),
 			JSON.stringify({
 				outputDirectory: "local",
-				defaults: { model: "opus" },
+				claude: { model: "opus" },
 			}),
 		);
 
 		const config = loadConfig(tempDir);
 
 		expect(config.outputDirectory).toBe("local");
-		expect((config.defaults as Record<string, unknown>).model).toBe("opus");
+		expect((config.claude as Record<string, unknown>).model).toBe("opus");
 		// Other defaults should still be present
 		expect((config.defaults as Record<string, unknown>).maxRetry).toBe(3);
 	});
@@ -183,7 +188,7 @@ describe("Load config", () => {
 
 		expect(config.outputDirectory).toBe("local");
 		// Defaults still filled in
-		expect((config.defaults as Record<string, unknown>).model).toBe("sonnet");
+		expect((config.claude as Record<string, unknown>).model).toBe("sonnet");
 	});
 });
 
@@ -250,7 +255,7 @@ describe("Config values", () => {
 	});
 
 	it("should get nested config value", () => {
-		const value = getConfigValue("defaults.model", tempDir);
+		const value = getConfigValue("claude.model", tempDir);
 		expect(value).toBe("sonnet");
 	});
 
@@ -266,8 +271,8 @@ describe("Config values", () => {
 	});
 
 	it("should set nested config value", () => {
-		setConfigValue("defaults.model", "opus", undefined, tempDir);
-		const value = getConfigValue("defaults.model", tempDir);
+		setConfigValue("claude.model", "opus", undefined, tempDir);
+		const value = getConfigValue("claude.model", tempDir);
 		expect(value).toBe("opus");
 	});
 

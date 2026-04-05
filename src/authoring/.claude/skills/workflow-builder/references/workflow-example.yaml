@@ -45,6 +45,11 @@ settings:
   # Steps can override this with their own model setting
   model: sonnet
 
+  # Default coding agent runtime for all steps: claude, codex (default: claude)
+  # Runtime resolution order: step.runtime > --runtime CLI flag > settings.runtime > config.defaults.runtime > "claude"
+  # Note: skill invocations (/sdlc-plan, /git-commit, etc.) only work with runtime: claude
+  runtime: claude
+
   # Tools Claude can use without prompting (default: [])
   required-tools:
     - "Bash"
@@ -121,9 +126,6 @@ steps:
       2. Potential challenges
       3. Recommended approach
 
-    # Optional: Model to use (sonnet, haiku, opus)
-    model: sonnet
-
     # Optional: Timeout for this step (overrides workflow timeout)
     timeout-minutes: 15
 
@@ -135,6 +137,16 @@ steps:
 
     # Optional: Create checkpoint after this step completes
     checkpoint: false
+
+    # Optional: Override the runtime for this specific step
+    # This is NEVER overridden by the --runtime CLI flag - step.runtime always wins
+    # Example: run this analysis step with codex
+    runtime: codex
+
+    # Optional: Model to use. When using a different runtime, specify a model compatible
+    # with that runtime (e.g. "gpt-5.4" for codex). For the default claude runtime,
+    # use "sonnet", "haiku", or "opus".
+    model: gpt-5.4
 
   # ==================== SKILL INVOCATION ====================
   # Invoke a Claude slash command skill

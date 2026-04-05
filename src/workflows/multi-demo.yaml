@@ -1,0 +1,208 @@
+name: multi-demo
+version: "1.0"
+description: Demo workflow showcasing mixed-runtime execution with Claude and Codex at the step level
+
+settings:
+  track-progress: true
+  terminal-output: all
+  bypass-permissions: false
+  git:
+    enabled: false
+    worktree: false
+
+steps:
+  - name: welcome
+    type: prompt
+    runtime: claude
+    model: haiku
+    prompt: |
+      # Welcome to the agentic-forge Multi-Runtime Demo Workflow
+
+      This workflow demonstrates mixed-runtime execution. Different steps will run
+      using different coding agents (Claude Code and Codex CLI) at the step level.
+
+      Please acknowledge this welcome message by saying: "Multi-runtime demo workflow started successfully."
+
+  - name: create-demo-files
+    type: parallel
+    merge-strategy: wait-all
+    merge-mode: independent
+    git:
+      worktree: false
+    steps:
+      - name: create-claude-file
+        type: prompt
+        runtime: claude
+        model: haiku
+        prompt: |
+          Create a file named `multi-demo-claude.md` at the repository root.
+
+          The file should contain:
+          ```markdown
+          # Multi-Runtime Demo - Claude File
+
+          Created by: Claude Code (claude runtime)
+          Timestamp: [current timestamp]
+          Step: create-claude-file
+
+          This file was created by the Claude runtime to demonstrate mixed-runtime workflows.
+          ```
+
+          Use the Write tool to create this file.
+
+          IMPORTANT: If you encounter a permission error when trying to write this file,
+          you MUST stop immediately and report: "PERMISSION ERROR: Unable to write multi-demo-claude.md"
+          Do not attempt any workarounds.
+
+      - name: create-codex-file
+        type: prompt
+        runtime: codex
+        model: gpt-5.4
+        prompt: |
+          Create a file named `multi-demo-codex.md` at the repository root.
+
+          The file should contain:
+          ```markdown
+          # Multi-Runtime Demo - Codex File
+
+          Created by: Codex CLI (codex runtime)
+          Timestamp: [current timestamp]
+          Step: create-codex-file
+
+          This file was created by the Codex runtime to demonstrate mixed-runtime workflows.
+          ```
+
+          Use the Write tool to create this file.
+
+          IMPORTANT: If you encounter a permission error when trying to write this file,
+          you MUST stop immediately and report: "PERMISSION ERROR: Unable to write multi-demo-codex.md"
+          Do not attempt any workarounds.
+
+  - name: random-facts
+    type: parallel
+    merge-strategy: wait-all
+    merge-mode: independent
+    git:
+      worktree: false
+    steps:
+      - name: claude-facts-loop
+        type: ralph-loop
+        runtime: claude
+        model: haiku
+        max-iterations: 5
+        completion-promise: THREE_FACTS_WRITTEN
+        prompt: |
+          ## Random Facts Loop (Claude) - Iteration {{iteration}}/{{max_iterations}}
+
+          You are in a Ralph Wiggum iterative loop adding random knowledge facts to multi-demo-claude.md.
+
+          ## Your Task
+          1. Read the file `multi-demo-claude.md` at the repository root
+          2. Add ONE new numbered random knowledge fact to the "Random Facts" section
+          3. If the "Random Facts" section does not exist, create it at the end of the file
+          4. Save the file and STOP (exit the session)
+
+          ## Random Facts Section Format
+          ```markdown
+          ## Random Facts
+
+          1. [Your first random fact here]
+          2. [Your second random fact here]
+          ...
+          ```
+
+          ## Exit Instructions
+          - After adding ONE fact, you MUST exit the session immediately
+          - Do NOT add multiple facts in a single iteration
+          - Simply stop working after saving the file - the loop will automatically continue
+
+          ## Completion Condition
+          When the file contains EXACTLY 3 numbered facts in the Random Facts section, output:
+          ```json
+          {"ralph_complete": true, "promise": "THREE_FACTS_WRITTEN"}
+          ```
+
+          **IMPORTANT**:
+          - Count the existing facts BEFORE adding a new one
+          - If there are already 2 facts, add the 3rd fact and THEN output the completion JSON
+          - If there are already 3 or more facts, output the completion JSON immediately without adding more
+          - If there are 0-1 facts, add ONE fact and then STOP (do not output completion JSON yet)
+
+      - name: codex-facts-loop
+        type: ralph-loop
+        runtime: codex
+        model: gpt-5.4
+        max-iterations: 5
+        completion-promise: THREE_FACTS_WRITTEN
+        prompt: |
+          ## Random Facts Loop (Codex) - Iteration {{iteration}}/{{max_iterations}}
+
+          You are in a Ralph Wiggum iterative loop adding random knowledge facts to multi-demo-codex.md.
+
+          ## Your Task
+          1. Read the file `multi-demo-codex.md` at the repository root
+          2. Add ONE new numbered random knowledge fact to the "Random Facts" section
+          3. If the "Random Facts" section does not exist, create it at the end of the file
+          4. Save the file and STOP (exit the session)
+
+          ## Random Facts Section Format
+          ```markdown
+          ## Random Facts
+
+          1. [Your first random fact here]
+          2. [Your second random fact here]
+          ...
+          ```
+
+          ## Exit Instructions
+          - After adding ONE fact, you MUST exit the session immediately
+          - Do NOT add multiple facts in a single iteration
+          - Simply stop working after saving the file - the loop will automatically continue
+
+          ## Completion Condition
+          When the file contains EXACTLY 3 numbered facts in the Random Facts section, output:
+          ```json
+          {"ralph_complete": true, "promise": "THREE_FACTS_WRITTEN"}
+          ```
+
+          **IMPORTANT**:
+          - Count the existing facts BEFORE adding a new one
+          - If there are already 2 facts, add the 3rd fact and THEN output the completion JSON
+          - If there are already 3 or more facts, output the completion JSON immediately without adding more
+          - If there are 0-1 facts, add ONE fact and then STOP (do not output completion JSON yet)
+
+  - name: validate
+    type: prompt
+    runtime: claude
+    model: haiku
+    prompt: |
+      # Multi-Runtime Demo Validation
+
+      Verify that both demo files were created successfully by different runtimes
+      and that the random facts loops ran correctly.
+
+      ## Validation Tasks
+
+      1. Read `multi-demo-claude.md` and confirm it exists and was created by the Claude runtime
+      2. Read `multi-demo-codex.md` and confirm it exists and was created by the Codex runtime
+      3. Verify that `multi-demo-claude.md` contains a "Random Facts" section with EXACTLY 3 numbered facts
+      4. Verify that `multi-demo-codex.md` contains a "Random Facts" section with EXACTLY 3 numbered facts
+
+      ## Reporting
+
+      After reading both files, report:
+
+      If ALL validations passed:
+      "MULTI-RUNTIME DEMO COMPLETED SUCCESSFULLY - Both Claude and Codex runtimes created their files and added random facts!
+
+      Validation Summary:
+      - multi-demo-claude.md: Created by Claude runtime, 3 random facts added
+      - multi-demo-codex.md: Created by Codex runtime, 3 random facts added
+      - Mixed-runtime execution: Working correctly"
+
+      If ANY validation failed, report which ones and end with:
+      "MULTI-RUNTIME DEMO COMPLETED WITH ISSUES - Please review the errors above."
+
+      Remind the user to clean up by deleting:
+      - multi-demo-claude.md
+      - multi-demo-codex.md

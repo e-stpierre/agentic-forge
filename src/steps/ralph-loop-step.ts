@@ -1,5 +1,6 @@
 /** Ralph loop step executor. */
 
+import { getSandboxMode } from "../config.js";
 import type { ConsoleOutput } from "../console.js";
 import { extractSummary } from "../console.js";
 import type { WorkflowLogger } from "../logging/logger.js";
@@ -13,7 +14,7 @@ import {
 	loadRalphState,
 	updateRalphIteration,
 } from "../ralph-loop.js";
-import { runClaude } from "../runner.js";
+import { runRuntime } from "../runtimes/process-runner.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import {
 	type StepContext,
@@ -110,10 +111,10 @@ export class RalphLoopStepExecutor extends StepExecutor {
 			const systemMessage = buildRalphSystemMessage(iteration, maxIterations, completionPromise);
 			const fullPrompt = `${systemMessage}${prompt}`;
 
-			// Display iteration header BEFORE running Claude
+			// Display iteration header BEFORE running runtime
 			console.ralphIterationStart(step.name, iteration, maxIterations);
 
-			const result = await runClaude({
+			const result = await runRuntime(context.runtimeAdapter, {
 				prompt: fullPrompt,
 				cwd: context.repoRoot,
 				model: resolveModel(context, step.model),
@@ -124,6 +125,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				console,
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,
+				sandbox: getSandboxMode(context.config),
 			});
 
 			if (!result.success) {

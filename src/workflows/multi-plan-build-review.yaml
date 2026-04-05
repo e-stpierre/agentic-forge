@@ -1,6 +1,6 @@
-name: plan-build-review
+name: multi-plan-build-review
 version: "1.0"
-description: Full SDLC workflow with planning, implementation, and review
+description: Full SDLC workflow using mixed runtimes - Claude for planning and implementation, Codex for review
 
 settings:
   max-retry: 3
@@ -52,9 +52,54 @@ variables:
 steps:
   - name: plan
     type: prompt
+    runtime: claude
     model: opus
     prompt: /af-sdlc-plan {{ workflow_id }} {{ variables.type }} "{{ output_dir }}" {{ variables.explore_agents }} {{ variables.task }}
     checkpoint: true
+
+  - name: plan-review
+    type: prompt
+    runtime: codex
+    model: gpt-5.4
+    prompt: |
+      ## Plan Review and Refinement
+
+      Read the implementation plan at `{{ output_dir }}/plan.md`.
+
+      Your task is to review the plan for medium and higher severity issues, and fix
+      them directly in the plan. The implementation loop reads milestones sequentially,
+      so changes must be applied inline where the issue exists.
+
+      ### Review Criteria (medium+ severity only)
+
+      Focus on issues that would cause implementation to fail or produce incorrect results:
+      - **Critical**: Missing steps that would break the build, incorrect dependencies,
+        security vulnerabilities in the design
+      - **Major**: Wrong task ordering, missing error handling for likely failure paths,
+        incomplete milestone scope, feasibility issues
+      - **Medium**: Missing edge cases that are reasonably likely, test coverage gaps
+        for core functionality
+
+      **Skip minor issues** like naming suggestions, stylistic preferences, or
+      hypothetical edge cases.
+
+      ### Instructions
+
+      1. **Read the plan** carefully, milestone by milestone
+      2. **Identify real issues** at medium severity or above - be conservative,
+         only flag things that would genuinely cause problems during implementation
+      3. **Fix issues directly in the plan**: modify milestone descriptions, add missing
+         tasks, reorder steps, fix dependencies - edit the content inline where the
+         issue lives
+      4. **Append a brief "Plan Review Summary" section** at the very end with:
+         - Number of issues found and fixed
+         - A short bullet list of what was changed and why
+         - If no issues were found, state that the plan passed review unchanged
+
+      This summary section is for debugging only - the implementation loop may not read it.
+      All meaningful fixes must be applied directly to the milestone content above.
+
+      Use the Write tool to update the plan file.
 
   - name: create-branch
     type: conditional
@@ -62,11 +107,13 @@ steps:
     then:
       - name: run-create-branch
         type: prompt
+        runtime: claude
         model: haiku
         prompt: /af-git-branch {{ variables.type }} {{ variables.task }}
 
   - name: implement
     type: ralph-loop
+    runtime: claude
     prompt: |
       ## Implementation Loop - Iteration {{iteration}}/{{max_iterations}}
 
@@ -104,32 +151,81 @@ steps:
     checkpoint: true
 
   - name: review
-    type: prompt
-    prompt: /af-sdlc-review {{ workflow_id }} "{{ output_dir }}/plan.md" "{{ output_dir }}" minor
-    agent: agents/reviewer.md
+    type: parallel
+    merge-strategy: wait-all
+    merge-mode: independent
+    steps:
+      - name: claude-review
+        type: prompt
+        runtime: claude
+        prompt: /af-sdlc-review {{ workflow_id }} "{{ output_dir }}/plan.md" "{{ output_dir }}" minor
+        agent: agents/reviewer.md
+
+      - name: codex-review
+        type: prompt
+        runtime: codex
+        model: gpt-5.4
+        prompt: |
+          ## Code Review
+
+          Read the implementation plan at `{{ output_dir }}/plan.md` to understand what was built.
+
+          Then perform a thorough code review of the changes by:
+
+          1. **Reading the plan** to understand the intended design and milestones
+          2. **Reviewing the implementation** - examine relevant source files mentioned in the plan
+          3. **Checking for issues** across these categories:
+             - Correctness: Does the code do what the plan says?
+             - Edge cases: Are error paths handled?
+             - Security: Any obvious vulnerabilities?
+             - Performance: Any inefficiencies?
+             - Style: Does it follow existing codebase conventions?
+
+          4. **Writing a review file** at `{{ output_dir }}/codex-review.md` with:
+             ```markdown
+             # Codex Code Review
+
+             ## Summary
+             [Brief assessment of the implementation quality]
+
+             ## Issues
+
+             | Severity | File | Issue |
+             |----------|------|-------|
+             | critical/major/minor | file:line | description |
+
+             ## Recommendations
+             [List of improvement suggestions]
+
+             ## Verdict
+             [APPROVED / NEEDS_CHANGES / REJECTED]
+             ```
 
   - name: fix-issues
     type: prompt
+    runtime: claude
     prompt: |
       ## Fix Review Issues
 
-      Read both documents from the workflow output directory:
+      Read all review documents from the workflow output directory:
       - Plan: `{{ output_dir }}/plan.md`
-      - Review: `{{ output_dir }}/review.md`
+      - Claude Review: `{{ output_dir }}/review.md`
+      - Codex Review: `{{ output_dir }}/codex-review.md`
 
       ### Task
 
-      1. **Parse the review.md** to identify all issues from the Issues table
-      2. **Filter by severity**: Only consider issues with severity `{{ variables.fix_severity }}` or higher
+      1. **Parse both review files** to identify all issues from the Issues tables
+      2. **Merge and deduplicate** issues across both reviews
+      3. **Filter by severity**: Only consider issues with severity `{{ variables.fix_severity }}` or higher
          - Severity order: minor < major < critical
-      3. **If no issues** at or above `{{ variables.fix_severity }}` severity exist:
+      4. **If no issues** at or above `{{ variables.fix_severity }}` severity exist:
          - Output success and end the session
          - Return: `{"success": true, "issues_fixed": 0, "issues_remaining": 0}`
-      4. **If issues exist**, attempt to fix each one:
+      5. **If issues exist**, attempt to fix each one:
          - For each issue, make the necessary code changes
          - Run relevant checks (tests, lint, types, build) to verify the fix
          - Track which issues were fixed and which could not be fixed
-      5. **After attempting fixes**:
+      6. **After attempting fixes**:
          - Use /af-git-commit to commit all fixes
          - Re-run /af-sdlc-review {{ workflow_id }} "{{ output_dir }}/plan.md" to update the Review section
 
@@ -160,6 +256,7 @@ steps:
     then:
       - name: open-pr
         type: prompt
+        runtime: claude
         prompt: /af-git-pr "{{ outputs.plan.summary }}"
 
 outputs:

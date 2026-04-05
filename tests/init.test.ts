@@ -39,7 +39,7 @@ describe("cmdInit --local", () => {
 		const config = JSON.parse(readFileSync(configPath, "utf-8"));
 		expect(config).toHaveProperty("outputDirectory");
 		expect(config).toHaveProperty("defaults");
-		expect(config.defaults.model).toBe("sonnet");
+		expect(config.claude.model).toBe("sonnet");
 	});
 
 	it("should copy workflows to local directory", () => {
@@ -56,26 +56,26 @@ describe("cmdInit --local", () => {
 		const configDir = path.join(tempDir, "agentic");
 		mkdirSync(configDir, { recursive: true });
 		const configPath = path.join(configDir, "config.json");
-		const customConfig = { outputDirectory: "custom", defaults: { model: "opus" } };
+		const customConfig = { outputDirectory: "custom", claude: { model: "opus" } };
 		writeFileSync(configPath, JSON.stringify(customConfig));
 
 		cmdInit({ force: false, listOnly: false, local: true });
 
 		const config = JSON.parse(readFileSync(configPath, "utf-8"));
-		expect(config.defaults.model).toBe("opus");
+		expect(config.claude.model).toBe("opus");
 	});
 
 	it("should overwrite config with --force", () => {
 		const configDir = path.join(tempDir, "agentic");
 		mkdirSync(configDir, { recursive: true });
 		const configPath = path.join(configDir, "config.json");
-		const customConfig = { outputDirectory: "custom", defaults: { model: "opus" } };
+		const customConfig = { outputDirectory: "custom", claude: { model: "opus" } };
 		writeFileSync(configPath, JSON.stringify(customConfig));
 
 		cmdInit({ force: true, listOnly: false, local: true });
 
 		const config = JSON.parse(readFileSync(configPath, "utf-8"));
-		expect(config.defaults.model).toBe("sonnet");
+		expect(config.claude.model).toBe("sonnet");
 	});
 
 	it("should not create config with --list", () => {
@@ -110,14 +110,14 @@ describe("cmdInit --local", () => {
 	});
 
 	it("--workflow <name> should copy only the named workflow", () => {
-		cmdInit({ force: false, listOnly: false, local: true, workflow: "demo" });
+		cmdInit({ force: false, listOnly: false, local: true, workflow: "claude-demo" });
 
 		const workflowsDir = path.join(tempDir, "agentic", "workflows");
 		expect(existsSync(workflowsDir)).toBe(true);
 
 		const files = readdirSync(workflowsDir).filter((f: string) => f.endsWith(".yaml"));
 		expect(files).toHaveLength(1);
-		expect(files[0]).toBe("demo.yaml");
+		expect(files[0]).toBe("claude-demo.yaml");
 	});
 });
 

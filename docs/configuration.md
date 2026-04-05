@@ -63,13 +63,32 @@ Controls git behavior during workflow execution.
 
 Default values for workflow execution.
 
-| Key                       | Type    | Default    | Description                                     |
-| ------------------------- | ------- | ---------- | ----------------------------------------------- |
-| `defaults.model`          | string  | `"sonnet"` | Default Claude model: `haiku`, `sonnet`, `opus` |
-| `defaults.maxRetry`       | number  | `3`        | Maximum retries for failed steps                |
-| `defaults.timeoutMinutes` | number  | `60`       | Workflow timeout in minutes                     |
-| `defaults.trackProgress`  | boolean | `true`     | Track workflow progress                         |
-| `defaults.terminalOutput` | string  | `"base"`   | Terminal output granularity: `base` or `all`    |
+| Key                       | Type    | Default    | Description                                  |
+| ------------------------- | ------- | ---------- | -------------------------------------------- |
+| `defaults.runtime`        | string  | `"claude"` | Default runtime: `"claude"` or `"codex"`     |
+| `defaults.maxRetry`       | number  | `3`        | Maximum retries for failed steps             |
+| `defaults.timeoutMinutes` | number  | `60`       | Workflow timeout in minutes                  |
+| `defaults.trackProgress`  | boolean | `true`     | Track workflow progress                      |
+| `defaults.terminalOutput` | string  | `"base"`   | Terminal output granularity: `base` or `all` |
+
+### claude
+
+Claude runtime configuration.
+
+| Key            | Type   | Default    | Description          |
+| -------------- | ------ | ---------- | -------------------- |
+| `claude.model` | string | `"sonnet"` | Default Claude model |
+
+### codex
+
+Codex runtime configuration. Only applies when using the `codex` runtime.
+
+| Key             | Type   | Default             | Description                                                              |
+| --------------- | ------ | ------------------- | ------------------------------------------------------------------------ |
+| `codex.model`   | string | `"gpt-5.4"`         | Default Codex model                                                      |
+| `codex.sandbox` | string | `"workspace-write"` | Sandbox mode: `"read-only"`, `"workspace-write"`, `"danger-full-access"` |
+
+> **Backward compatibility:** `defaults.model` is still honored as a global fallback if set. Per-runtime keys (`claude.model`, `codex.model`) take priority.
 
 ### execution
 
@@ -91,8 +110,10 @@ A project-local configuration that uses Opus as the default model, increases par
     "enabled": true,
     "level": "Info"
   },
+  "claude": {
+    "model": "opus"
+  },
   "defaults": {
-    "model": "opus",
     "maxRetry": 5,
     "timeoutMinutes": 120,
     "terminalOutput": "all"
@@ -108,11 +129,38 @@ Apply these settings one at a time with the CLI:
 ```bash
 af config set outputDirectory local --local
 af config set logging.level Info --local
-af config set defaults.model opus --local
+af config set claude.model opus --local
 af config set defaults.maxRetry 5 --local
 af config set defaults.timeoutMinutes 120 --local
 af config set defaults.terminalOutput all --local
 af config set execution.maxWorkers 6 --local
+```
+
+## Example: Codex as Default Runtime
+
+Use Codex CLI as the default runtime for all workflows in a project:
+
+```json
+{
+  "defaults": {
+    "runtime": "codex"
+  },
+  "codex": {
+    "model": "gpt-5.4",
+    "sandbox": "workspace-write"
+  }
+}
+```
+
+```bash
+af config set defaults.runtime codex --local
+af config set codex.sandbox workspace-write --local
+```
+
+To override for a single run without changing config:
+
+```bash
+af run my-workflow --runtime codex
 ```
 
 ## Config Layering

@@ -1,18 +1,41 @@
 /** Tests for workflow orchestrator. */
 
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StepDefinition, WorkflowDefinition } from "../src/types.js";
 
-// Mock runClaude at module level
-const mockRunClaude = vi.fn();
-vi.mock("../src/runner.js", async (importOriginal) => {
-	const original = await importOriginal<typeof import("../src/runner.js")>();
+// Mock runRuntime at module level
+const mockRunRuntime = vi.fn();
+vi.mock("../src/runtimes/process-runner.js", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../src/runtimes/process-runner.js")>();
 	return {
 		...original,
-		runClaude: mockRunClaude,
+		runRuntime: mockRunRuntime,
+	};
+});
+
+// Mock loadConfig to return predictable defaults
+vi.mock("../src/config.js", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../src/config.js")>();
+	return {
+		...original,
+		loadConfig: vi.fn(() => ({
+			outputDirectory: "local",
+			logging: { enabled: true, level: "Error" },
+			git: { mainBranch: "main", autoCommit: true, autoPr: true },
+			defaults: {
+				runtime: "claude",
+				maxRetry: 3,
+				timeoutMinutes: 60,
+				trackProgress: true,
+				terminalOutput: "base",
+			},
+			claude: { model: "sonnet" },
+			codex: { model: "gpt-5.4", sandbox: "workspace-write" },
+			execution: { maxWorkers: 4, pollingIntervalSeconds: 5 },
+		})),
 	};
 });
 
@@ -50,6 +73,10 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockPromptExecute.mockResolvedValue({ success: true, outputSummary: "done" });
 	tempDir = mkdtempSync(path.join(os.tmpdir(), "orchestrator-test-"));
+});
+
+afterEach(() => {
+	rmSync(tempDir, { recursive: true, force: true });
 });
 
 function makeStep(
@@ -375,15 +402,21 @@ describe("resolveModel", () => {
 
 	it("should return step model when provided", () => {
 		orchestrator = new WorkflowOrchestrator(tempDir);
-		const resolve = (orchestrator as unknown as { resolveModel: (m?: string | null) => string })
-			.resolveModel;
+		const resolve = (
+			orchestrator as unknown as {
+				resolveModel: (m?: string | null, r?: string) => string;
+			}
+		).resolveModel;
 		expect(resolve.call(orchestrator, "opus")).toBe("opus");
 	});
 
 	it("should fall back to default sonnet", () => {
 		orchestrator = new WorkflowOrchestrator(tempDir);
-		const resolve = (orchestrator as unknown as { resolveModel: (m?: string | null) => string })
-			.resolveModel;
+		const resolve = (
+			orchestrator as unknown as {
+				resolveModel: (m?: string | null, r?: string) => string;
+			}
+		).resolveModel;
 		expect(resolve.call(orchestrator, null)).toBe("sonnet");
 		expect(resolve.call(orchestrator, undefined)).toBe("sonnet");
 	});

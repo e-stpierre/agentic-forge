@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 
-import { loadConfig } from "./config.js";
+import { getRuntimeModel, getSandboxMode, loadConfig } from "./config.js";
 import { ConsoleOutput, OutputLevel, extractSummary } from "./console.js";
 import { WorkflowExecutor } from "./executor.js";
 import { type Worktree, createWorktree, pruneOrphaned, removeWorktree } from "./git/worktree.js";
@@ -32,7 +32,8 @@ import {
 	updateRalphIteration,
 } from "./ralph-loop.js";
 import { TemplateRenderer } from "./renderer.js";
-import { runClaude } from "./runner.js";
+import { getAdapter, resolveRuntime } from "./runtimes/index.js";
+import { runRuntime } from "./runtimes/process-runner.js";
 import { SignalManager, handleGracefulShutdown } from "./signal-manager.js";
 import type {
 	ParallelBranch,
@@ -67,13 +68,15 @@ export class WorkflowOrchestrator {
 	config: Record<string, unknown>;
 	renderer: TemplateRenderer;
 	executor: WorkflowExecutor;
+	runtimeOverride: string | null;
 	private _signalManager: SignalManager;
 
-	constructor(repoRoot?: string) {
+	constructor(repoRoot?: string, runtimeOverride?: string | null) {
 		this.repoRoot = repoRoot ?? process.cwd();
 		this.config = loadConfig(this.repoRoot);
 		this.renderer = new TemplateRenderer();
-		this.executor = new WorkflowExecutor(this.repoRoot);
+		this.runtimeOverride = runtimeOverride ?? null;
+		this.executor = new WorkflowExecutor(this.repoRoot, false, this.runtimeOverride);
 		this._signalManager = new SignalManager();
 	}
 
@@ -85,10 +88,13 @@ export class WorkflowOrchestrator {
 		return this._signalManager.shutdownRequested;
 	}
 
-	private resolveModel(stepModel?: string | null): string {
+	private resolveModel(stepModel?: string | null, runtimeId?: string): string {
 		if (stepModel) return stepModel;
-		const defaults = this.config.defaults as Record<string, unknown> | undefined;
-		return (defaults?.model as string) ?? "sonnet";
+		const effectiveRuntime =
+			runtimeId ??
+			((this.config.defaults as Record<string, unknown> | undefined)?.runtime as string) ??
+			"claude";
+		return getRuntimeModel(this.config, effectiveRuntime) ?? "sonnet";
 	}
 
 	async run(
@@ -282,14 +288,23 @@ export class WorkflowOrchestrator {
 
 		const defaults = this.config.defaults as Record<string, unknown> | undefined;
 		const maxRetry = (defaults?.maxRetry as number) ?? 3;
+		const orchestratorRuntimeId = resolveRuntime(
+			{},
+			workflow.settings,
+			this.config,
+			this.runtimeOverride,
+		);
+		const orchestratorAdapter = getAdapter(orchestratorRuntimeId);
+		const orchestratorModel = this.resolveModel(null, orchestratorRuntimeId);
 
 		for (let attempt = 0; attempt < maxRetry; attempt++) {
-			const result = await runClaude({
+			const result = await runRuntime(orchestratorAdapter, {
 				prompt,
 				cwd: this.repoRoot,
-				model: "sonnet",
+				model: orchestratorModel,
 				timeout: 120,
 				printOutput: false,
+				sandbox: getSandboxMode(this.config),
 			});
 
 			if (!result.success) {
@@ -487,7 +502,7 @@ export class WorkflowOrchestrator {
 		logger: WorkflowLogger,
 		console: ConsoleOutput,
 	): Promise<boolean> {
-		const wtExecutor = new WorkflowExecutor(worktree.path);
+		const wtExecutor = new WorkflowExecutor(worktree.path, false, this.runtimeOverride);
 		// Force local output for worktrees: they are ephemeral and output stays within the worktree
 		wtExecutor.config = { ...wtExecutor.config, outputDirectory: "local" };
 		const wtOutputDir = getOutputDir(parentProgress.workflowId, wtExecutor.config, worktree.path);
@@ -628,14 +643,22 @@ export class WorkflowOrchestrator {
 			console.ralphIterationStart(step.name, state.iteration, maxIterations);
 
 			const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
-			const result = await runClaude({
+			const ralphRuntimeId = resolveRuntime(
+				step,
+				workflow.settings,
+				this.config,
+				this.runtimeOverride,
+			);
+			const ralphAdapter = getAdapter(ralphRuntimeId);
+			const result = await runRuntime(ralphAdapter, {
 				prompt: fullPrompt,
 				cwd: this.repoRoot,
-				model: this.resolveModel(step.model),
+				model: this.resolveModel(step.model, ralphRuntimeId),
 				timeout,
 				printOutput,
 				skipPermissions: true,
 				console,
+				sandbox: getSandboxMode(this.config),
 			});
 
 			if (!result.success) {

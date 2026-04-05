@@ -94,7 +94,7 @@ beforeEach(() => {
 function createStepContext(overrides?: Partial<StepContext>): StepContext {
 	return {
 		repoRoot: tempDir,
-		config: { defaults: { model: "sonnet", maxRetry: 3, timeoutMinutes: 60 } },
+		config: { claude: { model: "sonnet" }, defaults: { maxRetry: 3, timeoutMinutes: 60 } },
 		renderer: new TemplateRenderer(),
 		workflowSettings: defaultSettings(),
 		workflowId: "test-workflow-id",

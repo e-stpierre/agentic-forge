@@ -92,13 +92,19 @@ Arguments: $ARGUMENTS
 
 ### Model Selection Strategy
 
+**Claude models:**
+
 | Model    | Best For                                            |
 | -------- | --------------------------------------------------- |
 | `haiku`  | Quick tasks: validation, formatting, small analysis |
 | `sonnet` | Default: implementation, review, planning           |
 | `opus`   | Complex reasoning: architecture, large refactors    |
 
-Priority: step `model` > `settings.model` > config default > `sonnet`
+**Codex models:** `gpt-5.4` (default), `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.2`, `gpt-5.1-codex-max`, `gpt-5.1-codex-mini`
+
+Priority: step `model` > `settings.model` > config default > adapter default (`sonnet` for Claude, `gpt-5.4` for Codex)
+
+**Important:** When a step uses a runtime different from the configured default, you **must** set `model` explicitly on the step. The default model belongs to the default runtime and will cause errors if passed to a different runtime.
 
 ### Common Patterns
 
@@ -120,6 +126,7 @@ Priority: step `model` > `settings.model` > config default > `sonnet`
 | Template variable shows as `{{ ... }}` | Undefined variable in lenient mode             | Define the variable or enable `strict-mode: true` to catch early |
 | Step timeout                           | Task exceeds `timeout-minutes`                 | Increase step or workflow `timeout-minutes`                      |
 | "Nested parallel steps not allowed"    | Parallel step inside another parallel          | Flatten structure or use serial inside parallel                  |
+| Model error from runtime (e.g. codex)  | Step inherits default model from wrong runtime | Add explicit `model` to steps that use a non-default runtime     |
 
 ## Instructions
 

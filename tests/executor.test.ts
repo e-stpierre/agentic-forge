@@ -21,16 +21,17 @@ vi.mock("../src/steps/prompt-step.js", async (importOriginal) => {
 	};
 });
 
-// Mock runClaude
-vi.mock("../src/runner.js", async (importOriginal) => {
-	const original = await importOriginal<typeof import("../src/runner.js")>();
+// Mock runRuntime (executor uses runRuntime via PromptStepExecutor)
+vi.mock("../src/runtimes/process-runner.js", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../src/runtimes/process-runner.js")>();
 	return {
 		...original,
-		runClaude: vi.fn().mockResolvedValue({
+		runRuntime: vi.fn().mockResolvedValue({
 			success: true,
 			stdout: "ok",
 			stderr: "",
 			returncode: 0,
+			sessionOutput: { sessionId: null, isSuccess: true, context: "done" },
 		}),
 	};
 });
@@ -94,6 +95,16 @@ describe("WorkflowExecutor", () => {
 		} finally {
 			process.chdir(originalCwd);
 		}
+	});
+
+	it("accepts runtimeOverride as third constructor parameter", () => {
+		const executor = new WorkflowExecutor(tempDir, false, "codex");
+		expect(executor.runtimeOverride).toBe("codex");
+	});
+
+	it("defaults runtimeOverride to null when not provided", () => {
+		const executor = new WorkflowExecutor(tempDir);
+		expect(executor.runtimeOverride).toBeNull();
 	});
 });
 

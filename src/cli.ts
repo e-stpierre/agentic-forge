@@ -40,7 +40,7 @@ import {
 const program = new Command()
 	.name("agentic-forge")
 	.version(getVersion())
-	.description("Agentic workflow orchestration for Claude Code");
+	.description("Agentic workflow orchestration for coding agents");
 
 // run command
 program
@@ -55,6 +55,7 @@ program
 	.option("--from-step <step>", "resume from a specific step")
 	.option("--no-interactive", "disable interactive prompts for missing variables")
 	.option("--terminal-output <mode>", "terminal output granularity (base or all)")
+	.option("--runtime <runtime>", "override default runtime (claude or codex)")
 	.option("--slug <slug>", "custom slug appended to the workflow run ID")
 	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
@@ -65,6 +66,7 @@ program
 			fromStep: optString(opts.fromStep),
 			interactive: opts.interactive !== false,
 			terminalOutput: optString(opts.terminalOutput),
+			runtime: optString(opts.runtime),
 			slug: optString(opts.slug),
 		});
 	});

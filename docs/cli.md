@@ -40,14 +40,15 @@ af run <workflow> [vars...] [options]
 
 ### Options
 
-| Option                     | Description                                                                                                   |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `--var <key=value>`        | Set workflow variable (repeatable)                                                                            |
-| `--slug <slug>`            | Use this slug as the output directory name instead of a generated timestamp ID. Auto-increments on collision. |
-| `--from-step <step>`       | Resume from a specific step                                                                                   |
-| `--no-interactive`         | Disable interactive prompts for missing variables                                                             |
-| `--terminal-output <mode>` | Terminal output granularity: `base` or `all`                                                                  |
-| `--list`                   | List all available workflows                                                                                  |
+| Option                     | Description                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--var <key=value>`        | Set workflow variable (repeatable)                                                                                                         |
+| `--slug <slug>`            | Use this slug as the output directory name instead of a generated timestamp ID. Auto-increments on collision.                              |
+| `--from-step <step>`       | Resume from a specific step                                                                                                                |
+| `--runtime <runtime>`      | Runtime to use for this invocation (`claude`, `codex`). Overrides config default and workflow settings, but not per-step `runtime` values. |
+| `--no-interactive`         | Disable interactive prompts for missing variables                                                                                          |
+| `--terminal-output <mode>` | Terminal output granularity: `base` or `all`                                                                                               |
+| `--list`                   | List all available workflows                                                                                                               |
 
 ### Examples
 

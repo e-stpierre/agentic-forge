@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for Claude Code. It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution.
+Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for coding agents (Claude Code, Codex CLI, and others). It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution.
 
 ## Purpose
 
@@ -28,7 +28,7 @@ Interactive authoring skills for users to create and manage workflows (e.g., `wo
 
 #### `claude/.claude/skills/`
 
-Bundled workflow execution skills loaded via `--add-dir`. Skills are reusable Claude Code slash commands. Each skill is a directory in kebab-case containing a `SKILL.md` file. These are used by the workflow engine during execution.
+Bundled workflow execution skills loaded via `--add-dir`. Skills are reusable Claude Code slash commands. Each skill is a directory in kebab-case containing a `SKILL.md` file. These are used by the workflow engine during execution with the `claude` runtime only.
 
 #### `commands/`
 
@@ -38,13 +38,24 @@ CLI command implementations (`run`, `init`, `update`, `skills-dir`, `authoring-d
 
 System prompt templates used by the workflow runner.
 
+#### `runtimes/`
+
+Runtime adapter layer for coding agent integrations:
+
+- `types.ts` — `RuntimeId`, `RuntimeAdapter`, `RuntimeCommand`, `StreamEvent`, `RuntimeRunOptions`, `RuntimeResult`
+- `claude.ts` — `ClaudeAdapter` (extracted from `runner.ts`)
+- `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
+- `process-runner.ts` — `runRuntime()` shared process spawning
+- `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
+- `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
+
 #### `steps/`
 
 Workflow step handlers (prompt, parallel, serial, conditional, ralph-loop).
 
 #### `workflows/`
 
-Bundled YAML workflow definitions (7 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `analyze-codebase`, `analyze-codebase-merge`, `analyze-single`, `demo`).
+Bundled YAML workflow definitions (10 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `analyze-codebase`, `analyze-codebase-merge`, `analyze-single`, `claude-demo`, `codex-demo`, `multi-demo`, `multi-plan-build-review`).
 
 ### `tests/`
 
@@ -69,6 +80,7 @@ User-facing documentation, linked from the README via GitHub `blob/main/` URLs. 
 - `getting-started.md` — Installation, quick tour, init, and first workflow creation
 - `cli.md` — Complete CLI reference with all commands, arguments, and options
 - `workflows.md` — Bundled workflows with use cases, variables, and examples
+- `coding-agents.md` — Supported runtimes, per-step configuration, and model names
 - `configuration.md` — All configuration options, defaults, and layering behavior
 
 ### `agentic/`
@@ -148,6 +160,20 @@ All directory resolution flows through `src/paths.ts`. The system uses a 3-tier 
 The global directory is lazy-initialized by `ensureGlobalDir()` on first use. No `init` is required to run workflows.
 
 Worktrees always use local output (`outputDirectory: "local"`) since they are ephemeral.
+
+### Runtime Adapter Pattern
+
+The workflow engine delegates all coding agent interactions to runtime adapters in `src/runtimes/`. Each adapter implements the `RuntimeAdapter` interface:
+
+- `buildCommand(options)` — constructs the CLI command and stdin input
+- `parseStreamLine(line)` — parses streaming output into normalized `StreamEvent` objects
+- `buildFinalResult()` — assembles the `RuntimeResult` from process output
+
+Runtime resolution order: `step.runtime` > `--runtime` CLI flag > `workflow settings.runtime` > `config.defaults.runtime` > `"claude"`.
+
+**Skills only work with the `claude` runtime.** The `codex` runtime does not support `--add-dir` skill injection. Workflows that use `/af-*` skill invocations must run with `runtime: claude` (or the default).
+
+To add a new runtime: create an adapter in `src/runtimes/`, register it in `src/runtimes/index.ts`, and add the `RuntimeId` to the union type in `src/runtimes/types.ts`.
 
 ### Workflow Engine Changes
 
