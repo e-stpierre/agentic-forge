@@ -1,5 +1,9 @@
 /** Codex runtime adapter. */
 
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -9,6 +13,19 @@ import type {
 } from "./types.js";
 import { SessionOutput } from "./types.js";
 import { getExecutable } from "./utils.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Path to the agentic system prompt file. */
+const AGENTIC_SYSTEM_PROMPT_FILE = path.join(__dirname, "..", "prompts", "agentic-system.md");
+
+/** Get the agentic system prompt. */
+function getAgenticSystemPrompt(): string | null {
+	if (existsSync(AGENTIC_SYSTEM_PROMPT_FILE)) {
+		return readFileSync(AGENTIC_SYSTEM_PROMPT_FILE, "utf-8");
+	}
+	return null;
+}
 
 /** Parse a single JSONL line from Codex output. */
 function parseCodexJsonLine(line: string): Record<string, unknown> | null {
@@ -73,19 +90,15 @@ export class CodexAdapter implements RuntimeAdapter {
 			env.OTEL_RESOURCE_ATTRIBUTES = `session=${options.workflowId}`;
 		}
 
-		// System prompt is prepended to the user prompt (no CLI flag equivalent)
-		const prompt = options.prompt;
-		if (options.appendSystemPrompt) {
-			// System prompt would be prepended here if available
-			// For now, we just use the prompt as-is since Codex doesn't have a
-			// dedicated system prompt mechanism in the same way Claude does
-		}
+		// System prompt is prepended to the user prompt (Codex has no --append-system-prompt flag)
+		const systemPrompt = options.appendSystemPrompt ? getAgenticSystemPrompt() : null;
+		const stdinInput = systemPrompt ? `${systemPrompt}\n\n${options.prompt}` : options.prompt;
 
 		return {
 			executable: getExecutable(this.executableName),
 			args,
 			env: Object.keys(env).length > 0 ? env : undefined,
-			stdinInput: prompt,
+			stdinInput,
 		};
 	}
 

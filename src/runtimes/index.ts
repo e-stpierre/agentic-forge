@@ -5,14 +5,30 @@ import { ClaudeAdapter } from "./claude.js";
 import { CodexAdapter } from "./codex.js";
 import type { RuntimeAdapter, RuntimeId } from "./types.js";
 
-/** Get the adapter for a given runtime ID. */
+/** Singleton adapter cache. */
+const adapterCache = new Map<RuntimeId, RuntimeAdapter>();
+
+/** Get the adapter for a given runtime ID (cached singleton). */
 export function getAdapter(runtimeId: RuntimeId): RuntimeAdapter {
+	const cached = adapterCache.get(runtimeId);
+	if (cached) return cached;
+
+	let adapter: RuntimeAdapter;
 	switch (runtimeId) {
 		case "claude":
-			return new ClaudeAdapter();
+			adapter = new ClaudeAdapter();
+			break;
 		case "codex":
-			return new CodexAdapter();
+			adapter = new CodexAdapter();
+			break;
+		default: {
+			const _exhaustive: never = runtimeId;
+			throw new Error(`Unknown runtime: ${_exhaustive}`);
+		}
 	}
+
+	adapterCache.set(runtimeId, adapter);
+	return adapter;
 }
 
 /** Resolve which runtime to use based on configuration hierarchy. */
@@ -29,21 +45,30 @@ export function resolveRuntime(
 	// 4. Config defaults.runtime
 	// 5. Hardcoded "claude" (fallback)
 
+	const VALID_RUNTIMES = new Set<string>(["claude", "codex"]);
+
+	function toRuntimeId(value: string, source: string): RuntimeId {
+		if (!VALID_RUNTIMES.has(value)) {
+			throw new Error(`Unknown runtime "${value}" (from ${source}). Valid values: claude, codex`);
+		}
+		return value as RuntimeId;
+	}
+
 	if (step?.runtime) {
-		return step.runtime as RuntimeId;
+		return toRuntimeId(step.runtime, "step.runtime");
 	}
 
 	if (cliRuntimeOverride) {
-		return cliRuntimeOverride as RuntimeId;
+		return toRuntimeId(cliRuntimeOverride, "--runtime flag");
 	}
 
 	if (workflowSettings?.runtime) {
-		return workflowSettings.runtime as RuntimeId;
+		return toRuntimeId(workflowSettings.runtime, "workflow settings.runtime");
 	}
 
 	const configDefaults = config.defaults as Record<string, unknown> | undefined;
 	if (configDefaults?.runtime) {
-		return configDefaults.runtime as RuntimeId;
+		return toRuntimeId(String(configDefaults.runtime), "config defaults.runtime");
 	}
 
 	return "claude";

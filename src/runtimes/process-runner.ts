@@ -33,6 +33,12 @@ export async function runRuntime(
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 
+		// Handle spawn errors (e.g., executable not found at runtime)
+		proc.on("error", (err) => {
+			const result = adapter.buildFinalResult(-1, "", err.message, options);
+			resolve(result);
+		});
+
 		// Write prompt to stdin
 		if (proc.stdin) {
 			proc.stdin.write(stdinInput);

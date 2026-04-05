@@ -80,9 +80,10 @@ describe("resolveRuntime", () => {
 		expect(result).toBe("codex");
 	});
 
-	it("passes through unknown runtime IDs without validation", () => {
-		const result = resolveRuntime(makeStep("future-agent"), {}, {}, null);
-		expect(result).toBe("future-agent" as never);
+	it("throws on unknown runtime IDs", () => {
+		expect(() => resolveRuntime(makeStep("future-agent"), {}, {}, null)).toThrow(
+			'Unknown runtime "future-agent"',
+		);
 	});
 
 	it("ignores empty string as falsy (falls to next level)", () => {

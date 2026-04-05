@@ -123,11 +123,13 @@ steps:
   - name: git-branch
     type: prompt
     model: haiku
+    runtime: claude
     prompt: /af-git-branch demo random-facts
 
   - name: git-commit
     type: prompt
     model: haiku
+    runtime: claude
     prompt: /af-git-commit "[Demo] Add demo files with random facts"
 
   - name: completion
