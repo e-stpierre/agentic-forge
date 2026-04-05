@@ -166,12 +166,7 @@ export async function runRuntime(
 
 			const finalOutput = resultText ?? collectedText.join("");
 
-			const result = adapter.buildFinalResult(
-				code ?? 1,
-				finalOutput,
-				stderrData,
-				options,
-			);
+			const result = adapter.buildFinalResult(code ?? 1, finalOutput, stderrData, options);
 
 			resolve(result);
 		});

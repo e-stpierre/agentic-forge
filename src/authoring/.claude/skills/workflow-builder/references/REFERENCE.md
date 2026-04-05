@@ -100,17 +100,17 @@ Reference in templates: `{{ variables.task }}`, `{{ variables.max_iterations }}`
 
 These properties apply to all step types:
 
-| Key               | Type   | Default      | Valid Values                                                      | Description                  |
-| ----------------- | ------ | ------------ | ----------------------------------------------------------------- | ---------------------------- |
-| `name`            | string | **required** | kebab-case                                                        | Unique step identifier       |
-| `type`            | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type                    |
-| `model`           | string | null         | sonnet, haiku, opus                                               | Override workflow model      |
+| Key               | Type   | Default      | Valid Values                                                      | Description                                                   |
+| ----------------- | ------ | ------------ | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| `name`            | string | **required** | kebab-case                                                        | Unique step identifier                                        |
+| `type`            | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type                                                     |
+| `model`           | string | null         | sonnet, haiku, opus                                               | Override workflow model                                       |
 | `runtime`         | string | null         | claude, codex                                                     | Override runtime for this step (never overridden by CLI flag) |
-| `timeout-minutes` | int    | null         | 1+                                                                | Override workflow timeout    |
-| `max-retry`       | int    | null         | 0+                                                                | Override workflow max-retry  |
-| `on-error`        | string | `"retry"`    | retry, skip, fail                                                 | Error handling strategy      |
-| `checkpoint`      | bool   | `false`      | true/false                                                        | Create checkpoint after step |
-| `depends-on`      | string | null         | step name                                                         | Step dependency              |
+| `timeout-minutes` | int    | null         | 1+                                                                | Override workflow timeout                                     |
+| `max-retry`       | int    | null         | 0+                                                                | Override workflow max-retry                                   |
+| `on-error`        | string | `"retry"`    | retry, skip, fail                                                 | Error handling strategy                                       |
+| `checkpoint`      | bool   | `false`      | true/false                                                        | Create checkpoint after step                                  |
+| `depends-on`      | string | null         | step name                                                         | Step dependency                                               |
 
 ### prompt
 
@@ -466,18 +466,18 @@ Always use fully qualified names in workflows:
 
 Available via `agentic-forge init` or `agentic-forge run <name>`:
 
-| Workflow                 | Description                                                             |
-| ------------------------ | ----------------------------------------------------------------------- |
-| `claude-demo`              | Validation workflow for installation testing (Claude runtime)           |
-| `codex-demo`               | Validation workflow for installation testing (Codex runtime)            |
-| `multi-demo`               | Demonstrates mixed-runtime execution at step level                      |
-| `one-shot`               | Complete a single task with optional PR                                 |
-| `plan-build-review`        | Full SDLC: plan -> implement -> review -> fix -> PR                     |
-| `multi-plan-build-review`  | Full SDLC with mixed Claude/Codex runtimes per phase                    |
-| `ralph-loop`             | Generic iterative loop for any task                                     |
-| `analyze-codebase`       | Parallel analysis (5 types) with optional autofix, independent branches |
-| `analyze-codebase-merge` | Parallel analysis with autofix, branch merge, validation, and PR        |
-| `analyze-single`         | Single analysis type with optional autofix                              |
+| Workflow                  | Description                                                             |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `claude-demo`             | Validation workflow for installation testing (Claude runtime)           |
+| `codex-demo`              | Validation workflow for installation testing (Codex runtime)            |
+| `multi-demo`              | Demonstrates mixed-runtime execution at step level                      |
+| `one-shot`                | Complete a single task with optional PR                                 |
+| `plan-build-review`       | Full SDLC: plan -> implement -> review -> fix -> PR                     |
+| `multi-plan-build-review` | Full SDLC with mixed Claude/Codex runtimes per phase                    |
+| `ralph-loop`              | Generic iterative loop for any task                                     |
+| `analyze-codebase`        | Parallel analysis (5 types) with optional autofix, independent branches |
+| `analyze-codebase-merge`  | Parallel analysis with autofix, branch merge, validation, and PR        |
+| `analyze-single`          | Single analysis type with optional autofix                              |
 
 ## Validation Checklist
 

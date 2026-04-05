@@ -17,8 +17,8 @@ export function getAdapter(runtimeId: RuntimeId): RuntimeAdapter {
 
 /** Resolve which runtime to use based on configuration hierarchy. */
 export function resolveRuntime(
-	step: StepDefinition,
-	workflowSettings: { runtime?: string | null },
+	step: Pick<StepDefinition, "runtime"> | null | undefined,
+	workflowSettings: { runtime?: string | null } | null | undefined,
 	config: Record<string, unknown>,
 	cliRuntimeOverride?: string | null,
 ): RuntimeId {
@@ -29,7 +29,7 @@ export function resolveRuntime(
 	// 4. Config defaults.runtime
 	// 5. Hardcoded "claude" (fallback)
 
-	if (step.runtime) {
+	if (step?.runtime) {
 		return step.runtime as RuntimeId;
 	}
 
@@ -37,7 +37,7 @@ export function resolveRuntime(
 		return cliRuntimeOverride as RuntimeId;
 	}
 
-	if (workflowSettings.runtime) {
+	if (workflowSettings?.runtime) {
 		return workflowSettings.runtime as RuntimeId;
 	}
 

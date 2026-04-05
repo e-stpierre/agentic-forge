@@ -347,7 +347,12 @@ export class WorkflowExecutor {
 		const outputDir = this.resolveOutputDir(progress);
 
 		// Resolve runtime and get adapter
-		const runtimeId = resolveRuntime(step, this.workflowSettings ?? {}, this.config, this.runtimeOverride);
+		const runtimeId = resolveRuntime(
+			step,
+			this.workflowSettings ?? {},
+			this.config,
+			this.runtimeOverride,
+		);
 		const runtimeAdapter = getAdapter(runtimeId);
 
 		const context: StepContext = {

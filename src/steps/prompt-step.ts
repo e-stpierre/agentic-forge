@@ -8,8 +8,8 @@ import type { ConsoleOutput } from "../console.js";
 import { extractJson, extractSummary } from "../console.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import { WORKFLOW_STATUS, updateStepCompleted, updateStepFailed } from "../progress.js";
-import { runRuntime } from "../runtimes/process-runner.js";
 import { resolveRuntime } from "../runtimes/index.js";
+import { runRuntime } from "../runtimes/process-runner.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import {
 	type StepContext,

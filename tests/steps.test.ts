@@ -110,12 +110,7 @@ function createMockAdapter(): RuntimeAdapter {
 			stdinInput: "",
 		}),
 		parseStreamLine: () => null,
-		buildFinalResult: (
-			returncode,
-			stdout,
-			stderr,
-			options,
-		): RuntimeResult => ({
+		buildFinalResult: (returncode, stdout, stderr, options): RuntimeResult => ({
 			returncode,
 			stdout,
 			stderr,
