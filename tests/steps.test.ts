@@ -34,8 +34,9 @@ vi.mock("../src/runtimes/process-runner.js", async (importOriginal) => {
 	};
 });
 
-// Now import PromptStepExecutor AFTER mock is set up
+// Now import PromptStepExecutor and RalphLoopStepExecutor AFTER mock is set up
 const { PromptStepExecutor } = await import("../src/steps/prompt-step.js");
+const { RalphLoopStepExecutor } = await import("../src/steps/ralph-loop-step.js");
 
 // --- Helpers ---
 
@@ -74,6 +75,12 @@ function defaultSettings(): WorkflowSettings {
 		strictMode: false,
 		model: null,
 		requiredTools: [],
+		worktree: {
+			enabled: false,
+			location: "sibling",
+			directory: null,
+			cleanup: "on-success",
+		},
 	};
 }
 
@@ -567,5 +574,66 @@ describe("ParallelStepExecutor", () => {
 
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("branch-b");
+	});
+});
+
+describe("RalphLoopStepExecutor cwdOverride", () => {
+	it("should use cwdOverride when set", async () => {
+		mockRunRuntime.mockResolvedValue({
+			success: true,
+			stdout: '{"ralph_complete": true, "promise": "DONE"}',
+			stderr: "",
+			sessionOutput: { isSuccess: true, context: "Done", sessionId: null },
+		});
+
+		const step = makeStepDef({
+			name: "fix-loop",
+			type: "ralph-loop",
+			prompt: "Fix all bugs",
+			maxIterations: 3,
+			completionPromise: "DONE",
+		});
+
+		const worktreePath = "/tmp/wt-override";
+		const context = createStepContext({ cwdOverride: worktreePath });
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		const executor = new RalphLoopStepExecutor();
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		expect(mockRunRuntime).toHaveBeenCalled();
+		const callArgs = mockRunRuntime.mock.calls[0][1];
+		// cwdOverride should be used as cwd instead of repoRoot
+		expect(callArgs.cwd).toBe(worktreePath);
+	});
+
+	it("should fall back to repoRoot when cwdOverride is not set", async () => {
+		mockRunRuntime.mockResolvedValue({
+			success: true,
+			stdout: '{"ralph_complete": true, "promise": "DONE"}',
+			stderr: "",
+			sessionOutput: { isSuccess: true, context: "Done", sessionId: null },
+		});
+
+		const step = makeStepDef({
+			name: "fix-loop",
+			type: "ralph-loop",
+			prompt: "Fix all bugs",
+			maxIterations: 3,
+			completionPromise: "DONE",
+		});
+
+		const context = createStepContext({ cwdOverride: null });
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		const executor = new RalphLoopStepExecutor();
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		expect(mockRunRuntime).toHaveBeenCalled();
+		const callArgs = mockRunRuntime.mock.calls[0][1];
+		// No cwdOverride: should fall back to repoRoot
+		expect(callArgs.cwd).toBe(tempDir);
 	});
 });

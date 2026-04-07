@@ -36,6 +36,17 @@ vi.mock("../src/runtimes/process-runner.js", async (importOriginal) => {
 	};
 });
 
+// Mock git worktree operations
+const mockCreateWorktree = vi.fn();
+const mockRemoveWorktree = vi.fn();
+const mockSafetyCommit = vi.fn();
+vi.mock("../src/git/worktree.js", () => ({
+	createWorktree: (...args: unknown[]) => mockCreateWorktree(...args),
+	removeWorktree: (...args: unknown[]) => mockRemoveWorktree(...args),
+	safetyCommit: (...args: unknown[]) => mockSafetyCommit(...args),
+	pruneOrphaned: vi.fn(),
+}));
+
 const { WorkflowExecutor } = await import("../src/executor.js");
 
 // --- Helpers ---
@@ -45,6 +56,7 @@ let tempDir: string;
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockPromptExecute.mockResolvedValue({ success: true, outputSummary: "done" });
+	mockSafetyCommit.mockReturnValue({ committed: false, failed: false });
 	tempDir = mkdtempSync(path.join(os.tmpdir(), "executor-test-"));
 	// Create local config so output goes to tempDir/agentic/outputs/ (predictable for tests)
 	mkdirSync(path.join(tempDir, "agentic"), { recursive: true });
@@ -353,5 +365,214 @@ steps:
 
 		expect(callCount).toBe(1);
 		expect(progress.status).toBe(WORKFLOW_STATUS.FAILED);
+	});
+});
+
+// --- Worktree lifecycle ---
+
+describe("WorkflowExecutor worktree lifecycle", () => {
+	const fakeWorktree = {
+		path: "/tmp/wt-workflow",
+		branch: "agentic/test-workflow-abc123",
+		baseBranch: "main",
+	};
+
+	beforeEach(() => {
+		mockCreateWorktree.mockReturnValue(fakeWorktree);
+	});
+
+	it("creates worktree when settings.worktree.enabled is true", async () => {
+		const workflowYaml = `
+name: worktree-test
+version: "1.0"
+description: Test worktree creation
+settings:
+  worktree:
+    enabled: true
+    cleanup: on-complete
+steps:
+  - name: step1
+    type: prompt
+    prompt: "Test"
+`;
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(workflowYaml);
+
+		const executor = new WorkflowExecutor(tempDir);
+		await executor.run(workflow);
+
+		expect(mockCreateWorktree).toHaveBeenCalledOnce();
+		expect(mockCreateWorktree).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workflowName: "worktree-test",
+				stepName: "workflow",
+				repoRoot: tempDir,
+			}),
+		);
+	});
+
+	it("removes worktree on success with on-success cleanup", async () => {
+		const workflowYaml = `
+name: cleanup-test
+version: "1.0"
+description: Test cleanup on success
+settings:
+  worktree:
+    enabled: true
+    cleanup: on-success
+steps:
+  - name: step1
+    type: prompt
+    prompt: "Test"
+`;
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(workflowYaml);
+
+		const executor = new WorkflowExecutor(tempDir);
+		const progress = await executor.run(workflow);
+
+		expect(progress.status).toBe(WORKFLOW_STATUS.COMPLETED);
+		expect(mockSafetyCommit).toHaveBeenCalledOnce();
+		expect(mockRemoveWorktree).toHaveBeenCalledOnce();
+	});
+
+	it("preserves worktree on failure with on-success cleanup", async () => {
+		mockPromptExecute.mockRejectedValue(new Error("Step failed"));
+
+		const workflowYaml = `
+name: preserve-test
+version: "1.0"
+description: Test worktree preserved on failure
+settings:
+  worktree:
+    enabled: true
+    cleanup: on-success
+steps:
+  - name: step1
+    type: prompt
+    prompt: "Test"
+`;
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(workflowYaml);
+
+		const executor = new WorkflowExecutor(tempDir);
+		const progress = await executor.run(workflow);
+
+		expect(progress.status).toBe(WORKFLOW_STATUS.FAILED);
+		// on-success + workflow failed => preserve worktree
+		expect(mockRemoveWorktree).not.toHaveBeenCalled();
+	});
+
+	it("always removes worktree with on-complete cleanup even on failure", async () => {
+		mockPromptExecute.mockRejectedValue(new Error("Step failed"));
+
+		const workflowYaml = `
+name: on-complete-test
+version: "1.0"
+description: Test on-complete cleanup
+settings:
+  worktree:
+    enabled: true
+    cleanup: on-complete
+steps:
+  - name: step1
+    type: prompt
+    prompt: "Test"
+`;
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(workflowYaml);
+
+		const executor = new WorkflowExecutor(tempDir);
+		await executor.run(workflow);
+
+		expect(mockSafetyCommit).toHaveBeenCalledOnce();
+		expect(mockRemoveWorktree).toHaveBeenCalledOnce();
+	});
+
+	it("resolves worktree.enabled from template variables", async () => {
+		const workflowYaml = `
+name: template-enabled-test
+version: "1.0"
+description: Test template-driven worktree
+variables:
+  - name: use_worktree
+    type: boolean
+    default: false
+settings:
+  worktree:
+    enabled: "{{ variables.use_worktree }}"
+    cleanup: on-complete
+steps:
+  - name: step1
+    type: prompt
+    prompt: "Test"
+`;
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(workflowYaml);
+
+		// With use_worktree=true: worktree should be created
+		const executor = new WorkflowExecutor(tempDir);
+		await executor.run(workflow, { use_worktree: true });
+		expect(mockCreateWorktree).toHaveBeenCalledOnce();
+		vi.clearAllMocks();
+		mockPromptExecute.mockResolvedValue({ success: true, outputSummary: "done" });
+		mockSafetyCommit.mockReturnValue({ committed: false, failed: false });
+		mockCreateWorktree.mockReturnValue(fakeWorktree);
+
+		// With use_worktree=false: no worktree created
+		await executor.run(workflow, { use_worktree: false });
+		expect(mockCreateWorktree).not.toHaveBeenCalled();
+	});
+
+	it("does not create worktree when settings.worktree.enabled is false", async () => {
+		const workflowYaml = `
+name: no-worktree-test
+version: "1.0"
+description: No worktree
+settings:
+  worktree:
+    enabled: false
+steps:
+  - name: step1
+    type: prompt
+    prompt: "Test"
+`;
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(workflowYaml);
+
+		const executor = new WorkflowExecutor(tempDir);
+		await executor.run(workflow);
+
+		expect(mockCreateWorktree).not.toHaveBeenCalled();
+	});
+
+	it("throws when parallel step with worktree:true is inside workflow worktree", async () => {
+		const workflowYaml = `
+name: nested-worktree-test
+version: "1.0"
+description: Nested worktree validation
+settings:
+  worktree:
+    enabled: true
+    cleanup: manual
+steps:
+  - name: par
+    type: parallel
+    worktree: true
+    steps:
+      - name: branch-a
+        type: prompt
+        prompt: "Branch A"
+`;
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(workflowYaml);
+
+		const executor = new WorkflowExecutor(tempDir);
+		const progress = await executor.run(workflow);
+
+		// Nested worktree throws -> step fails -> workflow fails
+		expect(progress.status).toBe(WORKFLOW_STATUS.FAILED);
+		const err = progress.errors[0] as Record<string, unknown>;
+		expect(String(err.error ?? err)).toContain("parallel worktree is not supported");
 	});
 });
