@@ -5,8 +5,9 @@ import { fileURLToPath } from "node:url";
 
 import { loadConfig } from "./config.js";
 import { ConsoleOutput, OutputLevel } from "./console.js";
+import { type Worktree, createWorktree, removeWorktree, safetyCommit } from "./git/worktree.js";
 import { WorkflowLogger } from "./logging/logger.js";
-import { getOutputDir, resolveOutputDir } from "./paths.js";
+import { getOutputDir, getWorktreeOutputRoot, resolveOutputDir } from "./paths.js";
 import {
 	STEP_STATUS,
 	WORKFLOW_STATUS,
@@ -32,6 +33,7 @@ import type {
 	WorkflowProgress,
 	WorkflowSettings,
 } from "./types.js";
+import { resolveStepWorktree, resolveWorktreeEnabled } from "./worktree-settings.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -199,9 +201,19 @@ export class WorkflowExecutor {
 			progress = createProgress(workflowId, workflow.name, stepNames, vars, workflowFile);
 		}
 
-		// Resolve output dir, handling collisions with resolveOutputDir
+		// Resolve workflow-level worktree settings
+		const worktreeSettings = this.workflowSettings?.worktree;
+		const worktreeEnabled =
+			worktreeSettings != null
+				? resolveWorktreeEnabled(worktreeSettings, this.renderer, vars)
+				: false;
+
+		// Resolve output dir: worktree mode always uses global directory keyed by main repo root
 		const baseOutputDir =
-			resumeProgress?.outputDir ?? getOutputDir(workflowId, this.config, this.repoRoot);
+			resumeProgress?.outputDir ??
+			(worktreeEnabled
+				? path.join(getWorktreeOutputRoot(this.repoRoot), workflowId)
+				: getOutputDir(workflowId, this.config, this.repoRoot));
 		const outputDir = resumeProgress ? baseOutputDir : resolveOutputDir(baseOutputDir);
 		progress.outputDir = outputDir;
 		saveProgress(progress, outputDir);
@@ -210,6 +222,23 @@ export class WorkflowExecutor {
 		logger.info("workflow", `Started workflow: ${workflow.name}`);
 
 		console.workflowStart(workflow.name, workflowId);
+
+		// Create workflow-level worktree if enabled
+		let workflowWorktree: Worktree | null = null;
+		if (worktreeEnabled && worktreeSettings) {
+			workflowWorktree = createWorktree({
+				workflowName: workflow.name,
+				stepName: "workflow",
+				repoRoot: this.repoRoot,
+				location: worktreeSettings.location,
+				directory: worktreeSettings.directory,
+			});
+			logger.info(
+				"workflow",
+				`Worktree created: ${workflowWorktree.path} (branch: ${workflowWorktree.branch})`,
+			);
+			console.info(`Worktree: ${workflowWorktree.path}`);
+		}
 
 		// Build set of completed step names to skip on resume
 		const completedStepNames = new Set(
@@ -220,50 +249,81 @@ export class WorkflowExecutor {
 
 		let skipUntil = fromStep ?? null;
 
-		for (const step of workflow.steps) {
-			if (skipUntil) {
-				if (step.name === skipUntil) {
-					skipUntil = null;
-				} else {
+		try {
+			for (const step of workflow.steps) {
+				if (skipUntil) {
+					if (step.name === skipUntil) {
+						skipUntil = null;
+					} else {
+						continue;
+					}
+				}
+
+				// Skip steps already completed/skipped during resume
+				if (completedStepNames.has(step.name)) {
+					logger.info(step.name, `Skipping already completed step: ${step.name}`);
+					console.info(`Skipping completed step: ${step.name}`);
 					continue;
 				}
-			}
 
-			// Skip steps already completed/skipped during resume
-			if (completedStepNames.has(step.name)) {
-				logger.info(step.name, `Skipping already completed step: ${step.name}`);
-				console.info(`Skipping completed step: ${step.name}`);
-				continue;
-			}
+				try {
+					await this.executeStep(step, progress, vars, logger, console, workflowWorktree);
+					saveProgress(progress, outputDir);
 
-			try {
-				await this.executeStep(step, progress, vars, logger, console);
-				saveProgress(progress, outputDir);
-
-				if (
-					progress.status === WORKFLOW_STATUS.FAILED ||
-					progress.status === WORKFLOW_STATUS.PAUSED
-				) {
+					if (
+						progress.status === WORKFLOW_STATUS.FAILED ||
+						progress.status === WORKFLOW_STATUS.PAUSED
+					) {
+						break;
+					}
+				} catch (e: unknown) {
+					const errorMsg = e instanceof Error ? e.message : String(e);
+					logger.error(step.name, `Step failed: ${errorMsg}`);
+					console.stepFailed(step.name, errorMsg);
+					updateStepFailed(progress, step.name, errorMsg);
+					progress.status = WORKFLOW_STATUS.FAILED;
+					saveProgress(progress, outputDir);
 					break;
 				}
-			} catch (e: unknown) {
-				const errorMsg = e instanceof Error ? e.message : String(e);
-				logger.error(step.name, `Step failed: ${errorMsg}`);
-				console.stepFailed(step.name, errorMsg);
-				updateStepFailed(progress, step.name, errorMsg);
-				progress.status = WORKFLOW_STATUS.FAILED;
-				saveProgress(progress, outputDir);
-				break;
+			}
+
+			if (progress.status === WORKFLOW_STATUS.RUNNING) {
+				progress.status = WORKFLOW_STATUS.COMPLETED;
+			}
+			if (progress.status !== WORKFLOW_STATUS.PAUSED) {
+				progress.completedAt = new Date().toISOString();
+			}
+			saveProgress(progress, outputDir);
+		} finally {
+			// Cleanup workflow-level worktree according to the cleanup policy
+			if (workflowWorktree && worktreeSettings) {
+				const cleanup = worktreeSettings.cleanup;
+				const succeeded = progress.status === WORKFLOW_STATUS.COMPLETED;
+
+				const shouldRemove =
+					cleanup === "on-complete" || (cleanup === "on-success" && succeeded);
+
+				if (shouldRemove) {
+					const commitResult = safetyCommit(workflowWorktree.path, logger);
+					if (commitResult.failed) {
+						logger.warning(
+							"workflow",
+							`Safety commit failed; preserving worktree to prevent data loss: ${workflowWorktree.path}`,
+						);
+						console.info(`Worktree preserved (safety commit failed): ${workflowWorktree.path}`);
+					} else {
+						removeWorktree(workflowWorktree, this.repoRoot, false);
+						logger.info("workflow", `Worktree removed: ${workflowWorktree.path}`);
+					}
+				} else {
+					logger.info(
+						"workflow",
+						`Worktree preserved: ${workflowWorktree.path} (branch: ${workflowWorktree.branch})`,
+					);
+					console.info(`Worktree preserved: ${workflowWorktree.path}`);
+				}
 			}
 		}
-
-		if (progress.status === WORKFLOW_STATUS.RUNNING) {
-			progress.status = WORKFLOW_STATUS.COMPLETED;
-		}
-		if (progress.status !== WORKFLOW_STATUS.PAUSED) {
-			progress.completedAt = new Date().toISOString();
-		}
-		saveProgress(progress, outputDir);
 
 		this.renderOutputs(workflow, progress, vars, logger);
 
@@ -357,8 +417,19 @@ export class WorkflowExecutor {
 		variables: Record<string, unknown>,
 		logger: WorkflowLogger,
 		console: ConsoleOutput,
+		workflowWorktree?: Worktree | null,
 	): Promise<void> {
 		const outputDir = this.resolveOutputDir(progress);
+
+		// Validate: parallel worktree is not allowed when workflow-level worktree is active
+		if (workflowWorktree && step.type === "parallel" && step.worktree != null) {
+			const stepWorktreeEnabled = resolveStepWorktree(step.worktree, this.renderer, variables);
+			if (stepWorktreeEnabled) {
+				throw new Error(
+					`Step '${step.name}': parallel worktree is not supported when workflow-level worktree is enabled`,
+				);
+			}
+		}
 
 		// Resolve runtime and get adapter
 		const runtimeId = resolveRuntime(
@@ -379,6 +450,7 @@ export class WorkflowExecutor {
 			outputDir,
 			variables,
 			outputs: progress.stepOutputs,
+			cwdOverride: workflowWorktree?.path ?? null,
 		};
 
 		const resolvedModel = resolveModel(context, step.model);
