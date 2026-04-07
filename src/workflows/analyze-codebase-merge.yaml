@@ -1,17 +1,12 @@
 name: analyze-codebase-merge
 version: "1.0"
-description: Run comprehensive codebase analysis with autofix, merge branches, review, and create PR
+description: Run comprehensive codebase analysis with autofix in independent branches, then review and optionally create a PR
 
 settings:
   max-retry: 2
   timeout-minutes: 180
   track-progress: true
   terminal-output: base
-  git:
-    enabled: true
-    worktree: true
-    auto-commit: true
-    branch-prefix: "agentic/analysis"
 
 variables:
   - name: autofix
@@ -43,11 +38,7 @@ variables:
 steps:
   - name: analyze-and-fix-all
     type: parallel
-    merge-strategy: wait-all
-    merge-mode: merge
-    git:
-      worktree: true
-      branch-prefix: "agentic/analysis"
+    worktree: true
     steps:
       - name: bug-analysis
         type: serial
@@ -264,7 +255,7 @@ steps:
                   - If an issue cannot be fixed (error, missing data), mark as skipped with reason
                   - Only return completion promise when genuinely done
 
-  - name: review-merged-changes
+  - name: review-analysis
     type: prompt
     prompt: /af-sdlc-review "" {{ variables.fix_severity }}
 

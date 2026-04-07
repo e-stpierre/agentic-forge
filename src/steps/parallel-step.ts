@@ -140,8 +140,7 @@ export class ParallelStepExecutor extends StepExecutor {
 		const cleanup = context.workflowSettings?.worktree?.cleanup ?? "on-success";
 		for (const [name, worktree] of Object.entries(worktrees)) {
 			const isFailed = failedBranches.includes(name);
-			const shouldRemove =
-				cleanup === "on-complete" || (cleanup === "on-success" && !isFailed);
+			const shouldRemove = cleanup === "on-complete" || (cleanup === "on-success" && !isFailed);
 
 			if (shouldRemove) {
 				const safetyResult = safetyCommit(worktree.path, logger);
@@ -150,7 +149,9 @@ export class ParallelStepExecutor extends StepExecutor {
 						name,
 						`Safety commit failed; preserving worktree to prevent data loss: ${worktree.path}`,
 					);
-					console.info(`  Branch '${name}' worktree preserved (safety commit failed): ${worktree.path}`);
+					console.info(
+						`  Branch '${name}' worktree preserved (safety commit failed): ${worktree.path}`,
+					);
 				} else {
 					removeWorktree(worktree, context.repoRoot, false);
 					logger.info(name, `Worktree removed, branch preserved: ${worktree.branch}`);

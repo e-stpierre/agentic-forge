@@ -7,11 +7,6 @@ settings:
   timeout-minutes: 180
   terminal-output: base
   track-progress: true
-  git:
-    enabled: true
-    worktree: true
-    auto-commit: true
-    branch-prefix: "feature"
 
 variables:
   - name: task
@@ -152,8 +147,6 @@ steps:
 
   - name: review
     type: parallel
-    merge-strategy: wait-all
-    merge-mode: independent
     steps:
       - name: claude-review
         type: prompt

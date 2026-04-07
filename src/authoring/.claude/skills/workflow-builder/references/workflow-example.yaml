@@ -12,7 +12,7 @@ version: "1.0"
 description: |
   Comprehensive example workflow demonstrating all available features:
   - All step types (prompt, serial, parallel, conditional, ralph-loop, wait-for-human)
-  - Git integration with worktrees
+  - Worktree isolation (workflow-level and step-level)
   - Error handling and retries
   - Checkpoints and progress tracking
   - Variable templating with Nunjucks
@@ -57,22 +57,17 @@ settings:
     - "Write"
     - "Read"
 
-  # Git configuration
-  git:
-    # Enable git operations (default: false)
-    enabled: true
+  # Worktree configuration (workflow-level isolation)
+  worktree:
+    # Enable worktree isolation for this workflow (default: false)
+    # Accepts a boolean or Nunjucks template string for variable-driven toggling
+    enabled: "{{ variables.use_worktree }}"
 
-    # Use worktrees for parallel steps (default: false)
-    worktree: true
+    # Where to create the worktree: sibling (default), nested, absolute
+    location: "sibling"
 
-    # Auto-commit changes after each step (default: true)
-    auto-commit: true
-
-    # Auto-create PR when workflow completes (default: true)
-    auto-pr: false
-
-    # Prefix for branch names (default: "agentic")
-    branch-prefix: "feature"
+    # Cleanup policy: on-success (default), on-complete, manual
+    cleanup: "on-success"
 
 # Optional: Input variables for the workflow
 variables:
@@ -109,6 +104,13 @@ variables:
     required: false
     default: "major"
     description: Minimum severity for auto-fixing issues
+
+  # Optional boolean variable to toggle worktree mode
+  - name: use_worktree
+    type: boolean
+    required: false
+    default: true
+    description: Whether to run the workflow in an isolated git worktree
 
 # Required: Workflow steps
 steps:
@@ -176,23 +178,13 @@ steps:
         prompt: "Create necessary files and directory structure"
 
   # ==================== PARALLEL STEP ====================
-  # Execute nested steps concurrently in git worktrees
+  # Execute nested steps concurrently in isolated git worktrees
   - name: parallel-analysis
     type: parallel
 
-    # Merge strategy: wait-all (wait for all steps to complete)
-    merge-strategy: wait-all
-
-    # Merge mode: independent (no merging), merge (merge branches)
-    merge-mode: independent
-
-    # Git configuration for parallel execution
-    git:
-      # Run each parallel step in separate worktree
-      worktree: true
-
-      # Prefix for parallel branch names
-      branch-prefix: "analysis"
+    # Run each parallel step in a separate git worktree (default: false)
+    # Inherits location and cleanup settings from settings.worktree
+    worktree: true
 
     # Parallel steps
     steps:

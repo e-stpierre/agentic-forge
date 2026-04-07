@@ -6,11 +6,6 @@ settings:
   max-retry: 3
   timeout-minutes: 60
   track-progress: true
-  git:
-    enabled: true
-    worktree: true
-    auto-commit: true
-    branch-prefix: "agentic"
 
 variables:
   - name: task

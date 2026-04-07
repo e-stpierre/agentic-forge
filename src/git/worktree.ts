@@ -12,8 +12,8 @@ import {
 	writeFileSync,
 } from "node:fs";
 import path from "node:path";
-import type { WorktreeCleanup, WorktreeLocation } from "../types.js";
 import { getExecutable } from "../runtimes/utils.js";
+import type { WorktreeCleanup, WorktreeLocation } from "../types.js";
 
 // --- Worktree data ---
 
@@ -108,9 +108,7 @@ function resolveWorktreePath(
 			return path.join(repoRoot, ".worktrees", dirName);
 		case "absolute": {
 			if (!directory) {
-				throw new Error(
-					"Worktree location 'absolute' requires a 'directory' to be specified",
-				);
+				throw new Error("Worktree location 'absolute' requires a 'directory' to be specified");
 			}
 			return path.join(directory, dirName);
 		}
@@ -243,10 +241,7 @@ export function safetyCommit(
 			["commit", "-m", "chore: auto-save uncommitted changes before worktree cleanup"],
 			worktreePath,
 		);
-		logger?.warning(
-			"worktree",
-			`Safety commit created in worktree: ${worktreePath}`,
-		);
+		logger?.warning("worktree", `Safety commit created in worktree: ${worktreePath}`);
 		return { committed: true, failed: false };
 	} catch (e: unknown) {
 		const error = e instanceof Error ? e.message : String(e);

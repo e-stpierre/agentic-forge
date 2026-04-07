@@ -33,11 +33,7 @@ variables:
 steps:
   - name: analyze-and-fix-all
     type: parallel
-    merge-strategy: wait-all
-    merge-mode: independent
-    git:
-      worktree: true
-      branch-prefix: "agentic/analysis"
+    worktree: true
     steps:
       - name: bug-analysis
         type: serial

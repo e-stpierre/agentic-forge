@@ -8,7 +8,7 @@ Workflows support a `runtime` field on individual steps and in `settings`. See [
 
 ## plan-build-review
 
-Full SDLC workflow: plan, implement iteratively, review, fix, and optionally create a PR.
+Full SDLC workflow: plan, implement iteratively, review, fix, and optionally create a PR. Runs the entire workflow in an isolated git worktree by default.
 
 **Use cases**: Feature development, bug fixes, and chores that benefit from upfront planning and automated review.
 
@@ -25,6 +25,7 @@ Full SDLC workflow: plan, implement iteratively, review, fix, and optionally cre
 | `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop      |
 | `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation       |
 | `create_pr`      | boolean | No       | `false` | Create a PR after completion                    |
+| `use_worktree`   | boolean | No       | `true`  | Run the workflow in an isolated git worktree    |
 
 ### Examples
 
@@ -128,11 +129,11 @@ af run analyze-codebase --var "paths=src/api src/models" --var "autofix=minor"
 
 ## analyze-codebase-merge
 
-Same as `analyze-codebase` but merges all analysis branches back, runs a combined review, and optionally creates a single PR.
+Same as `analyze-codebase` but adds a combined review pass and optionally creates a single PR after all analyses complete. Each analysis branch remains independent.
 
-**Use cases**: When you want all analysis fixes consolidated into one branch instead of separate PRs.
+**Use cases**: When you want a consolidated validation review after running all analysis types in parallel.
 
-**Flow**: 5 Parallel Analyses -> Merge Branches -> Review -> Fix Validation Issues -> Create PR
+**Flow**: 5 Parallel Analyses (independent branches) -> Review -> Fix Validation Issues -> Create PR
 
 ### Variables
 

@@ -300,8 +300,7 @@ export class WorkflowExecutor {
 				const cleanup = worktreeSettings.cleanup;
 				const succeeded = progress.status === WORKFLOW_STATUS.COMPLETED;
 
-				const shouldRemove =
-					cleanup === "on-complete" || (cleanup === "on-success" && succeeded);
+				const shouldRemove = cleanup === "on-complete" || (cleanup === "on-success" && succeeded);
 
 				if (shouldRemove) {
 					const commitResult = safetyCommit(workflowWorktree.path, logger);

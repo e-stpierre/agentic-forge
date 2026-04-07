@@ -45,26 +45,47 @@ All settings are optional with sensible defaults.
 
 **Note:** Skill invocations (`/sdlc-plan`, `/git-commit`, etc.) only work with `runtime: claude`. Codex does not support bundled skill injection.
 
-### Git Settings
+### Worktree Settings
 
-Nested under `settings.git`:
+Nested under `settings.worktree`. Controls workflow-level git worktree isolation. When enabled, the entire workflow runs in a dedicated worktree and all steps see that worktree as their working directory.
 
-| Key             | Type   | Default     | Valid Values | Description                      |
-| --------------- | ------ | ----------- | ------------ | -------------------------------- |
-| `enabled`       | bool   | `false`     | true/false   | Enable git operations            |
-| `worktree`      | bool   | `false`     | true/false   | Use worktrees for parallel steps |
-| `auto-commit`   | bool   | `true`      | true/false   | Auto-commit after each step      |
-| `auto-pr`       | bool   | `true`      | true/false   | Auto-create PR on completion     |
-| `branch-prefix` | string | `"agentic"` | any string   | Prefix for branch names          |
+| Key         | Type        | Default        | Valid Values                         | Description                                               |
+| ----------- | ----------- | -------------- | ------------------------------------ | --------------------------------------------------------- |
+| `enabled`   | bool/string | `false`        | true/false, Nunjucks template string | Enable worktree isolation for this workflow               |
+| `location`  | string      | `"sibling"`    | sibling, nested, absolute            | Where to create the worktree relative to the repository   |
+| `directory` | string/null | `null`         | any absolute path                    | Base directory for `absolute` location (required if used) |
+| `cleanup`   | string      | `"on-success"` | on-success, on-complete, manual      | When to remove the worktree after the workflow finishes   |
+
+**Location modes:**
+
+| Value        | Worktree path                          | Notes                              |
+| ------------ | -------------------------------------- | ---------------------------------- |
+| `"sibling"`  | `../.worktrees/{repo}-{workflow}-{id}` | Default; safe on long-path systems |
+| `"nested"`   | `.worktrees/agentic-{workflow}-{id}`   | Inside the repository              |
+| `"absolute"` | `{directory}/{repo}-{workflow}-{id}`   | `directory` must be set            |
+
+**Cleanup policies:**
+
+| Value           | Behavior                                                   |
+| --------------- | ---------------------------------------------------------- |
+| `"on-success"`  | Remove worktree on success; preserve on failure            |
+| `"on-complete"` | Always remove worktree after the workflow finishes         |
+| `"manual"`      | Never remove automatically; log path for manual inspection |
+
+**The `enabled` field accepts a Nunjucks template string** so users can toggle worktree mode via a CLI variable:
 
 ```yaml
 settings:
-  git:
-    enabled: true
-    worktree: true
-    auto-commit: true
-    auto-pr: false
-    branch-prefix: "feature"
+  worktree:
+    enabled: "{{ variables.use_worktree }}"
+    cleanup: "on-success"
+
+variables:
+  - name: use_worktree
+    type: boolean
+    required: false
+    default: true
+    description: Whether to run in an isolated worktree
 ```
 
 ## Variables
@@ -175,35 +196,21 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
 
 **Specific properties:**
 
-| Key              | Type   | Default         | Description                                          |
-| ---------------- | ------ | --------------- | ---------------------------------------------------- |
-| `steps`          | list   | **required**    | List of nested step definitions                      |
-| `merge-strategy` | string | `"wait-all"`    | Only "wait-all" supported                            |
-| `merge-mode`     | string | `"independent"` | "independent" (no merge) or "merge" (merge branches) |
-| `git`            | object | null            | Step-level git config (see below)                    |
-
-**Step-level git (parallel only):**
-
-| Key             | Type   | Default     | Description                        |
-| --------------- | ------ | ----------- | ---------------------------------- |
-| `worktree`      | bool   | `false`     | Run each step in separate worktree |
-| `branch-prefix` | string | `"agentic"` | Prefix for parallel branch names   |
-| `auto-pr`       | bool   | `false`     | Auto-create PR per branch          |
+| Key        | Type        | Default      | Description                                                                                       |
+| ---------- | ----------- | ------------ | ------------------------------------------------------------------------------------------------- |
+| `steps`    | list        | **required** | List of nested step definitions                                                                   |
+| `worktree` | bool/string | `false`      | Run each step in a separate git worktree (inherits location and cleanup from `settings.worktree`) |
 
 **Constraints:**
 
 - Nested parallel steps are NOT allowed (parallel inside parallel)
-- When `merge-mode: merge`, branches are merged back to the parent branch after all complete
-- When `merge-mode: independent`, each branch stays separate
+- `worktree: true` on a parallel step is not supported when workflow-level `settings.worktree.enabled` is true
+- When `worktree: true`, each branch stays independent after completion
 
 ```yaml
 - name: parallel-analysis
   type: parallel
-  merge-strategy: wait-all
-  merge-mode: independent
-  git:
-    worktree: true
-    branch-prefix: "analysis"
+  worktree: true
   steps:
     - name: security-scan
       type: prompt
@@ -483,7 +490,7 @@ Available via `agentic-forge init` or `agentic-forge run <name>`:
 | `multi-plan-build-review` | Full SDLC with mixed Claude/Codex runtimes per phase                    |
 | `ralph-loop`              | Generic iterative loop for any task                                     |
 | `analyze-codebase`        | Parallel analysis (5 types) with optional autofix, independent branches |
-| `analyze-codebase-merge`  | Parallel analysis with autofix, branch merge, validation, and PR        |
+| `analyze-codebase-merge`  | Parallel analysis with autofix, combined review, and optional PR        |
 | `analyze-single`          | Single analysis type with optional autofix                              |
 
 ## Validation Checklist
@@ -501,6 +508,8 @@ When validating a workflow, check for these issues:
 - Ralph-loop step without `prompt` field
 - Wait-for-human step without `message` field
 - Required variable without default and not provided at runtime
+- `settings.worktree.location: "absolute"` without `settings.worktree.directory` set
+- `worktree: true` on a parallel step when `settings.worktree.enabled` is true
 
 **Warnings (may cause issues):**
 

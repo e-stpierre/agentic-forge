@@ -8,10 +8,6 @@ settings:
   track-progress: true
   bypass-permissions: false
   terminal-output: base
-  git:
-    enabled: true
-    auto-commit: true
-    auto-pr: false
 
 variables:
   - name: task

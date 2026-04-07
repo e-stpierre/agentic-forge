@@ -8,9 +8,6 @@ settings:
   track-progress: true
   terminal-output: all
   bypass-permissions: false
-  git:
-    enabled: false
-    worktree: false
 
 steps:
   - name: welcome
@@ -24,10 +21,6 @@ steps:
 
   - name: create-demo-files
     type: parallel
-    merge-strategy: wait-all
-    merge-mode: independent
-    git:
-      worktree: false
     steps:
       - name: create-demo-1
         type: prompt
