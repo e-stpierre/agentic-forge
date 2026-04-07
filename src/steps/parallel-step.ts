@@ -1,10 +1,11 @@
 /** Parallel step executor. */
 
 import type { ConsoleOutput } from "../console.js";
-import { type Worktree, createWorktree, removeWorktree } from "../git/worktree.js";
+import { type Worktree, createWorktree, removeWorktree, safetyCommit } from "../git/worktree.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import { WORKFLOW_STATUS, updateStepCompleted, updateStepFailed } from "../progress.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
+import { resolveStepWorktree } from "../worktree-settings.js";
 import {
 	type BranchStepExecutor,
 	type StepContext,
@@ -31,7 +32,7 @@ export class ParallelStepExecutor extends StepExecutor {
 			return { success: true, outputSummary: "No sub-steps to execute" };
 		}
 
-		const useWorktree = false;
+		const useWorktree = resolveStepWorktree(step.worktree, context.renderer, context.variables);
 
 		logger.info(step.name, `Starting parallel execution of ${step.steps.length} branches`);
 		if (useWorktree) {
@@ -66,7 +67,8 @@ export class ParallelStepExecutor extends StepExecutor {
 						stepName: branchStep.name,
 						baseBranch: undefined,
 						repoRoot: context.repoRoot,
-						location: "nested",
+						location: context.workflowSettings?.worktree?.location ?? "sibling",
+						directory: context.workflowSettings?.worktree?.directory ?? null,
 					});
 					logger.info(branchStep.name, `Created worktree: ${worktree.path}`);
 					console.info(`  Branch '${branchStep.name}' worktree: ${worktree.branch}`);
@@ -134,10 +136,29 @@ export class ParallelStepExecutor extends StepExecutor {
 		// Exit parallel mode
 		console.exitParallelMode();
 
-		// Cleanup worktrees (independent mode: remove worktree, keep branch)
+		// Cleanup worktrees based on policy
+		const cleanup = context.workflowSettings?.worktree?.cleanup ?? "on-success";
 		for (const [name, worktree] of Object.entries(worktrees)) {
-			removeWorktree(worktree, context.repoRoot, false);
-			logger.info(name, `Worktree removed, branch preserved: ${worktree.branch}`);
+			const isFailed = failedBranches.includes(name);
+			const shouldRemove =
+				cleanup === "on-complete" || (cleanup === "on-success" && !isFailed);
+
+			if (shouldRemove) {
+				const safetyResult = safetyCommit(worktree.path, logger);
+				if (safetyResult.failed) {
+					logger.warning(
+						name,
+						`Safety commit failed; preserving worktree to prevent data loss: ${worktree.path}`,
+					);
+					console.info(`  Branch '${name}' worktree preserved (safety commit failed): ${worktree.path}`);
+				} else {
+					removeWorktree(worktree, context.repoRoot, false);
+					logger.info(name, `Worktree removed, branch preserved: ${worktree.branch}`);
+				}
+			} else {
+				logger.info(name, `Worktree preserved (cleanup: ${cleanup}): ${worktree.path}`);
+				console.info(`  Branch '${name}' worktree preserved: ${worktree.path}`);
+			}
 		}
 
 		// Handle completion
