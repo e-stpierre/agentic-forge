@@ -10,6 +10,16 @@ settings:
     - Write
     - Read
     - Bash
+  worktree:
+    enabled: "{{ variables.use_worktree }}"
+    cleanup: "on-success"
+
+variables:
+  - name: use_worktree
+    type: boolean
+    required: false
+    default: true
+    description: Whether to run in an isolated worktree
 
 steps:
   - name: welcome

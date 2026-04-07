@@ -127,37 +127,6 @@ af run analyze-codebase --var "autofix=major" --var "create_pr=true"
 af run analyze-codebase --var "paths=src/api src/models" --var "autofix=minor"
 ```
 
-## analyze-codebase-merge
-
-Same as `analyze-codebase` but adds a combined review pass and optionally creates a single PR after all analyses complete. Each analysis branch remains independent.
-
-**Use cases**: When you want a consolidated validation review after running all analysis types in parallel.
-
-**Flow**: 5 Parallel Analyses (independent branches) -> Review -> Fix Validation Issues -> Create PR
-
-### Variables
-
-| Variable             | Type    | Required | Default | Description                                                    |
-| -------------------- | ------- | -------- | ------- | -------------------------------------------------------------- |
-| `autofix`            | string  | No       | `major` | Severity level for fixes: `none`, `minor`, `major`, `critical` |
-| `fix_severity`       | string  | No       | `major` | Minimum severity for validation auto-fix                       |
-| `paths`              | string  | No       | `""`    | Space-separated paths to analyze                               |
-| `create_pr`          | boolean | No       | `false` | Create PR after all changes merged                             |
-| `max_fix_iterations` | number  | No       | `25`    | Maximum iterations for fix loops                               |
-
-### Examples
-
-```bash
-# Full analysis with merged fixes
-af run analyze-codebase-merge --var "autofix=major"
-
-# Consolidated PR from all analyses
-af run analyze-codebase-merge --var "autofix=minor" --var "create_pr=true"
-
-# Strict: only fix critical issues
-af run analyze-codebase-merge --var "autofix=critical" --var "fix_severity=critical"
-```
-
 ## analyze-single
 
 Run a single type of codebase analysis with optional autofix.

@@ -490,7 +490,6 @@ Available via `agentic-forge init` or `agentic-forge run <name>`:
 | `multi-plan-build-review` | Full SDLC with mixed Claude/Codex runtimes per phase                    |
 | `ralph-loop`              | Generic iterative loop for any task                                     |
 | `analyze-codebase`        | Parallel analysis (5 types) with optional autofix, independent branches |
-| `analyze-codebase-merge`  | Parallel analysis with autofix, combined review, and optional PR        |
 | `analyze-single`          | Single analysis type with optional autofix                              |
 
 ## Validation Checklist

@@ -55,7 +55,7 @@ Workflow step handlers (prompt, parallel, serial, conditional, ralph-loop).
 
 #### `workflows/`
 
-Bundled YAML workflow definitions (10 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `analyze-codebase`, `analyze-codebase-merge`, `analyze-single`, `claude-demo`, `codex-demo`, `multi-demo`, `multi-plan-build-review`).
+Bundled YAML workflow definitions (9 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `analyze-codebase`, `analyze-single`, `claude-demo`, `codex-demo`, `multi-demo`, `multi-plan-build-review`).
 
 ### `tests/`
 
