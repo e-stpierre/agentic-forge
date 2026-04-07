@@ -2,8 +2,17 @@
 
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import path from "node:path";
+import type { WorktreeCleanup, WorktreeLocation } from "../types.js";
 import { getExecutable } from "../runtimes/utils.js";
 
 // --- Worktree data ---
@@ -84,31 +93,102 @@ export function getCurrentBranch(cwd?: string | null): string {
 	return result.stdout.trim();
 }
 
+// --- Worktree path resolution ---
+
+function resolveWorktreePath(
+	repoRoot: string,
+	dirName: string,
+	location: WorktreeLocation,
+	directory: string | null,
+): string {
+	switch (location) {
+		case "sibling":
+			return path.join(path.dirname(repoRoot), ".worktrees", dirName);
+		case "nested":
+			return path.join(repoRoot, ".worktrees", dirName);
+		case "absolute": {
+			if (!directory) {
+				throw new Error(
+					"Worktree location 'absolute' requires a 'directory' to be specified",
+				);
+			}
+			return path.join(directory, dirName);
+		}
+	}
+}
+
+function buildDirName(
+	repoRoot: string,
+	wfName: string,
+	stName: string,
+	suffix: string,
+	location: WorktreeLocation,
+): string {
+	if (location === "nested") {
+		return `agentic-${wfName}-${stName}-${suffix}`;
+	}
+	const repoName = sanitizeName(path.basename(repoRoot));
+	return `${repoName}-${wfName}-${stName}-${suffix}`;
+}
+
+// --- .gitignore helper ---
+
+function ensureGitignoreEntry(repoRoot: string, entry: string): void {
+	const gitignorePath = path.join(repoRoot, ".gitignore");
+	let content = "";
+	if (existsSync(gitignorePath)) {
+		content = readFileSync(gitignorePath, "utf-8");
+	}
+	const lines = content.split("\n");
+	if (!lines.some((line) => line.trim() === entry)) {
+		const updated = content.endsWith("\n") ? `${content}${entry}\n` : `${content}\n${entry}\n`;
+		writeFileSync(gitignorePath, updated, "utf-8");
+	}
+}
+
 // --- Worktree operations ---
 
-export function createWorktree(
-	workflowName: string,
-	stepName: string,
-	baseBranch?: string | null,
-	repoRoot?: string | null,
-): Worktree {
-	const root = repoRoot || getRepoRoot();
+export interface CreateWorktreeOptions {
+	workflowName: string;
+	stepName: string;
+	baseBranch?: string | null;
+	repoRoot?: string | null;
+	location: WorktreeLocation;
+	directory?: string | null;
+}
+
+export function createWorktree(options: CreateWorktreeOptions): Worktree {
+	const {
+		workflowName,
+		stepName,
+		baseBranch,
+		repoRoot: repoRootOpt,
+		location,
+		directory = null,
+	} = options;
+
+	const root = repoRootOpt || getRepoRoot();
 	const base = baseBranch || getDefaultBranch(root);
 
 	const suffix = generateSuffix();
 	const wfName = truncate(sanitizeName(workflowName));
 	const stName = truncate(sanitizeName(stepName));
 
-	const dirName = `agentic-${wfName}-${stName}-${suffix}`;
+	const dirName = buildDirName(root, wfName, stName, suffix, location);
 	const branchName = `agentic/${wfName}-${stName}-${suffix}`;
 
-	const worktreePath = path.join(root, ".worktrees", dirName);
+	const worktreePath = resolveWorktreePath(root, dirName, location, directory);
 	const parentDir = path.dirname(worktreePath);
 	mkdirSync(parentDir, { recursive: true });
 
 	if (existsSync(worktreePath)) {
 		rmSync(worktreePath, { recursive: true, force: true });
 		runGit(["worktree", "prune"], root, false);
+	}
+
+	// Add .worktrees/ to .gitignore for nested mode only
+	if (location === "nested") {
+		ensureGitignoreEntry(root, ".worktrees/");
 	}
 
 	runGit(["worktree", "add", "-b", branchName, worktreePath, base], root);
@@ -133,6 +213,57 @@ export function removeWorktree(
 	if (deleteBranch && worktree.branch) {
 		runGit(["branch", "-D", worktree.branch], root, false);
 	}
+}
+
+// --- Safety commit ---
+
+export interface SafetyCommitResult {
+	committed: boolean;
+	failed: boolean;
+	error?: string;
+}
+
+/**
+ * Commits uncommitted changes in a worktree before cleanup to prevent data loss.
+ * Returns whether a commit was made, and whether the commit failed.
+ * If the commit fails, callers should preserve the worktree rather than deleting it.
+ */
+export function safetyCommit(
+	worktreePath: string,
+	logger?: { warning: (step: string, message: string) => void },
+): SafetyCommitResult {
+	const status = runGit(["status", "--porcelain"], worktreePath, false);
+	if (!status.stdout.trim()) {
+		return { committed: false, failed: false };
+	}
+
+	try {
+		runGit(["add", "-A"], worktreePath);
+		runGit(
+			["commit", "-m", "chore: auto-save uncommitted changes before worktree cleanup"],
+			worktreePath,
+		);
+		logger?.warning(
+			"worktree",
+			`Safety commit created in worktree: ${worktreePath}`,
+		);
+		return { committed: true, failed: false };
+	} catch (e: unknown) {
+		const error = e instanceof Error ? e.message : String(e);
+		logger?.warning(
+			"worktree",
+			`Safety commit failed in worktree ${worktreePath}: ${error}. Preserving worktree to prevent data loss.`,
+		);
+		return { committed: false, failed: true, error };
+	}
+}
+
+// --- Pruning ---
+
+export interface PruneLocation {
+	location: WorktreeLocation;
+	repoRoot: string;
+	directory?: string | null;
 }
 
 export function listWorktrees(repoRoot?: string | null): Worktree[] {
@@ -167,25 +298,58 @@ export function listAgenticWorktrees(repoRoot?: string | null): Worktree[] {
 	return listWorktrees(repoRoot).filter((wt) => wt.branch.startsWith("agentic/"));
 }
 
-export function pruneOrphaned(repoRoot?: string | null): number {
+function pruneWorktreesDir(worktreesDir: string, prefix: string): number {
+	let cleaned = 0;
+	if (existsSync(worktreesDir)) {
+		for (const entry of readdirSync(worktreesDir)) {
+			if (!entry.startsWith(prefix)) continue;
+			const wtDir = path.join(worktreesDir, entry);
+			if (!statSync(wtDir).isDirectory()) continue;
+			const gitFile = path.join(wtDir, ".git");
+			if (!existsSync(gitFile)) {
+				rmSync(wtDir, { recursive: true, force: true });
+				cleaned++;
+			}
+		}
+	}
+	return cleaned;
+}
+
+export function pruneOrphaned(repoRoot?: string | null, prune?: PruneLocation): number {
 	const root = repoRoot || getRepoRoot();
 
 	runGit(["worktree", "prune"], root, false);
 
+	if (prune) {
+		const { location, directory } = prune;
+		const pRoot = prune.repoRoot;
+		let worktreesDir: string;
+		let prefix: string;
+
+		if (location === "nested") {
+			worktreesDir = path.join(pRoot, ".worktrees");
+			prefix = "agentic-";
+		} else if (location === "sibling") {
+			worktreesDir = path.join(path.dirname(pRoot), ".worktrees");
+			const repoName = sanitizeName(path.basename(pRoot));
+			prefix = `${repoName}-`;
+		} else if (location === "absolute" && directory) {
+			worktreesDir = directory;
+			const repoName = sanitizeName(path.basename(pRoot));
+			prefix = `${repoName}-`;
+		} else {
+			// Fallback to nested scan
+			worktreesDir = path.join(pRoot, ".worktrees");
+			prefix = "agentic-";
+		}
+
+		return pruneWorktreesDir(worktreesDir, prefix);
+	}
+
+	// Default: scan nested location for backward compatibility
 	let cleaned = 0;
 	const worktreesDir = path.join(root, ".worktrees");
-	if (existsSync(worktreesDir)) {
-		for (const entry of readdirSync(worktreesDir)) {
-			const wtDir = path.join(worktreesDir, entry);
-			if (statSync(wtDir).isDirectory() && entry.startsWith("agentic-")) {
-				const gitFile = path.join(wtDir, ".git");
-				if (!existsSync(gitFile)) {
-					rmSync(wtDir, { recursive: true, force: true });
-					cleaned++;
-				}
-			}
-		}
-	}
+	cleaned += pruneWorktreesDir(worktreesDir, "agentic-");
 
 	return cleaned;
 }

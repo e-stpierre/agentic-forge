@@ -407,7 +407,12 @@ export class WorkflowOrchestrator {
 
 		try {
 			for (const subStep of step.steps) {
-				const wt = createWorktree(workflow.name, subStep.name, this.repoRoot);
+				const wt = createWorktree({
+					workflowName: workflow.name,
+					stepName: subStep.name,
+					repoRoot: this.repoRoot,
+					location: "nested",
+				});
 				worktrees.push(wt);
 
 				const branch: ParallelBranch = {

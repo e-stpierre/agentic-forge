@@ -61,12 +61,13 @@ export class ParallelStepExecutor extends StepExecutor {
 				console.setParallelBranch(branchStep.name);
 
 				if (useWorktree) {
-					worktree = createWorktree(
-						progress.workflowName,
-						branchStep.name,
-						undefined,
-						context.repoRoot,
-					);
+					worktree = createWorktree({
+						workflowName: progress.workflowName,
+						stepName: branchStep.name,
+						baseBranch: undefined,
+						repoRoot: context.repoRoot,
+						location: "nested",
+					});
 					logger.info(branchStep.name, `Created worktree: ${worktree.path}`);
 					console.info(`  Branch '${branchStep.name}' worktree: ${worktree.branch}`);
 					branchContext.cwdOverride = worktree.path;

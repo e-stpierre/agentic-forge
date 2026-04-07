@@ -167,15 +167,30 @@ export function sanitizeSlug(input: string): string {
 }
 
 /**
- * Searches both local and global output directories for a workflow's progress file.
- * Local is checked first, then global. Returns the matching output dir path or null.
+ * Returns the global output root for a worktree workflow run.
+ * Always uses the global directory keyed by the main repo root slug,
+ * not the worktree path, to ensure outputs are co-located with the canonical repo.
  */
-export function findOutputDir(workflowId: string, cwd?: string): string | null {
+export function getWorktreeOutputRoot(repoRoot?: string): string {
+	return path.join(getGlobalRoot(), "outputs", slugifyCwdName(repoRoot));
+}
+
+/**
+ * Searches both local and global output directories for a workflow's progress file.
+ * Local is checked first, then global. When a repoRoot override is provided (for
+ * worktree runs), also checks the canonical worktree output root.
+ * Returns the matching output dir path or null.
+ */
+export function findOutputDir(workflowId: string, cwd?: string, repoRoot?: string): string | null {
 	const cWd = cwd ?? process.cwd();
 	const candidates = [
 		path.join(cWd, "agentic", "outputs", workflowId),
 		path.join(getGlobalRoot(), "outputs", slugifyCwdName(cWd), workflowId),
 	];
+	// When running from a worktree, also check the canonical repo output root
+	if (repoRoot && repoRoot !== cWd) {
+		candidates.push(path.join(getWorktreeOutputRoot(repoRoot), workflowId));
+	}
 	for (const dir of candidates) {
 		if (existsSync(path.join(dir, "progress.json"))) {
 			return dir;
