@@ -52,8 +52,6 @@ function makeStepDef(
 ): StepDefinition {
 	return {
 		steps: [],
-		mergeStrategy: "wait-all",
-		mergeMode: "merge",
 		thenSteps: [],
 		elseSteps: [],
 		maxIterations: 5,
@@ -76,13 +74,6 @@ function defaultSettings(): WorkflowSettings {
 		strictMode: false,
 		model: null,
 		requiredTools: [],
-		git: {
-			enabled: false,
-			worktree: false,
-			autoCommit: false,
-			autoPr: false,
-			branchPrefix: "agentic",
-		},
 	};
 }
 
@@ -479,7 +470,6 @@ describe("ParallelStepExecutor", () => {
 			name: "parallel-step",
 			type: "parallel",
 			steps: innerSteps,
-			mergeStrategy: "wait-all",
 		});
 
 		const context = createStepContext({
@@ -502,7 +492,7 @@ describe("ParallelStepExecutor", () => {
 		expect(branchExecutor).toHaveBeenCalledTimes(5);
 	});
 
-	it("should call updateStepCompleted for non-wait-all merge strategy", async () => {
+	it("should call updateStepCompleted when all branches succeed", async () => {
 		const branchExecutor = vi.fn<BranchStepExecutor>(async () => {
 			return { success: true, outputSummary: "Done" };
 		});
@@ -514,7 +504,6 @@ describe("ParallelStepExecutor", () => {
 			name: "parallel-step",
 			type: "parallel",
 			steps: innerSteps,
-			mergeStrategy: "first-success" as StepDefinition["mergeStrategy"],
 		});
 
 		const context = createStepContext();
@@ -550,7 +539,7 @@ describe("ParallelStepExecutor", () => {
 		expect(result.outputSummary).toContain("No sub-steps");
 	});
 
-	it("should track failed branches in wait-all strategy", async () => {
+	it("should track failed branches", async () => {
 		const branchExecutor = vi.fn<BranchStepExecutor>(async (step) => {
 			if (step.name === "branch-b") {
 				return { success: false, error: "Branch B failed" };
@@ -568,7 +557,6 @@ describe("ParallelStepExecutor", () => {
 			name: "parallel-step",
 			type: "parallel",
 			steps: innerSteps,
-			mergeStrategy: "wait-all",
 		});
 
 		const context = createStepContext();

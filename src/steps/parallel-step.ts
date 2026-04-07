@@ -1,7 +1,7 @@
 /** Parallel step executor. */
 
 import type { ConsoleOutput } from "../console.js";
-import { type Worktree, createWorktree, removeWorktree, runGit } from "../git/worktree.js";
+import { type Worktree, createWorktree, removeWorktree } from "../git/worktree.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import { WORKFLOW_STATUS, updateStepCompleted, updateStepFailed } from "../progress.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
@@ -31,7 +31,7 @@ export class ParallelStepExecutor extends StepExecutor {
 			return { success: true, outputSummary: "No sub-steps to execute" };
 		}
 
-		const useWorktree = step.git?.worktree ?? false;
+		const useWorktree = false;
 
 		logger.info(step.name, `Starting parallel execution of ${step.steps.length} branches`);
 		if (useWorktree) {
@@ -45,7 +45,6 @@ export class ParallelStepExecutor extends StepExecutor {
 		console.registerParallelBranches(branchNames);
 		console.enterParallelMode();
 
-		const branchResults: Record<string, { success: boolean; output: string }> = {};
 		const failedBranches: string[] = [];
 		const worktrees: Record<string, Worktree> = {};
 
@@ -115,7 +114,6 @@ export class ParallelStepExecutor extends StepExecutor {
 		for (const result of results) {
 			if (result.status === "fulfilled") {
 				const [name, success, output, worktree] = result.value;
-				branchResults[name] = { success, output };
 				if (worktree) {
 					worktrees[name] = worktree;
 				}
@@ -128,8 +126,6 @@ export class ParallelStepExecutor extends StepExecutor {
 			} else {
 				// Promise rejected — should be rare since executeBranch catches errors
 				const reason = String(result.reason);
-				// We can't easily get the branch name from a rejected promise
-				// but this case is already handled by the try/catch inside executeBranch
 				logger.error(step.name, `Branch promise rejected: ${reason}`);
 			}
 		}
@@ -137,91 +133,26 @@ export class ParallelStepExecutor extends StepExecutor {
 		// Exit parallel mode
 		console.exitParallelMode();
 
-		// Handle merge modes
-		if (step.mergeMode === "merge" && Object.keys(worktrees).length > 0) {
-			const mergeFailures = this.mergeWorktreeBranches(
-				step,
-				worktrees,
-				failedBranches,
-				context,
-				logger,
-				console,
-			);
-			failedBranches.push(...mergeFailures);
+		// Cleanup worktrees (independent mode: remove worktree, keep branch)
+		for (const [name, worktree] of Object.entries(worktrees)) {
+			removeWorktree(worktree, context.repoRoot, false);
+			logger.info(name, `Worktree removed, branch preserved: ${worktree.branch}`);
 		}
 
-		if (step.mergeMode === "independent" && Object.keys(worktrees).length > 0) {
-			for (const [name, worktree] of Object.entries(worktrees)) {
-				removeWorktree(worktree, context.repoRoot, false);
-				logger.info(name, `Worktree removed, branch preserved: ${worktree.branch}`);
-			}
+		// Handle completion
+		if (failedBranches.length > 0) {
+			const errorMsg = `Parallel branches failed: ${failedBranches.join(", ")}`;
+			updateStepFailed(progress, step.name, errorMsg);
+			console.stepFailed(step.name, errorMsg);
+			progress.status = WORKFLOW_STATUS.FAILED;
+			return { success: false, error: errorMsg };
 		}
 
-		// Handle completion based on merge strategy
-		if (step.mergeStrategy === "wait-all") {
-			if (failedBranches.length > 0 && step.mergeMode !== "independent") {
-				const errorMsg = `Parallel branches failed: ${failedBranches.join(", ")}`;
-				updateStepFailed(progress, step.name, errorMsg);
-				console.stepFailed(step.name, errorMsg);
-				progress.status = WORKFLOW_STATUS.FAILED;
-				return { success: false, error: errorMsg };
-			}
-
-			const completed = step.steps.length - failedBranches.length;
-			let outputSummary = `Completed ${completed}/${step.steps.length} branches`;
-			if (failedBranches.length > 0) {
-				outputSummary += ` (failed: ${failedBranches.join(", ")})`;
-			}
-			updateStepCompleted(progress, step.name, outputSummary);
-			console.stepComplete(step.name, outputSummary);
-			logger.info(step.name, outputSummary);
-			return { success: true, outputSummary };
-		}
-
-		const outputSummary = "Parallel execution completed";
+		const completed = step.steps.length;
+		const outputSummary = `Completed ${completed}/${step.steps.length} branches`;
 		updateStepCompleted(progress, step.name, outputSummary);
 		console.stepComplete(step.name, outputSummary);
 		logger.info(step.name, outputSummary);
 		return { success: true, outputSummary };
-	}
-
-	private mergeWorktreeBranches(
-		step: StepDefinition,
-		worktrees: Record<string, Worktree>,
-		failedBranches: string[],
-		context: StepContext,
-		logger: WorkflowLogger,
-		console: ConsoleOutput,
-	): string[] {
-		console.info("Merging parallel branches...");
-		const mergeFailures: string[] = [];
-
-		for (const [name, worktree] of Object.entries(worktrees)) {
-			if (failedBranches.includes(name)) {
-				removeWorktree(worktree, context.repoRoot, true);
-				logger.info(name, "Failed branch worktree removed");
-				continue;
-			}
-
-			try {
-				runGit(["checkout", worktree.baseBranch], context.repoRoot);
-				runGit(
-					["merge", "--no-ff", "-m", `Merge parallel branch: ${name}`, worktree.branch],
-					context.repoRoot,
-				);
-				logger.info(name, `Merged branch ${worktree.branch} into ${worktree.baseBranch}`);
-				console.info(`  Merged '${name}'`);
-			} catch (e: unknown) {
-				const errStr = e instanceof Error ? e.message : String(e);
-				logger.error(name, `Merge failed: ${errStr}`);
-				console.error(`  Merge failed for '${name}': ${errStr}`);
-				mergeFailures.push(name);
-			}
-
-			removeWorktree(worktree, context.repoRoot, true);
-			logger.info(name, "Worktree and branch cleaned up");
-		}
-
-		return mergeFailures;
 	}
 }

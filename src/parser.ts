@@ -4,10 +4,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
 import type {
-	GitSettings,
 	OutputDefinition,
 	StepDefinition,
-	StepGitSettings,
 	StepType,
 	Variable,
 	WorkflowDefinition,
@@ -91,14 +89,6 @@ export class WorkflowParser {
 	}
 
 	private parseSettings(data: Record<string, unknown>): WorkflowSettings {
-		const gitData = (data.git as Record<string, unknown>) ?? {};
-		const git: GitSettings = {
-			enabled: (gitData.enabled as boolean) ?? false,
-			worktree: (gitData.worktree as boolean) ?? false,
-			autoCommit: (gitData["auto-commit"] as boolean) ?? true,
-			autoPr: (gitData["auto-pr"] as boolean) ?? true,
-			branchPrefix: (gitData["branch-prefix"] as string) ?? "agentic",
-		};
 		return {
 			maxRetry: (data["max-retry"] as number) ?? 3,
 			timeoutMinutes: (data["timeout-minutes"] as number) ?? 60,
@@ -110,7 +100,6 @@ export class WorkflowParser {
 			model: (data.model as string) ?? null,
 			runtime: (data.runtime as string) ?? null,
 			requiredTools: (data["required-tools"] as string[]) ?? [],
-			git,
 		};
 	}
 
@@ -148,8 +137,6 @@ export class WorkflowParser {
 			prompt: null,
 			agent: null,
 			steps: [],
-			mergeStrategy: "wait-all",
-			mergeMode: "independent",
 			condition: null,
 			thenSteps: [],
 			elseSteps: [],
@@ -165,7 +152,6 @@ export class WorkflowParser {
 			onError: "retry",
 			checkpoint: false,
 			dependsOn: null,
-			git: null,
 		};
 
 		if (stepType === "prompt") {
@@ -175,16 +161,6 @@ export class WorkflowParser {
 			step.steps = ((data.steps as unknown[]) ?? []).map((s) =>
 				this.parseStep(s as Record<string, unknown>, true),
 			);
-			step.mergeStrategy = (data["merge-strategy"] as string) ?? "wait-all";
-			step.mergeMode = (data["merge-mode"] as string) ?? "independent";
-			const gitData = data.git as Record<string, unknown> | undefined;
-			if (gitData) {
-				step.git = {
-					worktree: (gitData.worktree as boolean) ?? false,
-					autoPr: (gitData["auto-pr"] as boolean) ?? false,
-					branchPrefix: (gitData["branch-prefix"] as string) ?? "agentic",
-				} satisfies StepGitSettings;
-			}
 		} else if (stepType === "serial") {
 			step.steps = ((data.steps as unknown[]) ?? []).map((s) =>
 				this.parseStep(s as Record<string, unknown>),

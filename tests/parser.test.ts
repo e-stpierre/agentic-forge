@@ -208,7 +208,6 @@ describe("WorkflowParser settings", () => {
 		expect(workflow.settings.maxRetry).toBe(3);
 		expect(workflow.settings.timeoutMinutes).toBe(60);
 		expect(workflow.settings.trackProgress).toBe(true);
-		expect(workflow.settings.git.enabled).toBe(false);
 	});
 
 	it("should parse custom settings", () => {
@@ -219,19 +218,12 @@ settings:
   max-retry: 5
   timeout-minutes: 120
   track-progress: false
-  git:
-    enabled: true
-    worktree: true
-    branch-prefix: custom
 steps: []
 `);
 
 		expect(workflow.settings.maxRetry).toBe(5);
 		expect(workflow.settings.timeoutMinutes).toBe(120);
 		expect(workflow.settings.trackProgress).toBe(false);
-		expect(workflow.settings.git.enabled).toBe(true);
-		expect(workflow.settings.git.worktree).toBe(true);
-		expect(workflow.settings.git.branchPrefix).toBe("custom");
 	});
 
 	it("should parse workflow-level model setting", () => {

@@ -11,8 +11,6 @@ function makeStep(runtime?: string | null): StepDefinition {
 		prompt: "test",
 		runtime: runtime ?? null,
 		steps: [],
-		mergeStrategy: "wait-all",
-		mergeMode: "merge",
 		thenSteps: [],
 		elseSteps: [],
 		maxIterations: 5,

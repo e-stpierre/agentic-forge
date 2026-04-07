@@ -10,11 +10,6 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		enabled: true,
 		level: "Error",
 	},
-	git: {
-		mainBranch: "main",
-		autoCommit: true,
-		autoPr: true,
-	},
 	defaults: {
 		runtime: "claude",
 		maxRetry: 3,

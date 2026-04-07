@@ -16,7 +16,6 @@ import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../src/
 // Mock the worktree module for parallel step tests
 const mockCreateWorktree = vi.fn();
 const mockRemoveWorktree = vi.fn();
-const mockRunGit = vi.fn();
 
 vi.mock("../src/git/worktree.js", async (importOriginal) => {
 	const original = await importOriginal<typeof import("../src/git/worktree.js")>();
@@ -24,7 +23,6 @@ vi.mock("../src/git/worktree.js", async (importOriginal) => {
 		...original,
 		createWorktree: (...args: unknown[]) => mockCreateWorktree(...args),
 		removeWorktree: (...args: unknown[]) => mockRemoveWorktree(...args),
-		runGit: (...args: unknown[]) => mockRunGit(...args),
 	};
 });
 
@@ -46,8 +44,6 @@ function makeStepDef(
 ): StepDefinition {
 	return {
 		steps: [],
-		mergeStrategy: "wait-all",
-		mergeMode: "merge",
 		thenSteps: [],
 		elseSteps: [],
 		maxIterations: 5,
@@ -70,13 +66,6 @@ function defaultSettings(): WorkflowSettings {
 		strictMode: false,
 		model: null,
 		requiredTools: [],
-		git: {
-			enabled: false,
-			worktree: false,
-			autoCommit: false,
-			autoPr: false,
-			branchPrefix: "agentic",
-		},
 	};
 }
 
@@ -208,47 +197,7 @@ describe("ParallelStepExecutor", () => {
 		expect(mockCreateWorktree).not.toHaveBeenCalled();
 	});
 
-	it("should execute branches with worktree isolation", async () => {
-		const branchExecutor = vi.fn<BranchStepExecutor>().mockResolvedValue({
-			success: true,
-			outputSummary: "Done",
-		});
-
-		mockCreateWorktree.mockReturnValue({
-			path: "/tmp/worktree-a",
-			branch: "agentic/test-branch-a",
-			baseBranch: "main",
-		});
-
-		mockRunGit.mockReturnValue({ stdout: "", stderr: "", returncode: 0 });
-
-		const executor = new ParallelStepExecutor(branchExecutor);
-		const innerSteps = [
-			makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" }),
-			makeStepDef({ name: "branch-b", type: "prompt", prompt: "Task B" }),
-		];
-
-		const step = makeStepDef({
-			name: "parallel-step",
-			type: "parallel",
-			steps: innerSteps,
-			git: { worktree: true, autoPr: false, branchPrefix: "agentic" },
-		});
-
-		const context = createStepContext();
-		const progress = createWorkflowProgress();
-		const consoleOut = new ConsoleOutput(createMockStream());
-
-		const result = await executor.execute(step, progress, context, mockLogger, consoleOut);
-
-		expect(result.success).toBe(true);
-		expect(mockCreateWorktree).toHaveBeenCalledTimes(2);
-		// Merge mode is "merge" by default, so branches get merged and cleaned up
-		expect(mockRunGit).toHaveBeenCalled();
-		expect(mockRemoveWorktree).toHaveBeenCalled();
-	});
-
-	it("should handle branch failures with wait-all strategy", async () => {
+	it("should handle branch failures", async () => {
 		const branchExecutor = vi
 			.fn<BranchStepExecutor>()
 			.mockResolvedValueOnce({ success: true, outputSummary: "Done" })
@@ -264,7 +213,6 @@ describe("ParallelStepExecutor", () => {
 			name: "parallel-step",
 			type: "parallel",
 			steps: innerSteps,
-			mergeStrategy: "wait-all",
 		});
 
 		const context = createStepContext();
@@ -275,38 +223,6 @@ describe("ParallelStepExecutor", () => {
 
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("branch-b");
-	});
-
-	it("should tolerate failures in independent merge mode", async () => {
-		const branchExecutor = vi
-			.fn<BranchStepExecutor>()
-			.mockResolvedValueOnce({ success: true, outputSummary: "Done" })
-			.mockResolvedValueOnce({ success: false, error: "Failed" });
-
-		const executor = new ParallelStepExecutor(branchExecutor);
-		const innerSteps = [
-			makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" }),
-			makeStepDef({ name: "branch-b", type: "prompt", prompt: "Task B" }),
-		];
-
-		const step = makeStepDef({
-			name: "parallel-step",
-			type: "parallel",
-			steps: innerSteps,
-			mergeStrategy: "wait-all",
-			mergeMode: "independent",
-		});
-
-		const context = createStepContext();
-		const progress = createWorkflowProgress();
-		const consoleOut = new ConsoleOutput(createMockStream());
-
-		const result = await executor.execute(step, progress, context, mockLogger, consoleOut);
-
-		// Independent mode tolerates failures in wait-all
-		expect(result.success).toBe(true);
-		expect(result.outputSummary).toContain("1/2");
-		expect(result.outputSummary).toContain("failed");
 	});
 
 	it("should handle branch exceptions gracefully", async () => {
@@ -336,42 +252,6 @@ describe("ParallelStepExecutor", () => {
 		// Exception in branch-b should be caught and handled
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("branch-b");
-	});
-
-	it("should pass cwdOverride to branch context when using worktrees", async () => {
-		let capturedContext: StepContext | null = null;
-		const branchExecutor = vi
-			.fn<BranchStepExecutor>()
-			.mockImplementation(async (_step, _progress, ctx) => {
-				capturedContext = ctx;
-				return { success: true, outputSummary: "Done" };
-			});
-
-		mockCreateWorktree.mockReturnValue({
-			path: "/tmp/test-worktree",
-			branch: "agentic/test-branch",
-			baseBranch: "main",
-		});
-		mockRunGit.mockReturnValue({ stdout: "", stderr: "", returncode: 0 });
-
-		const executor = new ParallelStepExecutor(branchExecutor);
-		const innerSteps = [makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" })];
-
-		const step = makeStepDef({
-			name: "parallel-step",
-			type: "parallel",
-			steps: innerSteps,
-			git: { worktree: true, autoPr: false, branchPrefix: "agentic" },
-		});
-
-		const context = createStepContext();
-		const progress = createWorkflowProgress();
-		const consoleOut = new ConsoleOutput(createMockStream());
-
-		await executor.execute(step, progress, context, mockLogger, consoleOut);
-
-		expect(capturedContext).not.toBeNull();
-		expect((capturedContext as StepContext).cwdOverride).toBe("/tmp/test-worktree");
 	});
 
 	it("should clone variables for each branch context", async () => {

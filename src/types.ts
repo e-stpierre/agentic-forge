@@ -29,20 +29,6 @@ export interface Variable {
 	description?: string;
 }
 
-export interface GitSettings {
-	enabled: boolean;
-	worktree: boolean;
-	autoCommit: boolean;
-	autoPr: boolean;
-	branchPrefix: string;
-}
-
-export interface StepGitSettings {
-	worktree: boolean;
-	autoPr: boolean;
-	branchPrefix: string;
-}
-
 export interface WorkflowSettings {
 	maxRetry: number;
 	timeoutMinutes: number;
@@ -54,7 +40,6 @@ export interface WorkflowSettings {
 	model: string | null;
 	runtime?: string | null;
 	requiredTools: string[];
-	git: GitSettings;
 }
 
 export interface StepDefinition {
@@ -63,8 +48,6 @@ export interface StepDefinition {
 	prompt?: string | null;
 	agent?: string | null;
 	steps: StepDefinition[];
-	mergeStrategy: string;
-	mergeMode: string;
 	condition?: string | null;
 	thenSteps: StepDefinition[];
 	elseSteps: StepDefinition[];
@@ -80,7 +63,6 @@ export interface StepDefinition {
 	onError: string;
 	checkpoint: boolean;
 	dependsOn?: string | null;
-	git?: StepGitSettings | null;
 }
 
 export interface OutputDefinition {
