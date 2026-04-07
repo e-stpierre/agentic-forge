@@ -4,15 +4,24 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { loadConfig } from "../config.js";
+import { getRepoRoot } from "../git/worktree.js";
 import { findOutputDir, getGlobalRoot, slugifyCwdName } from "../paths.js";
 import { WORKFLOW_STATUS, loadProgress, saveProgress } from "../progress.js";
 
 /**
  * Locates the output directory for a workflow by searching both local and global locations.
- * If the progress.json contains a stored outputDir, that is used directly.
+ * Also checks the canonical worktree output root when invoked from inside a worktree.
  */
 function resolveWorkflowOutputDir(workflowId: string): string | null {
-	return findOutputDir(workflowId, process.cwd());
+	const cwd = process.cwd();
+	let repoRoot: string | undefined;
+	try {
+		const root = getRepoRoot(cwd);
+		if (root !== cwd) repoRoot = root;
+	} catch {
+		// Not in a git repo; skip worktree output root lookup
+	}
+	return findOutputDir(workflowId, cwd, repoRoot);
 }
 
 export function cmdStatus(workflowId: string): void {

@@ -228,7 +228,10 @@ export interface SafetyCommitResult {
  */
 export function safetyCommit(
 	worktreePath: string,
-	logger?: { warning: (step: string, message: string) => void },
+	logger?: {
+		info: (step: string, message: string) => void;
+		warning: (step: string, message: string) => void;
+	},
 ): SafetyCommitResult {
 	const status = runGit(["status", "--porcelain"], worktreePath, false);
 	if (!status.stdout.trim()) {
@@ -241,7 +244,7 @@ export function safetyCommit(
 			["commit", "-m", "chore: auto-save uncommitted changes before worktree cleanup"],
 			worktreePath,
 		);
-		logger?.warning("worktree", `Safety commit created in worktree: ${worktreePath}`);
+		logger?.info("worktree", `Safety commit created in worktree: ${worktreePath}`);
 		return { committed: true, failed: false };
 	} catch (e: unknown) {
 		const error = e instanceof Error ? e.message : String(e);
@@ -341,10 +344,12 @@ export function pruneOrphaned(repoRoot?: string | null, prune?: PruneLocation): 
 		return pruneWorktreesDir(worktreesDir, prefix);
 	}
 
-	// Default: scan nested location for backward compatibility
+	// Default: scan both nested (backward compat) and sibling (new default) locations
 	let cleaned = 0;
-	const worktreesDir = path.join(root, ".worktrees");
-	cleaned += pruneWorktreesDir(worktreesDir, "agentic-");
+	cleaned += pruneWorktreesDir(path.join(root, ".worktrees"), "agentic-");
+	const siblingWorktreesDir = path.join(path.dirname(root), ".worktrees");
+	const repoName = sanitizeName(path.basename(root));
+	cleaned += pruneWorktreesDir(siblingWorktreesDir, `${repoName}-`);
 
 	return cleaned;
 }

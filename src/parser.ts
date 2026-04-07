@@ -93,9 +93,23 @@ export class WorkflowParser {
 
 	private parseWorktreeSettings(data: Record<string, unknown>): WorktreeSettings {
 		const worktreeRaw = (data.worktree as Record<string, unknown>) ?? {};
-		const location = (worktreeRaw.location as WorktreeLocation) ?? "sibling";
+		const locationRaw = (worktreeRaw.location as string) ?? "sibling";
+		const validLocations = ["sibling", "nested", "absolute"] as const;
+		if (!(validLocations as readonly string[]).includes(locationRaw)) {
+			throw new WorkflowParseError(
+				`Invalid worktree.location: '${locationRaw}'. Must be one of: sibling, nested, absolute`,
+			);
+		}
+		const location = locationRaw as WorktreeLocation;
 		const directory = (worktreeRaw.directory as string) ?? null;
-		const cleanup = (worktreeRaw.cleanup as WorktreeCleanup) ?? "on-success";
+		const cleanupRaw = (worktreeRaw.cleanup as string) ?? "on-success";
+		const validCleanups = ["on-success", "on-complete", "manual"] as const;
+		if (!(validCleanups as readonly string[]).includes(cleanupRaw)) {
+			throw new WorkflowParseError(
+				`Invalid worktree.cleanup: '${cleanupRaw}'. Must be one of: on-success, on-complete, manual`,
+			);
+		}
+		const cleanup = cleanupRaw as WorktreeCleanup;
 		const enabledRaw = worktreeRaw.enabled;
 		const enabled: boolean | string =
 			enabledRaw === undefined ? false : (enabledRaw as boolean | string);
