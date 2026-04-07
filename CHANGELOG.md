@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.10.0
+
+- **Breaking:** Removed `settings.git` from workflow settings (`enabled`, `worktree`, `auto-commit`, `auto-pr`, `branch-prefix` no longer recognized)
+- **Breaking:** Removed `merge-mode: merge` from parallel steps; branches are always independent
+- **Breaking:** Removed `step.git` from parallel step definitions; replaced with `step.worktree: true`
+- **Breaking:** Removed `git.mainBranch`, `git.autoCommit`, `git.autoPr` config defaults
+- Added `settings.worktree` schema with `enabled`, `location`, `directory`, and `cleanup` fields
+- Added workflow-level worktree isolation (entire workflow runs in a single worktree when `worktree.enabled: true`)
+- Added three worktree location modes: `sibling` (default, alongside repo), `nested` (inside repo), `absolute` (user-specified path)
+- Added three cleanup policies: `on-success` (default, preserve on failure), `on-complete` (always remove), `manual` (always preserve)
+- Added template-driven `worktree.enabled` supporting Nunjucks variables for per-run toggling
+- Added `safetyCommit` to auto-save uncommitted changes before worktree removal, preventing data loss
+- Added `getWorktreeOutputRoot` to force global output directory for worktree runs
+- Added `findOutputDir` with worktree-aware output lookup for resume/status/cancel commands
+- Added `worktree-settings.ts` shared helpers for resolving worktree template strings
+- Added validation blocking parallel worktree inside workflow-level worktree (nested worktrees not supported)
+- Updated `plan-build-review` workflow with variable-driven worktree (`use_worktree` variable)
+- Updated `analyze-codebase-merge` workflow to use `step.worktree: true` instead of `merge-mode: merge`
+- Updated all bundled workflows to remove legacy git settings
+- Fixed ralph-loop CWD to respect `cwdOverride` for worktree isolation
+- Fixed `pruneOrphaned` to scan both nested and sibling worktree directories by default
+
 ## 0.9.0
 
 - Added multi-runtime support with `RuntimeAdapter` interface for pluggable coding agent backends
