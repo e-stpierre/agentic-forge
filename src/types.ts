@@ -29,6 +29,16 @@ export interface Variable {
 	description?: string;
 }
 
+export type WorktreeLocation = "sibling" | "nested" | "absolute";
+export type WorktreeCleanup = "on-success" | "on-complete" | "manual";
+
+export interface WorktreeSettings {
+	enabled: boolean | string;
+	location: WorktreeLocation;
+	directory: string | null;
+	cleanup: WorktreeCleanup;
+}
+
 export interface WorkflowSettings {
 	maxRetry: number;
 	timeoutMinutes: number;
@@ -40,6 +50,7 @@ export interface WorkflowSettings {
 	model: string | null;
 	runtime?: string | null;
 	requiredTools: string[];
+	worktree: WorktreeSettings;
 }
 
 export interface StepDefinition {
@@ -63,6 +74,7 @@ export interface StepDefinition {
 	onError: string;
 	checkpoint: boolean;
 	dependsOn?: string | null;
+	worktree?: boolean | string | null;
 }
 
 export interface OutputDefinition {

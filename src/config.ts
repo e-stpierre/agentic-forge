@@ -28,6 +28,11 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		maxWorkers: 4,
 		pollingIntervalSeconds: 5,
 	},
+	worktree: {
+		location: "sibling",
+		directory: null,
+		cleanup: "on-success",
+	},
 };
 
 /**

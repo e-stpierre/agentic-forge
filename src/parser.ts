@@ -10,6 +10,9 @@ import type {
 	Variable,
 	WorkflowDefinition,
 	WorkflowSettings,
+	WorktreeCleanup,
+	WorktreeLocation,
+	WorktreeSettings,
 } from "./types.js";
 import { VALID_STEP_TYPES } from "./types.js";
 
@@ -88,6 +91,24 @@ export class WorkflowParser {
 		return data[key];
 	}
 
+	private parseWorktreeSettings(data: Record<string, unknown>): WorktreeSettings {
+		const worktreeRaw = (data.worktree as Record<string, unknown>) ?? {};
+		const location = (worktreeRaw.location as WorktreeLocation) ?? "sibling";
+		const directory = (worktreeRaw.directory as string) ?? null;
+		const cleanup = (worktreeRaw.cleanup as WorktreeCleanup) ?? "on-success";
+		const enabledRaw = worktreeRaw.enabled;
+		const enabled: boolean | string =
+			enabledRaw === undefined ? false : (enabledRaw as boolean | string);
+
+		if (location === "absolute" && directory === null) {
+			throw new WorkflowParseError(
+				"worktree.location is 'absolute' but worktree.directory is not set",
+			);
+		}
+
+		return { enabled, location, directory, cleanup };
+	}
+
 	private parseSettings(data: Record<string, unknown>): WorkflowSettings {
 		return {
 			maxRetry: (data["max-retry"] as number) ?? 3,
@@ -100,6 +121,7 @@ export class WorkflowParser {
 			model: (data.model as string) ?? null,
 			runtime: (data.runtime as string) ?? null,
 			requiredTools: (data["required-tools"] as string[]) ?? [],
+			worktree: this.parseWorktreeSettings(data),
 		};
 	}
 
@@ -152,6 +174,7 @@ export class WorkflowParser {
 			onError: "retry",
 			checkpoint: false,
 			dependsOn: null,
+			worktree: null,
 		};
 
 		if (stepType === "prompt") {
@@ -161,6 +184,10 @@ export class WorkflowParser {
 			step.steps = ((data.steps as unknown[]) ?? []).map((s) =>
 				this.parseStep(s as Record<string, unknown>, true),
 			);
+			const worktreeRaw = data.worktree;
+			if (worktreeRaw !== undefined && worktreeRaw !== null) {
+				step.worktree = worktreeRaw as boolean | string;
+			}
 		} else if (stepType === "serial") {
 			step.steps = ((data.steps as unknown[]) ?? []).map((s) =>
 				this.parseStep(s as Record<string, unknown>),
