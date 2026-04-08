@@ -7,6 +7,13 @@ settings:
   timeout-minutes: 180
   terminal-output: base
   track-progress: true
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
   worktree:
     enabled: "{{ variables.use_worktree }}"
     cleanup: "on-success"

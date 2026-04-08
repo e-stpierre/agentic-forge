@@ -1,0 +1,104 @@
+name: permission-test-codex
+version: "1.0"
+description: Test Codex runtime file permissions in both output directory and repository, with and without worktree
+
+settings:
+  max-retry: 0
+  timeout-minutes: 30
+  track-progress: true
+  terminal-output: all
+  runtime: codex
+  worktree:
+    enabled: "{{ variables.use_worktree }}"
+    cleanup: "on-success"
+
+variables:
+  - name: use_worktree
+    type: boolean
+    required: false
+    default: false
+    description: Whether to run in an isolated worktree
+
+steps:
+  # --- Output directory operations ---
+
+  - name: output-create
+    type: prompt
+    prompt: |
+      Create a file named `permission-test.md` in the directory `{{ output_dir }}`.
+
+      The file should contain:
+      ```markdown
+      # Permission Test
+
+      Created by: permission-test-codex workflow
+      ```
+
+      Use the Write tool to create this file. After creating it, read it back to confirm.
+
+  - name: output-append
+    type: prompt
+    prompt: |
+      Read the file `{{ output_dir }}/permission-test.md` and add a new section at the end:
+
+      ```markdown
+
+      ## Append Test
+
+      This section was added by the output-append step.
+      ```
+
+      Use the Write tool to update the file with the new content appended. After updating, read it back to confirm both sections exist.
+
+  - name: output-edit
+    type: prompt
+    prompt: |
+      Read the file `{{ output_dir }}/permission-test.md` and edit the heading from `# Permission Test` to `# Permission Test - Edited`.
+
+      Use a tool to make this change. After editing, read the file back to confirm the heading was changed.
+
+  # --- Repository operations ---
+
+  - name: repo-create
+    type: prompt
+    prompt: |
+      Create a file named `permission-test-tmp.md` at the repository root.
+
+      The file should contain:
+      ```markdown
+      # Repo Permission Test
+
+      Created by: permission-test-codex workflow
+      ```
+
+      Use the Write tool to create this file. After creating it, read it back to confirm.
+
+  - name: repo-append
+    type: prompt
+    prompt: |
+      Read the file `permission-test-tmp.md` at the repository root and add a new section at the end:
+
+      ```markdown
+
+      ## Repo Append Test
+
+      This section was added by the repo-append step.
+      ```
+
+      Use the Write tool to update the file with the new content appended. After updating, read it back to confirm both sections exist.
+
+  - name: repo-edit
+    type: prompt
+    prompt: |
+      Read the file `permission-test-tmp.md` at the repository root and edit the heading from `# Repo Permission Test` to `# Repo Permission Test - Edited`.
+
+      Use a tool to make this change. After editing, read the file back to confirm the heading was changed.
+
+  - name: repo-delete
+    type: prompt
+    prompt: |
+      Delete the file `permission-test-tmp.md` at the repository root.
+
+      Run: `rm permission-test-tmp.md`
+
+      After deleting, verify the file no longer exists by trying to read it (expect an error).

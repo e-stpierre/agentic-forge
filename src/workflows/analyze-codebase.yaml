@@ -7,6 +7,13 @@ settings:
   timeout-minutes: 120
   track-progress: true
   terminal-output: base
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
 
 variables:
   - name: autofix

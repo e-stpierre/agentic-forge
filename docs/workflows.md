@@ -257,6 +257,58 @@ af run multi-plan-build-review --var "task=Fix login timeout" --var "type=bug" -
 
 Requires both Claude Code and Codex CLI installed and authenticated. The Codex runtime reviews the plan after Claude creates it, and independently reviews the code after implementation.
 
+## permission-test-claude
+
+Tests Claude runtime file permissions in both the output directory and the repository, with optional worktree isolation. Each step is a separate session that performs a single file operation, making it easy to identify exactly where permissions break.
+
+**Use cases**: Validating permission setup after installation, testing worktree file access, debugging permission issues.
+
+**Runtime**: Claude
+
+**Flow**: Output Create -> Output Append -> Output Edit -> Repo Create -> Repo Append -> Repo Edit -> Repo Delete
+
+### Variables
+
+| Variable       | Type    | Required | Default | Description                          |
+| -------------- | ------- | -------- | ------- | ------------------------------------ |
+| `use_worktree` | boolean | No       | `false` | Whether to run in an isolated worktree |
+
+### Examples
+
+```bash
+# Test without worktree
+af run permission-test-claude
+
+# Test with worktree
+af run permission-test-claude use_worktree=true
+```
+
+## permission-test-codex
+
+Tests Codex runtime file permissions in both the output directory and the repository, with optional worktree isolation. Same structure as `permission-test-claude` but using the Codex runtime.
+
+**Use cases**: Validating Codex permission setup, testing worktree file access with Codex, debugging permission issues.
+
+**Runtime**: Codex
+
+**Flow**: Output Create -> Output Append -> Output Edit -> Repo Create -> Repo Append -> Repo Edit -> Repo Delete
+
+### Variables
+
+| Variable       | Type    | Required | Default | Description                          |
+| -------------- | ------- | -------- | ------- | ------------------------------------ |
+| `use_worktree` | boolean | No       | `false` | Whether to run in an isolated worktree |
+
+### Examples
+
+```bash
+# Test without worktree
+af run permission-test-codex
+
+# Test with worktree
+af run permission-test-codex use_worktree=true
+```
+
 ## Custom Workflows
 
 You can create your own workflows using the workflow-builder authoring skill, or by writing YAML files directly. For the complete workflow schema and all supported properties (step types, settings, variables, outputs, git options, etc.), see:

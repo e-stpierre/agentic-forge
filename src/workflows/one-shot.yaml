@@ -6,6 +6,13 @@ settings:
   max-retry: 3
   timeout-minutes: 60
   track-progress: true
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
   worktree:
     enabled: "{{ variables.use_worktree }}"
     cleanup: "on-success"

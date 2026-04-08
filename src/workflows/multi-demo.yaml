@@ -6,6 +6,13 @@ settings:
   track-progress: true
   terminal-output: all
   bypass-permissions: false
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
 
 steps:
   - name: welcome

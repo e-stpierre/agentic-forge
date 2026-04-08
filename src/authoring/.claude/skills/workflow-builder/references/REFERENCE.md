@@ -491,6 +491,8 @@ Available via `agentic-forge init` or `agentic-forge run <name>`:
 | `ralph-loop`              | Generic iterative loop for any task                                     |
 | `analyze-codebase`        | Parallel analysis (5 types) with optional autofix, independent branches |
 | `analyze-single`          | Single analysis type with optional autofix                              |
+| `permission-test-claude`  | Test Claude file permissions with and without worktree                  |
+| `permission-test-codex`   | Test Codex file permissions with and without worktree                   |
 
 ## Validation Checklist
 
