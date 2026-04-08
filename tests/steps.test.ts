@@ -136,6 +136,7 @@ function createStepContext(overrides?: Partial<StepContext>): StepContext {
 		runtimeAdapter: createMockAdapter(),
 		workflowSettings: defaultSettings(),
 		workflowId: "test-workflow-id",
+		outputDir: tempDir,
 		variables: { test_var: "test_value" },
 		outputs: {},
 		...overrides,

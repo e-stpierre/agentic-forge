@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -406,5 +406,12 @@ describe("findOutputDir", () => {
 
 		const result = findOutputDir(workflowId, tempDir, repoRoot);
 		expect(result).toBe(outputDir);
+
+		// Clean up the workflow-specific directory to avoid leaking test artifacts
+		try {
+			rmSync(outputDir, { recursive: true, force: true });
+		} catch {
+			// Windows may hold directory locks briefly; ignore EBUSY
+		}
 	});
 });

@@ -42,10 +42,21 @@ const mockRemoveWorktree = vi.fn();
 const mockSafetyCommit = vi.fn();
 vi.mock("../src/git/worktree.js", () => ({
 	createWorktree: (...args: unknown[]) => mockCreateWorktree(...args),
+	findExistingWorktree: vi.fn().mockReturnValue(null),
 	removeWorktree: (...args: unknown[]) => mockRemoveWorktree(...args),
 	safetyCommit: (...args: unknown[]) => mockSafetyCommit(...args),
 	pruneOrphaned: vi.fn(),
 }));
+
+// Mock getWorktreeOutputRoot so worktree-enabled tests don't write to global %APPDATA%
+const mockGetWorktreeOutputRoot = vi.fn();
+vi.mock("../src/paths.js", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../src/paths.js")>();
+	return {
+		...original,
+		getWorktreeOutputRoot: (...args: unknown[]) => mockGetWorktreeOutputRoot(...args),
+	};
+});
 
 const { WorkflowExecutor } = await import("../src/executor.js");
 
@@ -58,6 +69,8 @@ beforeEach(() => {
 	mockPromptExecute.mockResolvedValue({ success: true, outputSummary: "done" });
 	mockSafetyCommit.mockReturnValue({ committed: false, failed: false });
 	tempDir = mkdtempSync(path.join(os.tmpdir(), "executor-test-"));
+	// Redirect worktree output root to temp dir so tests don't pollute global %APPDATA%
+	mockGetWorktreeOutputRoot.mockReturnValue(path.join(tempDir, "agentic", "outputs"));
 	// Create local config so output goes to tempDir/agentic/outputs/ (predictable for tests)
 	mkdirSync(path.join(tempDir, "agentic"), { recursive: true });
 	writeFileSync(
