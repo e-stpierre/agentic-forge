@@ -7,8 +7,11 @@ settings:
   terminal-output: all
   bypass-permissions: false
   required-tools:
-    - Write
     - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
     - Bash
   worktree:
     enabled: "{{ variables.use_worktree }}"
@@ -18,7 +21,7 @@ variables:
   - name: use_worktree
     type: boolean
     required: false
-    default: true
+    default: false
     description: Whether to run in an isolated worktree
 
 steps:

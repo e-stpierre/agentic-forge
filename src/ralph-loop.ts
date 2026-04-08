@@ -244,7 +244,7 @@ When your task is FULLY complete, output a JSON block:
 \`\`\`
 
 **Failure Signal:**
-If you encounter a BLOCKING error that prevents completion (e.g., missing permissions, cannot write files, access denied), output a failure JSON block:
+If you attempt a tool call and it returns an unrecoverable error (e.g., a command exits with a fatal error after multiple retries), output a failure JSON block:
 \`\`\`json
 {
   "ralph_failed": true,
@@ -255,7 +255,7 @@ If you encounter a BLOCKING error that prevents completion (e.g., missing permis
 **IMPORTANT:**
 - Only output the completion JSON when the task is genuinely finished
 - Do not output false promises to exit early
-- Output the FAILURE JSON immediately if you encounter permission errors or other unrecoverable blocking issues - do NOT continue iterating
+- Only output the FAILURE JSON after you have actually attempted the action and received an error - never fail preemptively
 - If the task is incomplete but can still progress, continue working - you have ${maxIterations - iteration} iterations remaining
 
 ---

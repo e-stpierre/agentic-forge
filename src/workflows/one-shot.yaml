@@ -23,7 +23,7 @@ variables:
   - name: use_worktree
     type: boolean
     required: false
-    default: true
+    default: false
     description: Whether to run in an isolated worktree
 
 steps:
