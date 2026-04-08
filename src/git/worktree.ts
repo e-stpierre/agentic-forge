@@ -149,16 +149,38 @@ function ensureGitignoreEntry(repoRoot: string, entry: string): void {
 export interface CreateWorktreeOptions {
 	workflowName: string;
 	stepName: string;
+	/** When provided, used as the worktree directory and branch name instead of
+	 *  generating from workflowName + stepName + random suffix. */
+	workflowId?: string | null;
 	baseBranch?: string | null;
 	repoRoot?: string | null;
 	location: WorktreeLocation;
 	directory?: string | null;
 }
 
+/** Resolve worktree path with incremental suffix when the path already exists. */
+function resolveWorktreePath_incremental(
+	repoRoot: string,
+	baseDirName: string,
+	location: WorktreeLocation,
+	directory: string | null,
+): string {
+	let worktreePath = resolveWorktreePath(repoRoot, baseDirName, location, directory);
+	if (!existsSync(worktreePath)) {
+		return worktreePath;
+	}
+	let counter = 2;
+	while (existsSync(resolveWorktreePath(repoRoot, `${baseDirName}-${counter}`, location, directory))) {
+		counter++;
+	}
+	return resolveWorktreePath(repoRoot, `${baseDirName}-${counter}`, location, directory);
+}
+
 export function createWorktree(options: CreateWorktreeOptions): Worktree {
 	const {
 		workflowName,
 		stepName,
+		workflowId,
 		baseBranch,
 		repoRoot: repoRootOpt,
 		location,
@@ -168,20 +190,36 @@ export function createWorktree(options: CreateWorktreeOptions): Worktree {
 	const root = repoRootOpt || getRepoRoot();
 	const base = baseBranch || getDefaultBranch(root);
 
-	const suffix = generateSuffix();
-	const wfName = truncate(sanitizeName(workflowName));
-	const stName = truncate(sanitizeName(stepName));
+	let dirName: string;
+	let branchName: string;
 
-	const dirName = buildDirName(root, wfName, stName, suffix, location);
-	const branchName = `agentic/${wfName}-${stName}-${suffix}`;
+	if (workflowId) {
+		// Workflow-level worktree: use workflowId for consistent naming with output dir
+		const safeId = sanitizeName(workflowId);
+		if (location === "nested") {
+			dirName = safeId;
+		} else {
+			const repoName = sanitizeName(path.basename(root));
+			dirName = `${repoName}-${safeId}`;
+		}
+		branchName = `agentic/${safeId}`;
+	} else {
+		// Step-level worktree: use workflowName + stepName + random suffix
+		const suffix = generateSuffix();
+		const wfName = truncate(sanitizeName(workflowName));
+		const stName = truncate(sanitizeName(stepName));
+		dirName = buildDirName(root, wfName, stName, suffix, location);
+		branchName = `agentic/${wfName}-${stName}-${suffix}`;
+	}
 
-	const worktreePath = resolveWorktreePath(root, dirName, location, directory);
+	const worktreePath = resolveWorktreePath_incremental(root, dirName, location, directory);
 	const parentDir = path.dirname(worktreePath);
 	mkdirSync(parentDir, { recursive: true });
 
-	if (existsSync(worktreePath)) {
-		rmSync(worktreePath, { recursive: true, force: true });
-		runGit(["worktree", "prune"], root, false);
+	// Derive the actual dirName for branch naming if incremented
+	const actualDirName = path.basename(worktreePath);
+	if (actualDirName !== dirName) {
+		branchName = `agentic/${sanitizeName(actualDirName)}`;
 	}
 
 	// Add .worktrees/ to .gitignore for nested mode only

@@ -229,6 +229,7 @@ export class WorkflowExecutor {
 			workflowWorktree = createWorktree({
 				workflowName: workflow.name,
 				stepName: "workflow",
+				workflowId,
 				repoRoot: this.repoRoot,
 				location: worktreeSettings.location,
 				directory: worktreeSettings.directory,

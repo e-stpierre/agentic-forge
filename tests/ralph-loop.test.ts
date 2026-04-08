@@ -356,7 +356,7 @@ describe("buildRalphSystemMessage", () => {
 		const message = buildRalphSystemMessage(1, 5, "DONE");
 		expect(message).toContain("ralph_failed");
 		expect(message).toContain("Failure Signal");
-		expect(message.toLowerCase()).toContain("permission errors");
+		expect(message.toLowerCase()).toContain("unrecoverable error");
 	});
 });
 
