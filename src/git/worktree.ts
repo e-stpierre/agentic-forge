@@ -232,6 +232,34 @@ export function createWorktree(options: CreateWorktreeOptions): Worktree {
 	return { path: worktreePath, branch: branchName, baseBranch: base };
 }
 
+/** Find an existing worktree by workflowId. Returns the Worktree if found, null otherwise. */
+export function findExistingWorktree(
+	workflowId: string,
+	repoRoot: string,
+	location: WorktreeLocation,
+	directory?: string | null,
+): Worktree | null {
+	const safeId = sanitizeName(workflowId);
+	let dirName: string;
+	if (location === "nested") {
+		dirName = safeId;
+	} else {
+		const repoName = sanitizeName(path.basename(repoRoot));
+		dirName = `${repoName}-${safeId}`;
+	}
+
+	const worktreePath = resolveWorktreePath(repoRoot, dirName, location, directory ?? null);
+	if (!existsSync(worktreePath) || !existsSync(path.join(worktreePath, ".git"))) {
+		return null;
+	}
+
+	// Read the branch from the worktree
+	const result = runGit(["rev-parse", "--abbrev-ref", "HEAD"], worktreePath, false);
+	const branch = result.returncode === 0 ? result.stdout.trim() : `agentic/${safeId}`;
+
+	return { path: worktreePath, branch, baseBranch: "" };
+}
+
 export function removeWorktree(
 	worktree: Worktree,
 	repoRoot?: string | null,

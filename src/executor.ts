@@ -5,7 +5,13 @@ import { fileURLToPath } from "node:url";
 
 import { loadConfig } from "./config.js";
 import { ConsoleOutput, OutputLevel } from "./console.js";
-import { type Worktree, createWorktree, removeWorktree, safetyCommit } from "./git/worktree.js";
+import {
+	type Worktree,
+	createWorktree,
+	findExistingWorktree,
+	removeWorktree,
+	safetyCommit,
+} from "./git/worktree.js";
 import { WorkflowLogger } from "./logging/logger.js";
 import { getOutputDir, getWorktreeOutputRoot, resolveOutputDir } from "./paths.js";
 import {
@@ -223,22 +229,41 @@ export class WorkflowExecutor {
 
 		console.workflowStart(workflow.name, workflowId);
 
-		// Create workflow-level worktree if enabled
+		// Create or reuse workflow-level worktree if enabled
 		let workflowWorktree: Worktree | null = null;
 		if (worktreeEnabled && worktreeSettings) {
-			workflowWorktree = createWorktree({
-				workflowName: workflow.name,
-				stepName: "workflow",
-				workflowId,
-				repoRoot: this.repoRoot,
-				location: worktreeSettings.location,
-				directory: worktreeSettings.directory,
-			});
-			logger.info(
-				"workflow",
-				`Worktree created: ${workflowWorktree.path} (branch: ${workflowWorktree.branch})`,
-			);
-			console.info(`Worktree: ${workflowWorktree.path}`);
+			// On resume, try to reuse the existing worktree (preserves pending changes)
+			if (resumeProgress) {
+				workflowWorktree = findExistingWorktree(
+					workflowId,
+					this.repoRoot,
+					worktreeSettings.location,
+					worktreeSettings.directory,
+				);
+				if (workflowWorktree) {
+					logger.info(
+						"workflow",
+						`Reusing existing worktree: ${workflowWorktree.path}`,
+					);
+					console.info(`Worktree (resumed): ${workflowWorktree.path}`);
+				}
+			}
+
+			if (!workflowWorktree) {
+				workflowWorktree = createWorktree({
+					workflowName: workflow.name,
+					stepName: "workflow",
+					workflowId,
+					repoRoot: this.repoRoot,
+					location: worktreeSettings.location,
+					directory: worktreeSettings.directory,
+				});
+				logger.info(
+					"workflow",
+					`Worktree created: ${workflowWorktree.path} (branch: ${workflowWorktree.branch})`,
+				);
+				console.info(`Worktree: ${workflowWorktree.path}`);
+			}
 		}
 
 		// Build set of completed step names to skip on resume
