@@ -29,6 +29,7 @@ steps:
 
   - name: create-demo-files
     type: parallel
+    on-failure: warn
     steps:
       - name: create-claude-file
         type: prompt
@@ -80,6 +81,7 @@ steps:
 
   - name: random-facts
     type: parallel
+    on-failure: warn
     steps:
       - name: claude-facts-loop
         type: ralph-loop

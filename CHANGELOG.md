@@ -16,11 +16,16 @@
 - Added `findOutputDir` with worktree-aware output lookup for resume/status/cancel commands
 - Added `worktree-settings.ts` shared helpers for resolving worktree template strings
 - Added validation blocking parallel worktree inside workflow-level worktree (nested worktrees not supported)
+- Added `on-failure` option to parallel steps: `fail` (default, fail workflow) or `warn` (log warning, continue workflow)
 - Updated `plan-build-review` workflow with variable-driven worktree (`use_worktree` variable)
 - Updated `analyze-codebase-merge` workflow to use `step.worktree: true` instead of `merge-mode: merge`
 - Updated all bundled workflows to remove legacy git settings
 - Fixed ralph-loop CWD to respect `cwdOverride` for worktree isolation
+- Fixed `config.worktree` defaults (location, directory, cleanup) not being applied to workflow settings
+- Fixed `af list` not finding worktree-backed runs when invoked from inside a worktree
 - Fixed `pruneOrphaned` to scan both nested and sibling worktree directories by default
+- Fixed `pruneOrphaned` missing workflow-level nested worktrees that lack the `agentic-` prefix
+- Fixed worktree and output directory names diverging when using `--slug` with incremental suffixes
 - Removed `update` CLI command; updates are now handled via `npm install -g agentic-forge@latest`
 
 ## 0.9.0

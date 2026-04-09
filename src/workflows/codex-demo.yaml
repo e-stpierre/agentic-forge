@@ -21,6 +21,7 @@ steps:
 
   - name: create-demo-files
     type: parallel
+    on-failure: warn
     steps:
       - name: create-demo-1
         type: prompt

@@ -40,6 +40,7 @@ variables:
 steps:
   - name: analyze-and-fix-all
     type: parallel
+    on-failure: warn
     worktree: true
     steps:
       - name: bug-analysis

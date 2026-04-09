@@ -162,6 +162,7 @@ steps:
 
   - name: review
     type: parallel
+    on-failure: warn
     steps:
       - name: claude-review
         type: prompt
