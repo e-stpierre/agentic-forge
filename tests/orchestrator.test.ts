@@ -40,6 +40,7 @@ vi.mock("../src/config.js", async (importOriginal) => {
 
 // Mock git worktree operations
 vi.mock("../src/git/worktree.js", () => ({
+	copyLocalDirs: vi.fn(),
 	createWorktree: vi.fn().mockReturnValue({
 		path: "/tmp/wt",
 		branch: "agentic/test",

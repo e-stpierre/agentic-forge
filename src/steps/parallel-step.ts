@@ -1,7 +1,13 @@
 /** Parallel step executor. */
 
 import type { ConsoleOutput } from "../console.js";
-import { type Worktree, createWorktree, removeWorktree, safetyCommit } from "../git/worktree.js";
+import {
+	type Worktree,
+	copyLocalDirs,
+	createWorktree,
+	removeWorktree,
+	safetyCommit,
+} from "../git/worktree.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import { WORKFLOW_STATUS, updateStepCompleted, updateStepFailed } from "../progress.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
@@ -70,6 +76,7 @@ export class ParallelStepExecutor extends StepExecutor {
 						location: context.workflowSettings?.worktree?.location ?? "sibling",
 						directory: context.workflowSettings?.worktree?.directory ?? null,
 					});
+					copyLocalDirs(context.repoRoot, worktree.path);
 					logger.info(branchStep.name, `Created worktree: ${worktree.path}`);
 					console.info(`  Branch '${branchStep.name}' worktree: ${worktree.branch}`);
 					branchContext.cwdOverride = worktree.path;

@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
+	cpSync,
 	existsSync,
 	mkdirSync,
 	readFileSync,
@@ -144,6 +145,27 @@ function ensureGitignoreEntry(repoRoot: string, entry: string): void {
 	}
 }
 
+// --- Local directory copy ---
+
+/** Directories to copy from the repo root into new worktrees. */
+const WORKTREE_COPY_DIRS = [".claude", ".agents"];
+
+/**
+ * Copies local configuration directories (e.g. `.claude`, `.agents`) from the
+ * repo root into a worktree so that gitignored settings like
+ * `settings.local.json` are preserved.  Skips directories that don't exist in
+ * the source or already exist in the destination.
+ */
+export function copyLocalDirs(repoRoot: string, worktreePath: string): void {
+	for (const dir of WORKTREE_COPY_DIRS) {
+		const src = path.join(repoRoot, dir);
+		const dest = path.join(worktreePath, dir);
+		if (existsSync(src) && !existsSync(dest)) {
+			cpSync(src, dest, { recursive: true });
+		}
+	}
+}
+
 // --- Worktree operations ---
 
 export interface CreateWorktreeOptions {
@@ -165,12 +187,14 @@ function resolveWorktreePath_incremental(
 	location: WorktreeLocation,
 	directory: string | null,
 ): string {
-	let worktreePath = resolveWorktreePath(repoRoot, baseDirName, location, directory);
+	const worktreePath = resolveWorktreePath(repoRoot, baseDirName, location, directory);
 	if (!existsSync(worktreePath)) {
 		return worktreePath;
 	}
 	let counter = 2;
-	while (existsSync(resolveWorktreePath(repoRoot, `${baseDirName}-${counter}`, location, directory))) {
+	while (
+		existsSync(resolveWorktreePath(repoRoot, `${baseDirName}-${counter}`, location, directory))
+	) {
 		counter++;
 	}
 	return resolveWorktreePath(repoRoot, `${baseDirName}-${counter}`, location, directory);

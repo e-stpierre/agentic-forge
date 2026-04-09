@@ -10,6 +10,7 @@ import { ConsoleOutput, OutputLevel, extractSummary } from "./console.js";
 import { WorkflowExecutor } from "./executor.js";
 import {
 	type Worktree,
+	copyLocalDirs,
 	createWorktree,
 	getRepoRoot,
 	pruneOrphaned,
@@ -419,6 +420,7 @@ export class WorkflowOrchestrator {
 					repoRoot: this.repoRoot,
 					location: "nested",
 				});
+				copyLocalDirs(this.repoRoot, wt.path);
 				worktrees.push(wt);
 
 				const branch: ParallelBranch = {

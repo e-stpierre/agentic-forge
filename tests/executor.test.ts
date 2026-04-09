@@ -41,6 +41,7 @@ const mockCreateWorktree = vi.fn();
 const mockRemoveWorktree = vi.fn();
 const mockSafetyCommit = vi.fn();
 vi.mock("../src/git/worktree.js", () => ({
+	copyLocalDirs: vi.fn(),
 	createWorktree: (...args: unknown[]) => mockCreateWorktree(...args),
 	findExistingWorktree: vi.fn().mockReturnValue(null),
 	removeWorktree: (...args: unknown[]) => mockRemoveWorktree(...args),

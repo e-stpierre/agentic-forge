@@ -6,6 +6,56 @@ Workflows support a `runtime` field on individual steps and in `settings`. See [
 
 > **Note**: Skill-based prompts (`/af-git-commit`, `/af-sdlc-plan`, etc.) only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
 
+## Tool Permissions Disclaimer
+
+Most bundled workflows declare a `required-tools` list in their `settings` block:
+
+```yaml
+settings:
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
+```
+
+When present, these tools are passed as `--allowedTools` to the Claude Code runtime, **automatically granting the agent permission to use them without prompting**. In practice this means the agent can:
+
+- **Read** any file in your repository
+- **Edit** and **Write** files (create, modify, or overwrite)
+- **Glob** and **Grep** to search the codebase
+- **Bash** to execute arbitrary shell commands
+
+This is required for autonomous workflow execution -- without these permissions, the agent would lack the access needed to complete its tasks autonomously.
+
+Additionally, the agent always has access to any permissions already configured at the repository level (`.claude/settings.json`, `.claude/settings.local.json`, etc.), regardless of the workflow's `required-tools` setting. The `required-tools` list is additive on top of those existing permissions.
+
+### Which workflows declare required-tools
+
+| Workflow                  | Required Tools                      |
+| ------------------------- | ----------------------------------- |
+| `plan-build-review`       | Read, Edit, Write, Glob, Grep, Bash |
+| `one-shot`                | Read, Edit, Write, Glob, Grep, Bash |
+| `ralph-loop`              | Read, Edit, Write, Glob, Grep, Bash |
+| `analyze-codebase`        | Read, Edit, Write, Glob, Grep, Bash |
+| `analyze-single`          | Read, Edit, Write, Glob, Grep, Bash |
+| `multi-plan-build-review` | Read, Edit, Write, Glob, Grep, Bash |
+| `claude-demo`             | Read, Edit, Write, Glob, Grep, Bash |
+| `multi-demo`              | Read, Edit, Write, Glob, Grep, Bash |
+| `permission-test-claude`  | Read, Edit, Write, Glob, Grep, Bash |
+| `codex-demo`              | None (Codex runtime)                |
+| `permission-test-codex`   | None (Codex runtime)                |
+
+> **Note**: The `required-tools` setting only applies to the Claude Code runtime. Codex CLI manages its own permissions separately.
+
+### Mitigations
+
+- **Worktree isolation**: Workflows like `plan-build-review` run in a disposable git worktree by default (`use_worktree=true`), so changes are made on a copy of your repo rather than directly in your working directory.
+- **Review before running**: Use `af workflows --verbose` or inspect the workflow YAML directly to see exactly what permissions and steps are configured.
+- **Custom workflows**: When creating your own workflows, you can omit `required-tools` entirely or list only the specific tools you want to allow. Without `required-tools`, the agent will only have access to the permissions configured at the repository level (`.claude/settings.json`, `.claude/settings.local.json`, etc.), and the workflow will fail if the agent is unable to complete a step due to insufficient permissions.
+
 ## plan-build-review
 
 Full SDLC workflow: plan, implement iteratively, review, fix, and optionally create a PR. Runs the entire workflow in an isolated git worktree by default.
@@ -269,8 +319,8 @@ Tests Claude runtime file permissions in both the output directory and the repos
 
 ### Variables
 
-| Variable       | Type    | Required | Default | Description                          |
-| -------------- | ------- | -------- | ------- | ------------------------------------ |
+| Variable       | Type    | Required | Default | Description                            |
+| -------------- | ------- | -------- | ------- | -------------------------------------- |
 | `use_worktree` | boolean | No       | `false` | Whether to run in an isolated worktree |
 
 ### Examples
@@ -295,8 +345,8 @@ Tests Codex runtime file permissions in both the output directory and the reposi
 
 ### Variables
 
-| Variable       | Type    | Required | Default | Description                          |
-| -------------- | ------- | -------- | ------- | ------------------------------------ |
+| Variable       | Type    | Required | Default | Description                            |
+| -------------- | ------- | -------- | ------- | -------------------------------------- |
 | `use_worktree` | boolean | No       | `false` | Whether to run in an isolated worktree |
 
 ### Examples

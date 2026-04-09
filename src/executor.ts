@@ -7,6 +7,7 @@ import { loadConfig } from "./config.js";
 import { ConsoleOutput, OutputLevel } from "./console.js";
 import {
 	type Worktree,
+	copyLocalDirs,
 	createWorktree,
 	findExistingWorktree,
 	removeWorktree,
@@ -241,10 +242,7 @@ export class WorkflowExecutor {
 					worktreeSettings.directory,
 				);
 				if (workflowWorktree) {
-					logger.info(
-						"workflow",
-						`Reusing existing worktree: ${workflowWorktree.path}`,
-					);
+					logger.info("workflow", `Reusing existing worktree: ${workflowWorktree.path}`);
 					console.info(`Worktree (resumed): ${workflowWorktree.path}`);
 				}
 			}
@@ -263,6 +261,10 @@ export class WorkflowExecutor {
 					`Worktree created: ${workflowWorktree.path} (branch: ${workflowWorktree.branch})`,
 				);
 				console.info(`Worktree: ${workflowWorktree.path}`);
+			}
+
+			if (workflowWorktree) {
+				copyLocalDirs(this.repoRoot, workflowWorktree.path);
 			}
 		}
 
