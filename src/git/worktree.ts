@@ -74,6 +74,20 @@ export function getRepoRoot(cwd?: string | null): string {
 	return result.stdout.trim();
 }
 
+/**
+ * Returns the root of the main repository checkout, even when called from
+ * inside a git worktree. Uses `--git-common-dir` which points to the shared
+ * `.git` directory of the main checkout.
+ */
+export function getMainRepoRoot(cwd?: string | null): string {
+	const toplevel = getRepoRoot(cwd);
+	const commonDir = runGit(["rev-parse", "--git-common-dir"], cwd).stdout.trim();
+	// Resolve against toplevel to get an absolute path to the shared .git dir.
+	// For a regular checkout this is "<repo>/.git"; for a worktree it's the
+	// main checkout's ".git" directory.
+	return path.dirname(path.resolve(toplevel, commonDir));
+}
+
 export function getDefaultBranch(cwd?: string | null): string {
 	const result = runGit(["symbolic-ref", "refs/remotes/origin/HEAD"], cwd, false);
 	if (result.returncode === 0) {

@@ -4,7 +4,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { loadConfig } from "../config.js";
-import { getRepoRoot } from "../git/worktree.js";
+import { getMainRepoRoot } from "../git/worktree.js";
 import { findOutputDir, getGlobalRoot, getWorktreeOutputRoot, slugifyCwdName } from "../paths.js";
 import { WORKFLOW_STATUS, loadProgress, saveProgress } from "../progress.js";
 
@@ -16,7 +16,7 @@ function resolveWorkflowOutputDir(workflowId: string): string | null {
 	const cwd = process.cwd();
 	let repoRoot: string | undefined;
 	try {
-		const root = getRepoRoot(cwd);
+		const root = getMainRepoRoot(cwd);
 		if (root !== cwd) repoRoot = root;
 	} catch {
 		// Not in a git repo; skip worktree output root lookup
@@ -142,9 +142,9 @@ export function cmdList(statusFilter?: string): void {
 	// When running from a worktree, also scan the canonical repo's output root
 	let worktreeEntries: WorkflowEntry[] = [];
 	try {
-		const repoRoot = getRepoRoot(cwd);
-		if (repoRoot !== cwd) {
-			const worktreeOutputsDir = getWorktreeOutputRoot(repoRoot);
+		const mainRoot = getMainRepoRoot(cwd);
+		if (mainRoot !== cwd) {
+			const worktreeOutputsDir = getWorktreeOutputRoot(mainRoot);
 			if (worktreeOutputsDir !== globalOutputsDir) {
 				worktreeEntries = scanOutputsDir(worktreeOutputsDir, "global", statusFilter);
 			}

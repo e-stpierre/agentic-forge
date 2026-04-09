@@ -178,6 +178,9 @@ export class ParallelStepExecutor extends StepExecutor {
 				const succeeded = step.steps.length - failedBranches.length;
 				const outputSummary = `Completed ${succeeded}/${step.steps.length} branches (failed: ${failedBranches.join(", ")})`;
 				logger.warning(step.name, failMsg);
+				// Reset status — failed child steps set progress.status = FAILED,
+				// but warn mode treats this as non-fatal so the workflow can continue.
+				progress.status = WORKFLOW_STATUS.RUNNING;
 				updateStepCompleted(progress, step.name, outputSummary);
 				console.stepComplete(step.name, outputSummary);
 				return { success: true, outputSummary };
