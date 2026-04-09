@@ -233,10 +233,15 @@ export class WorkflowExecutor {
 		// Create or reuse workflow-level worktree if enabled
 		let workflowWorktree: Worktree | null = null;
 		if (worktreeEnabled && worktreeSettings) {
+			// Use the resolved output dir basename as the worktree ID so both names always match.
+			// The output dir is resolved first (e.g. "my-task-6"), and the worktree adopts
+			// the same name instead of incrementing independently.
+			const worktreeId = path.basename(outputDir);
+
 			// On resume, try to reuse the existing worktree (preserves pending changes)
 			if (resumeProgress) {
 				workflowWorktree = findExistingWorktree(
-					workflowId,
+					worktreeId,
 					this.repoRoot,
 					worktreeSettings.location,
 					worktreeSettings.directory,
@@ -251,7 +256,7 @@ export class WorkflowExecutor {
 				workflowWorktree = createWorktree({
 					workflowName: workflow.name,
 					stepName: "workflow",
-					workflowId,
+					workflowId: worktreeId,
 					repoRoot: this.repoRoot,
 					location: worktreeSettings.location,
 					directory: worktreeSettings.directory,
