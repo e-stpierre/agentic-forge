@@ -26,14 +26,16 @@ Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow 
 
 ## Supported Runtimes
 
-Agentic Forge orchestrates workflows across multiple coding agent runtimes. Each runtime must be installed and authenticated independently before use.
+**Claude Code is the primary and recommended coding agent for Agentic Forge.** It is the default runtime, has the deepest integration, and supports all features including bundled skills, agent configurations, and worktree isolation.
 
-| Runtime     | CLI      | Default |
-| ----------- | -------- | ------- |
-| Claude Code | `claude` | Yes     |
-| Codex CLI   | `codex`  | No      |
+**Codex CLI is supported as an experimental runtime.** Its integration is limited compared to Claude Code — it does not support bundled skills or agent configurations, and may have permission issues, particularly on Windows. Use it for secondary tasks like independent code review in mixed-runtime workflows.
 
-The default runtime is Claude Code. Use `--runtime codex` on the CLI or set `defaults.runtime: codex` in config to switch. Per-step `runtime:` fields always take precedence over the invocation default.
+| Runtime     | CLI      | Default | Status       |
+| ----------- | -------- | ------- | ------------ |
+| Claude Code | `claude` | Yes     | Recommended  |
+| Codex CLI   | `codex`  | No      | Experimental |
+
+Use `--runtime codex` on the CLI or set `defaults.runtime: codex` in config to switch. Per-step `runtime:` fields always take precedence over the invocation default.
 
 ## Getting Started
 
