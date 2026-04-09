@@ -93,34 +93,45 @@ export class WorkflowParser {
 
 	private parseWorktreeSettings(data: Record<string, unknown>): WorktreeSettings {
 		const worktreeRaw = (data.worktree as Record<string, unknown>) ?? {};
-		const locationRaw = (worktreeRaw.location as string) ?? "sibling";
-		const validLocations = ["sibling", "nested", "absolute"] as const;
-		if (!(validLocations as readonly string[]).includes(locationRaw)) {
-			throw new WorkflowParseError(
-				`Invalid worktree.location: '${locationRaw}'. Must be one of: sibling, nested, absolute`,
-			);
-		}
-		const location = locationRaw as WorktreeLocation;
-		const directory = (worktreeRaw.directory as string) ?? null;
-		const cleanupRaw = (worktreeRaw.cleanup as string) ?? "on-success";
-		const validCleanups = ["on-success", "on-complete", "manual"] as const;
-		if (!(validCleanups as readonly string[]).includes(cleanupRaw)) {
-			throw new WorkflowParseError(
-				`Invalid worktree.cleanup: '${cleanupRaw}'. Must be one of: on-success, on-complete, manual`,
-			);
-		}
-		const cleanup = cleanupRaw as WorktreeCleanup;
 		const enabledRaw = worktreeRaw.enabled;
 		const enabled: boolean | string =
 			enabledRaw === undefined ? false : (enabledRaw as boolean | string);
 
-		if (location === "absolute" && directory === null) {
+		const result: WorktreeSettings = { enabled };
+
+		if (worktreeRaw.location !== undefined) {
+			const locationRaw = worktreeRaw.location as string;
+			const validLocations = ["sibling", "nested", "absolute"] as const;
+			if (!(validLocations as readonly string[]).includes(locationRaw)) {
+				throw new WorkflowParseError(
+					`Invalid worktree.location: '${locationRaw}'. Must be one of: sibling, nested, absolute`,
+				);
+			}
+			result.location = locationRaw as WorktreeLocation;
+		}
+
+		if (worktreeRaw.directory !== undefined) {
+			result.directory = (worktreeRaw.directory as string) ?? null;
+		}
+
+		if (worktreeRaw.cleanup !== undefined) {
+			const cleanupRaw = worktreeRaw.cleanup as string;
+			const validCleanups = ["on-success", "on-complete", "manual"] as const;
+			if (!(validCleanups as readonly string[]).includes(cleanupRaw)) {
+				throw new WorkflowParseError(
+					`Invalid worktree.cleanup: '${cleanupRaw}'. Must be one of: on-success, on-complete, manual`,
+				);
+			}
+			result.cleanup = cleanupRaw as WorktreeCleanup;
+		}
+
+		if (result.location === "absolute" && !result.directory) {
 			throw new WorkflowParseError(
 				"worktree.location is 'absolute' but worktree.directory is not set",
 			);
 		}
 
-		return { enabled, location, directory, cleanup };
+		return result;
 	}
 
 	private parseSettings(data: Record<string, unknown>): WorkflowSettings {
@@ -189,6 +200,7 @@ export class WorkflowParser {
 			checkpoint: false,
 			dependsOn: null,
 			worktree: null,
+			onFailure: "fail",
 		};
 
 		if (stepType === "prompt") {
@@ -202,6 +214,13 @@ export class WorkflowParser {
 			if (worktreeRaw !== undefined && worktreeRaw !== null) {
 				step.worktree = worktreeRaw as boolean | string;
 			}
+			const onFailureRaw = (data["on-failure"] as string) ?? "fail";
+			if (onFailureRaw !== "fail" && onFailureRaw !== "warn") {
+				throw new WorkflowParseError(
+					`Invalid on-failure value: '${onFailureRaw}'. Must be one of: fail, warn`,
+				);
+			}
+			step.onFailure = onFailureRaw;
 		} else if (stepType === "serial") {
 			step.steps = ((data.steps as unknown[]) ?? []).map((s) =>
 				this.parseStep(s as Record<string, unknown>),

@@ -171,15 +171,25 @@ export class ParallelStepExecutor extends StepExecutor {
 
 		// Handle completion
 		if (failedBranches.length > 0) {
-			const errorMsg = `Parallel branches failed: ${failedBranches.join(", ")}`;
-			updateStepFailed(progress, step.name, errorMsg);
-			console.stepFailed(step.name, errorMsg);
+			const failureMode = step.onFailure ?? "fail";
+			const failMsg = `Parallel branches failed: ${failedBranches.join(", ")}`;
+
+			if (failureMode === "warn") {
+				const succeeded = step.steps.length - failedBranches.length;
+				const outputSummary = `Completed ${succeeded}/${step.steps.length} branches (failed: ${failedBranches.join(", ")})`;
+				logger.warning(step.name, failMsg);
+				updateStepCompleted(progress, step.name, outputSummary);
+				console.stepComplete(step.name, outputSummary);
+				return { success: true, outputSummary };
+			}
+
+			updateStepFailed(progress, step.name, failMsg);
+			console.stepFailed(step.name, failMsg);
 			progress.status = WORKFLOW_STATUS.FAILED;
-			return { success: false, error: errorMsg };
+			return { success: false, error: failMsg };
 		}
 
-		const completed = step.steps.length;
-		const outputSummary = `Completed ${completed}/${step.steps.length} branches`;
+		const outputSummary = `Completed ${step.steps.length} branches`;
 		updateStepCompleted(progress, step.name, outputSummary);
 		console.stepComplete(step.name, outputSummary);
 		logger.info(step.name, outputSummary);

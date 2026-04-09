@@ -357,9 +357,10 @@ describe("WorkflowParser worktree settings", () => {
 		const workflow = parser.parseString("name: test\nsteps: []");
 
 		expect(workflow.settings.worktree.enabled).toBe(false);
-		expect(workflow.settings.worktree.location).toBe("sibling");
-		expect(workflow.settings.worktree.directory).toBeNull();
-		expect(workflow.settings.worktree.cleanup).toBe("on-success");
+		// Fields not specified in YAML are left undefined for config merge
+		expect(workflow.settings.worktree.location).toBeUndefined();
+		expect(workflow.settings.worktree.directory).toBeUndefined();
+		expect(workflow.settings.worktree.cleanup).toBeUndefined();
 	});
 
 	it("should parse worktree enabled as boolean true", () => {

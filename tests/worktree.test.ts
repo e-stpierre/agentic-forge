@@ -204,7 +204,7 @@ describe("ParallelStepExecutor", () => {
 
 		expect(result.success).toBe(true);
 		expect(branchExecutor).toHaveBeenCalledTimes(2);
-		expect(result.outputSummary).toContain("2/2");
+		expect(result.outputSummary).toContain("2 branches");
 		expect(mockCreateWorktree).not.toHaveBeenCalled();
 	});
 

@@ -34,9 +34,9 @@ export type WorktreeCleanup = "on-success" | "on-complete" | "manual";
 
 export interface WorktreeSettings {
 	enabled: boolean | string;
-	location: WorktreeLocation;
-	directory: string | null;
-	cleanup: WorktreeCleanup;
+	location?: WorktreeLocation;
+	directory?: string | null;
+	cleanup?: WorktreeCleanup;
 }
 
 export interface WorkflowSettings {
@@ -75,6 +75,7 @@ export interface StepDefinition {
 	checkpoint: boolean;
 	dependsOn?: string | null;
 	worktree?: boolean | string | null;
+	onFailure?: "fail" | "warn";
 }
 
 export interface OutputDefinition {

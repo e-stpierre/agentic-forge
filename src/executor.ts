@@ -39,6 +39,7 @@ import type {
 	WorkflowDefinition,
 	WorkflowProgress,
 	WorkflowSettings,
+	WorktreeSettings,
 } from "./types.js";
 import { resolveStepWorktree, resolveWorktreeEnabled } from "./worktree-settings.js";
 
@@ -172,6 +173,18 @@ export class WorkflowExecutor {
 		let vars = variables ? { ...variables } : {};
 		this.workflowSettings = workflow.settings;
 
+		// Merge config.worktree defaults under workflow settings.
+		// Layering: hardcoded defaults < config < workflow YAML.
+		// The parser leaves fields undefined when not set in YAML,
+		// so we fill from config first, then hardcoded defaults.
+		if (this.workflowSettings?.worktree) {
+			const configWorktree = this.config.worktree as Record<string, unknown> | undefined;
+			const wt = this.workflowSettings.worktree;
+			wt.location ??= (configWorktree?.location as WorktreeSettings["location"]) ?? "sibling";
+			wt.directory ??= (configWorktree?.directory as string) ?? null;
+			wt.cleanup ??= (configWorktree?.cleanup as WorktreeSettings["cleanup"]) ?? "on-success";
+		}
+
 		// Update renderer with workflow's strict_mode setting
 		this.renderer = new TemplateRenderer(undefined, workflow.settings.strictMode);
 
@@ -237,15 +250,13 @@ export class WorkflowExecutor {
 			// The output dir is resolved first (e.g. "my-task-6"), and the worktree adopts
 			// the same name instead of incrementing independently.
 			const worktreeId = path.basename(outputDir);
+			// These are guaranteed defined by the ??= merge above
+			const wtLocation = worktreeSettings.location ?? "sibling";
+			const wtDirectory = worktreeSettings.directory ?? null;
 
 			// On resume, try to reuse the existing worktree (preserves pending changes)
 			if (resumeProgress) {
-				workflowWorktree = findExistingWorktree(
-					worktreeId,
-					this.repoRoot,
-					worktreeSettings.location,
-					worktreeSettings.directory,
-				);
+				workflowWorktree = findExistingWorktree(worktreeId, this.repoRoot, wtLocation, wtDirectory);
 				if (workflowWorktree) {
 					logger.info("workflow", `Reusing existing worktree: ${workflowWorktree.path}`);
 					console.info(`Worktree (resumed): ${workflowWorktree.path}`);
@@ -258,8 +269,8 @@ export class WorkflowExecutor {
 					stepName: "workflow",
 					workflowId: worktreeId,
 					repoRoot: this.repoRoot,
-					location: worktreeSettings.location,
-					directory: worktreeSettings.directory,
+					location: wtLocation,
+					directory: wtDirectory,
 				});
 				logger.info(
 					"workflow",
@@ -330,7 +341,7 @@ export class WorkflowExecutor {
 		} finally {
 			// Cleanup workflow-level worktree according to the cleanup policy
 			if (workflowWorktree && worktreeSettings) {
-				const cleanup = worktreeSettings.cleanup;
+				const cleanup = worktreeSettings.cleanup ?? "on-success";
 				const succeeded = progress.status === WORKFLOW_STATUS.COMPLETED;
 
 				const shouldRemove = cleanup === "on-complete" || (cleanup === "on-success" && succeeded);

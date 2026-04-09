@@ -196,10 +196,11 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
 
 **Specific properties:**
 
-| Key        | Type        | Default      | Description                                                                                       |
-| ---------- | ----------- | ------------ | ------------------------------------------------------------------------------------------------- |
-| `steps`    | list        | **required** | List of nested step definitions                                                                   |
-| `worktree` | bool/string | `false`      | Run each step in a separate git worktree (inherits location and cleanup from `settings.worktree`) |
+| Key          | Type        | Default      | Description                                                                                       |
+| ------------ | ----------- | ------------ | ------------------------------------------------------------------------------------------------- |
+| `steps`      | list        | **required** | List of nested step definitions                                                                   |
+| `worktree`   | bool/string | `false`      | Run each step in a separate git worktree (inherits location and cleanup from `settings.worktree`) |
+| `on-failure` | string      | `"fail"`     | How to handle branch failures: `fail` (fail workflow) or `warn` (log warning, continue workflow)  |
 
 **Constraints:**
 

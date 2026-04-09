@@ -298,8 +298,9 @@ export function findExistingWorktree(
 	// Read the branch from the worktree
 	const result = runGit(["rev-parse", "--abbrev-ref", "HEAD"], worktreePath, false);
 	const branch = result.returncode === 0 ? result.stdout.trim() : `agentic/${safeId}`;
+	const baseBranch = getDefaultBranch(repoRoot);
 
-	return { path: worktreePath, branch, baseBranch: "" };
+	return { path: worktreePath, branch, baseBranch };
 }
 
 export function removeWorktree(
@@ -404,11 +405,16 @@ export function listAgenticWorktrees(repoRoot?: string | null): Worktree[] {
 	return listWorktrees(repoRoot).filter((wt) => wt.branch.startsWith("agentic/"));
 }
 
-function pruneWorktreesDir(worktreesDir: string, prefix: string): number {
+/**
+ * Removes orphaned worktree directories (those without a .git file).
+ * When prefixes is null, all directories are scanned (used for nested mode
+ * where .worktrees/ is exclusively owned by agentic).
+ */
+function pruneWorktreesDir(worktreesDir: string, prefixes: string[] | null): number {
 	let cleaned = 0;
 	if (existsSync(worktreesDir)) {
 		for (const entry of readdirSync(worktreesDir)) {
-			if (!entry.startsWith(prefix)) continue;
+			if (prefixes && !prefixes.some((p) => entry.startsWith(p))) continue;
 			const wtDir = path.join(worktreesDir, entry);
 			if (!statSync(wtDir).isDirectory()) continue;
 			const gitFile = path.join(wtDir, ".git");
@@ -429,35 +435,37 @@ export function pruneOrphaned(repoRoot?: string | null, prune?: PruneLocation): 
 	if (prune) {
 		const { location, directory } = prune;
 		const pRoot = prune.repoRoot;
+		const repoName = sanitizeName(path.basename(pRoot));
 		let worktreesDir: string;
-		let prefix: string;
+		let prefixes: string[] | null;
 
 		if (location === "nested") {
 			worktreesDir = path.join(pRoot, ".worktrees");
-			prefix = "agentic-";
+			// Nested .worktrees/ is exclusively owned by agentic, scan all entries.
+			// Step-level use "agentic-" prefix; workflow-level use the raw workflowId.
+			prefixes = null;
 		} else if (location === "sibling") {
 			worktreesDir = path.join(path.dirname(pRoot), ".worktrees");
-			const repoName = sanitizeName(path.basename(pRoot));
-			prefix = `${repoName}-`;
+			prefixes = [`${repoName}-`];
 		} else if (location === "absolute" && directory) {
 			worktreesDir = directory;
-			const repoName = sanitizeName(path.basename(pRoot));
-			prefix = `${repoName}-`;
+			prefixes = [`${repoName}-`];
 		} else {
 			// Fallback to nested scan
 			worktreesDir = path.join(pRoot, ".worktrees");
-			prefix = "agentic-";
+			prefixes = null;
 		}
 
-		return pruneWorktreesDir(worktreesDir, prefix);
+		return pruneWorktreesDir(worktreesDir, prefixes);
 	}
 
 	// Default: scan both nested (backward compat) and sibling (new default) locations
 	let cleaned = 0;
-	cleaned += pruneWorktreesDir(path.join(root, ".worktrees"), "agentic-");
-	const siblingWorktreesDir = path.join(path.dirname(root), ".worktrees");
 	const repoName = sanitizeName(path.basename(root));
-	cleaned += pruneWorktreesDir(siblingWorktreesDir, `${repoName}-`);
+	// Nested: scan all entries (step-level "agentic-" + workflow-level without prefix)
+	cleaned += pruneWorktreesDir(path.join(root, ".worktrees"), null);
+	const siblingWorktreesDir = path.join(path.dirname(root), ".worktrees");
+	cleaned += pruneWorktreesDir(siblingWorktreesDir, [`${repoName}-`]);
 
 	return cleaned;
 }

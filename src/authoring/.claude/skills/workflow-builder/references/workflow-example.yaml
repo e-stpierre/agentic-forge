@@ -186,6 +186,9 @@ steps:
     # Inherits location and cleanup settings from settings.worktree
     worktree: true
 
+    # How to handle branch failures: "fail" (default) or "warn" (log warning, continue)
+    on-failure: warn
+
     # Parallel steps
     steps:
       - name: security-scan
