@@ -66,6 +66,24 @@ See [Workflows documentation](https://github.com/e-stpierre/agentic-forge/blob/m
 npm install -g agentic-forge
 ```
 
+### Updating
+
+Update to the latest version using npm:
+
+```bash
+npm install -g agentic-forge@latest
+```
+
+To update the default workflow files to the latest bundled versions, re-run `af init --force`. This overwrites any changes you made to these files.
+
+```bash
+# Update global workflows
+af init --force
+
+# Update project-local workflows
+af init --local --force
+```
+
 ### Run Your First Workflow
 
 No setup required. Run the demo workflow to verify your installation:

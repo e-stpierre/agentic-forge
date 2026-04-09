@@ -21,6 +21,7 @@
 - Updated all bundled workflows to remove legacy git settings
 - Fixed ralph-loop CWD to respect `cwdOverride` for worktree isolation
 - Fixed `pruneOrphaned` to scan both nested and sibling worktree directories by default
+- Removed `update` CLI command; updates are now handled via `npm install -g agentic-forge@latest`
 
 ## 0.9.0
 

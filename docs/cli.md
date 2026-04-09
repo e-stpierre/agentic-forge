@@ -21,7 +21,6 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `authoring-dir` | Print path to interactive authoring skills directory |
 | `release-notes` | Show release notes and changelog                     |
 | `version`       | Show current version                                 |
-| `update`        | Update to the latest version                         |
 
 ## run
 
@@ -380,28 +379,4 @@ Show the current agentic-forge version.
 
 ```bash
 af version
-```
-
-## update
-
-Update agentic-forge to the latest version via npm.
-
-```bash
-af update [options]
-```
-
-### Options
-
-| Option    | Description                          |
-| --------- | ------------------------------------ |
-| `--check` | Check for updates without installing |
-
-### Examples
-
-```bash
-# Update to latest
-af update
-
-# Check without installing
-af update --check
 ```
