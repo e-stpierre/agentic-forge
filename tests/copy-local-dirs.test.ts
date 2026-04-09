@@ -52,14 +52,14 @@ describe("copyLocalDirs", () => {
 		expect(existsSync(path.join(worktree, ".agents"))).toBe(false);
 	});
 
-	it("does not overwrite existing directories in worktree", () => {
+	it("does not overwrite existing files in worktree", () => {
 		const { repoRoot, worktree } = setup();
 
 		// Create source
 		mkdirSync(path.join(repoRoot, ".claude"), { recursive: true });
 		writeFileSync(path.join(repoRoot, ".claude", "settings.local.json"), "new-content");
 
-		// Pre-existing dir in worktree with different content
+		// Pre-existing file in worktree with different content
 		mkdirSync(path.join(worktree, ".claude"), { recursive: true });
 		writeFileSync(path.join(worktree, ".claude", "settings.local.json"), "existing-content");
 
@@ -68,6 +68,31 @@ describe("copyLocalDirs", () => {
 		// Should keep the existing content
 		expect(readFileSync(path.join(worktree, ".claude", "settings.local.json"), "utf-8")).toBe(
 			"existing-content",
+		);
+	});
+
+	it("merges missing files into existing directory (tracked + gitignored)", () => {
+		const { repoRoot, worktree } = setup();
+
+		// Source has both a tracked file and a gitignored file
+		mkdirSync(path.join(repoRoot, ".claude"), { recursive: true });
+		writeFileSync(path.join(repoRoot, ".claude", "checkpoints.md"), "# Checkpoints");
+		writeFileSync(path.join(repoRoot, ".claude", "settings.local.json"), '{"perms":true}');
+
+		// Worktree already has the tracked file (as git would create it)
+		mkdirSync(path.join(worktree, ".claude"), { recursive: true });
+		writeFileSync(path.join(worktree, ".claude", "checkpoints.md"), "# Checkpoints");
+
+		copyLocalDirs(repoRoot, worktree);
+
+		// Tracked file unchanged
+		expect(readFileSync(path.join(worktree, ".claude", "checkpoints.md"), "utf-8")).toBe(
+			"# Checkpoints",
+		);
+		// Gitignored file was copied in
+		expect(existsSync(path.join(worktree, ".claude", "settings.local.json"))).toBe(true);
+		expect(readFileSync(path.join(worktree, ".claude", "settings.local.json"), "utf-8")).toBe(
+			'{"perms":true}',
 		);
 	});
 

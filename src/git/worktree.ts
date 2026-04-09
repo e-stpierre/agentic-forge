@@ -151,17 +151,35 @@ function ensureGitignoreEntry(repoRoot: string, entry: string): void {
 const WORKTREE_COPY_DIRS = [".claude", ".agents"];
 
 /**
+ * Recursively copies files from `src` into `dest`, creating directories as
+ * needed but never overwriting files that already exist at the destination.
+ */
+function mergeDir(src: string, dest: string): void {
+	mkdirSync(dest, { recursive: true });
+	for (const entry of readdirSync(src, { withFileTypes: true })) {
+		const srcPath = path.join(src, entry.name);
+		const destPath = path.join(dest, entry.name);
+		if (entry.isDirectory()) {
+			mergeDir(srcPath, destPath);
+		} else if (!existsSync(destPath)) {
+			cpSync(srcPath, destPath);
+		}
+	}
+}
+
+/**
  * Copies local configuration directories (e.g. `.claude`, `.agents`) from the
  * repo root into a worktree so that gitignored settings like
- * `settings.local.json` are preserved.  Skips directories that don't exist in
- * the source or already exist in the destination.
+ * `settings.local.json` are preserved.  Merges into existing directories
+ * without overwriting files already present (e.g. tracked files checked out by
+ * git).
  */
 export function copyLocalDirs(repoRoot: string, worktreePath: string): void {
 	for (const dir of WORKTREE_COPY_DIRS) {
 		const src = path.join(repoRoot, dir);
 		const dest = path.join(worktreePath, dir);
-		if (existsSync(src) && !existsSync(dest)) {
-			cpSync(src, dest, { recursive: true });
+		if (existsSync(src)) {
+			mergeDir(src, dest);
 		}
 	}
 }
