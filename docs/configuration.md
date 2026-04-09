@@ -49,15 +49,31 @@ Controls workflow execution logging.
 | `logging.enabled` | boolean | `true`    | Enable or disable logging                   |
 | `logging.level`   | string  | `"Error"` | Verbosity: `Error`, `Warn`, `Info`, `Debug` |
 
-### git
+### worktree
 
-Controls git behavior during workflow execution.
+Default worktree settings applied when a workflow enables worktree isolation. Individual workflows can override these via `settings.worktree`.
 
-| Key              | Type    | Default  | Description                        |
-| ---------------- | ------- | -------- | ---------------------------------- |
-| `git.mainBranch` | string  | `"main"` | Primary branch name                |
-| `git.autoCommit` | boolean | `true`   | Automatically commit changes       |
-| `git.autoPr`     | boolean | `true`   | Automatically create pull requests |
+| Key                  | Type   | Default        | Description                                                                        |
+| -------------------- | ------ | -------------- | ---------------------------------------------------------------------------------- |
+| `worktree.location`  | string | `"sibling"`    | Where to create worktrees: `"sibling"`, `"nested"`, or `"absolute"`                |
+| `worktree.directory` | string | `null`         | Base directory for `"absolute"` location mode (required when location is absolute) |
+| `worktree.cleanup`   | string | `"on-success"` | When to remove worktrees: `"on-success"`, `"on-complete"`, or `"manual"`           |
+
+**Location modes:**
+
+| Value        | Worktree path                                 | Notes                      |
+| ------------ | --------------------------------------------- | -------------------------- |
+| `"sibling"`  | `../.worktrees/{repo}-{workflow}-{step}-{id}` | Default; avoids long paths |
+| `"nested"`   | `.worktrees/agentic-{workflow}-{step}-{id}`   | Inside the repository      |
+| `"absolute"` | `{directory}/{repo}-{workflow}-{step}-{id}`   | `directory` must be set    |
+
+**Cleanup policies:**
+
+| Value           | Behavior                                            |
+| --------------- | --------------------------------------------------- |
+| `"on-success"`  | Remove worktree on success; preserve on failure     |
+| `"on-complete"` | Always remove worktree after workflow finishes      |
+| `"manual"`      | Never remove automatically; log path for inspection |
 
 ### defaults
 

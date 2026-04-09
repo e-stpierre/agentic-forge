@@ -6,9 +6,13 @@ settings:
   track-progress: true
   terminal-output: all
   bypass-permissions: false
-  git:
-    enabled: false
-    worktree: false
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
 
 steps:
   - name: welcome
@@ -25,10 +29,7 @@ steps:
 
   - name: create-demo-files
     type: parallel
-    merge-strategy: wait-all
-    merge-mode: independent
-    git:
-      worktree: false
+    on-failure: warn
     steps:
       - name: create-claude-file
         type: prompt
@@ -80,10 +81,7 @@ steps:
 
   - name: random-facts
     type: parallel
-    merge-strategy: wait-all
-    merge-mode: independent
-    git:
-      worktree: false
+    on-failure: warn
     steps:
       - name: claude-facts-loop
         type: ralph-loop

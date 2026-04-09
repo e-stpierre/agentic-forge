@@ -6,9 +6,59 @@ Workflows support a `runtime` field on individual steps and in `settings`. See [
 
 > **Note**: Skill-based prompts (`/af-git-commit`, `/af-sdlc-plan`, etc.) only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
 
+## Tool Permissions Disclaimer
+
+Most bundled workflows declare a `required-tools` list in their `settings` block:
+
+```yaml
+settings:
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
+```
+
+When present, these tools are passed as `--allowedTools` to the Claude Code runtime, **automatically granting the agent permission to use them without prompting**. In practice this means the agent can:
+
+- **Read** any file in your repository
+- **Edit** and **Write** files (create, modify, or overwrite)
+- **Glob** and **Grep** to search the codebase
+- **Bash** to execute arbitrary shell commands
+
+This is required for autonomous workflow execution -- without these permissions, the agent would lack the access needed to complete its tasks autonomously.
+
+Additionally, the agent always has access to any permissions already configured at the repository level (`.claude/settings.json`, `.claude/settings.local.json`, etc.), regardless of the workflow's `required-tools` setting. The `required-tools` list is additive on top of those existing permissions.
+
+### Which workflows declare required-tools
+
+| Workflow                  | Required Tools                      |
+| ------------------------- | ----------------------------------- |
+| `plan-build-review`       | Read, Edit, Write, Glob, Grep, Bash |
+| `one-shot`                | Read, Edit, Write, Glob, Grep, Bash |
+| `ralph-loop`              | Read, Edit, Write, Glob, Grep, Bash |
+| `analyze-codebase`        | Read, Edit, Write, Glob, Grep, Bash |
+| `analyze-single`          | Read, Edit, Write, Glob, Grep, Bash |
+| `multi-plan-build-review` | Read, Edit, Write, Glob, Grep, Bash |
+| `claude-demo`             | Read, Edit, Write, Glob, Grep, Bash |
+| `multi-demo`              | Read, Edit, Write, Glob, Grep, Bash |
+| `permission-test-claude`  | Read, Edit, Write, Glob, Grep, Bash |
+| `codex-demo`              | None (Codex runtime)                |
+| `permission-test-codex`   | None (Codex runtime)                |
+
+> **Note**: The `required-tools` setting only applies to the Claude Code runtime. Codex CLI manages its own permissions separately.
+
+### Mitigations
+
+- **Worktree isolation**: Workflows like `plan-build-review` run in a disposable git worktree by default (`use_worktree=true`), so changes are made on a copy of your repo rather than directly in your working directory.
+- **Review before running**: Use `af workflows --verbose` or inspect the workflow YAML directly to see exactly what permissions and steps are configured.
+- **Custom workflows**: When creating your own workflows, you can omit `required-tools` entirely or list only the specific tools you want to allow. Without `required-tools`, the agent will only have access to the permissions configured at the repository level (`.claude/settings.json`, `.claude/settings.local.json`, etc.), and the workflow will fail if the agent is unable to complete a step due to insufficient permissions.
+
 ## plan-build-review
 
-Full SDLC workflow: plan, implement iteratively, review, fix, and optionally create a PR.
+Full SDLC workflow: plan, implement iteratively, review, fix, and optionally create a PR. Runs the entire workflow in an isolated git worktree by default.
 
 **Use cases**: Feature development, bug fixes, and chores that benefit from upfront planning and automated review.
 
@@ -25,6 +75,7 @@ Full SDLC workflow: plan, implement iteratively, review, fix, and optionally cre
 | `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop      |
 | `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation       |
 | `create_pr`      | boolean | No       | `false` | Create a PR after completion                    |
+| `use_worktree`   | boolean | No       | `true`  | Run the workflow in an isolated git worktree    |
 
 ### Examples
 
@@ -124,37 +175,6 @@ af run analyze-codebase --var "autofix=major" --var "create_pr=true"
 
 # Analyze specific paths only
 af run analyze-codebase --var "paths=src/api src/models" --var "autofix=minor"
-```
-
-## analyze-codebase-merge
-
-Same as `analyze-codebase` but merges all analysis branches back, runs a combined review, and optionally creates a single PR.
-
-**Use cases**: When you want all analysis fixes consolidated into one branch instead of separate PRs.
-
-**Flow**: 5 Parallel Analyses -> Merge Branches -> Review -> Fix Validation Issues -> Create PR
-
-### Variables
-
-| Variable             | Type    | Required | Default | Description                                                    |
-| -------------------- | ------- | -------- | ------- | -------------------------------------------------------------- |
-| `autofix`            | string  | No       | `major` | Severity level for fixes: `none`, `minor`, `major`, `critical` |
-| `fix_severity`       | string  | No       | `major` | Minimum severity for validation auto-fix                       |
-| `paths`              | string  | No       | `""`    | Space-separated paths to analyze                               |
-| `create_pr`          | boolean | No       | `false` | Create PR after all changes merged                             |
-| `max_fix_iterations` | number  | No       | `25`    | Maximum iterations for fix loops                               |
-
-### Examples
-
-```bash
-# Full analysis with merged fixes
-af run analyze-codebase-merge --var "autofix=major"
-
-# Consolidated PR from all analyses
-af run analyze-codebase-merge --var "autofix=minor" --var "create_pr=true"
-
-# Strict: only fix critical issues
-af run analyze-codebase-merge --var "autofix=critical" --var "fix_severity=critical"
 ```
 
 ## analyze-single
@@ -286,6 +306,58 @@ af run multi-plan-build-review --var "task=Fix login timeout" --var "type=bug" -
 ```
 
 Requires both Claude Code and Codex CLI installed and authenticated. The Codex runtime reviews the plan after Claude creates it, and independently reviews the code after implementation.
+
+## permission-test-claude
+
+Tests Claude runtime file permissions in both the output directory and the repository, with optional worktree isolation. Each step is a separate session that performs a single file operation, making it easy to identify exactly where permissions break.
+
+**Use cases**: Validating permission setup after installation, testing worktree file access, debugging permission issues.
+
+**Runtime**: Claude
+
+**Flow**: Output Create -> Output Append -> Output Edit -> Repo Create -> Repo Append -> Repo Edit -> Repo Delete
+
+### Variables
+
+| Variable       | Type    | Required | Default | Description                            |
+| -------------- | ------- | -------- | ------- | -------------------------------------- |
+| `use_worktree` | boolean | No       | `false` | Whether to run in an isolated worktree |
+
+### Examples
+
+```bash
+# Test without worktree
+af run permission-test-claude
+
+# Test with worktree
+af run permission-test-claude use_worktree=true
+```
+
+## permission-test-codex
+
+Tests Codex runtime file permissions in both the output directory and the repository, with optional worktree isolation. Same structure as `permission-test-claude` but using the Codex runtime.
+
+**Use cases**: Validating Codex permission setup, testing worktree file access with Codex, debugging permission issues.
+
+**Runtime**: Codex
+
+**Flow**: Output Create -> Output Append -> Output Edit -> Repo Create -> Repo Append -> Repo Edit -> Repo Delete
+
+### Variables
+
+| Variable       | Type    | Required | Default | Description                            |
+| -------------- | ------- | -------- | ------- | -------------------------------------- |
+| `use_worktree` | boolean | No       | `false` | Whether to run in an isolated worktree |
+
+### Examples
+
+```bash
+# Test without worktree
+af run permission-test-codex
+
+# Test with worktree
+af run permission-test-codex use_worktree=true
+```
 
 ## Custom Workflows
 

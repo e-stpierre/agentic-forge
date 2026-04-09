@@ -244,18 +244,25 @@ When your task is FULLY complete, output a JSON block:
 \`\`\`
 
 **Failure Signal:**
-If you encounter a BLOCKING error that prevents completion (e.g., missing permissions, cannot write files, access denied), output a failure JSON block:
+Only output this after exhausting ALL alternatives (see retry rules below):
 \`\`\`json
 {
   "ralph_failed": true,
-  "reason": "<brief description of the blocking error>"
+  "reason": "<brief description of the blocking error and all approaches attempted>"
 }
 \`\`\`
+
+**Tool Retry Rules:**
+If a tool call is denied or fails, you MUST try alternative approaches before giving up. Attempt at least 3 different strategies. For example, if editing a file fails:
+1. Try the Write tool to overwrite the file with updated content
+2. Try Bash with a shell command (e.g., echo/printf with redirection)
+3. Try Bash with sed or cat with heredoc to rewrite the file
+Only output the failure JSON after ALL alternatives have been attempted and failed.
 
 **IMPORTANT:**
 - Only output the completion JSON when the task is genuinely finished
 - Do not output false promises to exit early
-- Output the FAILURE JSON immediately if you encounter permission errors or other unrecoverable blocking issues - do NOT continue iterating
+- NEVER output the failure JSON after a single tool denial - always try alternative tools first
 - If the task is incomplete but can still progress, continue working - you have ${maxIterations - iteration} iterations remaining
 
 ---

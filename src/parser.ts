@@ -4,14 +4,15 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
 import type {
-	GitSettings,
 	OutputDefinition,
 	StepDefinition,
-	StepGitSettings,
 	StepType,
 	Variable,
 	WorkflowDefinition,
 	WorkflowSettings,
+	WorktreeCleanup,
+	WorktreeLocation,
+	WorktreeSettings,
 } from "./types.js";
 import { VALID_STEP_TYPES } from "./types.js";
 
@@ -90,15 +91,50 @@ export class WorkflowParser {
 		return data[key];
 	}
 
+	private parseWorktreeSettings(data: Record<string, unknown>): WorktreeSettings {
+		const worktreeRaw = (data.worktree as Record<string, unknown>) ?? {};
+		const enabledRaw = worktreeRaw.enabled;
+		const enabled: boolean | string =
+			enabledRaw === undefined ? false : (enabledRaw as boolean | string);
+
+		const result: WorktreeSettings = { enabled };
+
+		if (worktreeRaw.location !== undefined) {
+			const locationRaw = worktreeRaw.location as string;
+			const validLocations = ["sibling", "nested", "absolute"] as const;
+			if (!(validLocations as readonly string[]).includes(locationRaw)) {
+				throw new WorkflowParseError(
+					`Invalid worktree.location: '${locationRaw}'. Must be one of: sibling, nested, absolute`,
+				);
+			}
+			result.location = locationRaw as WorktreeLocation;
+		}
+
+		if (worktreeRaw.directory !== undefined) {
+			result.directory = (worktreeRaw.directory as string) ?? null;
+		}
+
+		if (worktreeRaw.cleanup !== undefined) {
+			const cleanupRaw = worktreeRaw.cleanup as string;
+			const validCleanups = ["on-success", "on-complete", "manual"] as const;
+			if (!(validCleanups as readonly string[]).includes(cleanupRaw)) {
+				throw new WorkflowParseError(
+					`Invalid worktree.cleanup: '${cleanupRaw}'. Must be one of: on-success, on-complete, manual`,
+				);
+			}
+			result.cleanup = cleanupRaw as WorktreeCleanup;
+		}
+
+		if (result.location === "absolute" && !result.directory) {
+			throw new WorkflowParseError(
+				"worktree.location is 'absolute' but worktree.directory is not set",
+			);
+		}
+
+		return result;
+	}
+
 	private parseSettings(data: Record<string, unknown>): WorkflowSettings {
-		const gitData = (data.git as Record<string, unknown>) ?? {};
-		const git: GitSettings = {
-			enabled: (gitData.enabled as boolean) ?? false,
-			worktree: (gitData.worktree as boolean) ?? false,
-			autoCommit: (gitData["auto-commit"] as boolean) ?? true,
-			autoPr: (gitData["auto-pr"] as boolean) ?? true,
-			branchPrefix: (gitData["branch-prefix"] as string) ?? "agentic",
-		};
 		return {
 			maxRetry: (data["max-retry"] as number) ?? 3,
 			timeoutMinutes: (data["timeout-minutes"] as number) ?? 60,
@@ -110,7 +146,7 @@ export class WorkflowParser {
 			model: (data.model as string) ?? null,
 			runtime: (data.runtime as string) ?? null,
 			requiredTools: (data["required-tools"] as string[]) ?? [],
-			git,
+			worktree: this.parseWorktreeSettings(data),
 		};
 	}
 
@@ -148,8 +184,6 @@ export class WorkflowParser {
 			prompt: null,
 			agent: null,
 			steps: [],
-			mergeStrategy: "wait-all",
-			mergeMode: "independent",
 			condition: null,
 			thenSteps: [],
 			elseSteps: [],
@@ -165,7 +199,8 @@ export class WorkflowParser {
 			onError: "retry",
 			checkpoint: false,
 			dependsOn: null,
-			git: null,
+			worktree: null,
+			onFailure: "fail",
 		};
 
 		if (stepType === "prompt") {
@@ -175,16 +210,17 @@ export class WorkflowParser {
 			step.steps = ((data.steps as unknown[]) ?? []).map((s) =>
 				this.parseStep(s as Record<string, unknown>, true),
 			);
-			step.mergeStrategy = (data["merge-strategy"] as string) ?? "wait-all";
-			step.mergeMode = (data["merge-mode"] as string) ?? "independent";
-			const gitData = data.git as Record<string, unknown> | undefined;
-			if (gitData) {
-				step.git = {
-					worktree: (gitData.worktree as boolean) ?? false,
-					autoPr: (gitData["auto-pr"] as boolean) ?? false,
-					branchPrefix: (gitData["branch-prefix"] as string) ?? "agentic",
-				} satisfies StepGitSettings;
+			const worktreeRaw = data.worktree;
+			if (worktreeRaw !== undefined && worktreeRaw !== null) {
+				step.worktree = worktreeRaw as boolean | string;
 			}
+			const onFailureRaw = (data["on-failure"] as string) ?? "fail";
+			if (onFailureRaw !== "fail" && onFailureRaw !== "warn") {
+				throw new WorkflowParseError(
+					`Invalid on-failure value: '${onFailureRaw}'. Must be one of: fail, warn`,
+				);
+			}
+			step.onFailure = onFailureRaw;
 		} else if (stepType === "serial") {
 			step.steps = ((data.steps as unknown[]) ?? []).map((s) =>
 				this.parseStep(s as Record<string, unknown>),

@@ -7,6 +7,13 @@ settings:
   timeout-minutes: 120
   track-progress: true
   terminal-output: base
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
 
 variables:
   - name: autofix
@@ -33,11 +40,8 @@ variables:
 steps:
   - name: analyze-and-fix-all
     type: parallel
-    merge-strategy: wait-all
-    merge-mode: independent
-    git:
-      worktree: true
-      branch-prefix: "agentic/analysis"
+    on-failure: warn
+    worktree: true
     steps:
       - name: bug-analysis
         type: serial

@@ -57,7 +57,6 @@ describe("Config defaults", () => {
 
 		expect(config).toHaveProperty("outputDirectory");
 		expect(config).toHaveProperty("logging");
-		expect(config).toHaveProperty("git");
 		expect(config).toHaveProperty("defaults");
 		expect(config).toHaveProperty("execution");
 	});

@@ -24,7 +24,6 @@ vi.mock("../src/config.js", async (importOriginal) => {
 		loadConfig: vi.fn(() => ({
 			outputDirectory: "local",
 			logging: { enabled: true, level: "Error" },
-			git: { mainBranch: "main", autoCommit: true, autoPr: true },
 			defaults: {
 				runtime: "claude",
 				maxRetry: 3,
@@ -41,6 +40,7 @@ vi.mock("../src/config.js", async (importOriginal) => {
 
 // Mock git worktree operations
 vi.mock("../src/git/worktree.js", () => ({
+	copyLocalDirs: vi.fn(),
 	createWorktree: vi.fn().mockReturnValue({
 		path: "/tmp/wt",
 		branch: "agentic/test",
@@ -84,8 +84,6 @@ function makeStep(
 ): StepDefinition {
 	return {
 		steps: [],
-		mergeStrategy: "wait-all",
-		mergeMode: "squash",
 		thenSteps: [],
 		elseSteps: [],
 		maxIterations: 5,
@@ -102,7 +100,6 @@ function makeStep(
 		stepTimeoutMinutes: null,
 		stepMaxRetry: null,
 		dependsOn: null,
-		git: null,
 		...overrides,
 	};
 }
@@ -122,13 +119,6 @@ function makeWorkflow(steps: StepDefinition[]): WorkflowDefinition {
 			strictMode: false,
 			model: null,
 			requiredTools: [],
-			git: {
-				enabled: false,
-				worktree: false,
-				autoCommit: false,
-				autoPr: false,
-				branchPrefix: "agentic",
-			},
 		},
 		variables: [],
 		steps,

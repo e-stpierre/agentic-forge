@@ -62,6 +62,13 @@ export class ClaudeAdapter implements RuntimeAdapter {
 			args.push("--add-dir", outputDir);
 		}
 
+		// Add working directory when running in a worktree so Claude has
+		// read/write access to the worktree path (its .git file points to
+		// the main repo, so Claude may resolve the project root elsewhere).
+		if (options.cwd && existsSync(options.cwd)) {
+			args.push("--add-dir", options.cwd);
+		}
+
 		// Use stream-json format when streaming output for real-time parsing
 		if (options.printOutput) {
 			args.push("--output-format", "stream-json", "--verbose");

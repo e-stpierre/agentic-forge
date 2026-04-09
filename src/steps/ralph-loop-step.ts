@@ -116,7 +116,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 
 			const result = await runRuntime(context.runtimeAdapter, {
 				prompt: fullPrompt,
-				cwd: context.repoRoot,
+				cwd: context.cwdOverride ?? context.repoRoot,
 				model: resolveModel(context, step.model),
 				timeout,
 				printOutput,

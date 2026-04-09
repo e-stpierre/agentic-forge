@@ -26,14 +26,30 @@ Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow 
 
 ## Supported Runtimes
 
-Agentic Forge orchestrates workflows across multiple coding agent runtimes. Each runtime must be installed and authenticated independently before use.
+**Claude Code is the primary and recommended coding agent for Agentic Forge.** It is the default runtime, has the deepest integration, and supports all features including bundled skills, agent configurations, and worktree isolation.
 
-| Runtime     | CLI      | Default |
-| ----------- | -------- | ------- |
-| Claude Code | `claude` | Yes     |
-| Codex CLI   | `codex`  | No      |
+**Codex CLI is supported as an experimental runtime.** Its integration is limited compared to Claude Code — it does not support bundled skills or agent configurations, and may have permission issues, particularly on Windows. Use it for secondary tasks like independent code review in mixed-runtime workflows.
 
-The default runtime is Claude Code. Use `--runtime codex` on the CLI or set `defaults.runtime: codex` in config to switch. Per-step `runtime:` fields always take precedence over the invocation default.
+| Runtime     | CLI      | Default | Status       |
+| ----------- | -------- | ------- | ------------ |
+| Claude Code | `claude` | Yes     | Recommended  |
+| Codex CLI   | `codex`  | No      | Experimental |
+
+Use `--runtime codex` on the CLI or set `defaults.runtime: codex` in config to switch. Per-step `runtime:` fields always take precedence over the invocation default.
+
+## Tool Permissions
+
+Most bundled workflows declare `required-tools` in their settings, which automatically allows the coding agent to use **Read, Edit, Write, Glob, Grep, and Bash** without prompting for permission on each call. This means the agent can read, create, modify, and delete files, as well as execute arbitrary shell commands in your repository, without asking for confirmation.
+
+This is by design -- autonomous workflows need these permissions to operate without manual intervention. Additionally, the agent always has access to any permissions configured at the repository level (`.claude/settings.json`, `.claude/settings.local.json`, etc.), regardless of the workflow's `required-tools` setting.
+
+If you want more control, you can:
+
+- **Review the workflow YAML** before running it (`af workflows --verbose` or inspect the file directly)
+- **Use worktree isolation** (`use_worktree=true`, the default for `plan-build-review`) so changes happen on a disposable copy of your repo
+- **Remove or modify `required-tools`** in a custom workflow to restrict which tools are auto-approved
+
+See [Workflows documentation](https://github.com/e-stpierre/agentic-forge/blob/main/docs/workflows.md) for details on which workflows declare these permissions.
 
 ## Getting Started
 
@@ -48,6 +64,24 @@ The default runtime is Claude Code. Use `--runtime codex` on the CLI or set `def
 
 ```bash
 npm install -g agentic-forge
+```
+
+### Updating
+
+Update to the latest version using npm:
+
+```bash
+npm install -g agentic-forge@latest
+```
+
+To update the default workflow files to the latest bundled versions, re-run `af init --force`. This overwrites any changes you made to these files.
+
+```bash
+# Update global workflows
+af init --force
+
+# Update project-local workflows
+af init --local --force
 ```
 
 ### Run Your First Workflow

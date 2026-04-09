@@ -6,11 +6,16 @@ settings:
   max-retry: 3
   timeout-minutes: 60
   track-progress: true
-  git:
-    enabled: true
-    worktree: true
-    auto-commit: true
-    branch-prefix: "agentic"
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
+  worktree:
+    enabled: "{{ variables.use_worktree }}"
+    cleanup: "on-success"
 
 variables:
   - name: task
@@ -22,6 +27,11 @@ variables:
     required: false
     default: false
     description: Whether to create a PR
+  - name: use_worktree
+    type: boolean
+    required: false
+    default: false
+    description: Whether to run in an isolated worktree
 
 steps:
   - name: create-branch

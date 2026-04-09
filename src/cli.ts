@@ -31,7 +31,6 @@ import {
 	cmdRun,
 	cmdSkillsDir,
 	cmdStatus,
-	cmdUpdate,
 	cmdVersion,
 	cmdWorkflows,
 	getVersion,
@@ -214,17 +213,6 @@ program
 	.description("Print path to interactive authoring skills directory")
 	.action(() => {
 		cmdAuthoringDir();
-	});
-
-// update command
-program
-	.command("update")
-	.description("Update agentic-forge to the latest version")
-	.option("--check", "check for updates without installing")
-	.action((opts: Record<string, unknown>) => {
-		cmdUpdate({
-			check: optBool(opts.check),
-		});
 	});
 
 // workflows command

@@ -4,15 +4,24 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { loadConfig } from "../config.js";
-import { findOutputDir, getGlobalRoot, slugifyCwdName } from "../paths.js";
+import { getMainRepoRoot } from "../git/worktree.js";
+import { findOutputDir, getGlobalRoot, getWorktreeOutputRoot, slugifyCwdName } from "../paths.js";
 import { WORKFLOW_STATUS, loadProgress, saveProgress } from "../progress.js";
 
 /**
  * Locates the output directory for a workflow by searching both local and global locations.
- * If the progress.json contains a stored outputDir, that is used directly.
+ * Also checks the canonical worktree output root when invoked from inside a worktree.
  */
 function resolveWorkflowOutputDir(workflowId: string): string | null {
-	return findOutputDir(workflowId, process.cwd());
+	const cwd = process.cwd();
+	let repoRoot: string | undefined;
+	try {
+		const root = getMainRepoRoot(cwd);
+		if (root !== cwd) repoRoot = root;
+	} catch {
+		// Not in a git repo; skip worktree output root lookup
+	}
+	return findOutputDir(workflowId, cwd, repoRoot);
 }
 
 export function cmdStatus(workflowId: string): void {
@@ -130,10 +139,24 @@ export function cmdList(statusFilter?: string): void {
 	const localEntries = scanOutputsDir(localOutputsDir, "local", statusFilter);
 	const globalEntries = scanOutputsDir(globalOutputsDir, "global", statusFilter);
 
+	// When running from a worktree, also scan the canonical repo's output root
+	let worktreeEntries: WorkflowEntry[] = [];
+	try {
+		const mainRoot = getMainRepoRoot(cwd);
+		if (mainRoot !== cwd) {
+			const worktreeOutputsDir = getWorktreeOutputRoot(mainRoot);
+			if (worktreeOutputsDir !== globalOutputsDir) {
+				worktreeEntries = scanOutputsDir(worktreeOutputsDir, "global", statusFilter);
+			}
+		}
+	} catch {
+		// Not in a git repo; skip worktree output root lookup
+	}
+
 	// Deduplicate: if same workflow_id appears in both, prefer local (already first)
 	const seenIds = new Set<string>();
 	const allEntries: WorkflowEntry[] = [];
-	for (const entry of [...localEntries, ...globalEntries]) {
+	for (const entry of [...localEntries, ...globalEntries, ...worktreeEntries]) {
 		const id = String(entry.data.workflow_id ?? "");
 		if (!seenIds.has(id)) {
 			seenIds.add(id);

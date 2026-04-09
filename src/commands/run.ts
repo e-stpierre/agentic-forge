@@ -255,6 +255,18 @@ export async function cmdRun(options: {
 		}
 	}
 
+	// Warn about unrecognized variables
+	const declaredNames = new Set(workflow.variables.map((v) => v.name));
+	const unknownKeys = Object.keys(variables).filter((k) => !declaredNames.has(k));
+	if (unknownKeys.length > 0) {
+		process.stderr.write("\n");
+		for (const key of unknownKeys) {
+			process.stderr.write(
+				`\x1b[33mWarning: Unknown variable "${key}" (not declared in workflow)\x1b[0m\n`,
+			);
+		}
+	}
+
 	const executor = new WorkflowExecutor(undefined, false, options.runtime);
 	try {
 		// Resolve terminal_output: CLI override > workflow settings > default "base"

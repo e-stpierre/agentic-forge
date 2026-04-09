@@ -5,7 +5,7 @@ You are being executed in an agentic workflow without user interaction.
 **Constraints**:
 
 - You CANNOT ask user questions - make reasonable decisions autonomously
-- You CANNOT request additional permissions - if permissions are missing, end the session
+- You MUST always attempt tool calls before concluding they will fail - never assume a tool will be denied
 - You MUST complete the task or report failure with details
 
 ## Required Output Format

@@ -208,7 +208,6 @@ describe("WorkflowParser settings", () => {
 		expect(workflow.settings.maxRetry).toBe(3);
 		expect(workflow.settings.timeoutMinutes).toBe(60);
 		expect(workflow.settings.trackProgress).toBe(true);
-		expect(workflow.settings.git.enabled).toBe(false);
 	});
 
 	it("should parse custom settings", () => {
@@ -219,19 +218,12 @@ settings:
   max-retry: 5
   timeout-minutes: 120
   track-progress: false
-  git:
-    enabled: true
-    worktree: true
-    branch-prefix: custom
 steps: []
 `);
 
 		expect(workflow.settings.maxRetry).toBe(5);
 		expect(workflow.settings.timeoutMinutes).toBe(120);
 		expect(workflow.settings.trackProgress).toBe(false);
-		expect(workflow.settings.git.enabled).toBe(true);
-		expect(workflow.settings.git.worktree).toBe(true);
-		expect(workflow.settings.git.branchPrefix).toBe("custom");
 	});
 
 	it("should parse workflow-level model setting", () => {
@@ -356,5 +348,133 @@ outputs:
     template: summary.md.j2
 `),
 		).toThrow("Missing required field");
+	});
+});
+
+describe("WorkflowParser worktree settings", () => {
+	it("should apply default worktree settings when not specified", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString("name: test\nsteps: []");
+
+		expect(workflow.settings.worktree.enabled).toBe(false);
+		// Fields not specified in YAML are left undefined for config merge
+		expect(workflow.settings.worktree.location).toBeUndefined();
+		expect(workflow.settings.worktree.directory).toBeUndefined();
+		expect(workflow.settings.worktree.cleanup).toBeUndefined();
+	});
+
+	it("should parse worktree enabled as boolean true", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+settings:
+  worktree:
+    enabled: true
+steps: []
+`);
+		expect(workflow.settings.worktree.enabled).toBe(true);
+	});
+
+	it("should parse worktree enabled as template string", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+settings:
+  worktree:
+    enabled: "{{ variables.use_worktree }}"
+steps: []
+`);
+		// Template string should be preserved at parse time, not resolved
+		expect(workflow.settings.worktree.enabled).toBe("{{ variables.use_worktree }}");
+	});
+
+	it("should parse all worktree fields", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+settings:
+  worktree:
+    enabled: true
+    location: nested
+    cleanup: on-complete
+steps: []
+`);
+		expect(workflow.settings.worktree.location).toBe("nested");
+		expect(workflow.settings.worktree.cleanup).toBe("on-complete");
+	});
+
+	it("should parse worktree absolute location with directory", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+settings:
+  worktree:
+    enabled: true
+    location: absolute
+    directory: /tmp/my-worktrees
+steps: []
+`);
+		expect(workflow.settings.worktree.location).toBe("absolute");
+		expect(workflow.settings.worktree.directory).toBe("/tmp/my-worktrees");
+	});
+
+	it("should throw when absolute location is set without directory", () => {
+		const parser = new WorkflowParser();
+		expect(() =>
+			parser.parseString(`
+name: test
+settings:
+  worktree:
+    location: absolute
+steps: []
+`),
+		).toThrow("absolute");
+	});
+
+	it("should parse step.worktree as boolean", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+steps:
+  - name: par
+    type: parallel
+    worktree: true
+    steps:
+      - name: branch-a
+        type: prompt
+        prompt: "Task A"
+`);
+		expect(workflow.steps[0].worktree).toBe(true);
+	});
+
+	it("should parse step.worktree as string template", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+steps:
+  - name: par
+    type: parallel
+    worktree: "{{ variables.isolate }}"
+    steps:
+      - name: branch-a
+        type: prompt
+        prompt: "Task A"
+`);
+		expect(workflow.steps[0].worktree).toBe("{{ variables.isolate }}");
+	});
+
+	it("should default step.worktree to null when not specified", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+steps:
+  - name: par
+    type: parallel
+    steps:
+      - name: branch-a
+        type: prompt
+        prompt: "Task A"
+`);
+		expect(workflow.steps[0].worktree).toBeNull();
 	});
 });

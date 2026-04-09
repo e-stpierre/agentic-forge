@@ -8,7 +8,14 @@ import yaml from "js-yaml";
 import { getRuntimeModel, getSandboxMode, loadConfig } from "./config.js";
 import { ConsoleOutput, OutputLevel, extractSummary } from "./console.js";
 import { WorkflowExecutor } from "./executor.js";
-import { type Worktree, createWorktree, pruneOrphaned, removeWorktree } from "./git/worktree.js";
+import {
+	type Worktree,
+	copyLocalDirs,
+	createWorktree,
+	getRepoRoot,
+	pruneOrphaned,
+	removeWorktree,
+} from "./git/worktree.js";
 import { WorkflowLogger } from "./logging/logger.js";
 import { findOutputDir, getOutputDir } from "./paths.js";
 import {
@@ -407,7 +414,13 @@ export class WorkflowOrchestrator {
 
 		try {
 			for (const subStep of step.steps) {
-				const wt = createWorktree(workflow.name, subStep.name, this.repoRoot);
+				const wt = createWorktree({
+					workflowName: workflow.name,
+					stepName: subStep.name,
+					repoRoot: this.repoRoot,
+					location: "nested",
+				});
+				copyLocalDirs(this.repoRoot, wt.path);
 				worktrees.push(wt);
 
 				const branch: ParallelBranch = {
@@ -837,7 +850,20 @@ export function processHumanInput(
 	repoRoot?: string,
 ): boolean {
 	const root = repoRoot ?? process.cwd();
-	const humanOutputDir = findOutputDir(workflowId, root);
+	let canonicalRoot: string | undefined = repoRoot;
+	if (!canonicalRoot) {
+		try {
+			const detected = getRepoRoot(root);
+			if (detected !== root) canonicalRoot = detected;
+		} catch {
+			// Not in a git repo; skip worktree output root lookup
+		}
+	}
+	const humanOutputDir = findOutputDir(
+		workflowId,
+		root,
+		canonicalRoot !== root ? canonicalRoot : undefined,
+	);
 	if (!humanOutputDir) {
 		process.stdout.write(`Workflow not found: ${workflowId}\n`);
 		return false;

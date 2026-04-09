@@ -1,17 +1,19 @@
 # Coding Agents
 
-Agentic Forge is a workflow engine for coding agents. Workflows can target Claude Code, Codex CLI, or future agents at the step level. The engine orchestrates whichever runtimes you specify; it is not tied to any one agent.
+Agentic Forge is a workflow engine for coding agents. Workflows can target Claude Code, Codex CLI, or future agents at the step level.
 
 ## Supported Runtimes
 
-| Runtime     | ID       | CLI Tool | Streaming Format |
-| ----------- | -------- | -------- | ---------------- |
-| Claude Code | `claude` | `claude` | `stream-json`    |
-| Codex CLI   | `codex`  | `codex`  | JSONL            |
+| Runtime     | ID       | CLI Tool | Streaming Format | Status       |
+| ----------- | -------- | -------- | ---------------- | ------------ |
+| Claude Code | `claude` | `claude` | `stream-json`    | Recommended  |
+| Codex CLI   | `codex`  | `codex`  | JSONL            | Experimental |
 
 Each runtime must be installed and authenticated independently before use. Agentic Forge does not install or configure the underlying CLI tools.
 
-### Claude Code
+### Claude Code (recommended)
+
+Claude Code is the primary and recommended coding agent for Agentic Forge. It has the deepest integration and supports all features including bundled skills (`/af-*`), agent sub-configurations, system prompt injection, and worktree isolation. All bundled workflows are designed and tested with Claude Code as the default runtime.
 
 Install and authenticate the Claude Code CLI via Anthropic's official documentation. Verify with:
 
@@ -19,7 +21,16 @@ Install and authenticate the Claude Code CLI via Anthropic's official documentat
 claude --version
 ```
 
-### Codex CLI
+### Codex CLI (experimental)
+
+Codex CLI is supported as an experimental runtime. Its integration is more limited compared to Claude Code:
+
+- Does not support bundled skills (`/af-*` commands) — steps must use inline prompts
+- Does not support agent sub-configurations
+- May have permission and file access issues, particularly on Windows
+- OS-level sandboxing is not enforced on Windows
+
+Codex works best as a secondary runtime for independent tasks like code review in mixed-runtime workflows (e.g., `multi-plan-build-review`), where Claude handles planning and implementation while Codex provides an independent review perspective.
 
 Install and authenticate the Codex CLI (OpenAI). Verify with:
 

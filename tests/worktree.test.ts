@@ -12,11 +12,12 @@ import { createProgress } from "../src/progress.js";
 import { TemplateRenderer } from "../src/renderer.js";
 import type { BranchStepExecutor, StepContext } from "../src/steps/base.js";
 import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../src/types.js";
+import { resolveStepWorktree, resolveWorktreeEnabled } from "../src/worktree-settings.js";
 
 // Mock the worktree module for parallel step tests
 const mockCreateWorktree = vi.fn();
 const mockRemoveWorktree = vi.fn();
-const mockRunGit = vi.fn();
+const mockSafetyCommit = vi.fn();
 
 vi.mock("../src/git/worktree.js", async (importOriginal) => {
 	const original = await importOriginal<typeof import("../src/git/worktree.js")>();
@@ -24,7 +25,7 @@ vi.mock("../src/git/worktree.js", async (importOriginal) => {
 		...original,
 		createWorktree: (...args: unknown[]) => mockCreateWorktree(...args),
 		removeWorktree: (...args: unknown[]) => mockRemoveWorktree(...args),
-		runGit: (...args: unknown[]) => mockRunGit(...args),
+		safetyCommit: (...args: unknown[]) => mockSafetyCommit(...args),
 	};
 });
 
@@ -46,8 +47,6 @@ function makeStepDef(
 ): StepDefinition {
 	return {
 		steps: [],
-		mergeStrategy: "wait-all",
-		mergeMode: "merge",
 		thenSteps: [],
 		elseSteps: [],
 		maxIterations: 5,
@@ -70,12 +69,11 @@ function defaultSettings(): WorkflowSettings {
 		strictMode: false,
 		model: null,
 		requiredTools: [],
-		git: {
+		worktree: {
 			enabled: false,
-			worktree: false,
-			autoCommit: false,
-			autoPr: false,
-			branchPrefix: "agentic",
+			location: "sibling",
+			directory: null,
+			cleanup: "on-success",
 		},
 	};
 }
@@ -89,6 +87,8 @@ beforeEach(() => {
 	const logDir = path.join(tempDir, "agentic", "outputs", "test-workflow-id");
 	mkdirSync(logDir, { recursive: true });
 	mockLogger = new WorkflowLogger("test-workflow-id", tempDir);
+	// Default safetyCommit to return clean (no commit needed)
+	mockSafetyCommit.mockReturnValue({ committed: false, failed: false });
 });
 
 function createStepContext(overrides?: Partial<StepContext>): StepContext {
@@ -204,51 +204,11 @@ describe("ParallelStepExecutor", () => {
 
 		expect(result.success).toBe(true);
 		expect(branchExecutor).toHaveBeenCalledTimes(2);
-		expect(result.outputSummary).toContain("2/2");
+		expect(result.outputSummary).toContain("2 branches");
 		expect(mockCreateWorktree).not.toHaveBeenCalled();
 	});
 
-	it("should execute branches with worktree isolation", async () => {
-		const branchExecutor = vi.fn<BranchStepExecutor>().mockResolvedValue({
-			success: true,
-			outputSummary: "Done",
-		});
-
-		mockCreateWorktree.mockReturnValue({
-			path: "/tmp/worktree-a",
-			branch: "agentic/test-branch-a",
-			baseBranch: "main",
-		});
-
-		mockRunGit.mockReturnValue({ stdout: "", stderr: "", returncode: 0 });
-
-		const executor = new ParallelStepExecutor(branchExecutor);
-		const innerSteps = [
-			makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" }),
-			makeStepDef({ name: "branch-b", type: "prompt", prompt: "Task B" }),
-		];
-
-		const step = makeStepDef({
-			name: "parallel-step",
-			type: "parallel",
-			steps: innerSteps,
-			git: { worktree: true, autoPr: false, branchPrefix: "agentic" },
-		});
-
-		const context = createStepContext();
-		const progress = createWorkflowProgress();
-		const consoleOut = new ConsoleOutput(createMockStream());
-
-		const result = await executor.execute(step, progress, context, mockLogger, consoleOut);
-
-		expect(result.success).toBe(true);
-		expect(mockCreateWorktree).toHaveBeenCalledTimes(2);
-		// Merge mode is "merge" by default, so branches get merged and cleaned up
-		expect(mockRunGit).toHaveBeenCalled();
-		expect(mockRemoveWorktree).toHaveBeenCalled();
-	});
-
-	it("should handle branch failures with wait-all strategy", async () => {
+	it("should handle branch failures", async () => {
 		const branchExecutor = vi
 			.fn<BranchStepExecutor>()
 			.mockResolvedValueOnce({ success: true, outputSummary: "Done" })
@@ -264,7 +224,6 @@ describe("ParallelStepExecutor", () => {
 			name: "parallel-step",
 			type: "parallel",
 			steps: innerSteps,
-			mergeStrategy: "wait-all",
 		});
 
 		const context = createStepContext();
@@ -275,38 +234,6 @@ describe("ParallelStepExecutor", () => {
 
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("branch-b");
-	});
-
-	it("should tolerate failures in independent merge mode", async () => {
-		const branchExecutor = vi
-			.fn<BranchStepExecutor>()
-			.mockResolvedValueOnce({ success: true, outputSummary: "Done" })
-			.mockResolvedValueOnce({ success: false, error: "Failed" });
-
-		const executor = new ParallelStepExecutor(branchExecutor);
-		const innerSteps = [
-			makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" }),
-			makeStepDef({ name: "branch-b", type: "prompt", prompt: "Task B" }),
-		];
-
-		const step = makeStepDef({
-			name: "parallel-step",
-			type: "parallel",
-			steps: innerSteps,
-			mergeStrategy: "wait-all",
-			mergeMode: "independent",
-		});
-
-		const context = createStepContext();
-		const progress = createWorkflowProgress();
-		const consoleOut = new ConsoleOutput(createMockStream());
-
-		const result = await executor.execute(step, progress, context, mockLogger, consoleOut);
-
-		// Independent mode tolerates failures in wait-all
-		expect(result.success).toBe(true);
-		expect(result.outputSummary).toContain("1/2");
-		expect(result.outputSummary).toContain("failed");
 	});
 
 	it("should handle branch exceptions gracefully", async () => {
@@ -336,42 +263,6 @@ describe("ParallelStepExecutor", () => {
 		// Exception in branch-b should be caught and handled
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("branch-b");
-	});
-
-	it("should pass cwdOverride to branch context when using worktrees", async () => {
-		let capturedContext: StepContext | null = null;
-		const branchExecutor = vi
-			.fn<BranchStepExecutor>()
-			.mockImplementation(async (_step, _progress, ctx) => {
-				capturedContext = ctx;
-				return { success: true, outputSummary: "Done" };
-			});
-
-		mockCreateWorktree.mockReturnValue({
-			path: "/tmp/test-worktree",
-			branch: "agentic/test-branch",
-			baseBranch: "main",
-		});
-		mockRunGit.mockReturnValue({ stdout: "", stderr: "", returncode: 0 });
-
-		const executor = new ParallelStepExecutor(branchExecutor);
-		const innerSteps = [makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" })];
-
-		const step = makeStepDef({
-			name: "parallel-step",
-			type: "parallel",
-			steps: innerSteps,
-			git: { worktree: true, autoPr: false, branchPrefix: "agentic" },
-		});
-
-		const context = createStepContext();
-		const progress = createWorkflowProgress();
-		const consoleOut = new ConsoleOutput(createMockStream());
-
-		await executor.execute(step, progress, context, mockLogger, consoleOut);
-
-		expect(capturedContext).not.toBeNull();
-		expect((capturedContext as StepContext).cwdOverride).toBe("/tmp/test-worktree");
 	});
 
 	it("should clone variables for each branch context", async () => {
@@ -407,5 +298,256 @@ describe("ParallelStepExecutor", () => {
 		expect(context.variables.modified).toBeUndefined();
 		// Each branch should get its own variables copy
 		expect(capturedContexts).toHaveLength(2);
+	});
+
+	it("should create worktrees when step.worktree is true", async () => {
+		const fakeWorktree = {
+			path: "/tmp/wt-branch-a",
+			branch: "agentic/branch-a",
+			baseBranch: "main",
+		};
+		mockCreateWorktree.mockReturnValue(fakeWorktree);
+
+		const branchExecutor = vi.fn<BranchStepExecutor>().mockResolvedValue({
+			success: true,
+			outputSummary: "Done",
+		});
+
+		const executor = new ParallelStepExecutor(branchExecutor);
+		const innerSteps = [makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" })];
+
+		const step = makeStepDef({
+			name: "parallel-step",
+			type: "parallel",
+			steps: innerSteps,
+			worktree: true,
+		});
+
+		const context = createStepContext();
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		expect(mockCreateWorktree).toHaveBeenCalledOnce();
+		expect(mockCreateWorktree).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workflowName: "test-workflow",
+				stepName: "branch-a",
+			}),
+		);
+	});
+
+	it("cleanup on-success: removes successful worktrees, preserves failed ones", async () => {
+		const wtA = { path: "/tmp/wt-a", branch: "agentic/a", baseBranch: "main" };
+		const wtB = { path: "/tmp/wt-b", branch: "agentic/b", baseBranch: "main" };
+		mockCreateWorktree.mockReturnValueOnce(wtA).mockReturnValueOnce(wtB);
+
+		const branchExecutor = vi
+			.fn<BranchStepExecutor>()
+			.mockResolvedValueOnce({ success: true, outputSummary: "Done" })
+			.mockResolvedValueOnce({ success: false, error: "Branch B failed" });
+
+		const executor = new ParallelStepExecutor(branchExecutor);
+		const innerSteps = [
+			makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" }),
+			makeStepDef({ name: "branch-b", type: "prompt", prompt: "Task B" }),
+		];
+		const step = makeStepDef({ name: "par", type: "parallel", steps: innerSteps, worktree: true });
+		const context = createStepContext({
+			workflowSettings: {
+				...defaultSettings(),
+				worktree: { enabled: true, location: "sibling", directory: null, cleanup: "on-success" },
+			},
+		});
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		// branch-a succeeded: should be removed; branch-b failed: should be preserved
+		expect(mockRemoveWorktree).toHaveBeenCalledOnce();
+		expect(mockRemoveWorktree).toHaveBeenCalledWith(wtA, expect.anything(), false);
+		expect(mockSafetyCommit).toHaveBeenCalledOnce();
+	});
+
+	it("cleanup on-complete: removes all worktrees regardless of outcome", async () => {
+		const wtA = { path: "/tmp/wt-a", branch: "agentic/a", baseBranch: "main" };
+		const wtB = { path: "/tmp/wt-b", branch: "agentic/b", baseBranch: "main" };
+		mockCreateWorktree.mockReturnValueOnce(wtA).mockReturnValueOnce(wtB);
+
+		const branchExecutor = vi
+			.fn<BranchStepExecutor>()
+			.mockResolvedValueOnce({ success: true, outputSummary: "Done" })
+			.mockResolvedValueOnce({ success: false, error: "Branch B failed" });
+
+		const executor = new ParallelStepExecutor(branchExecutor);
+		const innerSteps = [
+			makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" }),
+			makeStepDef({ name: "branch-b", type: "prompt", prompt: "Task B" }),
+		];
+		const step = makeStepDef({ name: "par", type: "parallel", steps: innerSteps, worktree: true });
+		const context = createStepContext({
+			workflowSettings: {
+				...defaultSettings(),
+				worktree: { enabled: true, location: "sibling", directory: null, cleanup: "on-complete" },
+			},
+		});
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		// Both worktrees should be removed
+		expect(mockRemoveWorktree).toHaveBeenCalledTimes(2);
+		expect(mockSafetyCommit).toHaveBeenCalledTimes(2);
+	});
+
+	it("cleanup manual: preserves all worktrees", async () => {
+		const wt = { path: "/tmp/wt-a", branch: "agentic/a", baseBranch: "main" };
+		mockCreateWorktree.mockReturnValue(wt);
+
+		const branchExecutor = vi
+			.fn<BranchStepExecutor>()
+			.mockResolvedValue({ success: true, outputSummary: "Done" });
+
+		const executor = new ParallelStepExecutor(branchExecutor);
+		const step = makeStepDef({
+			name: "par",
+			type: "parallel",
+			steps: [makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" })],
+			worktree: true,
+		});
+		const context = createStepContext({
+			workflowSettings: {
+				...defaultSettings(),
+				worktree: { enabled: true, location: "sibling", directory: null, cleanup: "manual" },
+			},
+		});
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		// Manual: no removal
+		expect(mockRemoveWorktree).not.toHaveBeenCalled();
+		expect(mockSafetyCommit).not.toHaveBeenCalled();
+	});
+
+	it("safety commit failure preserves worktree", async () => {
+		const wt = { path: "/tmp/wt-a", branch: "agentic/a", baseBranch: "main" };
+		mockCreateWorktree.mockReturnValue(wt);
+		mockSafetyCommit.mockReturnValue({ committed: false, failed: true, error: "no identity" });
+
+		const branchExecutor = vi
+			.fn<BranchStepExecutor>()
+			.mockResolvedValue({ success: true, outputSummary: "Done" });
+		const executor = new ParallelStepExecutor(branchExecutor);
+		const step = makeStepDef({
+			name: "par",
+			type: "parallel",
+			steps: [makeStepDef({ name: "branch-a", type: "prompt", prompt: "Task A" })],
+			worktree: true,
+		});
+		const context = createStepContext({
+			workflowSettings: {
+				...defaultSettings(),
+				worktree: { enabled: true, location: "sibling", directory: null, cleanup: "on-success" },
+			},
+		});
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		// Safety commit failed: worktree should NOT be removed
+		expect(mockSafetyCommit).toHaveBeenCalledOnce();
+		expect(mockRemoveWorktree).not.toHaveBeenCalled();
+	});
+});
+
+// --- resolveWorktreeEnabled / resolveStepWorktree ---
+
+describe("resolveWorktreeEnabled", () => {
+	const renderer = new TemplateRenderer();
+
+	it("returns false when enabled is false", () => {
+		const settings = {
+			enabled: false,
+			location: "sibling" as const,
+			directory: null,
+			cleanup: "on-success" as const,
+		};
+		expect(resolveWorktreeEnabled(settings, renderer, {})).toBe(false);
+	});
+
+	it("returns true when enabled is true", () => {
+		const settings = {
+			enabled: true,
+			location: "sibling" as const,
+			directory: null,
+			cleanup: "on-success" as const,
+		};
+		expect(resolveWorktreeEnabled(settings, renderer, {})).toBe(true);
+	});
+
+	it("resolves template string from variables", () => {
+		const settings = {
+			enabled: "{{ variables.use_worktree }}",
+			location: "sibling" as const,
+			directory: null,
+			cleanup: "on-success" as const,
+		};
+		expect(resolveWorktreeEnabled(settings, renderer, { use_worktree: true })).toBe(true);
+		expect(resolveWorktreeEnabled(settings, renderer, { use_worktree: false })).toBe(false);
+	});
+
+	it("resolves plain string 'true'", () => {
+		const settings = {
+			enabled: "true",
+			location: "sibling" as const,
+			directory: null,
+			cleanup: "on-success" as const,
+		};
+		expect(resolveWorktreeEnabled(settings, renderer, {})).toBe(true);
+	});
+
+	it("resolves plain string 'false'", () => {
+		const settings = {
+			enabled: "false",
+			location: "sibling" as const,
+			directory: null,
+			cleanup: "on-success" as const,
+		};
+		expect(resolveWorktreeEnabled(settings, renderer, {})).toBe(false);
+	});
+});
+
+describe("resolveStepWorktree", () => {
+	const renderer = new TemplateRenderer();
+
+	it("returns false for null", () => {
+		expect(resolveStepWorktree(null, renderer, {})).toBe(false);
+	});
+
+	it("returns false for undefined", () => {
+		expect(resolveStepWorktree(undefined, renderer, {})).toBe(false);
+	});
+
+	it("returns true for boolean true", () => {
+		expect(resolveStepWorktree(true, renderer, {})).toBe(true);
+	});
+
+	it("returns false for boolean false", () => {
+		expect(resolveStepWorktree(false, renderer, {})).toBe(false);
+	});
+
+	it("resolves template string from variables", () => {
+		expect(resolveStepWorktree("{{ variables.use_wt }}", renderer, { use_wt: true })).toBe(true);
+		expect(resolveStepWorktree("{{ variables.use_wt }}", renderer, { use_wt: false })).toBe(false);
+	});
+
+	it("resolves plain string 'true'", () => {
+		expect(resolveStepWorktree("true", renderer, {})).toBe(true);
 	});
 });

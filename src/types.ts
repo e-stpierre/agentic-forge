@@ -29,18 +29,14 @@ export interface Variable {
 	description?: string;
 }
 
-export interface GitSettings {
-	enabled: boolean;
-	worktree: boolean;
-	autoCommit: boolean;
-	autoPr: boolean;
-	branchPrefix: string;
-}
+export type WorktreeLocation = "sibling" | "nested" | "absolute";
+export type WorktreeCleanup = "on-success" | "on-complete" | "manual";
 
-export interface StepGitSettings {
-	worktree: boolean;
-	autoPr: boolean;
-	branchPrefix: string;
+export interface WorktreeSettings {
+	enabled: boolean | string;
+	location?: WorktreeLocation;
+	directory?: string | null;
+	cleanup?: WorktreeCleanup;
 }
 
 export interface WorkflowSettings {
@@ -54,7 +50,7 @@ export interface WorkflowSettings {
 	model: string | null;
 	runtime?: string | null;
 	requiredTools: string[];
-	git: GitSettings;
+	worktree: WorktreeSettings;
 }
 
 export interface StepDefinition {
@@ -63,8 +59,6 @@ export interface StepDefinition {
 	prompt?: string | null;
 	agent?: string | null;
 	steps: StepDefinition[];
-	mergeStrategy: string;
-	mergeMode: string;
 	condition?: string | null;
 	thenSteps: StepDefinition[];
 	elseSteps: StepDefinition[];
@@ -80,7 +74,8 @@ export interface StepDefinition {
 	onError: string;
 	checkpoint: boolean;
 	dependsOn?: string | null;
-	git?: StepGitSettings | null;
+	worktree?: boolean | string | null;
+	onFailure?: "fail" | "warn";
 }
 
 export interface OutputDefinition {

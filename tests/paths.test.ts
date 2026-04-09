@@ -1,16 +1,18 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	ensureGlobalDir,
+	findOutputDir,
 	getConfigPaths,
 	getGlobalRoot,
 	getOutputDir,
 	getOutputRoot,
 	getProjectRoot,
 	getWorkflowDirs,
+	getWorktreeOutputRoot,
 	resolveOutputDir,
 	sanitizeSlug,
 	slugifyCwdName,
@@ -341,5 +343,75 @@ describe("ensureGlobalDir", () => {
 	it("should be idempotent when called twice", () => {
 		ensureGlobalDir();
 		expect(() => ensureGlobalDir()).not.toThrow();
+	});
+});
+
+// --- getWorktreeOutputRoot ---
+
+describe("getWorktreeOutputRoot", () => {
+	it("should return global output root keyed by repo name", () => {
+		const repoRoot = "/projects/my-repo";
+		const result = getWorktreeOutputRoot(repoRoot);
+		expect(result).toContain(getGlobalRoot());
+		expect(result).toContain("my-repo");
+	});
+
+	it("should use main repo root slug, not worktree path", () => {
+		const mainRepo = "/projects/main-repo";
+		const worktreePath = "/tmp/worktrees/main-repo-workflow-abc";
+		// Both should yield the same output root (keyed by main repo)
+		const fromMain = getWorktreeOutputRoot(mainRepo);
+		const fromWorktree = getWorktreeOutputRoot(worktreePath);
+		// Output root from main repo should contain "main-repo"
+		expect(fromMain).toContain("main-repo");
+		// Worktree path gives different result (different basename)
+		expect(fromWorktree).not.toBe(fromMain);
+	});
+
+	it("should return path under global outputs directory", () => {
+		const result = getWorktreeOutputRoot("/projects/my-repo");
+		expect(result).toContain(path.join(getGlobalRoot(), "outputs"));
+	});
+});
+
+// --- findOutputDir ---
+
+describe("findOutputDir", () => {
+	it("should return null when no progress file found", () => {
+		const tempDir = makeTempDir();
+		const result = findOutputDir("nonexistent-workflow-id", tempDir);
+		expect(result).toBeNull();
+	});
+
+	it("should find output dir in local agentic/outputs", () => {
+		const tempDir = makeTempDir();
+		const workflowId = "test-workflow-123";
+		const outputDir = path.join(tempDir, "agentic", "outputs", workflowId);
+		mkdirSync(outputDir, { recursive: true });
+		writeFileSync(path.join(outputDir, "progress.json"), "{}", "utf-8");
+
+		const result = findOutputDir(workflowId, tempDir);
+		expect(result).toBe(outputDir);
+	});
+
+	it("should find output dir when repoRoot differs from cwd", () => {
+		const tempDir = makeTempDir();
+		const repoRoot = "/projects/main-repo";
+		const workflowId = "wt-workflow-456";
+		// Simulate worktree output in global dir keyed by main repo
+		const worktreeOutputRoot = getWorktreeOutputRoot(repoRoot);
+		const outputDir = path.join(worktreeOutputRoot, workflowId);
+		mkdirSync(outputDir, { recursive: true });
+		writeFileSync(path.join(outputDir, "progress.json"), "{}", "utf-8");
+
+		const result = findOutputDir(workflowId, tempDir, repoRoot);
+		expect(result).toBe(outputDir);
+
+		// Clean up the workflow-specific directory to avoid leaking test artifacts
+		try {
+			rmSync(outputDir, { recursive: true, force: true });
+		} catch {
+			// Windows may hold directory locks briefly; ignore EBUSY
+		}
 	});
 });

@@ -34,8 +34,9 @@ vi.mock("../src/runtimes/process-runner.js", async (importOriginal) => {
 	};
 });
 
-// Now import PromptStepExecutor AFTER mock is set up
+// Now import PromptStepExecutor and RalphLoopStepExecutor AFTER mock is set up
 const { PromptStepExecutor } = await import("../src/steps/prompt-step.js");
+const { RalphLoopStepExecutor } = await import("../src/steps/ralph-loop-step.js");
 
 // --- Helpers ---
 
@@ -52,8 +53,6 @@ function makeStepDef(
 ): StepDefinition {
 	return {
 		steps: [],
-		mergeStrategy: "wait-all",
-		mergeMode: "merge",
 		thenSteps: [],
 		elseSteps: [],
 		maxIterations: 5,
@@ -76,12 +75,11 @@ function defaultSettings(): WorkflowSettings {
 		strictMode: false,
 		model: null,
 		requiredTools: [],
-		git: {
+		worktree: {
 			enabled: false,
-			worktree: false,
-			autoCommit: false,
-			autoPr: false,
-			branchPrefix: "agentic",
+			location: "sibling",
+			directory: null,
+			cleanup: "on-success",
 		},
 	};
 }
@@ -138,6 +136,7 @@ function createStepContext(overrides?: Partial<StepContext>): StepContext {
 		runtimeAdapter: createMockAdapter(),
 		workflowSettings: defaultSettings(),
 		workflowId: "test-workflow-id",
+		outputDir: tempDir,
 		variables: { test_var: "test_value" },
 		outputs: {},
 		...overrides,
@@ -479,7 +478,6 @@ describe("ParallelStepExecutor", () => {
 			name: "parallel-step",
 			type: "parallel",
 			steps: innerSteps,
-			mergeStrategy: "wait-all",
 		});
 
 		const context = createStepContext({
@@ -502,7 +500,7 @@ describe("ParallelStepExecutor", () => {
 		expect(branchExecutor).toHaveBeenCalledTimes(5);
 	});
 
-	it("should call updateStepCompleted for non-wait-all merge strategy", async () => {
+	it("should call updateStepCompleted when all branches succeed", async () => {
 		const branchExecutor = vi.fn<BranchStepExecutor>(async () => {
 			return { success: true, outputSummary: "Done" };
 		});
@@ -514,7 +512,6 @@ describe("ParallelStepExecutor", () => {
 			name: "parallel-step",
 			type: "parallel",
 			steps: innerSteps,
-			mergeStrategy: "first-success" as StepDefinition["mergeStrategy"],
 		});
 
 		const context = createStepContext();
@@ -550,7 +547,7 @@ describe("ParallelStepExecutor", () => {
 		expect(result.outputSummary).toContain("No sub-steps");
 	});
 
-	it("should track failed branches in wait-all strategy", async () => {
+	it("should track failed branches", async () => {
 		const branchExecutor = vi.fn<BranchStepExecutor>(async (step) => {
 			if (step.name === "branch-b") {
 				return { success: false, error: "Branch B failed" };
@@ -568,7 +565,6 @@ describe("ParallelStepExecutor", () => {
 			name: "parallel-step",
 			type: "parallel",
 			steps: innerSteps,
-			mergeStrategy: "wait-all",
 		});
 
 		const context = createStepContext();
@@ -579,5 +575,66 @@ describe("ParallelStepExecutor", () => {
 
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("branch-b");
+	});
+});
+
+describe("RalphLoopStepExecutor cwdOverride", () => {
+	it("should use cwdOverride when set", async () => {
+		mockRunRuntime.mockResolvedValue({
+			success: true,
+			stdout: '{"ralph_complete": true, "promise": "DONE"}',
+			stderr: "",
+			sessionOutput: { isSuccess: true, context: "Done", sessionId: null },
+		});
+
+		const step = makeStepDef({
+			name: "fix-loop",
+			type: "ralph-loop",
+			prompt: "Fix all bugs",
+			maxIterations: 3,
+			completionPromise: "DONE",
+		});
+
+		const worktreePath = "/tmp/wt-override";
+		const context = createStepContext({ cwdOverride: worktreePath });
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		const executor = new RalphLoopStepExecutor();
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		expect(mockRunRuntime).toHaveBeenCalled();
+		const callArgs = mockRunRuntime.mock.calls[0][1];
+		// cwdOverride should be used as cwd instead of repoRoot
+		expect(callArgs.cwd).toBe(worktreePath);
+	});
+
+	it("should fall back to repoRoot when cwdOverride is not set", async () => {
+		mockRunRuntime.mockResolvedValue({
+			success: true,
+			stdout: '{"ralph_complete": true, "promise": "DONE"}',
+			stderr: "",
+			sessionOutput: { isSuccess: true, context: "Done", sessionId: null },
+		});
+
+		const step = makeStepDef({
+			name: "fix-loop",
+			type: "ralph-loop",
+			prompt: "Fix all bugs",
+			maxIterations: 3,
+			completionPromise: "DONE",
+		});
+
+		const context = createStepContext({ cwdOverride: null });
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		const executor = new RalphLoopStepExecutor();
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		expect(mockRunRuntime).toHaveBeenCalled();
+		const callArgs = mockRunRuntime.mock.calls[0][1];
+		// No cwdOverride: should fall back to repoRoot
+		expect(callArgs.cwd).toBe(tempDir);
 	});
 });

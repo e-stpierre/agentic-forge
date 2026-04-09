@@ -3,6 +3,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { getRepoRoot } from "../git/worktree.js";
 import { findOutputDir } from "../paths.js";
 import { WORKFLOW_STATUS, loadProgress, prepareForResume, saveProgress } from "../progress.js";
 import { discoverWorkflow } from "./run.js";
@@ -14,7 +15,15 @@ export async function cmdResume(options: {
 	const { WorkflowExecutor } = await import("../executor.js");
 	const { WorkflowParser, WorkflowParseError } = await import("../parser.js");
 
-	const outputDir = findOutputDir(options.workflowId, process.cwd());
+	const cwd = process.cwd();
+	let repoRoot: string | undefined;
+	try {
+		const root = getRepoRoot(cwd);
+		if (root !== cwd) repoRoot = root;
+	} catch {
+		// Not in a git repo; skip worktree output root lookup
+	}
+	const outputDir = findOutputDir(options.workflowId, cwd, repoRoot);
 	if (outputDir === null) {
 		process.stderr.write(`Error: Workflow not found: ${options.workflowId}\n`);
 		process.exit(1);
