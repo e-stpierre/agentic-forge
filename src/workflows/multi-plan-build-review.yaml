@@ -58,14 +58,32 @@ variables:
     required: false
     default: false
     description: Whether to run in an isolated worktree
+  - name: plan
+    type: string
+    required: false
+    default: ""
+    description: Path to an existing plan file. If provided, it is copied to the output directory instead of generating a new one.
 
 steps:
   - name: plan
-    type: prompt
-    runtime: claude
-    model: opus
-    prompt: /af-sdlc-plan {{ workflow_id }} {{ variables.type }} "{{ output_dir }}" {{ variables.explore_agents }} {{ variables.task }}
-    checkpoint: true
+    type: conditional
+    condition: "variables.plan"
+    then:
+      - name: copy-plan
+        type: prompt
+        runtime: claude
+        model: haiku
+        prompt: |
+          Copy the file at "{{ variables.plan }}" to "{{ output_dir }}/plan.md".
+          Use the Read tool to read the source, then the Write tool to write its exact contents to the destination.
+          Do not modify the content. Do not add commentary. Perform the copy and stop.
+    else:
+      - name: generate-plan
+        type: prompt
+        runtime: claude
+        model: opus
+        prompt: /af-sdlc-plan {{ workflow_id }} {{ variables.type }} "{{ output_dir }}" {{ variables.explore_agents }} {{ variables.task }}
+        checkpoint: true
 
   - name: plan-review
     type: prompt
