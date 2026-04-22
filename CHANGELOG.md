@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.1
+
+- Added `plan` variable to `plan-build-review` and `multi-plan-build-review` workflows; when set to a path, the existing plan is copied to the output directory instead of generating a new one
+
 ## 0.10.0
 
 - **Breaking:** Removed `settings.git` from workflow settings (`enabled`, `worktree`, `auto-commit`, `auto-pr`, `branch-prefix` no longer recognized)

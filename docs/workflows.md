@@ -68,7 +68,7 @@ Full SDLC workflow: plan, implement iteratively, review, fix, and optionally cre
 
 | Variable         | Type    | Required | Default | Description                                     |
 | ---------------- | ------- | -------- | ------- | ----------------------------------------------- |
-| `task`           | string  | Yes      |         | Feature or task description                     |
+| `task`           | string  | Yes      |         | Feature or task description. When `plan` is also set, use `task` to pass additional instructions about the supplied plan (e.g., "the plan is only half done, finish the missing milestones"). |
 | `type`           | string  | No       | `auto`  | Task type: `feature`, `bug`, `chore`, or `auto` |
 | `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                   |
 | `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel) |
@@ -76,6 +76,7 @@ Full SDLC workflow: plan, implement iteratively, review, fix, and optionally cre
 | `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation       |
 | `create_pr`      | boolean | No       | `false` | Create a PR after completion                    |
 | `use_worktree`   | boolean | No       | `true`  | Run the workflow in an isolated git worktree    |
+| `plan`           | string  | No       | `""`    | Path to an existing plan file. When set, the plan step copies this file to the output directory instead of generating a new one, and applies any additional instructions from `task` to the copied plan. |
 
 ### Examples
 
@@ -88,6 +89,10 @@ af run plan-build-review --var "task=Fix login timeout" --var "type=bug" --var "
 
 # Large feature with more iterations and explore agents
 af run plan-build-review --var "task=Implement payment system" --var "max_iterations=50" --var "explore_agents=4"
+
+# Reuse a plan you already iterated on, optionally tweaking it via task
+af run plan-build-review --var "plan=./my-plan.md" --var "task=Implement the attached plan"
+af run plan-build-review --var "plan=./my-plan.md" --var "task=The plan is only half done; fill in the remaining milestones before implementing"
 ```
 
 ## one-shot
@@ -287,13 +292,14 @@ Full SDLC workflow using mixed runtimes — Claude for planning and implementati
 
 | Variable         | Type    | Required | Default | Description                                     |
 | ---------------- | ------- | -------- | ------- | ----------------------------------------------- |
-| `task`           | string  | Yes      |         | Feature or task description                     |
+| `task`           | string  | Yes      |         | Feature or task description. When `plan` is also set, use `task` to pass additional instructions about the supplied plan (e.g., "the plan is only half done, finish the missing milestones"). |
 | `type`           | string  | No       | `auto`  | Task type: `feature`, `bug`, `chore`, or `auto` |
 | `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                   |
 | `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel) |
 | `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop      |
 | `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation       |
 | `create_pr`      | boolean | No       | `false` | Create a PR after completion                    |
+| `plan`           | string  | No       | `""`    | Path to an existing plan file. When set, the plan step copies this file to the output directory instead of generating a new one, and applies any additional instructions from `task` to the copied plan. The Codex plan-review step still runs afterward. |
 
 ### Examples
 
@@ -303,6 +309,9 @@ af run multi-plan-build-review --var "task=Add dark mode support"
 
 # Bug fix with PR creation
 af run multi-plan-build-review --var "task=Fix login timeout" --var "type=bug" --var "create_pr=true"
+
+# Reuse an existing plan and let Codex still refine it
+af run multi-plan-build-review --var "plan=./my-plan.md" --var "task=Implement the attached plan"
 ```
 
 Requires both Claude Code and Codex CLI installed and authenticated. The Codex runtime reviews the plan after Claude creates it, and independently reviews the code after implementation.
