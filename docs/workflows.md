@@ -1,6 +1,6 @@
 # Workflows
 
-Agentic Forge ships with 10 bundled workflows. You can run any of them immediately without initialization. Use `af workflows --verbose` to see all available workflows and their variables.
+Agentic Forge ships with 12 bundled workflows. You can run any of them immediately without initialization. Use `af workflows --verbose` to see all available workflows and their variables.
 
 Workflows support a `runtime` field on individual steps and in `settings`. See [Coding Agents](coding-agents.md) for the runtime resolution order and per-runtime capabilities.
 
@@ -39,6 +39,7 @@ Additionally, the agent always has access to any permissions already configured 
 | `plan-build-review`       | Read, Edit, Write, Glob, Grep, Bash |
 | `one-shot`                | Read, Edit, Write, Glob, Grep, Bash |
 | `ralph-loop`              | Read, Edit, Write, Glob, Grep, Bash |
+| `plan-loop`               | Read, Edit, Write, Glob, Grep, Bash |
 | `analyze-codebase`        | Read, Edit, Write, Glob, Grep, Bash |
 | `analyze-single`          | Read, Edit, Write, Glob, Grep, Bash |
 | `multi-plan-build-review` | Read, Edit, Write, Glob, Grep, Bash |
@@ -150,6 +151,36 @@ af run ralph-loop --var "task=Migrate all API endpoints to v2" --var "max_iterat
 
 # Custom completion signal
 af run ralph-loop --var "task=Refactor the test suite" --var "completion_promise=ALL_TESTS_PASSING"
+```
+
+## plan-loop
+
+Generate a checkbox-tracked plan from arbitrary input (free-form prompt, task list, or file paths), then run a Ralph loop that completes one task per iteration until every checkbox is checked.
+
+**Use cases**: Working through a known scoped set of tasks (alignment reviews, migrations, tracked refactors) without needing to hand-author a plan file first.
+
+**Flow**: Build Plan (opus) -> Execute Plan (iterative loop, one task per iteration)
+
+### Variables
+
+| Variable             | Type   | Required | Default              | Description                                                                                  |
+| -------------------- | ------ | -------- | -------------------- | -------------------------------------------------------------------------------------------- |
+| `input`              | string | Yes      |                      | Source material the plan is built from. Can be a list of tasks, a free-form prompt, file paths to documents, or any combination. |
+| `task_id_prefix`     | string | No       | `TASK`               | Prefix for task IDs (e.g. `TASK` -> `TASK-001`). Commit titles are prefixed with `[<ID>]`.  |
+| `completion_promise` | string | No       | `ALL_TASKS_COMPLETE` | Text signal indicating completion                                                            |
+| `max_iterations`     | number | No       | `25`                 | Maximum iterations                                                                           |
+
+### Examples
+
+```bash
+# Free-form prompt -> generated plan -> looped execution
+af run plan-loop --var "input=Migrate the auth middleware off the legacy session store. Cover handlers, tests, and docs."
+
+# Reference an existing document; the planning step reads it and decomposes into tasks
+af run plan-loop --var "input=Follow the alignment notes in C:\\path\\to\\alignment.md" --var "task_id_prefix=IMP" --var "max_iterations=40"
+
+# Explicit task list
+af run plan-loop --var "input=1. Add rate limiting\n2. Wire metrics\n3. Document the new headers"
 ```
 
 ## analyze-codebase

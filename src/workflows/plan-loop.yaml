@@ -1,0 +1,176 @@
+name: plan-loop
+version: "1.0"
+description: Generate a checkbox-tracked plan from arbitrary input, then run a Ralph loop that completes one task per iteration
+
+settings:
+  max-retry: 3
+  timeout-minutes: 180
+  track-progress: true
+  bypass-permissions: false
+  terminal-output: base
+  required-tools:
+    - Read
+    - Edit
+    - Write
+    - Glob
+    - Grep
+    - Bash
+
+variables:
+  - name: input
+    type: string
+    required: true
+    description: |
+      Source material the plan is built from. Can be a list of tasks, a general prompt describing
+      the work, one or more file paths to documents, or any combination. The planning step interprets
+      it and produces a structured plan.
+  - name: task_id_prefix
+    type: string
+    required: false
+    default: "TASK"
+    description: Prefix used for task IDs in the generated plan (e.g. "TASK" -> TASK-001, TASK-002).
+  - name: completion_promise
+    type: string
+    required: false
+    default: ALL_TASKS_COMPLETE
+    description: Completion promise text that signals the loop should exit
+  - name: max_iterations
+    type: number
+    required: false
+    default: 25
+    description: Maximum iterations before stopping
+
+steps:
+  - name: build-plan
+    type: prompt
+    model: opus
+    prompt: |
+      Your job is to produce a single plan document at `{{ output_dir }}/plan.md` from the input below.
+      Do NOT implement any of the work. Only build the plan.
+
+      ## Input
+      {{ variables.input }}
+
+      ## How to interpret the input
+      - The input may be a list of tasks, a freeform request, one or more file paths, or a mix.
+      - If file paths are present, read those files with the Read tool to gather context.
+      - If the input describes a single goal, decompose it into a clear ordered list of tasks.
+      - If the input already lists discrete tasks, preserve their intent and ordering.
+
+      ## Required plan structure
+
+      Write the plan to `{{ output_dir }}/plan.md` with EXACTLY this shape:
+
+      ```markdown
+      # Plan: <short title summarizing the work>
+
+      <1-3 sentence overview of the goal>
+
+      ## Progress Tracking
+
+      - [ ] {{ variables.task_id_prefix }}-001 - <short title>
+      - [ ] {{ variables.task_id_prefix }}-002 - <short title>
+      - [ ] {{ variables.task_id_prefix }}-003 - <short title>
+      ...
+
+      ## Memory
+
+      <!--
+      This section is intentionally left empty during planning. Iterations of the loop
+      may append short notes here ONLY when something meaningfully affects future work
+      or matters to a reviewer (issue faced, critical decision taken, shortcut taken,
+      assumption made under uncertainty). It is NOT a progress tracker or activity log.
+      Most iterations should add nothing.
+      -->
+
+      ## Tasks
+
+      ### {{ variables.task_id_prefix }}-001 - <short title>
+
+      **Goal:** <one sentence>
+
+      **Details:**
+      - <concrete step or requirement>
+      - <concrete step or requirement>
+
+      **Acceptance:**
+      - <how the agent knows this task is done>
+
+      ### {{ variables.task_id_prefix }}-002 - <short title>
+
+      ... (same shape as above)
+      ```
+
+      ## Rules
+      - Task IDs MUST use the prefix `{{ variables.task_id_prefix }}-` followed by a zero-padded 3-digit number, starting at 001.
+      - The "Progress Tracking" section MUST list every task in the same order as the "Tasks" section.
+      - Each task MUST be small enough to complete in a single Ralph iteration (one focused unit of work).
+      - Do NOT include task IDs that are not also documented in the "Tasks" section.
+      - Use the Write tool to create `{{ output_dir }}/plan.md`. Do not write the plan anywhere else.
+
+      After writing the plan, stop. Do not begin implementing tasks.
+    checkpoint: true
+
+  - name: execute-plan
+    type: ralph-loop
+    prompt: |
+      ## Plan Loop - Iteration {{iteration}}/{{max_iterations}}
+
+      You are in an iterative loop. Each iteration is a fresh session with no memory of previous iterations.
+
+      ## Your job this iteration
+      1. Read the plan at `{{ output_dir }}/plan.md`. Read the "## Memory" section FIRST — earlier iterations may have noted issues, decisions, or shortcuts you need to be aware of before starting.
+      2. In the "## Progress Tracking" section, find the FIRST task whose checkbox is still `[ ]`.
+      3. Find that task's detail section under "## Tasks" (matching by ID, e.g. `### {{ variables.task_id_prefix }}-001 - ...`).
+      4. Complete ONLY that single task — read code, make changes, run tests/checks as needed.
+      5. Mark the task done in the "## Progress Tracking" section by changing `[ ]` to `[x]` for that task only.
+      6. Update the "## Memory" section ONLY if this iteration produced information that a future iteration or a reviewer would otherwise miss AND that information would change how they act, judge the work, or trust the result.
+
+         The guiding test: "If the next iteration (which has no memory of this one) does NOT see this note, will it make a worse decision, redo work unnecessarily, or be unable to verify what was done?" If the answer is no, do not write anything.
+
+         Things that typically meet that bar (illustrative, not exhaustive):
+         - Non-obvious facts about the codebase, environment, or external systems that contradict the plan or an obvious assumption
+         - Decisions made under genuine ambiguity that another reasonable agent might have decided differently
+         - Workarounds, shortcuts, or partial fixes that should be revisited or audited
+         - Deferred work that is intentionally not in any task (and therefore won't otherwise be remembered)
+         - Constraints, dependencies, or invariants discovered while working that affect later tasks
+         - Information a human reviewer needs to fairly evaluate the result (e.g. "tests for X were skipped because of a flaky CI environment, not because they failed")
+
+         Things that do NOT belong here:
+         - "I completed task X" / "I edited file Y" — that is what the commit and the checkbox are for
+         - Restatements of the plan or task description
+         - Routine implementation details that any reader can see in the diff
+         - Praise, status, or progress narration
+
+         If nothing meets the bar, leave "## Memory" untouched. Most iterations should add nothing. When you do add an entry, keep it to one or two sentences and prefix it with the task ID, e.g. `- [{{ variables.task_id_prefix }}-003] Upstream library already retries; removed the retry wrapper from the plan and from the call site.`
+      7. Use `/af-git-commit` to commit your changes. The commit title MUST start with the task ID in brackets, e.g. `[{{ variables.task_id_prefix }}-001] <short subject>`.
+         - Note: the plan file at `{{ output_dir }}/plan.md` may live outside the repo (global user directory) or inside it but gitignored. Only commit the plan update if `plan.md` is actually tracked by git in this repo. If it is not tracked, just save the file with the Write tool and skip committing the plan itself — still commit any code changes you made.
+      8. STOP. Do not start the next task.
+
+      ## Handling blocked tasks
+      If the task cannot be completed (missing data, blocking error, unclear requirement):
+      - Mark it `[x]` in the "## Progress Tracking" section anyway.
+      - Append ` — SKIPPED: <reason>` to that line so it is visible.
+      - Add a short "**Skipped:** <reason>" note under the task's detail section.
+      - If `plan.md` is tracked by git in this repo, commit the plan update with the same `[ID]` prefix. Otherwise just save the file. Then STOP.
+
+      ## Completion signal
+      Only when EVERY task in "## Progress Tracking" is checked `[x]`, output:
+      ```json
+      {"ralph_complete": true, "promise": "{{ variables.completion_promise }}"}
+      ```
+
+      **IMPORTANT**:
+      - Complete exactly ONE task per iteration, then STOP. Do not chain tasks.
+      - Do NOT output the completion JSON unless every checkbox is `[x]`.
+      - The loop starts a new iteration automatically — you do not need any special output to end an iteration.
+    max-iterations: "{{ variables.max_iterations }}"
+    completion-promise: "{{ variables.completion_promise }}"
+    timeout-minutes: 30
+    checkpoint: true
+
+outputs:
+  - name: plan-loop-report
+    template: ralph-report.md.j2
+    path: plan-loop-report.md
+    when: completed
