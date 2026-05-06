@@ -46,7 +46,7 @@ export class CodexAdapter implements RuntimeAdapter {
 		const { model = "gpt-5.4", skipPermissions = false, cwd, outputDir } = options;
 		const sandbox = options.sandbox ?? "workspace-write";
 
-		const args: string[] = ["--full-auto", "--sandbox", sandbox, "exec"];
+		const args: string[] = ["exec", "--sandbox", sandbox];
 
 		if (options.printOutput) {
 			args.push("--json");

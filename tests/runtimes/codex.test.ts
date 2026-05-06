@@ -17,14 +17,9 @@ const adapter = new CodexAdapter();
 // --- buildCommand ---
 
 describe("CodexAdapter.buildCommand", () => {
-	it("always includes --full-auto flag", () => {
+	it("always includes exec subcommand as first arg", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello" });
-		expect(cmd.args).toContain("--full-auto");
-	});
-
-	it("always includes exec subcommand", () => {
-		const cmd = adapter.buildCommand({ prompt: "hello" });
-		expect(cmd.args).toContain("exec");
+		expect(cmd.args[0]).toBe("exec");
 	});
 
 	it("includes --sandbox flag with default workspace-write", () => {
