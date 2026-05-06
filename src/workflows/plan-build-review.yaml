@@ -91,7 +91,15 @@ steps:
       - name: run-create-branch
         type: prompt
         model: haiku
-        prompt: /af-git-branch {{ variables.type }} {{ variables.task }}
+        prompt: |
+          Your ONLY job is to create a git branch. Do not read other files, do not plan, do not implement anything from the task.
+
+          From the task description below, derive a short kebab-case branch name (3-5 words, summarizing the subject of the work — not the work itself).
+          Then run: /af-git-branch {{ variables.type }} <derived-name>
+          Stop immediately after the branch is created.
+
+          Task description (for naming context only):
+          {{ variables.task }}
 
   - name: implement
     type: ralph-loop
