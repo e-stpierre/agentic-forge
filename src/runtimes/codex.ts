@@ -1,4 +1,4 @@
-/** Codex runtime adapter. */
+﻿/** Codex runtime adapter. */
 
 import type {
 	RuntimeAdapter,
@@ -31,7 +31,7 @@ function parseCodexJsonLine(line: string): Record<string, unknown> | null {
 export class CodexAdapter implements RuntimeAdapter {
 	readonly id = "codex" as const;
 	readonly executableName = "codex";
-	readonly defaultModel = "gpt-5.4";
+	readonly defaultModel = "gpt-5.5";
 
 	checkAvailable(): boolean {
 		try {
@@ -43,7 +43,7 @@ export class CodexAdapter implements RuntimeAdapter {
 	}
 
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {
-		const { model = "gpt-5.4", skipPermissions = false, cwd, outputDir } = options;
+		const { model = "gpt-5.5", skipPermissions = false, cwd, outputDir } = options;
 		const sandbox = options.sandbox ?? "workspace-write";
 
 		const args: string[] = ["exec", "--sandbox", sandbox];

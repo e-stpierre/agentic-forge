@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+﻿import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -66,9 +66,9 @@ describe("Config defaults", () => {
 		expect((config.claude as Record<string, unknown>).model).toBe("sonnet");
 	});
 
-	it("should have gpt-5.4 as default codex model", () => {
+	it("should have gpt-5.5 as default codex model", () => {
 		const config = getDefaultConfig();
-		expect((config.codex as Record<string, unknown>).model).toBe("gpt-5.4");
+		expect((config.codex as Record<string, unknown>).model).toBe("gpt-5.5");
 	});
 
 	it("should have global as default outputDirectory", () => {

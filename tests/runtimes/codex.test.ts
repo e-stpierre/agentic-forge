@@ -1,4 +1,4 @@
-/** Tests for CodexAdapter. */
+﻿/** Tests for CodexAdapter. */
 
 import { describe, expect, it, vi } from "vitest";
 import { CodexAdapter } from "../../src/runtimes/codex.js";
@@ -74,11 +74,11 @@ describe("CodexAdapter.buildCommand", () => {
 		expect(cmd.args[idx + 1]).toBe("gpt-4o");
 	});
 
-	it("defaults to gpt-5.4 model", () => {
+	it("defaults to gpt-5.5 model", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello" });
 		const idx = cmd.args.indexOf("--model");
 		expect(idx).toBeGreaterThan(-1);
-		expect(cmd.args[idx + 1]).toBe("gpt-5.4");
+		expect(cmd.args[idx + 1]).toBe("gpt-5.5");
 	});
 
 	it("adds --add-dir when outputDir is provided", () => {

@@ -1,10 +1,10 @@
-name: codex-demo
+﻿name: codex-demo
 version: "1.0"
 description: Demo workflow using the Codex runtime to validate multi-runtime support
 
 settings:
   runtime: codex
-  model: gpt-5.4
+  model: gpt-5.5
   track-progress: true
   terminal-output: all
   bypass-permissions: false

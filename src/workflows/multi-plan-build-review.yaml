@@ -1,4 +1,4 @@
-name: multi-plan-build-review
+﻿name: multi-plan-build-review
 version: "1.0"
 description: Full SDLC workflow using mixed runtimes - Claude for planning and implementation, Codex for review
 
@@ -88,7 +88,7 @@ steps:
   - name: plan-review
     type: prompt
     runtime: codex
-    model: gpt-5.4
+    model: gpt-5.5
     prompt: |
       ## Plan Review and Refinement
 
@@ -191,7 +191,7 @@ steps:
       - name: codex-review
         type: prompt
         runtime: codex
-        model: gpt-5.4
+        model: gpt-5.5
         prompt: |
           ## Code Review
 

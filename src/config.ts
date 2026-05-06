@@ -1,4 +1,4 @@
-/** Configuration management for agentic-forge. */
+﻿/** Configuration management for agentic-forge. */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -21,7 +21,7 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		model: "sonnet",
 	},
 	codex: {
-		model: "gpt-5.4",
+		model: "gpt-5.5",
 		sandbox: "workspace-write",
 	},
 	execution: {

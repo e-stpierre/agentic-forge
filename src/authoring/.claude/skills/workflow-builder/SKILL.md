@@ -1,4 +1,4 @@
----
+﻿---
 name: af-workflow-builder
 description: Create, update, explain, validate, and debug agentic-forge YAML workflows with comprehensive schema knowledge
 argument-hint: <request>
@@ -100,9 +100,9 @@ Arguments: $ARGUMENTS
 | `sonnet` | Default: implementation, review, planning           |
 | `opus`   | Complex reasoning: architecture, large refactors    |
 
-**Codex models:** `gpt-5.4` (default), `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.2`, `gpt-5.1-codex-max`, `gpt-5.1-codex-mini`
+**Codex models:** `gpt-5.5` (default, frontier), `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2`
 
-Priority: step `model` > `settings.model` > config default > adapter default (`sonnet` for Claude, `gpt-5.4` for Codex)
+Priority: step `model` > `settings.model` > config default > adapter default (`sonnet` for Claude, `gpt-5.5` for Codex)
 
 **Important:** When a step uses a runtime different from the configured default, you **must** set `model` explicitly on the step. The default model belongs to the default runtime and will cause errors if passed to a different runtime.
 
