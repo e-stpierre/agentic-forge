@@ -8,6 +8,7 @@
 - Updated Codex model lists in docs and workflow-builder references to reflect actually available models
 - Updated `create-branch` step in `plan-build-review` and `multi-plan-build-review` to scope the agent to deriving a branch name only, preventing it from starting implementation work during the branch step
 - Fixed Codex adapter to use `--sandbox workspace-write` instead of the deprecated `--full-auto` flag
+- Fixed cumulative Codex agent output in BASE mode by finalizing each `agent_message` as its own turn, and switched non-TTY streams to plain incremental deltas instead of ANSI in-place rewrites
 
 ## 0.10.0
 
