@@ -1,4 +1,4 @@
-﻿/** Configuration management for agentic-forge. */
+/** Configuration management for agentic-forge. */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";

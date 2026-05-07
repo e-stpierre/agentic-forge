@@ -1,4 +1,4 @@
-﻿# Configuration
+# Configuration
 
 Agentic Forge uses a 3-layer configuration system. Values merge in order: **built-in defaults -> global config -> local config**. Local values always win.
 

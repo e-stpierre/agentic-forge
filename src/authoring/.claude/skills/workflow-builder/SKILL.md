@@ -1,4 +1,4 @@
-﻿---
+---
 name: af-workflow-builder
 description: Create, update, explain, validate, and debug agentic-forge YAML workflows with comprehensive schema knowledge
 argument-hint: <request>

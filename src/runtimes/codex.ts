@@ -1,4 +1,4 @@
-﻿/** Codex runtime adapter. */
+/** Codex runtime adapter. */
 
 import type {
 	RuntimeAdapter,

@@ -1,4 +1,4 @@
-﻿# Workflow Schema Reference
+# Workflow Schema Reference
 
 Complete reference for all agentic-forge workflow YAML properties.
 

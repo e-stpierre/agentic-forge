@@ -1,4 +1,4 @@
-﻿/** Tests for workflow orchestrator. */
+/** Tests for workflow orchestrator. */
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";

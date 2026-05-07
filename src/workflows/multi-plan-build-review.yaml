@@ -1,4 +1,4 @@
-﻿name: multi-plan-build-review
+name: multi-plan-build-review
 version: "1.0"
 description: Full SDLC workflow using mixed runtimes - Claude for planning and implementation, Codex for review
 

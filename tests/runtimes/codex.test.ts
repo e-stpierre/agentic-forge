@@ -1,4 +1,4 @@
-﻿/** Tests for CodexAdapter. */
+/** Tests for CodexAdapter. */
 
 import { describe, expect, it, vi } from "vitest";
 import { CodexAdapter } from "../../src/runtimes/codex.js";

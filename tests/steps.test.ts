@@ -1,4 +1,4 @@
-﻿/** Tests for step executors. */
+/** Tests for step executors. */
 
 import { mkdirSync, mkdtempSync } from "node:fs";
 import os from "node:os";
