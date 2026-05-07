@@ -106,9 +106,13 @@ export class CodexAdapter implements RuntimeAdapter {
 				if (itemObj.type === "agent_message") {
 					const text = itemObj.text;
 					if (typeof text === "string") {
+						// Each agent_message is a complete, standalone message.
+						// Mark as a new turn so prior streamed content is finalized
+						// before this message renders, preventing cumulative redraws.
 						return {
 							type: "text",
 							text,
+							isNewTurn: true,
 						};
 					}
 				}
