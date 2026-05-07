@@ -67,16 +67,16 @@ Full SDLC workflow: plan, implement iteratively, review, fix, and optionally cre
 
 ### Variables
 
-| Variable         | Type    | Required | Default | Description                                     |
-| ---------------- | ------- | -------- | ------- | ----------------------------------------------- |
-| `task`           | string  | Yes      |         | Feature or task description. When `plan` is also set, use `task` to pass additional instructions about the supplied plan (e.g., "the plan is only half done, finish the missing milestones"). |
-| `type`           | string  | No       | `auto`  | Task type: `feature`, `bug`, `chore`, or `auto` |
-| `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                   |
-| `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel) |
-| `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop      |
-| `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation       |
-| `create_pr`      | boolean | No       | `false` | Create a PR after completion                    |
-| `use_worktree`   | boolean | No       | `true`  | Run the workflow in an isolated git worktree    |
+| Variable         | Type    | Required | Default | Description                                                                                                                                                                                              |
+| ---------------- | ------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `task`           | string  | Yes      |         | Feature or task description. When `plan` is also set, use `task` to pass additional instructions about the supplied plan (e.g., "the plan is only half done, finish the missing milestones").            |
+| `type`           | string  | No       | `auto`  | Task type: `feature`, `bug`, `chore`, or `auto`                                                                                                                                                          |
+| `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                                                                                                                                                                            |
+| `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel)                                                                                                                                                          |
+| `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop                                                                                                                                                               |
+| `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation                                                                                                                                                                |
+| `create_pr`      | boolean | No       | `false` | Create a PR after completion                                                                                                                                                                             |
+| `use_worktree`   | boolean | No       | `true`  | Run the workflow in an isolated git worktree                                                                                                                                                             |
 | `plan`           | string  | No       | `""`    | Path to an existing plan file. When set, the plan step copies this file to the output directory instead of generating a new one, and applies any additional instructions from `task` to the copied plan. |
 
 ### Examples
@@ -163,12 +163,12 @@ Generate a checkbox-tracked plan from arbitrary input (free-form prompt, task li
 
 ### Variables
 
-| Variable             | Type   | Required | Default              | Description                                                                                  |
-| -------------------- | ------ | -------- | -------------------- | -------------------------------------------------------------------------------------------- |
+| Variable             | Type   | Required | Default              | Description                                                                                                                      |
+| -------------------- | ------ | -------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `input`              | string | Yes      |                      | Source material the plan is built from. Can be a list of tasks, a free-form prompt, file paths to documents, or any combination. |
-| `task_id_prefix`     | string | No       | `TASK`               | Prefix for task IDs (e.g. `TASK` -> `TASK-001`). Commit titles are prefixed with `[<ID>]`.  |
-| `completion_promise` | string | No       | `ALL_TASKS_COMPLETE` | Text signal indicating completion                                                            |
-| `max_iterations`     | number | No       | `25`                 | Maximum iterations                                                                           |
+| `task_id_prefix`     | string | No       | `TASK`               | Prefix for task IDs (e.g. `TASK` -> `TASK-001`). Commit titles are prefixed with `[<ID>]`.                                       |
+| `completion_promise` | string | No       | `ALL_TASKS_COMPLETE` | Text signal indicating completion                                                                                                |
+| `max_iterations`     | number | No       | `25`                 | Maximum iterations                                                                                                               |
 
 ### Examples
 
@@ -321,15 +321,15 @@ Full SDLC workflow using mixed runtimes — Claude for planning and implementati
 
 ### Variables
 
-| Variable         | Type    | Required | Default | Description                                     |
-| ---------------- | ------- | -------- | ------- | ----------------------------------------------- |
-| `task`           | string  | Yes      |         | Feature or task description. When `plan` is also set, use `task` to pass additional instructions about the supplied plan (e.g., "the plan is only half done, finish the missing milestones"). |
-| `type`           | string  | No       | `auto`  | Task type: `feature`, `bug`, `chore`, or `auto` |
-| `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                   |
-| `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel) |
-| `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop      |
-| `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation       |
-| `create_pr`      | boolean | No       | `false` | Create a PR after completion                    |
+| Variable         | Type    | Required | Default | Description                                                                                                                                                                                                                                               |
+| ---------------- | ------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `task`           | string  | Yes      |         | Feature or task description. When `plan` is also set, use `task` to pass additional instructions about the supplied plan (e.g., "the plan is only half done, finish the missing milestones").                                                             |
+| `type`           | string  | No       | `auto`  | Task type: `feature`, `bug`, `chore`, or `auto`                                                                                                                                                                                                           |
+| `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                                                                                                                                                                                                                             |
+| `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel)                                                                                                                                                                                                           |
+| `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop                                                                                                                                                                                                                |
+| `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation                                                                                                                                                                                                                 |
+| `create_pr`      | boolean | No       | `false` | Create a PR after completion                                                                                                                                                                                                                              |
 | `plan`           | string  | No       | `""`    | Path to an existing plan file. When set, the plan step copies this file to the output directory instead of generating a new one, and applies any additional instructions from `task` to the copied plan. The Codex plan-review step still runs afterward. |
 
 ### Examples
