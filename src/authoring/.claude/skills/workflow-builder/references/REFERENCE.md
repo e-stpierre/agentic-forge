@@ -39,7 +39,7 @@ All settings are optional with sensible defaults.
 **Model names are runtime-specific:**
 
 - Claude: `haiku`, `sonnet`, `opus` (or full IDs like `claude-opus-4-6`)
-- Codex: `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2-codex`, `gpt-5.2`, `gpt-5.1-codex-max`, `gpt-5.1-codex-mini`
+- Codex: `gpt-5.5` (frontier), `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2`
 
 **Per-runtime default models:** Each runtime resolves its own default model from config (`claude.model` or `codex.model`). Steps that use a non-default runtime no longer need an explicit model unless you want to override the per-runtime default.
 

@@ -17,14 +17,9 @@ const adapter = new CodexAdapter();
 // --- buildCommand ---
 
 describe("CodexAdapter.buildCommand", () => {
-	it("always includes --full-auto flag", () => {
+	it("always includes exec subcommand as first arg", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello" });
-		expect(cmd.args).toContain("--full-auto");
-	});
-
-	it("always includes exec subcommand", () => {
-		const cmd = adapter.buildCommand({ prompt: "hello" });
-		expect(cmd.args).toContain("exec");
+		expect(cmd.args[0]).toBe("exec");
 	});
 
 	it("includes --sandbox flag with default workspace-write", () => {
@@ -79,11 +74,11 @@ describe("CodexAdapter.buildCommand", () => {
 		expect(cmd.args[idx + 1]).toBe("gpt-4o");
 	});
 
-	it("defaults to gpt-5.4 model", () => {
+	it("defaults to gpt-5.5 model", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello" });
 		const idx = cmd.args.indexOf("--model");
 		expect(idx).toBeGreaterThan(-1);
-		expect(cmd.args[idx + 1]).toBe("gpt-5.4");
+		expect(cmd.args[idx + 1]).toBe("gpt-5.5");
 	});
 
 	it("adds --add-dir when outputDir is provided", () => {

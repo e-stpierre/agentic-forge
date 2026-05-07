@@ -21,7 +21,7 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		model: "sonnet",
 	},
 	codex: {
-		model: "gpt-5.4",
+		model: "gpt-5.5",
 		sandbox: "workspace-write",
 	},
 	execution: {

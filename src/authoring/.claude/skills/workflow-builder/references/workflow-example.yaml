@@ -146,9 +146,9 @@ steps:
     runtime: codex
 
     # Optional: Model to use. When using a different runtime, specify a model compatible
-    # with that runtime (e.g. "gpt-5.4" for codex). For the default claude runtime,
+    # with that runtime (e.g. "gpt-5.5" for codex). For the default claude runtime,
     # use "sonnet", "haiku", or "opus".
-    model: gpt-5.4
+    model: gpt-5.5
 
   # ==================== SKILL INVOCATION ====================
   # Invoke a Claude slash command skill

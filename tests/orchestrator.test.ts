@@ -32,7 +32,7 @@ vi.mock("../src/config.js", async (importOriginal) => {
 				terminalOutput: "base",
 			},
 			claude: { model: "sonnet" },
-			codex: { model: "gpt-5.4", sandbox: "workspace-write" },
+			codex: { model: "gpt-5.5", sandbox: "workspace-write" },
 			execution: { maxWorkers: 4, pollingIntervalSeconds: 5 },
 		})),
 	};

@@ -283,6 +283,44 @@ describe("ConsoleOutput", () => {
 		c.streamComplete();
 	});
 
+	it("does not reprint accumulated BASE text when output is not a TTY", () => {
+		const { console: c, getOutput } = createTestConsole("base");
+		c.streamText("First update. ");
+		c.streamText("Second update.");
+		c.streamComplete();
+
+		const output = getOutput();
+		expect(output.match(/First update/g)).toHaveLength(1);
+		expect(output.match(/Second update/g)).toHaveLength(1);
+		expect(output).toContain("First update. Second update.");
+		expect(output.endsWith("\n")).toBe(true);
+	});
+
+	it("uses the target stream TTY state for BASE streaming", () => {
+		const originalIsTTY = process.stdout.isTTY;
+		Object.defineProperty(process.stdout, "isTTY", {
+			value: true,
+			configurable: true,
+		});
+
+		try {
+			const { console: c, getOutput } = createTestConsole("base");
+			c.streamText("First update. ");
+			c.streamText("Second update.");
+			c.streamComplete();
+
+			const output = getOutput();
+			expect(output).not.toContain("\x1b[");
+			expect(output.match(/First update/g)).toHaveLength(1);
+			expect(output.match(/Second update/g)).toHaveLength(1);
+		} finally {
+			Object.defineProperty(process.stdout, "isTTY", {
+				value: originalIsTTY,
+				configurable: true,
+			});
+		}
+	});
+
 	it("resets accumulated text on stream_complete", () => {
 		const { console: c } = createTestConsole("base");
 		c.streamText("First stream message");

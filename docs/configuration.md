@@ -101,7 +101,7 @@ Codex runtime configuration. Only applies when using the `codex` runtime.
 
 | Key             | Type   | Default             | Description                                                              |
 | --------------- | ------ | ------------------- | ------------------------------------------------------------------------ |
-| `codex.model`   | string | `"gpt-5.4"`         | Default Codex model                                                      |
+| `codex.model`   | string | `"gpt-5.5"`         | Default Codex model                                                      |
 | `codex.sandbox` | string | `"workspace-write"` | Sandbox mode: `"read-only"`, `"workspace-write"`, `"danger-full-access"` |
 
 > **Backward compatibility:** `defaults.model` is still honored as a global fallback if set. Per-runtime keys (`claude.model`, `codex.model`) take priority.
@@ -162,7 +162,7 @@ Use Codex CLI as the default runtime for all workflows in a project:
     "runtime": "codex"
   },
   "codex": {
-    "model": "gpt-5.4",
+    "model": "gpt-5.5",
     "sandbox": "workspace-write"
   }
 }

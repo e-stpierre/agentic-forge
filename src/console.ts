@@ -41,6 +41,11 @@ export function supportsColor(): boolean {
 	return process.stdout.isTTY;
 }
 
+function supportsInplaceOutput(stream: Writable): boolean {
+	const maybeTty = stream as Writable & { isTTY?: boolean };
+	return maybeTty.isTTY === true;
+}
+
 export function colorize(text: string, ...colors: Color[]): string {
 	if (!supportsColor()) {
 		return text;
@@ -339,6 +344,7 @@ export class ConsoleOutput {
 	stream: Writable;
 	_baseAccumulatedText = "";
 	private baseLastDisplayLines = 0;
+	private basePlainStreaming = false;
 	_parallelHandler: ParallelOutputHandler;
 	private formatModelName: ModelFormatter | null = null;
 
@@ -361,7 +367,7 @@ export class ConsoleOutput {
 		const lines = message.trim().split("\n");
 		const numLines = lines.length;
 
-		if (supportsColor()) {
+		if (supportsInplaceOutput(this.stream)) {
 			if (this.baseLastDisplayLines > 0) {
 				this.stream.write(`\x1b[${this.baseLastDisplayLines}A`);
 				this.stream.write("\x1b[J");
@@ -378,10 +384,25 @@ export class ConsoleOutput {
 	}
 
 	private clearInplace(): void {
-		if (this.baseLastDisplayLines > 0 && supportsColor()) {
+		if (this.baseLastDisplayLines > 0 && supportsInplaceOutput(this.stream)) {
 			this.stream.write(`\x1b[${this.baseLastDisplayLines}A\x1b[J`);
 		}
 		this.baseLastDisplayLines = 0;
+	}
+
+	private printPlainBaseDelta(text: string): void {
+		const prefix = "...";
+		const formatDelta = (delta: string) => delta.replace(/\n/g, "\n    ");
+
+		if (!this.basePlainStreaming) {
+			const trimmedStart = text.replace(/^\s+/, "");
+			if (!trimmedStart) return;
+			this.stream.write(`  ${prefix} ${formatDelta(trimmedStart)}`);
+			this.basePlainStreaming = true;
+			return;
+		}
+
+		this.stream.write(formatDelta(text));
 	}
 
 	// --- Parallel mode delegation ---
@@ -464,6 +485,7 @@ export class ConsoleOutput {
 	stepComplete(stepName: string, summary?: string | null): void {
 		if (this.level === OutputLevel.BASE && !this.isParallelMode()) {
 			this.baseLastDisplayLines = 0;
+			this.basePlainStreaming = false;
 			this._baseAccumulatedText = "";
 		}
 
@@ -501,6 +523,7 @@ export class ConsoleOutput {
 	stepFailed(stepName: string, error?: string | null): void {
 		if (this.level === OutputLevel.BASE && !this.isParallelMode()) {
 			this.baseLastDisplayLines = 0;
+			this.basePlainStreaming = false;
 			this._baseAccumulatedText = "";
 		}
 
@@ -562,6 +585,7 @@ export class ConsoleOutput {
 	ralphIterationStart(stepName: string, iteration: number, maxIterations: number): void {
 		if (this.level === OutputLevel.BASE && !this.isParallelMode()) {
 			this.baseLastDisplayLines = 0;
+			this.basePlainStreaming = false;
 			this._baseAccumulatedText = "";
 		}
 
@@ -592,6 +616,7 @@ export class ConsoleOutput {
 	ralphComplete(stepName: string, iteration: number, maxIterations: number): void {
 		if (this.level === OutputLevel.BASE && !this.isParallelMode()) {
 			this.baseLastDisplayLines = 0;
+			this.basePlainStreaming = false;
 			this._baseAccumulatedText = "";
 		}
 
@@ -603,6 +628,7 @@ export class ConsoleOutput {
 	ralphMaxIterations(stepName: string, maxIterations: number): void {
 		if (this.level === OutputLevel.BASE && !this.isParallelMode()) {
 			this.baseLastDisplayLines = 0;
+			this.basePlainStreaming = false;
 			this._baseAccumulatedText = "";
 		}
 
@@ -697,6 +723,11 @@ export class ConsoleOutput {
 				this._baseAccumulatedText = this._baseAccumulatedText.slice(-MAX_ACCUMULATED_TEXT);
 			}
 
+			if (!supportsInplaceOutput(this.stream)) {
+				this.printPlainBaseDelta(text);
+				return;
+			}
+
 			if (this._baseAccumulatedText.trim()) {
 				const prefix = colorize("...", Color.DIM);
 				const lines = this._baseAccumulatedText.trim().split("\n");
@@ -714,6 +745,10 @@ export class ConsoleOutput {
 		if (this.level === OutputLevel.ALL && this.isParallelMode()) {
 			this._parallelHandler.enqueueCurrentMessage();
 		}
+		if (this.level === OutputLevel.BASE && this.basePlainStreaming) {
+			this.stream.write("\n");
+		}
+		this.basePlainStreaming = false;
 		this._baseAccumulatedText = "";
 	}
 }

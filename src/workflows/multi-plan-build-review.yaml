@@ -58,19 +58,37 @@ variables:
     required: false
     default: false
     description: Whether to run in an isolated worktree
+  - name: plan
+    type: string
+    required: false
+    default: ""
+    description: Path to an existing plan file. If provided, it is copied to the output directory instead of generating a new one.
 
 steps:
   - name: plan
     type: prompt
     runtime: claude
     model: opus
-    prompt: /af-sdlc-plan {{ workflow_id }} {{ variables.type }} "{{ output_dir }}" {{ variables.explore_agents }} {{ variables.task }}
+    prompt: |
+      {% if variables.plan %}
+      An existing plan has been provided at "{{ variables.plan }}".
+
+      1. Read the source plan using the Read tool.
+      2. Write its exact contents to "{{ output_dir }}/plan.md" using the Write tool. Do not restructure or rewrite the plan.
+      3. Review the task description below for any additional instructions the user wants applied to the plan. Examples: "the plan is only half done, complete the missing milestones", "also add tests for X", "the plan is missing a rollout milestone". If such instructions are present, edit "{{ output_dir }}/plan.md" to incorporate them (add/expand milestones, add tasks, clarify steps). Keep the existing plan content intact unless the user explicitly asked to change it.
+      4. If the task description contains no instructions beyond a reference to the plan, leave the copied plan unchanged.
+
+      User task description (may or may not contain additional instructions):
+      {{ variables.task }}
+      {% else %}
+      /af-sdlc-plan {{ workflow_id }} {{ variables.type }} "{{ output_dir }}" {{ variables.explore_agents }} {{ variables.task }}
+      {% endif %}
     checkpoint: true
 
   - name: plan-review
     type: prompt
     runtime: codex
-    model: gpt-5.4
+    model: gpt-5.5
     prompt: |
       ## Plan Review and Refinement
 
@@ -119,7 +137,15 @@ steps:
         type: prompt
         runtime: claude
         model: haiku
-        prompt: /af-git-branch {{ variables.type }} {{ variables.task }}
+        prompt: |
+          Your ONLY job is to create a git branch. Do not read other files, do not plan, do not implement anything from the task.
+
+          From the task description below, derive a short kebab-case branch name (3-5 words, summarizing the subject of the work — not the work itself).
+          Then run: /af-git-branch {{ variables.type }} <derived-name>
+          Stop immediately after the branch is created.
+
+          Task description (for naming context only):
+          {{ variables.task }}
 
   - name: implement
     type: ralph-loop
@@ -173,7 +199,7 @@ steps:
       - name: codex-review
         type: prompt
         runtime: codex
-        model: gpt-5.4
+        model: gpt-5.5
         prompt: |
           ## Code Review
 

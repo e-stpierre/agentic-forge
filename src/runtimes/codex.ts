@@ -31,7 +31,7 @@ function parseCodexJsonLine(line: string): Record<string, unknown> | null {
 export class CodexAdapter implements RuntimeAdapter {
 	readonly id = "codex" as const;
 	readonly executableName = "codex";
-	readonly defaultModel = "gpt-5.4";
+	readonly defaultModel = "gpt-5.5";
 
 	checkAvailable(): boolean {
 		try {
@@ -43,10 +43,10 @@ export class CodexAdapter implements RuntimeAdapter {
 	}
 
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {
-		const { model = "gpt-5.4", skipPermissions = false, cwd, outputDir } = options;
+		const { model = "gpt-5.5", skipPermissions = false, cwd, outputDir } = options;
 		const sandbox = options.sandbox ?? "workspace-write";
 
-		const args: string[] = ["--full-auto", "--sandbox", sandbox, "exec"];
+		const args: string[] = ["exec", "--sandbox", sandbox];
 
 		if (options.printOutput) {
 			args.push("--json");
@@ -106,9 +106,13 @@ export class CodexAdapter implements RuntimeAdapter {
 				if (itemObj.type === "agent_message") {
 					const text = itemObj.text;
 					if (typeof text === "string") {
+						// Each agent_message is a complete, standalone message.
+						// Mark as a new turn so prior streamed content is finalized
+						// before this message renders, preventing cumulative redraws.
 						return {
 							type: "text",
 							text,
+							isNewTurn: true,
 						};
 					}
 				}

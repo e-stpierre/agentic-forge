@@ -201,13 +201,13 @@ describe("resolveModel", () => {
 	});
 
 	it("should resolve per-runtime model from config", () => {
-		const codexAdapter = { ...createMockAdapter(), id: "codex" as const, defaultModel: "gpt-5.4" };
+		const codexAdapter = { ...createMockAdapter(), id: "codex" as const, defaultModel: "gpt-5.5" };
 		const context = createStepContext({
-			config: { codex: { model: "gpt-5.4" } },
+			config: { codex: { model: "gpt-5.5" } },
 			runtimeAdapter: codexAdapter,
 			workflowSettings: defaultSettings(),
 		});
-		expect(resolveModel(context, null)).toBe("gpt-5.4");
+		expect(resolveModel(context, null)).toBe("gpt-5.5");
 	});
 
 	it("should fall back to defaults.model for backward compatibility", () => {
