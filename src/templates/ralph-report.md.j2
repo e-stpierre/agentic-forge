@@ -14,6 +14,8 @@ ID: {{ workflow.id | default(workflow.workflow_id, true) }}
 
 {% if inputs.task %}
 {{ inputs.task }}
+{% elif inputs.input %}
+{{ inputs.input }}
 {% else %}
 _No task description provided_
 {% endif %}
