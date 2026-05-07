@@ -3,6 +3,11 @@
 ## 0.10.1
 
 - Added `plan` variable to `plan-build-review` and `multi-plan-build-review` workflows; when set to a path, the existing plan is copied to the output directory instead of generating a new one
+- Added `plan-loop` workflow that generates a checkbox-tracked plan from arbitrary input and drives a Ralph loop completing one task per iteration with Memory carryover and per-task commits
+- Updated default Codex model from `gpt-5.4` to `gpt-5.5` across adapter, config, tests, and bundled workflows
+- Updated Codex model lists in docs and workflow-builder references to reflect actually available models
+- Updated `create-branch` step in `plan-build-review` and `multi-plan-build-review` to scope the agent to deriving a branch name only, preventing it from starting implementation work during the branch step
+- Fixed Codex adapter to use `--sandbox workspace-write` instead of the deprecated `--full-auto` flag
 
 ## 0.10.0
 
