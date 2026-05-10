@@ -1,7 +1,8 @@
 /** Tests for CodexAdapter. */
 
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { CodexAdapter } from "../../src/runtimes/codex.js";
+import { CodexAdapter, buildWritableRootsConfig } from "../../src/runtimes/codex.js";
 import type { RuntimeRunOptions } from "../../src/runtimes/types.js";
 
 vi.mock("../../src/runtimes/utils.js", async (importOriginal) => {
@@ -85,7 +86,67 @@ describe("CodexAdapter.buildCommand", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello", outputDir: "/out/dir" });
 		const idx = cmd.args.indexOf("--add-dir");
 		expect(idx).toBeGreaterThan(-1);
-		expect(cmd.args[idx + 1]).toBe("/out/dir");
+		expect(cmd.args[idx + 1]).toBe(path.resolve("/out/dir"));
+	});
+
+	it("adds cwd and outputDir as writable roots", () => {
+		const cmd = adapter.buildCommand({
+			prompt: "hello",
+			cwd: "/repo",
+			outputDir: "/out/dir",
+		});
+		const addDirs = cmd.args
+			.map((arg, index) => (cmd.args[index - 1] === "--add-dir" ? arg : null))
+			.filter((arg): arg is string => arg !== null);
+
+		expect(addDirs).toEqual([path.resolve("/repo"), path.resolve("/out/dir")]);
+	});
+
+	it("adds config writable roots for workspace-write runs", () => {
+		const cmd = adapter.buildCommand({
+			prompt: "hello",
+			cwd: "/repo",
+			outputDir: "/out/dir",
+			sandbox: "workspace-write",
+		});
+		const idx = cmd.args.indexOf("-c");
+
+		expect(idx).toBeGreaterThan(-1);
+		expect(cmd.args[idx + 1]).toBe(
+			buildWritableRootsConfig([path.resolve("/repo"), path.resolve("/out/dir")]),
+		);
+	});
+
+	it("does not add config writable roots for non-workspace-write runs", () => {
+		const cmd = adapter.buildCommand({
+			prompt: "hello",
+			cwd: "/repo",
+			outputDir: "/out/dir",
+			sandbox: "read-only",
+		});
+
+		expect(cmd.args).not.toContain("-c");
+	});
+
+	it("formats Windows writable roots for TOML parsing", () => {
+		const config = buildWritableRootsConfig([
+			"C:\\Users\\etien\\AppData\\Roaming\\agentic-forge\\outputs",
+		]);
+
+		expect(config).toBe(
+			'sandbox_workspace_write.writable_roots=["C:/Users/etien/AppData/Roaming/agentic-forge/outputs"]',
+		);
+	});
+
+	it("deduplicates cwd and outputDir writable roots", () => {
+		const cmd = adapter.buildCommand({
+			prompt: "hello",
+			cwd: "/repo",
+			outputDir: "/repo",
+		});
+		const addDirs = cmd.args.filter((_, i) => cmd.args[i - 1] === "--add-dir");
+
+		expect(addDirs).toEqual([path.resolve("/repo")]);
 	});
 
 	it("passes prompt as positional arg and leaves stdinInput empty", () => {

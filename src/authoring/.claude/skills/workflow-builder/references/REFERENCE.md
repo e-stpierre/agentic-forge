@@ -128,17 +128,18 @@ Reference in templates: `{{ variables.task }}`, `{{ variables.max_iterations }}`
 
 These properties apply to all step types:
 
-| Key               | Type   | Default      | Valid Values                                                      | Description                                                   |
-| ----------------- | ------ | ------------ | ----------------------------------------------------------------- | ------------------------------------------------------------- |
-| `name`            | string | **required** | kebab-case                                                        | Unique step identifier                                        |
-| `type`            | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type                                                     |
-| `model`           | string | null         | Runtime-dependent (see Model Names)                               | Override model for this step                                  |
-| `runtime`         | string | null         | claude, codex                                                     | Override runtime for this step (never overridden by CLI flag) |
-| `timeout-minutes` | int    | null         | 1+                                                                | Override workflow timeout                                     |
-| `max-retry`       | int    | null         | 0+                                                                | Override workflow max-retry                                   |
-| `on-error`        | string | `"retry"`    | retry, skip, fail                                                 | Error handling strategy                                       |
-| `checkpoint`      | bool   | `false`      | true/false                                                        | Create checkpoint after step                                  |
-| `depends-on`      | string | null         | step name                                                         | Step dependency                                               |
+| Key                  | Type   | Default      | Valid Values                                                      | Description                                                   |
+| -------------------- | ------ | ------------ | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| `name`               | string | **required** | kebab-case                                                        | Unique step identifier                                        |
+| `type`               | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type                                                     |
+| `model`              | string | null         | Runtime-dependent (see Model Names)                               | Override model for this step                                  |
+| `runtime`            | string | null         | claude, codex                                                     | Override runtime for this step (never overridden by CLI flag) |
+| `timeout-minutes`    | int    | null         | 1+                                                                | Override workflow timeout                                     |
+| `max-retry`          | int    | null         | 0+                                                                | Override workflow max-retry                                   |
+| `on-error`           | string | `"retry"`    | retry, skip, fail                                                 | Error handling strategy                                       |
+| `checkpoint`         | bool   | `false`      | true/false                                                        | Create checkpoint after step                                  |
+| `depends-on`         | string | null         | step name                                                         | Step dependency                                               |
+| `bypass-permissions` | bool   | null         | true/false                                                        | Override workflow-level permission bypass for this step       |
 
 ### prompt
 

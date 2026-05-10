@@ -1,5 +1,7 @@
 /** Codex runtime adapter. */
 
+import path from "node:path";
+
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -25,6 +27,17 @@ function parseCodexJsonLine(line: string): Record<string, unknown> | null {
 	} catch {
 		return null;
 	}
+}
+
+function toCodexConfigPath(dir: string): string {
+	// Callers pass already-resolved absolute paths. Do not call path.resolve here:
+	// on POSIX hosts it would rewrite Windows drive-letter inputs (e.g. "C:\\Users\\...")
+	// into cwd-relative paths, breaking the writable_roots value for cross-platform tests.
+	return dir.replace(/\\/g, "/");
+}
+
+export function buildWritableRootsConfig(dirs: string[]): string {
+	return `sandbox_workspace_write.writable_roots=${JSON.stringify(dirs.map(toCodexConfigPath))}`;
 }
 
 /** Codex CLI adapter. */
@@ -64,9 +77,19 @@ export class CodexAdapter implements RuntimeAdapter {
 			args.push("--model", model);
 		}
 
-		// Add output directory write access
-		if (outputDir) {
-			args.push("--add-dir", outputDir);
+		// Grant explicit write roots for Codex workspace-write runs. The workflow
+		// output directory may live outside the target repo when global outputs are enabled.
+		const writeDirs = new Set<string>();
+		for (const dir of [cwd, outputDir]) {
+			if (dir) {
+				writeDirs.add(path.resolve(dir));
+			}
+		}
+		for (const dir of writeDirs) {
+			args.push("--add-dir", dir);
+		}
+		if (writeDirs.size > 0 && sandbox === "workspace-write") {
+			args.push("-c", buildWritableRootsConfig([...writeDirs]));
 		}
 
 		// Build environment

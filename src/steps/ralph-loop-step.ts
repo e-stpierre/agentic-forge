@@ -53,7 +53,8 @@ export class RalphLoopStepExecutor extends StepExecutor {
 		}
 
 		const timeout = (step.stepTimeoutMinutes ?? 30) * 60;
-		const bypassPermissions = context.workflowSettings?.bypassPermissions ?? false;
+		const bypassPermissions =
+			step.bypassPermissions ?? context.workflowSettings?.bypassPermissions ?? false;
 		const allowedTools = context.workflowSettings?.requiredTools?.length
 			? context.workflowSettings.requiredTools
 			: null;

@@ -199,6 +199,7 @@ export class WorkflowParser {
 			onError: "retry",
 			checkpoint: false,
 			dependsOn: null,
+			bypassPermissions: null,
 			worktree: null,
 			onFailure: "fail",
 		};
@@ -251,6 +252,7 @@ export class WorkflowParser {
 		step.onError = (data["on-error"] as string) ?? "retry";
 		step.checkpoint = (data.checkpoint as boolean) ?? false;
 		step.dependsOn = (data["depends-on"] as string) ?? null;
+		step.bypassPermissions = (data["bypass-permissions"] as boolean | undefined) ?? null;
 
 		return step;
 	}
