@@ -104,6 +104,8 @@ Codex runtime configuration. Only applies when using the `codex` runtime.
 | `codex.model`   | string | `"gpt-5.5"`         | Default Codex model                                                      |
 | `codex.sandbox` | string | `"workspace-write"` | Sandbox mode: `"read-only"`, `"workspace-write"`, `"danger-full-access"` |
 
+On native Windows, Codex also applies its Windows OS sandbox. When `codex.sandbox` is `"workspace-write"` and Agentic Forge stores workflow outputs globally, Codex can read `%APPDATA%\agentic-forge\outputs` but the Windows sandbox can deny writes there even when the directory is supplied with `--add-dir`. Agentic Forge automatically runs those cross-directory Codex steps with `danger-full-access` on Windows. Set `outputDirectory` to `"local"` for a project if you need Codex to remain in `workspace-write`.
+
 > **Backward compatibility:** `defaults.model` is still honored as a global fallback if set. Per-runtime keys (`claude.model`, `codex.model`) take priority.
 
 ### execution

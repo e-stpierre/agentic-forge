@@ -2,7 +2,7 @@
 
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { CodexAdapter } from "../../src/runtimes/codex.js";
+import { CodexAdapter, getEffectiveCodexSandbox } from "../../src/runtimes/codex.js";
 import type { RuntimeRunOptions } from "../../src/runtimes/types.js";
 
 vi.mock("../../src/runtimes/utils.js", async (importOriginal) => {
@@ -34,6 +34,40 @@ describe("CodexAdapter.buildCommand", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello", sandbox: "read-only" });
 		const idx = cmd.args.indexOf("--sandbox");
 		expect(cmd.args[idx + 1]).toBe("read-only");
+	});
+
+	it("falls back to danger-full-access for Windows global output writes", () => {
+		const sandbox = getEffectiveCodexSandbox(
+			"workspace-write",
+			path.join(path.sep, "repo"),
+			path.join(path.sep, "global", "outputs"),
+			"win32",
+		);
+
+		expect(sandbox).toBe("danger-full-access");
+	});
+
+	it("keeps workspace-write on Windows when output is inside the workspace", () => {
+		const repo = path.join(path.sep, "repo");
+		const sandbox = getEffectiveCodexSandbox(
+			"workspace-write",
+			repo,
+			path.join(repo, "agentic", "outputs"),
+			"win32",
+		);
+
+		expect(sandbox).toBe("workspace-write");
+	});
+
+	it("does not override explicit read-only sandbox for Windows global output writes", () => {
+		const sandbox = getEffectiveCodexSandbox(
+			"read-only",
+			path.join(path.sep, "repo"),
+			path.join(path.sep, "global", "outputs"),
+			"win32",
+		);
+
+		expect(sandbox).toBe("read-only");
 	});
 
 	it("adds --json flag when printOutput is true", () => {
