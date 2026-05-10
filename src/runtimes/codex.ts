@@ -30,7 +30,10 @@ function parseCodexJsonLine(line: string): Record<string, unknown> | null {
 }
 
 function toCodexConfigPath(dir: string): string {
-	return path.resolve(dir).replace(/\\/g, "/");
+	// Callers pass already-resolved absolute paths. Do not call path.resolve here:
+	// on POSIX hosts it would rewrite Windows drive-letter inputs (e.g. "C:\\Users\\...")
+	// into cwd-relative paths, breaking the writable_roots value for cross-platform tests.
+	return dir.replace(/\\/g, "/");
 }
 
 export function buildWritableRootsConfig(dirs: string[]): string {
