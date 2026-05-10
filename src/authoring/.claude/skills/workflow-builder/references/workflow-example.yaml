@@ -140,6 +140,9 @@ steps:
     # Optional: Create checkpoint after this step completes
     checkpoint: false
 
+    # Optional: Override workflow-level bypass-permissions for this step only
+    bypass-permissions: false
+
     # Optional: Override the runtime for this specific step
     # This is NEVER overridden by the --runtime CLI flag - step.runtime always wins
     # Example: run this analysis step with codex

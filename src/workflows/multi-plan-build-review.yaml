@@ -89,6 +89,9 @@ steps:
     type: prompt
     runtime: codex
     model: gpt-5.5
+    # Set to true only if your Codex Windows sandbox cannot write global outputs.
+    # Prefer outputDirectory: "local" or workspace-write with writable_roots first.
+    bypass-permissions: false
     prompt: |
       ## Plan Review and Refinement
 
@@ -200,6 +203,9 @@ steps:
         type: prompt
         runtime: codex
         model: gpt-5.5
+        # Set to true only if your Codex Windows sandbox cannot write global outputs.
+        # Prefer outputDirectory: "local" or workspace-write with writable_roots first.
+        bypass-permissions: false
         prompt: |
           ## Code Review
 

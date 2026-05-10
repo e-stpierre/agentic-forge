@@ -141,7 +141,7 @@ Configure globally or per-project:
 af config set codex.sandbox workspace-write --global
 ```
 
-> **Windows note**: Native Windows Codex uses an OS sandbox (`elevated` or `unelevated`) in addition to the Codex sandbox mode. On Windows, Agentic Forge automatically falls back from `workspace-write` to `danger-full-access` for Codex steps when the workflow output directory is global and outside the workspace, because the native sandbox can deny writes to `%APPDATA%\agentic-forge\outputs` even when the directory is passed with `--add-dir`. Use `outputDirectory: "local"` if you need Codex to stay in `workspace-write` on Windows.
+> **Windows note**: Native Windows Codex uses an OS sandbox (`elevated` or `unelevated`) in addition to the Codex sandbox mode. Agentic Forge passes workflow output directories through both `--add-dir` and `sandbox_workspace_write.writable_roots` so Codex can write global outputs under `workspace-write`. If your Windows sandbox still denies those writes, set `outputDirectory: "local"` to keep workflow outputs inside the workspace, or explicitly set `bypass-permissions: true` for workflows where you accept Codex's `danger-full-access` mode.
 
 ## Setting the Default Runtime
 

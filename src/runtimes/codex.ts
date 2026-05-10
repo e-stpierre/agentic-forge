@@ -29,32 +29,12 @@ function parseCodexJsonLine(line: string): Record<string, unknown> | null {
 	}
 }
 
-function isPathInside(parent: string, child: string): boolean {
-	const relative = path.relative(path.resolve(parent), path.resolve(child));
-	return (
-		relative === "" || (!!relative && !relative.startsWith("..") && !path.isAbsolute(relative))
-	);
+function toCodexConfigPath(dir: string): string {
+	return path.resolve(dir).replace(/\\/g, "/");
 }
 
-export function getEffectiveCodexSandbox(
-	sandbox: string,
-	cwd: string | null | undefined,
-	outputDir: string | null | undefined,
-	platform = process.platform,
-): string {
-	if (platform !== "win32" || sandbox !== "workspace-write" || !outputDir) {
-		return sandbox;
-	}
-
-	const workspaceDir = cwd ?? process.cwd();
-	if (isPathInside(workspaceDir, outputDir)) {
-		return sandbox;
-	}
-
-	// Native Windows sandbox modes apply ACL boundaries that can deny writes to
-	// Agentic Forge's global output directory even when Codex receives --add-dir.
-	// Fall back only for this cross-directory output case.
-	return "danger-full-access";
+export function buildWritableRootsConfig(dirs: string[]): string {
+	return `sandbox_workspace_write.writable_roots=${JSON.stringify(dirs.map(toCodexConfigPath))}`;
 }
 
 /** Codex CLI adapter. */
@@ -74,8 +54,7 @@ export class CodexAdapter implements RuntimeAdapter {
 
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {
 		const { model = "gpt-5.5", skipPermissions = false, cwd, outputDir } = options;
-		const requestedSandbox = options.sandbox ?? "workspace-write";
-		const sandbox = getEffectiveCodexSandbox(requestedSandbox, cwd, outputDir);
+		const sandbox = options.sandbox ?? "workspace-write";
 
 		const args: string[] = ["exec", "--sandbox", sandbox];
 
@@ -105,6 +84,9 @@ export class CodexAdapter implements RuntimeAdapter {
 		}
 		for (const dir of writeDirs) {
 			args.push("--add-dir", dir);
+		}
+		if (writeDirs.size > 0 && sandbox === "workspace-write") {
+			args.push("-c", buildWritableRootsConfig([...writeDirs]));
 		}
 
 		// Build environment

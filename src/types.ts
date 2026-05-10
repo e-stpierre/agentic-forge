@@ -74,6 +74,7 @@ export interface StepDefinition {
 	onError: string;
 	checkpoint: boolean;
 	dependsOn?: string | null;
+	bypassPermissions?: boolean | null;
 	worktree?: boolean | string | null;
 	onFailure?: "fail" | "warn";
 }

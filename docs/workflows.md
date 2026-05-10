@@ -51,6 +51,8 @@ Additionally, the agent always has access to any permissions already configured 
 
 > **Note**: The `required-tools` setting only applies to the Claude Code runtime. Codex CLI manages its own permissions separately.
 
+Codex steps can opt into full-access execution with `bypass-permissions: true`. For Codex this maps to `--dangerously-bypass-approvals-and-sandbox`, so use it only for workflows where you explicitly accept `danger-full-access`. On native Windows, Agentic Forge first grants global output directories with `--add-dir` and `sandbox_workspace_write.writable_roots`; if Codex still cannot write `%APPDATA%\agentic-forge\outputs`, prefer `outputDirectory: "local"` before enabling bypass on the affected Codex step.
+
 ### Mitigations
 
 - **Worktree isolation**: Workflows like `plan-build-review` run in a disposable git worktree by default (`use_worktree=true`), so changes are made on a copy of your repo rather than directly in your working directory.

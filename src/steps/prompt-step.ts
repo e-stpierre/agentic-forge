@@ -53,7 +53,8 @@ export class PromptStepExecutor extends StepExecutor {
 		const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
 		const defaults = context.config.defaults as Record<string, unknown> | undefined;
 		const maxRetry = step.stepMaxRetry ?? (defaults?.maxRetry as number) ?? 3;
-		const bypassPermissions = context.workflowSettings?.bypassPermissions ?? false;
+		const bypassPermissions =
+			step.bypassPermissions ?? context.workflowSettings?.bypassPermissions ?? false;
 		const allowedTools = context.workflowSettings?.requiredTools?.length
 			? context.workflowSettings.requiredTools
 			: null;

@@ -291,6 +291,38 @@ describe("PromptStepExecutor", () => {
 		const callArgs = mockRunRuntime.mock.calls[0][1];
 		expect(callArgs.prompt).toContain("test_value");
 	});
+
+	it("should let step-level bypass-permissions override workflow settings", async () => {
+		mockRunRuntime.mockResolvedValue({
+			success: true,
+			stdout: "Output",
+			stderr: "",
+			sessionOutput: {
+				isSuccess: true,
+				context: "Done",
+				sessionId: null,
+			},
+		});
+
+		const step = makeStepDef({
+			name: "test-prompt",
+			type: "prompt",
+			prompt: "Test prompt content",
+			bypassPermissions: true,
+		});
+
+		const context = createStepContext({
+			workflowSettings: { ...defaultSettings(), bypassPermissions: false },
+		});
+		const progress = createWorkflowProgress();
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		const executor = new PromptStepExecutor();
+		await executor.execute(step, progress, context, mockLogger, consoleOut);
+
+		const callArgs = mockRunRuntime.mock.calls[0][1];
+		expect(callArgs.skipPermissions).toBe(true);
+	});
 });
 
 describe("ConditionalStepExecutor", () => {

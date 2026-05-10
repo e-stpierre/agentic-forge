@@ -266,6 +266,20 @@ steps: []
 });
 
 describe("WorkflowParser runtime field on steps", () => {
+	it("should parse step-level bypass-permissions", () => {
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(`
+name: test
+steps:
+  - name: my-step
+    type: prompt
+    bypass-permissions: true
+    prompt: "Hello"
+`);
+
+		expect(workflow.steps[0].bypassPermissions).toBe(true);
+	});
+
 	it("should parse runtime field on prompt step", () => {
 		const parser = new WorkflowParser();
 		const workflow = parser.parseString(`
