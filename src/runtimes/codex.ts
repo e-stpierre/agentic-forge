@@ -1,5 +1,7 @@
 /** Codex runtime adapter. */
 
+import path from "node:path";
+
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -64,9 +66,16 @@ export class CodexAdapter implements RuntimeAdapter {
 			args.push("--model", model);
 		}
 
-		// Add output directory write access
-		if (outputDir) {
-			args.push("--add-dir", outputDir);
+		// Grant explicit write roots for Codex workspace-write runs. The workflow
+		// output directory may live outside the target repo when global outputs are enabled.
+		const writeDirs = new Set<string>();
+		for (const dir of [cwd, outputDir]) {
+			if (dir) {
+				writeDirs.add(path.resolve(dir));
+			}
+		}
+		for (const dir of writeDirs) {
+			args.push("--add-dir", dir);
 		}
 
 		// Build environment

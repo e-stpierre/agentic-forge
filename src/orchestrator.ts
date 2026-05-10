@@ -311,6 +311,8 @@ export class WorkflowOrchestrator {
 				model: orchestratorModel,
 				timeout: 120,
 				printOutput: false,
+				workflowId: progress.workflowId,
+				outputDir: progress.outputDir,
 				sandbox: getSandboxMode(this.config),
 			});
 
@@ -671,6 +673,8 @@ export class WorkflowOrchestrator {
 				printOutput,
 				skipPermissions: true,
 				console,
+				workflowId: progress.workflowId,
+				outputDir: ralphOutputDir,
 				sandbox: getSandboxMode(this.config),
 			});
 
