@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.2
+
+- Fixed Codex writable output directories by granting both the working directory and workflow output directory as `--add-dir` roots, restoring writes when global outputs live outside the target repo
+- Fixed orchestrator to propagate `workflowId` and `outputDir` to Codex runs so the output directory is correctly registered as a writable root
+
 ## 0.10.1
 
 - Added `plan` variable to `plan-build-review` and `multi-plan-build-review` workflows; when set to a path, the existing plan is copied to the output directory instead of generating a new one
