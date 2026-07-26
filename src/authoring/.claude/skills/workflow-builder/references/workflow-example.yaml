@@ -41,8 +41,11 @@ settings:
   # Template variable handling: false = warn and continue, true = fail on undefined (default: false)
   strict-mode: false
 
-  # Default model for all steps: sonnet, haiku, opus (default: user-configured or sonnet)
-  # Steps can override this with their own model setting
+  # Default model for all steps: sonnet, haiku, opus, fable (default: user-configured or sonnet)
+  # These are aliases that always resolve to the latest model in that family.
+  # Steps can override this with their own model setting.
+  # Note: this value is NOT applied to steps that override `runtime` - it belongs
+  # to the workflow runtime's model namespace.
   model: sonnet
 
   # Default coding agent runtime for all steps: claude, codex (default: claude)
@@ -148,10 +151,10 @@ steps:
     # Example: run this analysis step with codex
     runtime: codex
 
-    # Optional: Model to use. When using a different runtime, specify a model compatible
-    # with that runtime (e.g. "gpt-5.5" for codex). For the default claude runtime,
-    # use "sonnet", "haiku", or "opus".
-    model: gpt-5.5
+    # Optional: Model to use. Must be valid for this step's runtime.
+    # For claude, use an alias: "sonnet", "haiku", "opus", or "fable".
+    # For codex, omit it (Codex CLI picks its own default) or pin an ID
+    # such as "gpt-5.3-codex". Omitted here on purpose.
 
   # ==================== SKILL INVOCATION ====================
   # Invoke a Claude slash command skill

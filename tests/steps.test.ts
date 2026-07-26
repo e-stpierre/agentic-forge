@@ -217,6 +217,36 @@ describe("resolveModel", () => {
 		});
 		expect(resolveModel(context, null)).toBe("opus");
 	});
+
+	it("should return null when the adapter has no default model", () => {
+		const codexAdapter = { ...createMockAdapter(), id: "codex" as const, defaultModel: null };
+		const context = createStepContext({
+			config: { defaults: {} },
+			runtimeAdapter: codexAdapter,
+			workflowSettings: defaultSettings(),
+		});
+		expect(resolveModel(context, null)).toBeNull();
+	});
+
+	it("should not apply settings.model to a step that overrode the runtime", () => {
+		const codexAdapter = { ...createMockAdapter(), id: "codex" as const, defaultModel: null };
+		const context = createStepContext({
+			config: { claude: { model: "sonnet" } },
+			runtimeAdapter: codexAdapter,
+			workflowRuntimeId: "claude",
+			workflowSettings: { ...defaultSettings(), model: "haiku" },
+		});
+		// "haiku" belongs to the claude namespace and would be rejected by codex.
+		expect(resolveModel(context, null)).toBeNull();
+	});
+
+	it("should apply settings.model when the step runtime matches the workflow runtime", () => {
+		const context = createStepContext({
+			workflowRuntimeId: "claude",
+			workflowSettings: { ...defaultSettings(), model: "haiku" },
+		});
+		expect(resolveModel(context, null)).toBe("haiku");
+	});
 });
 
 describe("StepExecutor base", () => {

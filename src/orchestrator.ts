@@ -41,6 +41,7 @@ import {
 import { TemplateRenderer } from "./renderer.js";
 import { getAdapter, resolveRuntime } from "./runtimes/index.js";
 import { runRuntime } from "./runtimes/process-runner.js";
+import type { RuntimeId } from "./runtimes/types.js";
 import { SignalManager, handleGracefulShutdown } from "./signal-manager.js";
 import type {
 	ParallelBranch,
@@ -95,13 +96,16 @@ export class WorkflowOrchestrator {
 		return this._signalManager.shutdownRequested;
 	}
 
-	private resolveModel(stepModel?: string | null, runtimeId?: string): string {
+	private resolveModel(stepModel?: string | null, runtimeId?: string): string | null {
 		if (stepModel) return stepModel;
-		const effectiveRuntime =
-			runtimeId ??
+		const effectiveRuntime = (runtimeId ??
 			((this.config.defaults as Record<string, unknown> | undefined)?.runtime as string) ??
-			"claude";
-		return getRuntimeModel(this.config, effectiveRuntime) ?? "sonnet";
+			"claude") as RuntimeId;
+		// Fall back to the adapter's own default, not a hardcoded Claude alias:
+		// "sonnet" is meaningless to a non-Claude runtime.
+		return (
+			getRuntimeModel(this.config, effectiveRuntime) ?? getAdapter(effectiveRuntime).defaultModel
+		);
 	}
 
 	async run(
@@ -308,7 +312,7 @@ export class WorkflowOrchestrator {
 			const result = await runRuntime(orchestratorAdapter, {
 				prompt,
 				cwd: this.repoRoot,
-				model: orchestratorModel,
+				model: orchestratorModel ?? undefined,
 				timeout: 120,
 				printOutput: false,
 				workflowId: progress.workflowId,
@@ -668,7 +672,7 @@ export class WorkflowOrchestrator {
 			const result = await runRuntime(ralphAdapter, {
 				prompt: fullPrompt,
 				cwd: this.repoRoot,
-				model: this.resolveModel(step.model, ralphRuntimeId),
+				model: this.resolveModel(step.model, ralphRuntimeId) ?? undefined,
 				timeout,
 				printOutput,
 				skipPermissions: true,

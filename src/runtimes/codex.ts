@@ -44,7 +44,10 @@ export function buildWritableRootsConfig(dirs: string[]): string {
 export class CodexAdapter implements RuntimeAdapter {
 	readonly id = "codex" as const;
 	readonly executableName = "codex";
-	readonly defaultModel = "gpt-5.5";
+	// Codex CLI has no version-agnostic aliases (unlike Claude's "opus"/"sonnet"),
+	// so every value is a pinned SKU that goes stale. Default to omitting --model
+	// and let the Codex CLI use its own configured default.
+	readonly defaultModel = null;
 
 	checkAvailable(): boolean {
 		try {
@@ -56,7 +59,7 @@ export class CodexAdapter implements RuntimeAdapter {
 	}
 
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {
-		const { model = "gpt-5.5", skipPermissions = false, cwd, outputDir } = options;
+		const { model, skipPermissions = false, cwd, outputDir } = options;
 		const sandbox = options.sandbox ?? "workspace-write";
 
 		const args: string[] = ["exec", "--sandbox", sandbox];

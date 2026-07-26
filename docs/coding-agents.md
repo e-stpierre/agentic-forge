@@ -99,25 +99,48 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 
 ## Model Names
 
-Model values are passed to the underlying CLI as raw strings. Agentic Forge does not validate model names. Use the model identifier expected by the specific runtime:
+Model values are passed to the underlying CLI as raw strings. Agentic Forge does not validate model names. Use the model identifier expected by the specific runtime.
 
-- Claude: `haiku`, `sonnet`, `opus` (or full model IDs like `claude-opus-4-6`)
-- Codex: `gpt-5.5` (frontier), `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2`
+### Claude
 
-> **Important**: When a step uses a runtime different from the configured default (e.g., a `codex` step in a workflow where the default runtime is `claude`), you **must** specify the `model` explicitly. The config/workflow default model belongs to the default runtime's model namespace and will not work with a different runtime.
+Prefer the version-agnostic aliases — `haiku`, `sonnet`, `opus`, `fable`. Claude Code resolves each alias to the latest model in that family, so a workflow written today keeps using the current model as new versions ship.
+
+Pinned IDs (`claude-opus-5`, `claude-sonnet-5`, `claude-fable-5`) also work, but they freeze the workflow to one version and must be updated by hand.
+
+**Default**: `sonnet`.
+
+### Codex
+
+Codex CLI has no aliases: the value passed to `--model` is the model ID itself, and every ID eventually ages out. Because of that, Agentic Forge pins **no** default model for the `codex` runtime — when no `model` is set, the `--model` flag is omitted entirely and Codex CLI uses its own configured default (from `~/.codex/config.toml`, or its built-in default). This keeps the version-tracking behavior in the place that actually knows the current model.
+
+Set a model explicitly only when you need a specific one:
+
+```bash
+af config set codex.model gpt-5.3-codex --global
+```
+
+At the time of writing, `gpt-5.3-codex` is the current Codex model ID. Earlier IDs (`gpt-5.2-codex`, `gpt-5.1-codex`, `gpt-5.1-codex-max`, `gpt-5.1-codex-mini`, `gpt-5-codex`, `codex-mini-latest`) are deprecated. Check OpenAI's model documentation before pinning.
+
+Reasoning effort is not a model name — it is configured separately as `reasoning.effort` on models that support it.
+
+### Mixing runtimes in one workflow
+
+`settings.model` is written in the workflow runtime's model namespace, so it is **not** applied to a step that overrides `runtime`. A `codex` step inside a `claude` workflow will never inherit `sonnet`; it falls back to `codex.model` from config, or to no `--model` flag at all.
 
 ```yaml
+settings:
+  runtime: claude
+  model: sonnet
+
 steps:
   - name: plan
     type: prompt
-    runtime: claude
-    model: opus
+    model: opus # claude namespace
     prompt: ...
 
-  - name: codex-step
+  - name: codex-review
     type: prompt
-    runtime: codex
-    model: gpt-5.5 # Required: default model (e.g. "sonnet") won't work with codex
+    runtime: codex # does not inherit "sonnet"; Codex CLI picks its own model
     prompt: ...
 ```
 

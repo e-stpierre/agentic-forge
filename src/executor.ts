@@ -483,11 +483,17 @@ export class WorkflowExecutor {
 		);
 		const runtimeAdapter = getAdapter(runtimeId);
 
+		// Namespace `settings.model` is written in. It follows the workflow/config
+		// runtime, not the CLI override: `--runtime codex` on a Claude workflow must
+		// fall back to the Codex model configuration rather than inherit "sonnet".
+		const workflowRuntimeId = resolveRuntime(null, this.workflowSettings ?? {}, this.config);
+
 		const context: StepContext = {
 			repoRoot: this.repoRoot,
 			config: this.config,
 			renderer: this.renderer,
 			runtimeAdapter,
+			workflowRuntimeId,
 			workflowSettings: this.workflowSettings,
 			workflowId: progress.workflowId,
 			outputDir,

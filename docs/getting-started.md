@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - [pnpm](https://pnpm.io/) (recommended) or npm
 - Claude Code CLI installed and configured (required — the default runtime)
 - Codex CLI installed and configured (optional — only needed for `codex` runtime workflows)

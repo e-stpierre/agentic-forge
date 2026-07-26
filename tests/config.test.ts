@@ -7,6 +7,7 @@ import {
 	getConfigPath,
 	getConfigValue,
 	getDefaultConfig,
+	getRuntimeModel,
 	loadConfig,
 	saveConfig,
 	setConfigValue,
@@ -66,14 +67,36 @@ describe("Config defaults", () => {
 		expect((config.claude as Record<string, unknown>).model).toBe("sonnet");
 	});
 
-	it("should have gpt-5.5 as default codex model", () => {
+	it("should not pin a default codex model", () => {
 		const config = getDefaultConfig();
-		expect((config.codex as Record<string, unknown>).model).toBe("gpt-5.5");
+		expect((config.codex as Record<string, unknown>).model).toBeUndefined();
+	});
+
+	it("should keep workspace-write as default codex sandbox", () => {
+		const config = getDefaultConfig();
+		expect((config.codex as Record<string, unknown>).sandbox).toBe("workspace-write");
 	});
 
 	it("should have global as default outputDirectory", () => {
 		const config = getDefaultConfig();
 		expect(config.outputDirectory).toBe("global");
+	});
+});
+
+describe("getRuntimeModel", () => {
+	it("should prefer the per-runtime model", () => {
+		const config = { codex: { model: "gpt-5.5" }, defaults: { model: "sonnet" } };
+		expect(getRuntimeModel(config, "codex")).toBe("gpt-5.5");
+	});
+
+	it("should fall back to defaults.model for claude", () => {
+		expect(getRuntimeModel({ defaults: { model: "opus" } }, "claude")).toBe("opus");
+	});
+
+	it("should not leak the legacy defaults.model into non-claude runtimes", () => {
+		// defaults.model predates per-runtime namespaces and always held a Claude
+		// alias, so codex must get no model rather than "sonnet".
+		expect(getRuntimeModel({ defaults: { model: "sonnet" } }, "codex")).toBeNull();
 	});
 });
 

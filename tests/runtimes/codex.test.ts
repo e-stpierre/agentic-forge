@@ -75,11 +75,13 @@ describe("CodexAdapter.buildCommand", () => {
 		expect(cmd.args[idx + 1]).toBe("gpt-4o");
 	});
 
-	it("defaults to gpt-5.5 model", () => {
+	it("omits --model when no model is configured", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello" });
-		const idx = cmd.args.indexOf("--model");
-		expect(idx).toBeGreaterThan(-1);
-		expect(cmd.args[idx + 1]).toBe("gpt-5.5");
+		expect(cmd.args).not.toContain("--model");
+	});
+
+	it("exposes a null defaultModel so the CLI picks its own default", () => {
+		expect(adapter.defaultModel).toBeNull();
 	});
 
 	it("adds --add-dir when outputDir is provided", () => {

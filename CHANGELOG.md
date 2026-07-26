@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.11.0
+
+- **Breaking:** Raised the minimum Node.js version from 20 to 22; Node 20 reached end of life and pnpm 11 no longer runs on it
+- Updated the CI test matrix to Node 22 and 24, and pinned the package manager to pnpm 11 via the `packageManager` field
+- Removed the pinned default Codex model; `--model` is now omitted so Codex CLI applies its own default instead of a SKU that goes stale
+- Fixed the orchestrator falling back to the hardcoded `sonnet` alias for every runtime; it now uses the adapter's own default model
+- Fixed `settings.model` leaking into steps that override `runtime`, so a Codex step in a Claude workflow no longer inherits a Claude alias
+- Fixed the legacy `defaults.model` fallback leaking into non-Claude runtimes; it now applies to the `claude` runtime only
+- Fixed `--runtime` CLI overrides pulling `settings.model` into the overriding runtime; the model namespace now follows the workflow and config runtime
+- Fixed `formatModelName` failing to match current model IDs by handling undated IDs and the fable and mythos families
+- Updated docs and workflow-builder references for the Claude model aliases and the new Codex model behavior
+- Fixed `pnpm install` failing with `ERR_PNPM_IGNORED_BUILDS` by declaring build approvals in `pnpm-workspace.yaml` and dropping the legacy `pnpm.onlyBuiltDependencies` field
+
 ## 0.10.2
 
 - Fixed Codex writable output directories by granting both the working directory and workflow output directory as `--add-dir` roots, restoring writes when global outputs live outside the target repo

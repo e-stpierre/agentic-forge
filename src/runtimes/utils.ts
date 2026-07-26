@@ -92,27 +92,33 @@ export function formatModelName(model: string | null): string {
 		return "";
 	}
 
-	// Pattern 1: claude-{tier}-{major}-{minor}-{date}
-	const pattern1 = /^claude-(sonnet|opus|haiku)-(\d+)-(\d+)-\d{8}$/;
+	// Tier names, including newer families (fable, mythos).
+	const TIER = "sonnet|opus|haiku|fable|mythos";
+
+	// Pattern 1: claude-{tier}-{date} (no version). Checked first so the 8-digit
+	// date is not mistaken for a version number by pattern 2.
+	const pattern1 = new RegExp(`^claude-(${TIER})-\\d{8}$`);
 	let match = pattern1.exec(model);
 	if (match) {
-		const [, tier, major, minor] = match;
-		return `${tier}-${major}.${minor}`;
+		return match[1];
 	}
 
-	// Pattern 2: claude-{major}-{minor}-{tier}-{date}
-	const pattern2 = /^claude-(\d+)-(\d+)-(sonnet|opus|haiku)-\d{8}$/;
+	// Pattern 2: claude-{tier}-{major}[-{minor}][-{date}]
+	// Covers both dated IDs (claude-sonnet-4-6-20251201) and the current
+	// undated aliases (claude-opus-5, claude-fable-5, claude-opus-4-8).
+	const pattern2 = new RegExp(`^claude-(${TIER})-(\\d{1,3})(?:-(\\d{1,3}))?(?:-\\d{8})?$`);
 	match = pattern2.exec(model);
+	if (match) {
+		const [, tier, major, minor] = match;
+		return minor ? `${tier}-${major}.${minor}` : `${tier}-${major}`;
+	}
+
+	// Pattern 3: claude-{major}-{minor}-{tier}[-{date}] (legacy 3.x ordering)
+	const pattern3 = new RegExp(`^claude-(\\d{1,3})-(\\d{1,3})-(${TIER})(?:-\\d{8})?$`);
+	match = pattern3.exec(model);
 	if (match) {
 		const [, major, minor, tier] = match;
 		return `${tier}-${major}.${minor}`;
-	}
-
-	// Pattern 3: claude-{tier}-{date} (no version)
-	const pattern3 = /^claude-(sonnet|opus|haiku)-\d{8}$/;
-	match = pattern3.exec(model);
-	if (match) {
-		return match[1];
 	}
 
 	return model;
