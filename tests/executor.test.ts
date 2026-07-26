@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WorkflowParser } from "../src/parser.js";
 import { WORKFLOW_STATUS } from "../src/progress.js";
+import { resolveModel } from "../src/steps/base.js";
 
 // Mock PromptStepExecutor.execute at module level
 const mockPromptExecute = vi.fn();
@@ -146,6 +147,47 @@ describe("WorkflowExecutor.run", () => {
 
 		expect(progress.workflowName).toBe("test-workflow");
 		expect(progress.status).toBe(WORKFLOW_STATUS.COMPLETED);
+	});
+
+	it("keeps settings.model in the workflow runtime namespace under --runtime override", async () => {
+		const workflowYaml = `
+name: runtime-override-test
+version: "1.0"
+description: Claude workflow invoked with --runtime codex
+settings:
+  runtime: claude
+  model: haiku
+steps:
+  - name: test
+    type: prompt
+    prompt: "Hello"
+`;
+		const parser = new WorkflowParser();
+		const workflow = parser.parseString(workflowYaml);
+
+		// Isolate the global config so a user-level codex.model does not answer for
+		// the fallback this test is asserting on.
+		const savedAppdata = process.env.APPDATA;
+		const savedXdgConfig = process.env.XDG_CONFIG_HOME;
+		process.env.APPDATA = tempDir;
+		process.env.XDG_CONFIG_HOME = tempDir;
+		try {
+			const executor = new WorkflowExecutor(tempDir, false, "codex");
+			await executor.run(workflow);
+
+			// The step runs on codex, but settings.model ("haiku") belongs to the
+			// claude namespace and must not be forwarded to it.
+			const context = mockPromptExecute.mock.calls[0][2] as {
+				workflowRuntimeId: string;
+				runtimeAdapter: { id: string };
+			};
+			expect(context.runtimeAdapter.id).toBe("codex");
+			expect(context.workflowRuntimeId).toBe("claude");
+			expect(resolveModel(context as never, null)).toBeNull();
+		} finally {
+			process.env.APPDATA = savedAppdata;
+			process.env.XDG_CONFIG_HOME = savedXdgConfig;
+		}
 	});
 
 	it("creates progress file", async () => {

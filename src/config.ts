@@ -222,10 +222,13 @@ export function getRuntimeModel(config: Record<string, unknown>, runtimeId: stri
 	if (runtimeConfig?.model) {
 		return runtimeConfig.model as string;
 	}
-	// Backward compat: config.defaults.model
-	const defaults = config.defaults as Record<string, unknown> | undefined;
-	if (defaults?.model) {
-		return defaults.model as string;
+	// Backward compat: config.defaults.model predates per-runtime namespaces and
+	// always held a Claude alias, so it must not leak into other runtimes.
+	if (runtimeId === "claude") {
+		const defaults = config.defaults as Record<string, unknown> | undefined;
+		if (defaults?.model) {
+			return defaults.model as string;
+		}
 	}
 	return null;
 }

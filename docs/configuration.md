@@ -110,7 +110,9 @@ Codex CLI has no version-agnostic aliases, so Agentic Forge pins no default mode
 
 On native Windows, Codex also applies its Windows OS sandbox. When `codex.sandbox` is `"workspace-write"`, Agentic Forge passes workflow output directories through both `--add-dir` and `sandbox_workspace_write.writable_roots` so Codex can write global outputs without leaving `workspace-write`. If your Windows sandbox still denies those writes, set `outputDirectory` to `"local"` to keep outputs inside the workspace, or explicitly set `bypass-permissions: true` only for workflows where you accept Codex's `danger-full-access` mode.
 
-> **Backward compatibility:** `defaults.model` is still honored as a global fallback if set. Per-runtime keys (`claude.model`, `codex.model`) take priority.
+> **Backward compatibility:** `defaults.model` is still honored as a fallback for the `claude` runtime only, since it predates per-runtime keys and always held a Claude alias. Other runtimes ignore it and fall back to their own key (`codex.model`). Per-runtime keys always take priority.
+>
+> **Upgrading:** if an earlier release wrote `codex.model` into your `config.json`, that value still applies and overrides the new CLI-selected default. Delete the `codex.model` key from your global or local `config.json` to let Codex CLI choose its own model.
 
 ### execution
 

@@ -7,6 +7,7 @@ import {
 	getConfigPath,
 	getConfigValue,
 	getDefaultConfig,
+	getRuntimeModel,
 	loadConfig,
 	saveConfig,
 	setConfigValue,
@@ -79,6 +80,23 @@ describe("Config defaults", () => {
 	it("should have global as default outputDirectory", () => {
 		const config = getDefaultConfig();
 		expect(config.outputDirectory).toBe("global");
+	});
+});
+
+describe("getRuntimeModel", () => {
+	it("should prefer the per-runtime model", () => {
+		const config = { codex: { model: "gpt-5.5" }, defaults: { model: "sonnet" } };
+		expect(getRuntimeModel(config, "codex")).toBe("gpt-5.5");
+	});
+
+	it("should fall back to defaults.model for claude", () => {
+		expect(getRuntimeModel({ defaults: { model: "opus" } }, "claude")).toBe("opus");
+	});
+
+	it("should not leak the legacy defaults.model into non-claude runtimes", () => {
+		// defaults.model predates per-runtime namespaces and always held a Claude
+		// alias, so codex must get no model rather than "sonnet".
+		expect(getRuntimeModel({ defaults: { model: "sonnet" } }, "codex")).toBeNull();
 	});
 });
 
