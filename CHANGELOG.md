@@ -1,7 +1,9 @@
 # Changelog
 
-## 0.10.3
+## 0.11.0
 
+- **Breaking:** Raised the minimum Node.js version from 20 to 22; Node 20 reached end of life and pnpm 11 no longer runs on it
+- Updated the CI test matrix to Node 22 and 24, and pinned the package manager to pnpm 11 via the `packageManager` field
 - Removed the pinned default Codex model; `--model` is now omitted so Codex CLI applies its own default instead of a SKU that goes stale
 - Fixed the orchestrator falling back to the hardcoded `sonnet` alias for every runtime; it now uses the adapter's own default model
 - Fixed `settings.model` leaking into steps that override `runtime`, so a Codex step in a Claude workflow no longer inherits a Claude alias

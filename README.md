@@ -55,7 +55,7 @@ See [Workflows documentation](https://github.com/e-stpierre/agentic-forge/blob/m
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - [pnpm](https://pnpm.io/) (recommended) or npm
 - Claude Code CLI installed and configured (required for default runtime)
 - Codex CLI installed and configured (optional, required for `runtime: codex` steps)
