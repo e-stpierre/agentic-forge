@@ -66,9 +66,14 @@ describe("Config defaults", () => {
 		expect((config.claude as Record<string, unknown>).model).toBe("sonnet");
 	});
 
-	it("should have gpt-5.5 as default codex model", () => {
+	it("should not pin a default codex model", () => {
 		const config = getDefaultConfig();
-		expect((config.codex as Record<string, unknown>).model).toBe("gpt-5.5");
+		expect((config.codex as Record<string, unknown>).model).toBeUndefined();
+	});
+
+	it("should keep workspace-write as default codex sandbox", () => {
+		const config = getDefaultConfig();
+		expect((config.codex as Record<string, unknown>).sandbox).toBe("workspace-write");
 	});
 
 	it("should have global as default outputDirectory", () => {

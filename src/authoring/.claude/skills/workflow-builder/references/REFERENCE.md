@@ -38,10 +38,10 @@ All settings are optional with sensible defaults.
 
 **Model names are runtime-specific:**
 
-- Claude: `haiku`, `sonnet`, `opus` (or full IDs like `claude-opus-4-6`)
-- Codex: `gpt-5.5` (frontier), `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2`
+- Claude: `haiku`, `sonnet`, `opus`, `fable` — aliases that always resolve to the latest model in that family. Full IDs (e.g. `claude-opus-5`) work but freeze the version.
+- Codex: no aliases exist. Omit `model` to let Codex CLI use its own default, or pin an ID such as `gpt-5.3-codex`.
 
-**Per-runtime default models:** Each runtime resolves its own default model from config (`claude.model` or `codex.model`). Steps that use a non-default runtime no longer need an explicit model unless you want to override the per-runtime default.
+**Per-runtime default models:** Each runtime resolves its own default model from config (`claude.model` or `codex.model`). Steps that use a non-default runtime do not need an explicit model: `settings.model` is deliberately **not** inherited across runtimes, so a codex step in a claude workflow falls back to `codex.model` or to no `--model` flag at all.
 
 **Note:** Skill invocations (`/sdlc-plan`, `/git-commit`, etc.) only work with `runtime: claude`. Codex does not support bundled skill injection.
 

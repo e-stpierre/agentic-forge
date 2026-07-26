@@ -66,7 +66,7 @@ export class PromptStepExecutor extends StepExecutor {
 			const result = await runRuntime(context.runtimeAdapter, {
 				prompt,
 				cwd,
-				model: resolveModel(context, step.model),
+				model: resolveModel(context, step.model) ?? undefined,
 				timeout,
 				printOutput,
 				skipPermissions: bypassPermissions,

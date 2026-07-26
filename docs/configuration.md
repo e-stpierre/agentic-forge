@@ -95,14 +95,18 @@ Claude runtime configuration.
 | -------------- | ------ | ---------- | -------------------- |
 | `claude.model` | string | `"sonnet"` | Default Claude model |
 
+Prefer the version-agnostic aliases (`haiku`, `sonnet`, `opus`, `fable`) so the value tracks the latest model in that family. Pinned IDs such as `claude-opus-5` also work but must be updated by hand.
+
 ### codex
 
 Codex runtime configuration. Only applies when using the `codex` runtime.
 
 | Key             | Type   | Default             | Description                                                              |
 | --------------- | ------ | ------------------- | ------------------------------------------------------------------------ |
-| `codex.model`   | string | `"gpt-5.5"`         | Default Codex model                                                      |
+| `codex.model`   | string | _unset_             | Default Codex model. Unset means no `--model` flag is passed             |
 | `codex.sandbox` | string | `"workspace-write"` | Sandbox mode: `"read-only"`, `"workspace-write"`, `"danger-full-access"` |
+
+Codex CLI has no version-agnostic aliases, so Agentic Forge pins no default model. When `codex.model` is unset, the `--model` flag is omitted and Codex CLI uses its own configured default. Set it only when you need a specific model ID (for example `gpt-5.3-codex`); see [Coding Agents](coding-agents.md#codex).
 
 On native Windows, Codex also applies its Windows OS sandbox. When `codex.sandbox` is `"workspace-write"`, Agentic Forge passes workflow output directories through both `--add-dir` and `sandbox_workspace_write.writable_roots` so Codex can write global outputs without leaving `workspace-write`. If your Windows sandbox still denies those writes, set `outputDirectory` to `"local"` to keep outputs inside the workspace, or explicitly set `bypass-permissions: true` only for workflows where you accept Codex's `danger-full-access` mode.
 
@@ -164,7 +168,6 @@ Use Codex CLI as the default runtime for all workflows in a project:
     "runtime": "codex"
   },
   "codex": {
-    "model": "gpt-5.5",
     "sandbox": "workspace-write"
   }
 }

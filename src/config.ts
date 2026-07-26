@@ -21,7 +21,8 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		model: "sonnet",
 	},
 	codex: {
-		model: "gpt-5.5",
+		// No default model: Codex CLI has no version-agnostic alias, so pinning a
+		// SKU here goes stale. Omitting it lets the Codex CLI use its own default.
 		sandbox: "workspace-write",
 	},
 	execution: {

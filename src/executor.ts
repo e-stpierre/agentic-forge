@@ -483,11 +483,21 @@ export class WorkflowExecutor {
 		);
 		const runtimeAdapter = getAdapter(runtimeId);
 
+		// Runtime the workflow uses when a step does not override it. Steps that
+		// pick a different runtime must not inherit `settings.model`.
+		const workflowRuntimeId = resolveRuntime(
+			null,
+			this.workflowSettings ?? {},
+			this.config,
+			this.runtimeOverride,
+		);
+
 		const context: StepContext = {
 			repoRoot: this.repoRoot,
 			config: this.config,
 			renderer: this.renderer,
 			runtimeAdapter,
+			workflowRuntimeId,
 			workflowSettings: this.workflowSettings,
 			workflowId: progress.workflowId,
 			outputDir,

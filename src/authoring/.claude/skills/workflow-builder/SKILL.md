@@ -99,12 +99,15 @@ Arguments: $ARGUMENTS
 | `haiku`  | Quick tasks: validation, formatting, small analysis |
 | `sonnet` | Default: implementation, review, planning           |
 | `opus`   | Complex reasoning: architecture, large refactors    |
+| `fable`  | Hardest long-horizon reasoning                      |
 
-**Codex models:** `gpt-5.5` (default, frontier), `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.2`
+These are aliases that always resolve to the latest model in that family. Prefer them over pinned IDs like `claude-opus-5`.
 
-Priority: step `model` > `settings.model` > config default > adapter default (`sonnet` for Claude, `gpt-5.5` for Codex)
+**Codex models:** Codex CLI has no aliases, so omit `model` on codex steps and let Codex CLI use its own default. Pin an ID (e.g. `gpt-5.3-codex`) only when a specific model is required.
 
-**Important:** When a step uses a runtime different from the configured default, you **must** set `model` explicitly on the step. The default model belongs to the default runtime and will cause errors if passed to a different runtime.
+Priority: step `model` > `settings.model` > config default (`claude.model` / `codex.model`) > adapter default (`sonnet` for Claude, none for Codex)
+
+**Note:** `settings.model` is not applied to a step that overrides `runtime` — it belongs to the workflow runtime's model namespace. A codex step in a claude workflow falls back to `codex.model`, or to no model at all.
 
 ### Common Patterns
 

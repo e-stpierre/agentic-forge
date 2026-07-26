@@ -63,8 +63,12 @@ export interface RuntimeCommand {
 export interface RuntimeAdapter {
 	readonly id: RuntimeId;
 	readonly executableName: string;
-	/** Default model for this runtime, used when no explicit model is configured. */
-	readonly defaultModel: string;
+	/**
+	 * Default model for this runtime, used when no explicit model is configured.
+	 * `null` means "pass no --model flag" and let the CLI pick its own default,
+	 * which is the correct behavior for runtimes without version-agnostic aliases.
+	 */
+	readonly defaultModel: string | null;
 	checkAvailable(): boolean;
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand;
 	parseStreamLine(line: string): StreamEvent | null;
