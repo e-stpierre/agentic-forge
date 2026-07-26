@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.3
+
+- Removed the pinned default Codex model; `--model` is now omitted so Codex CLI applies its own default instead of a SKU that goes stale
+- Fixed the orchestrator falling back to the hardcoded `sonnet` alias for every runtime; it now uses the adapter's own default model
+- Fixed `settings.model` leaking into steps that override `runtime`, so a Codex step in a Claude workflow no longer inherits a Claude alias
+- Fixed `formatModelName` failing to match current model IDs by handling undated IDs and the fable and mythos families
+- Updated docs and workflow-builder references for the Claude model aliases and the new Codex model behavior
+- Fixed `pnpm install` failing with `ERR_PNPM_IGNORED_BUILDS` by declaring build approvals in `pnpm-workspace.yaml` and dropping the legacy `pnpm.onlyBuiltDependencies` field
+
 ## 0.10.2
 
 - Fixed Codex writable output directories by granting both the working directory and workflow output directory as `--add-dir` roots, restoring writes when global outputs live outside the target repo
