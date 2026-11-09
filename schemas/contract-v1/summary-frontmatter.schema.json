@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:harness-contract:v1:summary-frontmatter",
+  "title": "Harness contract v1: summary.md frontmatter",
+  "description": "YAML frontmatter of summary.md. Values are flat scalars so simple parsers can read them.",
+  "type": "object",
+  "required": ["task", "title", "status"],
+  "additionalProperties": false,
+  "patternProperties": { "^x-": true },
+  "properties": {
+    "task": {
+      "description": "ID of the run the summary describes.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/id"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "workflow": {
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "status": {
+      "description": "Final status of the run.",
+      "anyOf": [
+        { "$ref": "urn:harness-contract:v1:common#/$defs/run_status" },
+        { "const": "escalate" }
+      ]
+    },
+    "pr": { "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string" },
+    "max_risk": {
+      "anyOf": [
+        { "$ref": "urn:harness-contract:v1:common#/$defs/risk" },
+        { "type": "null" }
+      ]
+    },
+    "decisions": {
+      "description": "Number of entries in decisions.jsonl.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "critical_findings": {
+      "description": "Number of critical findings reported in the run.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "duration_minutes": {
+      "anyOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    }
+  }
+}

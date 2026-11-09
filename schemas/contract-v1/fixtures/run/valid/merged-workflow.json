@@ -1,0 +1,31 @@
+{
+  "contract_version": 1,
+  "id": "T01-add-oauth-provider",
+  "type": "workflow",
+  "workflow": "esp-go",
+  "parent": "2026-11-10-oauth-epic",
+  "repo": "acme/web",
+  "base": "main",
+  "branch": "feature/add-oauth-provider",
+  "worktree": "/home/dev/worktrees/add-oauth-provider",
+  "pr": "https://github.com/acme/web/pull/42",
+  "status": "merged",
+  "max_risk": "medium",
+  "started_at": "2026-11-10T09:00:00Z",
+  "ended_at": "2026-11-10T11:30:00Z",
+  "runtime": "claude",
+  "models": {
+    "builder": {
+      "model": "opus",
+      "effort": "high"
+    },
+    "verifier": {
+      "model": "sonnet"
+    }
+  },
+  "budgets_used": {
+    "wall_minutes": 150,
+    "milestones": 3
+  },
+  "x-esp-note": "extension fields use the x- prefix"
+}

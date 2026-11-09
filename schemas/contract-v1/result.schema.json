@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:harness-contract:v1:result",
+  "title": "Harness contract v1: step result block",
+  "description": "Printed as one JSON object on the final output line of a step and written to steps/<step>/result.json.",
+  "type": "object",
+  "required": ["status", "summary"],
+  "additionalProperties": false,
+  "patternProperties": { "^x-": true },
+  "properties": {
+    "contract_version": {
+      "$ref": "urn:harness-contract:v1:common#/$defs/contract_version"
+    },
+    "status": {
+      "$ref": "urn:harness-contract:v1:common#/$defs/result_status"
+    },
+    "summary": {
+      "description": "One or two sentences.",
+      "type": "string",
+      "minLength": 1
+    },
+    "files_changed": {
+      "$ref": "urn:harness-contract:v1:common#/$defs/string_list"
+    },
+    "commit": {
+      "description": "SHA of the last commit the step created.",
+      "anyOf": [
+        { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+        { "type": "null" }
+      ]
+    },
+    "pr": {
+      "description": "Pull request URL.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "gates": {
+      "description": "Gate outcome by name (tests, lint, typecheck, build, ...).",
+      "type": "object",
+      "additionalProperties": { "enum": ["pass", "fail", "skipped"] }
+    },
+    "max_risk": {
+      "anyOf": [
+        { "$ref": "urn:harness-contract:v1:common#/$defs/risk" },
+        { "type": "null" }
+      ]
+    },
+    "outputs": {
+      "description": "Step-specific outputs that later steps can consume (for example plan_path).",
+      "type": "object"
+    },
+    "discovered_items": {
+      "description": "Work found but not done by this step.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "title"],
+        "additionalProperties": false,
+        "patternProperties": { "^x-": true },
+        "properties": {
+          "type": {
+            "enum": [
+              "bug",
+              "debt",
+              "security",
+              "docs",
+              "test",
+              "follow-up",
+              "other"
+            ]
+          },
+          "title": { "type": "string", "minLength": 1 },
+          "evidence": { "type": "string" },
+          "severity": { "enum": ["low", "medium", "high", "critical"] },
+          "files": {
+            "$ref": "urn:harness-contract:v1:common#/$defs/string_list"
+          }
+        }
+      }
+    },
+    "needs_input": {
+      "anyOf": [
+        { "$ref": "urn:harness-contract:v1:needs-input" },
+        { "type": "null" }
+      ]
+    },
+    "blockers": {
+      "description": "Reasons the step could not finish.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/string_list"
+    }
+  },
+  "anyOf": [
+    {
+      "description": "needs_input is absent or null.",
+      "properties": { "needs_input": { "type": "null" } }
+    },
+    {
+      "description": "A needs_input request requires status awaiting-human.",
+      "properties": { "status": { "const": "awaiting-human" } }
+    }
+  ]
+}

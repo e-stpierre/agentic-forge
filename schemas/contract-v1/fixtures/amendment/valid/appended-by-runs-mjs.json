@@ -1,0 +1,11 @@
+{
+  "id": "A001",
+  "at": "2026-11-10T12:00:00.000Z",
+  "from": "user",
+  "text": "Support GitHub Enterprise hosts too.",
+  "affects": [
+    "M2",
+    "M3"
+  ],
+  "plan_version": 2
+}

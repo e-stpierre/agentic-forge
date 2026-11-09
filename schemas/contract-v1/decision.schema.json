@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:harness-contract:v1:decision",
+  "title": "Harness contract v1: decision entry",
+  "description": "One line of decisions.jsonl, appended when the decision is made.",
+  "type": "object",
+  "required": ["id", "at", "phase", "source", "risk", "decision", "rationale"],
+  "additionalProperties": false,
+  "patternProperties": { "^x-": true },
+  "properties": {
+    "id": { "$ref": "urn:harness-contract:v1:common#/$defs/id" },
+    "at": { "$ref": "urn:harness-contract:v1:common#/$defs/timestamp" },
+    "phase": {
+      "description": "Phase or step that made the decision (plan, build, review, fix-review, merge, ...).",
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "description": "agent: chosen by the model. operator: a user or overseer message, answer or amendment. policy: applied by a configured rule.",
+      "enum": ["agent", "operator", "policy"]
+    },
+    "risk": { "$ref": "urn:harness-contract:v1:common#/$defs/risk" },
+    "decision": { "type": "string", "minLength": 1 },
+    "rationale": { "type": "string", "minLength": 1 },
+    "alternatives": {
+      "$ref": "urn:harness-contract:v1:common#/$defs/string_list"
+    },
+    "files": { "$ref": "urn:harness-contract:v1:common#/$defs/string_list" },
+    "commit": {
+      "anyOf": [
+        { "type": "string", "pattern": "^[0-9a-f]{7,64}$" },
+        { "type": "null" }
+      ]
+    },
+    "refs": {
+      "description": "Related references: milestone IDs, review comment URLs, message IDs.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/string_list"
+    }
+  }
+}
