@@ -34,5 +34,14 @@
         { "type": "null" }
       ]
     }
+  },
+  "if": {
+    "description": "A step-targeted message must name its step.",
+    "properties": { "target": { "const": "step" } },
+    "required": ["target"]
+  },
+  "then": {
+    "required": ["step"],
+    "properties": { "step": { "type": "string", "minLength": 1 } }
   }
 }

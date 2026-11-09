@@ -170,6 +170,44 @@ describe("contract files", () => {
 		);
 	});
 
+	it("compares event seq to the physical line and rejects interior blank lines", () => {
+		const event = (seq: number) =>
+			JSON.stringify({ seq, at: "2026-11-10T12:00:00Z", run: "r1", type: "step.started" });
+		writeFileSync(join(dir, "events.jsonl"), `${event(1)}\n\n${event(2)}\n`);
+		const result = validateContractFile(join(dir, "events.jsonl"));
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContainEqual({
+			line: 2,
+			path: "(root)",
+			message: "blank line inside a jsonl file",
+		});
+		expect(result.errors).toContainEqual({ line: 3, path: "/seq", message: "expected 3, got 2" });
+
+		writeFileSync(join(dir, "events.jsonl"), `${event(1)}\r\n${event(2)}\r\n\r\n`);
+		expect(validateContractFile(join(dir, "events.jsonl")).valid).toBe(true);
+	});
+
+	it("requires a step name on step-targeted inbox messages", () => {
+		const base = {
+			id: "m1",
+			at: "2026-11-10T12:00:00Z",
+			from: "user",
+			mode: "next",
+			text: "Hi.",
+		};
+		expect(validateArtifact("inbox-message", { ...base, target: "run" }).valid).toBe(true);
+		expect(validateArtifact("inbox-message", { ...base, target: "run", step: null }).valid).toBe(
+			true,
+		);
+		expect(validateArtifact("inbox-message", { ...base, target: "step" }).valid).toBe(false);
+		expect(validateArtifact("inbox-message", { ...base, target: "step", step: "" }).valid).toBe(
+			false,
+		);
+		expect(
+			validateArtifact("inbox-message", { ...base, target: "step", step: "02-build-M1" }).valid,
+		).toBe(true);
+	});
+
 	it("validates inbox messages and run.json files", () => {
 		mkdirSync(join(dir, "inbox"));
 		const message = readFixture("inbox-message", "valid", "delivered.json");

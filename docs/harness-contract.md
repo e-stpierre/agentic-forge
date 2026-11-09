@@ -277,7 +277,7 @@ Required: `id`, `at`, `from`, `mode`, `text`, `target`.
 | `mode`         | enum              | `next`: deliver at the next boundary. `now`: interrupt the current step |
 | `text`         | string            | The message                                                             |
 | `target`       | enum              | `run`: the next step of the run. `step`: the step named in `step`       |
-| `step`         | string or null    | Step name when `target` is `step`                                       |
+| `step`         | string or null    | Step name. Required and non-empty when `target` is `step`               |
 | `delivered_at` | timestamp or null | Absent or `null` while pending, set on delivery                         |
 
 Delivery:
@@ -315,7 +315,7 @@ Plan versions are immutable files: `plan.md` is version 1, `plan.v2.md` is versi
 
 An append-only log, one event per line. Required: `seq`, `at`, `run`, `type`; `data` is optional and holds the event payload. The envelope accepts no other fields.
 
-- `seq` equals the line number, starting at `1`, with no gaps.
+- `seq` equals the physical line number, starting at `1`, with no gaps. The file has no blank lines, except the final newline.
 - `run` is the ID of the run the event belongs to.
 - Readers must ignore event types they do not know.
 

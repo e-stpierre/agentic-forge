@@ -6,7 +6,7 @@
 - Added contract v1 JSON Schemas and valid/invalid fixtures in `schemas/contract-v1/`, shipped in the npm package and importable by path (`agentic-forge/schemas/contract-v1/<artifact>.schema.json`)
 - Added `src/contract` validation helpers (`validateArtifact`, `validateContractFile`, `exitCodeFor`) backed by `ajv`
 - Decided the runs root default: harness runs go to `<global dir>/runs/`, separate from skill pack roots; recap tools read a list of roots
-- Contract deltas from the esp-skills draft: schema titles drop the `(draft)` marker; fixtures reformatted by prettier (no value changes)
+- Contract deltas from the esp-skills draft: schema titles drop the `(draft)` marker; fixtures reformatted by prettier (no value changes); inbox messages with `target: step` must name a non-empty `step`; jsonl files reject interior blank lines, so event `seq` matches the physical line number
 
 ## 0.11.0
 

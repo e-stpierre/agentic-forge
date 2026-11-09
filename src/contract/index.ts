@@ -157,19 +157,26 @@ export function artifactForFile(file: string): ContractArtifact | null {
 	return null;
 }
 
+const BOM = String.fromCharCode(0xfeff);
+
+function stripBom(text: string): string {
+	return text.startsWith(BOM) ? text.slice(1) : text;
+}
+
 /**
  * Parse the YAML frontmatter of a markdown document, or return null when it has none.
  * Uses the YAML core schema so dates stay strings.
  */
 export function parseFrontmatter(text: string): unknown {
-	const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text.replace(/^﻿/, ""));
+	const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(stripBom(text));
 	if (!match) return null;
 	return yaml.load(match[1], { schema: yaml.CORE_SCHEMA }) ?? {};
 }
 
 /**
  * Validate a contract file. The artifact is inferred from the file name unless given.
- * jsonl files are checked line by line; events.jsonl also checks that seq equals the line number.
+ * jsonl files are checked line by line: blank lines are only allowed at the end of the file, and
+ * events.jsonl also checks that seq equals the physical line number.
  */
 export function validateContractFile(
 	file: string,
@@ -179,16 +186,21 @@ export function validateContractFile(
 	if (!existsSync(path)) throw new Error(`File not found: ${path}`);
 	const kind = artifact ?? artifactForFile(path);
 	if (!kind) throw new Error(`Cannot infer the contract artifact of ${path}`);
-	const text = readFileSync(path, "utf8").replace(/^﻿/, "");
+	const text = stripBom(readFileSync(path, "utf8"));
 	const errors: ContractValidationError[] = [];
 
 	if (path.endsWith(".jsonl")) {
-		let expectedSeq = 1;
 		const lines = text.split("\n");
-		for (let i = 0; i < lines.length; i++) {
+		// Trailing empty lines come from the final newline; any other blank line is an error.
+		let end = lines.length;
+		while (end > 0 && lines[end - 1].trim() === "") end--;
+		for (let i = 0; i < end; i++) {
 			const raw = lines[i];
-			if (raw.trim() === "") continue;
 			const line = i + 1;
+			if (raw.trim() === "") {
+				errors.push({ line, path: "(root)", message: "blank line inside a jsonl file" });
+				continue;
+			}
 			let value: unknown;
 			try {
 				value = JSON.parse(raw);
@@ -198,10 +210,9 @@ export function validateContractFile(
 			}
 			for (const e of validateArtifact(kind, value).errors) errors.push({ line, ...e });
 			const seq = (value as { seq?: unknown } | null)?.seq;
-			if (kind === "event" && seq !== expectedSeq) {
-				errors.push({ line, path: "/seq", message: `expected ${expectedSeq}, got ${String(seq)}` });
+			if (kind === "event" && seq !== line) {
+				errors.push({ line, path: "/seq", message: `expected ${line}, got ${String(seq)}` });
 			}
-			expectedSeq++;
 		}
 		return { valid: errors.length === 0, errors };
 	}
