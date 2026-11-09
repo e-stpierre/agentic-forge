@@ -2,10 +2,7 @@
   "contract_version": 1,
   "status": "done",
   "summary": "Milestone M2 implemented and verified.",
-  "files_changed": [
-    "src/auth/token.ts",
-    "src/auth/token.test.ts"
-  ],
+  "files_changed": ["src/auth/token.ts", "src/auth/token.test.ts"],
   "commit": "9d9f6ad1",
   "pr": null,
   "gates": {

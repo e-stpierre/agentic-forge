@@ -1,7 +1,5 @@
 {
   "status": "escalate",
   "summary": "Change touches 14 files, above go-light.max_files_changed.",
-  "blockers": [
-    "max_files_changed exceeded"
-  ]
+  "blockers": ["max_files_changed exceeded"]
 }

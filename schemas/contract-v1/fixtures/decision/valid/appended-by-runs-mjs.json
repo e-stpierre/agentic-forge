@@ -6,11 +6,7 @@
   "risk": "medium",
   "decision": "Reuse the existing HTTP client instead of adding axios",
   "rationale": "The project already wraps fetch with retries; a second client would duplicate it",
-  "alternatives": [
-    "Add axios"
-  ],
-  "files": [
-    "src/http.ts"
-  ],
+  "alternatives": ["Add axios"],
+  "files": ["src/http.ts"],
   "commit": null
 }

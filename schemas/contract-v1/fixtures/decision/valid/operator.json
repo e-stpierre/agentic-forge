@@ -6,8 +6,6 @@
   "risk": "low",
   "decision": "Use the existing retry helper instead of a new one.",
   "rationale": "Operator message m001 from user (mode next)",
-  "refs": [
-    "m001"
-  ],
+  "refs": ["m001"],
   "x-esp-class": "A-Fix"
 }
