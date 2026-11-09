@@ -19,6 +19,7 @@
   },
   "files": [
     "dist",
+    "schemas",
     "agentic-forge-banner.png"
   ],
   "scripts": {
@@ -34,6 +35,8 @@
   "dependencies": {
     "@inquirer/confirm": "^6.0.10",
     "@inquirer/input": "^5.0.10",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "commander": "^14.0.3",
     "js-yaml": "^4.1.1",
     "nunjucks": "^3.2.4",

@@ -1,0 +1,28 @@
+{
+  "contract_version": 1,
+  "status": "done",
+  "summary": "Milestone M2 implemented and verified.",
+  "files_changed": ["src/auth/token.ts", "src/auth/token.test.ts"],
+  "commit": "9d9f6ad1",
+  "pr": null,
+  "gates": {
+    "tests": "pass",
+    "lint": "pass",
+    "typecheck": "skipped"
+  },
+  "max_risk": "low",
+  "outputs": {
+    "plan_path": "plan.md",
+    "milestones_remaining": 2
+  },
+  "discovered_items": [
+    {
+      "type": "bug",
+      "title": "Refresh token not rotated",
+      "evidence": "src/auth/token.ts:42",
+      "severity": "high"
+    }
+  ],
+  "needs_input": null,
+  "blockers": []
+}

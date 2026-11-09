@@ -1,0 +1,21 @@
+{
+  "contract_version": 1,
+  "id": "2026-11-10-fix-login-timeout",
+  "type": "skill",
+  "title": "Fix login timeout",
+  "workflow": "esp-go-light",
+  "parent": null,
+  "repo": "e-stpierre/skills",
+  "base": "main",
+  "branch": null,
+  "worktree": null,
+  "pr": null,
+  "runtime": null,
+  "status": "running",
+  "max_risk": "critical",
+  "started_at": "2026-11-10T12:00:00.000Z",
+  "updated_at": "2026-11-10T12:00:00.000Z",
+  "ended_at": null,
+  "models": {},
+  "budgets_used": {}
+}

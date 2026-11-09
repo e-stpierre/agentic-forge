@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:harness-contract:v1:run",
+  "title": "Harness contract v1: run.json",
+  "description": "Metadata and status of one run directory. Written by the run owner, read by harnesses and recap tools.",
+  "type": "object",
+  "required": ["contract_version", "id", "type", "status", "started_at"],
+  "additionalProperties": false,
+  "patternProperties": { "^x-": true },
+  "properties": {
+    "contract_version": {
+      "$ref": "urn:harness-contract:v1:common#/$defs/contract_version"
+    },
+    "id": {
+      "description": "Run ID, equal to the run directory name.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/id"
+    },
+    "type": {
+      "description": "Kind of run.",
+      "enum": ["overseer", "workflow", "skill"]
+    },
+    "title": {
+      "description": "Short human-readable title.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "workflow": {
+      "description": "Name of the workflow or skill that owns the run.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "parent": {
+      "description": "ID of the parent run, or null for a top-level run.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "repo": {
+      "description": "Repository the run works on: owner/name when known, otherwise a local path.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "base": {
+      "description": "Base branch.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "branch": {
+      "description": "Working branch.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "worktree": {
+      "description": "Absolute path of the worktree, or null when working in place.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "pr": {
+      "description": "Pull request URL.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "status": { "$ref": "urn:harness-contract:v1:common#/$defs/run_status" },
+    "max_risk": {
+      "description": "Highest risk among the decisions of the run, or null when none was recorded.",
+      "anyOf": [
+        { "$ref": "urn:harness-contract:v1:common#/$defs/risk" },
+        { "type": "null" }
+      ]
+    },
+    "started_at": {
+      "$ref": "urn:harness-contract:v1:common#/$defs/timestamp"
+    },
+    "updated_at": {
+      "$ref": "urn:harness-contract:v1:common#/$defs/timestamp"
+    },
+    "ended_at": {
+      "description": "Set when the run reaches a terminal status (halted, failed, canceled, done, merged).",
+      "anyOf": [
+        { "$ref": "urn:harness-contract:v1:common#/$defs/timestamp" },
+        { "type": "null" }
+      ]
+    },
+    "runtime": {
+      "description": "Runtime that executes the run (for example claude or codex).",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "models": {
+      "description": "Model used per role.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["model"],
+        "additionalProperties": false,
+        "properties": {
+          "model": { "type": "string", "minLength": 1 },
+          "effort": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "budgets_used": {
+      "description": "Budget consumption by name (for example wall_minutes, milestones, rounds).",
+      "type": "object",
+      "additionalProperties": { "type": "number", "minimum": 0 }
+    }
+  }
+}

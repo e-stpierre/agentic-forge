@@ -1,0 +1,12 @@
+{
+  "id": "D001",
+  "at": "2026-11-10T12:00:00.000Z",
+  "phase": "build",
+  "source": "agent",
+  "risk": "medium",
+  "decision": "Reuse the existing HTTP client instead of adding axios",
+  "rationale": "The project already wraps fetch with retries; a second client would duplicate it",
+  "alternatives": ["Add axios"],
+  "files": ["src/http.ts"],
+  "commit": null
+}

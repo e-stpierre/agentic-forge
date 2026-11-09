@@ -1,0 +1,23 @@
+{
+  "contract_version": 1,
+  "status": "awaiting-human",
+  "summary": "The review found an API change that needs a decision.",
+  "needs_input": {
+    "id": "q1",
+    "question": "Keep the v1 endpoint during the migration?",
+    "options": [
+      {
+        "id": "keep",
+        "label": "Keep v1 for one release"
+      },
+      {
+        "id": "drop",
+        "label": "Drop v1 now",
+        "description": "Breaks existing clients"
+      }
+    ],
+    "recommended": "keep",
+    "context": "See review-1.md, finding F3.",
+    "blocking": true
+  }
+}

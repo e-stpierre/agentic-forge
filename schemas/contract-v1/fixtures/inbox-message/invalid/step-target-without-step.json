@@ -1,0 +1,9 @@
+{
+  "id": "m003",
+  "at": "2026-11-10T12:10:00Z",
+  "from": "user",
+  "mode": "next",
+  "text": "Add a test for the retry path.",
+  "target": "step",
+  "step": null
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:harness-contract:v1:event",
+  "title": "Harness contract v1: event envelope",
+  "description": "One line of events.jsonl. The file is append-only and seq increases by one per line.",
+  "type": "object",
+  "required": ["seq", "at", "run", "type"],
+  "additionalProperties": false,
+  "properties": {
+    "seq": {
+      "description": "Line number in events.jsonl, starting at 1.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "at": { "$ref": "urn:harness-contract:v1:common#/$defs/timestamp" },
+    "run": {
+      "description": "ID of the run the event belongs to.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/id"
+    },
+    "type": {
+      "enum": [
+        "run.queued",
+        "run.started",
+        "run.paused",
+        "run.resumed",
+        "run.canceled",
+        "run.halted",
+        "run.failed",
+        "run.completed",
+        "step.started",
+        "step.completed",
+        "step.failed",
+        "step.retried",
+        "iteration.started",
+        "iteration.completed",
+        "message.queued",
+        "message.delivered",
+        "amendment.applied",
+        "needs_input",
+        "input.answered",
+        "branch.created",
+        "commit.created",
+        "pr.opened",
+        "review.received",
+        "checks.completed",
+        "merge.locked",
+        "merge.completed",
+        "notification.sent",
+        "supervisor.restarted",
+        "run.recovered"
+      ]
+    },
+    "data": {
+      "description": "Event-specific payload.",
+      "type": "object"
+    }
+  }
+}

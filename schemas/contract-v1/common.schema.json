@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:harness-contract:v1:common",
+  "title": "Harness contract v1: shared definitions",
+  "description": "Definitions shared by every contract v1 artifact schema.",
+  "$defs": {
+    "contract_version": {
+      "description": "Contract version this artifact follows.",
+      "const": 1
+    },
+    "timestamp": {
+      "description": "RFC 3339 date-time, UTC recommended.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "id": {
+      "description": "Identifier: letters, digits, dot, underscore and dash, starting with a letter or digit.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "maxLength": 200
+    },
+    "risk": {
+      "description": "Risk level.",
+      "enum": ["low", "medium", "high"]
+    },
+    "run_status": {
+      "description": "Status of a run (run.json).",
+      "enum": [
+        "queued",
+        "running",
+        "paused",
+        "blocked",
+        "awaiting-human",
+        "halted",
+        "failed",
+        "canceled",
+        "done",
+        "merged"
+      ]
+    },
+    "result_status": {
+      "description": "Status reported by a step in its result block.",
+      "enum": [
+        "done",
+        "merged",
+        "halted",
+        "awaiting-human",
+        "failed",
+        "escalate"
+      ]
+    },
+    "nullable_string": {
+      "type": ["string", "null"]
+    },
+    "string_list": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:harness-contract:v1:amendment",
+  "title": "Harness contract v1: amendment entry",
+  "description": "One line of amendments.jsonl: a requirement change applied to the remaining milestones of a plan.",
+  "type": "object",
+  "required": ["id", "at", "text", "affects", "plan_version"],
+  "additionalProperties": false,
+  "patternProperties": { "^x-": true },
+  "properties": {
+    "id": { "$ref": "urn:harness-contract:v1:common#/$defs/id" },
+    "at": { "$ref": "urn:harness-contract:v1:common#/$defs/timestamp" },
+    "from": {
+      "description": "Who requested the amendment.",
+      "enum": ["user", "overseer", "agent"]
+    },
+    "text": { "type": "string", "minLength": 1 },
+    "affects": {
+      "description": "IDs of the milestones the amendment changes. Completed milestones are never changed.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/string_list"
+    },
+    "plan_version": {
+      "description": "Plan version produced by the amendment (plan.v<N>.md). plan.md is version 1.",
+      "type": "integer",
+      "minimum": 2
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "seq": 1,
+  "at": "2026-11-10T12:00:00.000Z",
+  "run": "2026-11-10-fix-login-timeout",
+  "type": "run.started",
+  "data": {
+    "type": "skill",
+    "workflow": "esp-go-light"
+  }
+}

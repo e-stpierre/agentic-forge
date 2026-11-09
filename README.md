@@ -120,13 +120,14 @@ Then use `/af-workflow-builder` to create, validate, explain, or debug workflows
 
 ## Documentation
 
-| Document                                                                                         | Description                                                                |
-| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| [Getting Started](https://github.com/e-stpierre/agentic-forge/blob/main/docs/getting-started.md) | Installation, quick tour, initialization, and creating your first workflow |
-| [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md)               | Complete list of commands with all arguments and options                   |
-| [Workflows](https://github.com/e-stpierre/agentic-forge/blob/main/docs/workflows.md)             | Bundled workflows, their use cases, variables, and examples                |
-| [Coding Agents](https://github.com/e-stpierre/agentic-forge/blob/main/docs/coding-agents.md)     | Supported runtimes, per-step configuration, and model names                |
-| [Configuration](https://github.com/e-stpierre/agentic-forge/blob/main/docs/configuration.md)     | All configuration options, defaults, and layering behavior                 |
+| Document                                                                                           | Description                                                                     |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [Getting Started](https://github.com/e-stpierre/agentic-forge/blob/main/docs/getting-started.md)   | Installation, quick tour, initialization, and creating your first workflow      |
+| [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md)                 | Complete list of commands with all arguments and options                        |
+| [Workflows](https://github.com/e-stpierre/agentic-forge/blob/main/docs/workflows.md)               | Bundled workflows, their use cases, variables, and examples                     |
+| [Coding Agents](https://github.com/e-stpierre/agentic-forge/blob/main/docs/coding-agents.md)       | Supported runtimes, per-step configuration, and model names                     |
+| [Configuration](https://github.com/e-stpierre/agentic-forge/blob/main/docs/configuration.md)       | All configuration options, defaults, and layering behavior                      |
+| [Harness Contract](https://github.com/e-stpierre/agentic-forge/blob/main/docs/harness-contract.md) | Contract v1 for skill packs: run directories, result blocks, events, exit codes |
 
 ## Contributing
 

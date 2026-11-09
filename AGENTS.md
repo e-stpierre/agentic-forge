@@ -53,9 +53,17 @@ Runtime adapter layer for coding agent integrations:
 
 Workflow step handlers (prompt, parallel, serial, conditional, ralph-loop).
 
+#### `contract/`
+
+Harness contract helpers: `validateArtifact()`, `validateContractFile()`, `exitCodeFor()`, `EXIT_CODES`. Loads the schemas from `schemas/contract-v1/`.
+
 #### `workflows/`
 
 Bundled YAML workflow definitions (12 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `plan-loop`, `analyze-codebase`, `analyze-single`, `claude-demo`, `codex-demo`, `multi-demo`, `multi-plan-build-review`, `permission-test-claude`, `permission-test-codex`).
+
+### `schemas/`
+
+Versioned harness contract JSON Schemas and fixtures (`schemas/contract-v1/`), shipped in the npm package. agentic-forge owns the contract: every change follows the versioning rules in `docs/harness-contract.md` and is listed in the CHANGELOG as a contract delta.
 
 ### `tests/`
 
@@ -82,6 +90,7 @@ User-facing documentation, linked from the README via GitHub `blob/main/` URLs. 
 - `workflows.md` — Bundled workflows with use cases, variables, and examples
 - `coding-agents.md` — Supported runtimes, per-step configuration, and model names
 - `configuration.md` — All configuration options, defaults, and layering behavior
+- `harness-contract.md` — Harness contract v1 specification (owned by agentic-forge): run directory layout, artifacts, exit codes, compliance levels, versioning rules
 
 ### `agentic/`
 

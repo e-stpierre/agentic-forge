@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:harness-contract:v1:inbox-message",
+  "title": "Harness contract v1: inbox message",
+  "description": "One operator message, stored as inbox/<timestamp>-<id>.json in the run directory.",
+  "type": "object",
+  "required": ["id", "at", "from", "mode", "text", "target"],
+  "additionalProperties": false,
+  "patternProperties": { "^x-": true },
+  "properties": {
+    "id": { "$ref": "urn:harness-contract:v1:common#/$defs/id" },
+    "at": {
+      "description": "When the message was queued.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/timestamp"
+    },
+    "from": { "enum": ["user", "overseer"] },
+    "mode": {
+      "description": "next: deliver at the next step or iteration boundary. now: interrupt the current step.",
+      "enum": ["next", "now"]
+    },
+    "text": { "type": "string", "minLength": 1 },
+    "target": {
+      "description": "run: any later step of the run. step: the step named in step.",
+      "enum": ["run", "step"]
+    },
+    "step": {
+      "description": "Step name when target is step.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/nullable_string"
+    },
+    "delivered_at": {
+      "description": "Set when the message was injected into a step prompt. Absent or null while pending.",
+      "anyOf": [
+        { "$ref": "urn:harness-contract:v1:common#/$defs/timestamp" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "if": {
+    "description": "A step-targeted message must name its step.",
+    "properties": { "target": { "const": "step" } },
+    "required": ["target"]
+  },
+  "then": {
+    "required": ["step"],
+    "properties": { "step": { "type": "string", "minLength": 1 } }
+  }
+}
