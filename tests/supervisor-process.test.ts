@@ -5,8 +5,9 @@
  * has run (CI builds before testing).
  */
 
-import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -95,6 +96,55 @@ describe.skipIf(!existsSync(cliPath))("supervisor process", () => {
 		expect(cli("serve", "--detach")).toContain(`pid ${pid}`);
 		await stopSupervisor({ root: home.root });
 	}, 30_000);
+
+	it("af run dispatches from another directory and --foreground follows the run", async () => {
+		const repo = mkdtempSync(path.join(tmpdir(), "af-proc-repo-"));
+		try {
+			const wf = path.join(repo, "wait.yaml");
+			writeFileSync(
+				wf,
+				[
+					"name: wait-demo",
+					'version: "1.0"',
+					"steps:",
+					"  - name: approve",
+					"    type: wait-for-human",
+					'    message: "Approve?"',
+					"",
+				].join("\n"),
+			);
+			const env = { ...process.env, AGENTIC_FORGE_HOME: home.root };
+			const run = spawnSync(
+				process.execPath,
+				[cliPath, "run", wf, "--foreground", "--no-interactive"],
+				{
+					cwd: repo,
+					env,
+					encoding: "utf-8",
+					windowsHide: true,
+					timeout: 30_000,
+				},
+			);
+			const pid = readDiscovery(home.root)?.pid as number;
+			pids.add(pid);
+			expect(run.stdout).toMatch(/Run queued: \d{4}-\d{2}-\d{2}-wait-demo/);
+			expect(run.stdout).toContain("step.started approve");
+			expect(run.stdout).toContain("Workflow awaiting-human");
+			expect(run.status).toBe(10);
+
+			const id = /Run queued: (\S+)/.exec(run.stdout)?.[1] as string;
+			const status = spawnSync(process.execPath, [cliPath, "status", id], {
+				env,
+				encoding: "utf-8",
+				windowsHide: true,
+			});
+			expect(status.stdout).toContain("Status: awaiting-human");
+			expect(status.stdout).toContain(`Repo: ${repo}`);
+			await stopSupervisor({ root: home.root, force: true });
+		} finally {
+			rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+		}
+	}, 60_000);
 
 	it.skipIf(process.platform === "win32")(
 		"stops on SIGTERM and removes its files",

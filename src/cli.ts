@@ -56,7 +56,8 @@ program
 	.option("--no-interactive", "disable interactive prompts for missing variables")
 	.option("--terminal-output <mode>", "terminal output granularity (base or all)")
 	.option("--runtime <runtime>", "override default runtime (claude or codex)")
-	.option("--slug <slug>", "custom slug appended to the workflow run ID")
+	.option("--slug <slug>", "custom slug used in the run ID (YYYY-MM-DD-<slug>)")
+	.option("--foreground", "follow the run until it ends (Ctrl+C detaches, the run continues)")
 	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
@@ -68,18 +69,20 @@ program
 			terminalOutput: optString(opts.terminalOutput),
 			runtime: optString(opts.runtime),
 			slug: optString(opts.slug),
+			foreground: optBool(opts.foreground),
 		});
 	});
 
 // resume command
 program
 	.command("resume")
-	.argument("<workflow_id>", "workflow ID to resume")
-	.option("--terminal-output <mode>", "terminal output granularity (base or all)")
+	.description("Resume a paused, waiting or failed run from its last completed step")
+	.argument("<workflow_id>", "run ID to resume")
+	.option("--foreground", "follow the run until it ends (Ctrl+C detaches, the run continues)")
 	.action(async (workflowId: string, opts: Record<string, unknown>) => {
 		await cmdResume({
 			workflowId,
-			terminalOutput: optString(opts.terminalOutput),
+			foreground: optBool(opts.foreground),
 		});
 	});
 
@@ -94,9 +97,9 @@ program
 // cancel command
 program
 	.command("cancel")
-	.argument("<workflow_id>", "workflow ID to cancel")
-	.action((workflowId: string) => {
-		cmdCancel(workflowId);
+	.argument("<workflow_id>", "run ID to cancel")
+	.action(async (workflowId: string) => {
+		await cmdCancel(workflowId);
 	});
 
 // list command

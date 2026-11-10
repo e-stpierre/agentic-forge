@@ -10,6 +10,15 @@
 - Added the af supervisor (`af serve`): one long-lived process per user, single instance through a pidfile and the contract lock, HTTP IPC on `127.0.0.1` with a random port and a per-user token in a user-only `supervisor.json` discovery file; runs in the foreground or detached (`--detach`, hidden with no console on Windows), with `--status`, `--stop`, `--restart` and stale lock and pidfile recovery
 - Added a supervisor client that starts the supervisor on demand and applies a version handshake (restarts an idle supervisor with a different version, warns when runs are active); shutdown uses a named request on every platform, with `SIGTERM` as the POSIX fallback
 - Added the `AGENTIC_FORGE_HOME` environment variable to override the global directory on every platform
+- **Breaking:** `af run` now dispatches the workflow to the supervisor (started on demand) and returns a run ID; `--foreground` follows the run's events until it ends, and Ctrl+C detaches without stopping it
+- Added the run registry (`<global dir>/runs/index.json`) and contract run directories (`<runs.root>/YYYY-MM-DD-<slug>/` with `run.json`, `events.jsonl`, `dispatch.json` and `progress.json`), replacing output directories; `{{ output_dir }}` now points at the run directory
+- Added the dispatch payload: the client sends the repo root, the workflow (path and contents), its resolved config and an allowlisted environment, so the supervisor never reads its own cwd
+- Added the supervisor scheduler: `supervisor.max_parallel_runs` (global, default 4), `supervisor.max_parallel_tasks` (per repo, default 2), and one run per checkout unless the run has its own worktree; `supervisor.env_passthrough` forwards extra environment variables
+- Added crash recovery: on start, the supervisor marks the step a dead supervisor left running as `interrupted`, resumes the run from it (reusing the worktree recorded in `run.json`), rebuilds missing step events from disk, and emits `run.recovered` once
+- Added `run.*` and `step.*` events to `events.jsonl`, written after the state they describe
+- Added `runs.root`; **Deprecated** `outputDirectory` (`local` maps to `<repo>/agentic/runs/` with a warning)
+- Changed `af status`, `af list`, `af cancel` and `af resume` to use the run registry; legacy `outputs/` runs are listed read-only and cannot be resumed; `af resume --terminal-output` is replaced by `--foreground`, and `af cancel` stops a running run before its next step
+- Fixed the global config path ignoring `AGENTIC_FORGE_HOME`
 
 ## 0.11.0
 

@@ -1,12 +1,15 @@
 /** Run and resume command handlers with workflow discovery. */
 
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import confirm from "@inquirer/confirm";
 import input from "@inquirer/input";
 
+import { loadConfig } from "../config.js";
+import { exitCodeFor } from "../contract/index.js";
 import { getGlobalRoot } from "../paths.js";
+import { type DispatchPayload, filterEnv, getEnvPassthrough } from "../runs/dispatch.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -132,6 +135,8 @@ export async function cmdRun(options: {
 	terminalOutput?: string;
 	runtime?: string;
 	slug?: string;
+	/** Attach to the run until it ends (Ctrl+C detaches). */
+	foreground?: boolean;
 }): Promise<void> {
 	// Handle --list flag
 	if (options.listWorkflows) {
@@ -179,7 +184,6 @@ export async function cmdRun(options: {
 		);
 	}
 
-	const { WorkflowExecutor } = await import("../executor.js");
 	const { WorkflowParser, WorkflowParseError } = await import("../parser.js");
 	const [workflowPath, locationType] = resolveWorkflowPath(options.workflow);
 
@@ -267,36 +271,82 @@ export async function cmdRun(options: {
 		}
 	}
 
-	const executor = new WorkflowExecutor(undefined, false, options.runtime);
-	try {
-		// Resolve terminal_output: CLI override > workflow settings > default "base"
-		let terminalOutput = "base";
-		if (options.terminalOutput != null) {
-			terminalOutput = options.terminalOutput;
-		} else if (workflow.settings?.terminalOutput) {
-			terminalOutput = workflow.settings.terminalOutput;
-		}
+	// Resolve terminal_output: CLI override > workflow settings > default "base"
+	let terminalOutput = "base";
+	if (options.terminalOutput != null) {
+		terminalOutput = options.terminalOutput;
+	} else if (workflow.settings?.terminalOutput) {
+		terminalOutput = workflow.settings.terminalOutput;
+	}
 
-		const progress = await executor.run(
-			workflow,
-			variables,
-			options.fromStep ?? null,
-			terminalOutput,
-			path.resolve(workflowPath),
-			null,
-			options.slug,
-		);
-		process.stdout.write(`\nWorkflow ${progress.status}: ${progress.workflowId}\n`);
-		if (progress.errors && progress.errors.length > 0) {
-			process.stdout.write("\nErrors:\n");
-			for (const error of progress.errors) {
-				process.stdout.write(
-					`  - ${(error as Record<string, string>).step}: ${(error as Record<string, string>).error}\n`,
-				);
-			}
-		}
+	// The client resolves every input; the supervisor never reads its own cwd.
+	const repoRoot = process.cwd();
+	const config = loadConfig(repoRoot);
+	const payload: DispatchPayload = {
+		repo_root: repoRoot,
+		workflow: { path: path.resolve(workflowPath), contents: readFileSync(workflowPath, "utf-8") },
+		config,
+		env: filterEnv(process.env, getEnvPassthrough(config)),
+		variables,
+		runtime: options.runtime ?? null,
+		from_step: options.fromStep ?? null,
+		slug: options.slug ?? null,
+		terminal_output: terminalOutput,
+	};
+
+	const { ensureSupervisor } = await import("../supervisor/client.js");
+	const { dispatchRun, followRun, formatEvent } = await import("../runs/client.js");
+	const { getVersion } = await import("./version.js");
+
+	let result: import("../runs/manager.js").DispatchResult;
+	let client: import("../supervisor/client.js").SupervisorClient;
+	try {
+		const found = await ensureSupervisor({
+			version: getVersion(),
+			onWarn: (message) => process.stderr.write(`Warning: ${message}\n`),
+		});
+		client = found.client;
+		result = await dispatchRun(client, payload);
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
 		throw new CliExitError(`Error running workflow: ${msg}`);
+	}
+	for (const warning of result.warnings ?? []) {
+		process.stderr.write(`\x1b[33mWarning: ${warning}\x1b[0m\n`);
+	}
+	process.stdout.write(`Run queued: ${result.run.id}\n`);
+	process.stdout.write(`Run dir:    ${result.dir}\n`);
+
+	if (!options.foreground) {
+		process.stdout.write(
+			`\nFollow it with 'agentic-forge status ${result.run.id}' or rerun with --foreground.\n`,
+		);
+		return;
+	}
+
+	// Attach: stream the run's events until it ends. Ctrl+C detaches only.
+	const controller = new AbortController();
+	const onSigint = () => controller.abort();
+	process.on("SIGINT", onSigint);
+	let finalStatus: string;
+	try {
+		finalStatus = await followRun(client, result.run.id, {
+			signal: controller.signal,
+			onEvent: (event) => process.stdout.write(`${formatEvent(event)}\n`),
+		});
+	} finally {
+		process.off("SIGINT", onSigint);
+	}
+	if (finalStatus === "detached") {
+		process.stdout.write(
+			`\nDetached. The run continues in the supervisor: agentic-forge status ${result.run.id}\n`,
+		);
+		return;
+	}
+	process.stdout.write(`\nWorkflow ${finalStatus}: ${result.run.id}\n`);
+	const exitCode =
+		finalStatus === "done" || finalStatus === "merged" ? 0 : exitCodeFor(finalStatus);
+	if (exitCode !== 0) {
+		throw new CliExitError(`Run ${result.run.id} ended with status '${finalStatus}'`, exitCode);
 	}
 }

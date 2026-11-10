@@ -1,5 +1,6 @@
 /** `af serve` - run, start, inspect or stop the supervisor. */
 
+import { RunManager } from "../runs/manager.js";
 import {
 	Supervisor,
 	SupervisorAlreadyRunningError,
@@ -53,13 +54,14 @@ async function stop(force: boolean): Promise<boolean> {
 
 /** Runs the supervisor in this process until it is asked to stop. */
 async function runForeground(port: number | undefined): Promise<void> {
-	const supervisor = new Supervisor({
-		version: getVersion(),
-		port,
-		log: (message) => process.stderr.write(`[${new Date().toISOString()}] ${message}\n`),
-	});
+	const log = (message: string) =>
+		process.stderr.write(`[${new Date().toISOString()}] ${message}\n`);
+	const supervisor = new Supervisor({ version: getVersion(), port, log });
+	const runs = new RunManager({ root: supervisor.root, log });
+	runs.attach(supervisor);
 	try {
 		await supervisor.start();
+		await runs.start();
 	} catch (err) {
 		if (err instanceof SupervisorAlreadyRunningError) {
 			write(err.message);
@@ -68,6 +70,7 @@ async function runForeground(port: number | undefined): Promise<void> {
 		throw err;
 	}
 	const onSignal = () => {
+		runs.close();
 		void supervisor.stop();
 	};
 	process.on("SIGINT", onSignal);

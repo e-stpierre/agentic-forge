@@ -68,6 +68,19 @@ The af supervisor (`af serve`) and its thin client:
 
 Tests that start a supervisor or write locks use `tests/helpers/temp-home.ts` (`useTempGlobalRoot()`, which sets `AGENTIC_FORGE_HOME` to a temp dir).
 
+#### `runs/`
+
+Runs owned by the supervisor:
+
+- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery)
+- `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
+- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`)
+- `scheduler.ts` — `pickRunnable()` (global and per-repo limits, one run per checkout)
+- `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment)
+- `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`
+
+Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
+
 #### `workflows/`
 
 Bundled YAML workflow definitions (12 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `plan-loop`, `analyze-codebase`, `analyze-single`, `claude-demo`, `codex-demo`, `multi-demo`, `multi-plan-build-review`, `permission-test-claude`, `permission-test-codex`).

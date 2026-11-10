@@ -221,3 +221,46 @@ export function resolveOutputDir(baseDir: string): string {
 	}
 	return `${baseDir}-${counter}`;
 }
+
+// --- Run directories (harness contract) ---
+
+export interface RunsRootResolution {
+	root: string;
+	/** Set when a deprecated setting decided the root. */
+	deprecation: string | null;
+}
+
+/**
+ * Resolves the root under which contract run directories are created.
+ * - `runs.root` (absolute, or relative to the repo root) wins
+ * - deprecated `outputDirectory: "local"` maps to `<repo>/agentic/runs`
+ * - otherwise `<global dir>/runs`
+ */
+export function resolveRunsRoot(
+	config: Record<string, unknown>,
+	repoRoot: string,
+): RunsRootResolution {
+	const runs = config.runs as Record<string, unknown> | undefined;
+	const configured = typeof runs?.root === "string" && runs.root.length > 0 ? runs.root : null;
+	if (configured) {
+		return { root: path.resolve(repoRoot, configured), deprecation: null };
+	}
+	const outputDir = config.outputDirectory as string | undefined;
+	if (outputDir === "local" || outputDir === "agentic") {
+		return {
+			root: path.join(repoRoot, "agentic", "runs"),
+			deprecation: `'outputDirectory: ${outputDir}' is deprecated; set 'runs.root' instead (using ${path.join(repoRoot, "agentic", "runs")})`,
+		};
+	}
+	return { root: path.join(getGlobalRoot(), "runs"), deprecation: null };
+}
+
+/** Path of the supervisor run registry (`<global dir>/runs/index.json`). */
+export function getRunIndexPath(root: string = getGlobalRoot()): string {
+	return path.join(root, "runs", "index.json");
+}
+
+/** UTC date prefix (`YYYY-MM-DD`) used by run directory names. */
+export function runDatePrefix(date = new Date()): string {
+	return date.toISOString().slice(0, 10);
+}

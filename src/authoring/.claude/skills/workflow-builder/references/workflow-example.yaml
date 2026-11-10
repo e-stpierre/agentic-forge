@@ -26,7 +26,7 @@ settings:
   # Maximum time for entire workflow in minutes (default: 60)
   timeout-minutes: 180
 
-  # Track progress in progress.json file (default: true)
+  # Track progress in progress.json in the run directory (default: true)
   track-progress: true
 
   # Auto-fix severity level: none, minor, major, critical (default: none)

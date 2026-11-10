@@ -31,16 +31,29 @@ af config set outputDirectory local --local
 
 ## All Configuration Options
 
-### outputDirectory
+### runs
 
-Where workflow outputs are stored.
+Where run directories are created. Every run, worktree or not, writes to `<runs.root>/YYYY-MM-DD-<slug>/` (see [harness-contract.md](harness-contract.md)).
 
-| Value      | Description                                           |
-| ---------- | ----------------------------------------------------- |
-| `"global"` | Store in global directory under a project-slug folder |
-| `"local"`  | Store in `<project>/agentic/outputs/`                 |
+| Key         | Type           | Default | Description                                                                            |
+| ----------- | -------------- | ------- | -------------------------------------------------------------------------------------- |
+| `runs.root` | string or null | `null`  | Runs root: absolute, or relative to the repository. `null` means `<global dir>/runs/`. |
 
-**Default**: `"global"`
+### outputDirectory (deprecated)
+
+Replaced by `runs.root`. `"global"` (the default) maps to `<global dir>/runs/`. `"local"` maps to `<project>/agentic/runs/` and prints a deprecation warning at dispatch. Runs created before the supervisor stay under `outputs/` and are listed read-only by `af status` and `af list`.
+
+### supervisor
+
+Settings of the supervisor (`af serve`) and its scheduler.
+
+| Key                             | Type     | Default | Description                                                                                       |
+| ------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------- |
+| `supervisor.max_parallel_runs`  | integer  | `4`     | Runs executing at once, all repositories together. Read from the global config only.              |
+| `supervisor.max_parallel_tasks` | integer  | `2`     | Runs executing at once in one repository. Read from the dispatching repository's config.          |
+| `supervisor.env_passthrough`    | string[] | `[]`    | Extra environment variable names a client forwards to its runs, on top of the built-in allowlist. |
+
+Whatever the limits, two runs never share one checkout: a run without its own worktree waits while another run without a worktree is running on the same repository.
 
 ### logging
 

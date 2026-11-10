@@ -127,6 +127,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,
 				sandbox: getSandboxMode(context.config),
+				env: context.env ?? null,
 			});
 
 			if (!result.success) {

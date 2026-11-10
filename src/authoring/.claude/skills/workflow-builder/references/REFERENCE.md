@@ -403,7 +403,7 @@ Template resolution order:
 2. `agentic/templates/`
 3. Bundled plugin templates
 
-Step prompt template variables: `{{ workflow_id }}`, `{{ output_dir }}` (absolute path to the workflow output directory), `{{ variables.* }}`, `{{ outputs.* }}`
+Step prompt template variables: `{{ workflow_id }}`, `{{ output_dir }}` (absolute path to the run directory, `<runs.root>/YYYY-MM-DD-<slug>/`, which also holds `run.json`, `events.jsonl` and `progress.json`), `{{ variables.* }}`, `{{ outputs.* }}`
 
 Template context variables: `workflow`, `variables`, `outputs`, `progress`, `steps`, `analysis_steps`, `fix_steps`, `files_changed`, `branches`, `pull_requests`, `inputs`
 

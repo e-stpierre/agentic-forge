@@ -6,11 +6,11 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 
 | Command         | Description                                          |
 | --------------- | ---------------------------------------------------- |
-| `run`           | Run a workflow with optional variables               |
-| `resume`        | Resume a paused or failed workflow                   |
-| `status`        | Show status of a workflow run                        |
-| `cancel`        | Cancel a running or paused workflow                  |
-| `list`          | List all workflow runs                               |
+| `run`           | Dispatch a workflow run to the supervisor            |
+| `resume`        | Resume a paused, waiting or failed run               |
+| `status`        | Show status of a run                                 |
+| `cancel`        | Cancel a queued, running or paused run               |
+| `list`          | List runs                                            |
 | `input`         | Provide input to a paused workflow                   |
 | `init`          | Initialize directory structure                       |
 | `config`        | Get or set configuration values                      |
@@ -25,7 +25,13 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 
 ## run
 
-Run a workflow with optional key=value variables. Prompts interactively for missing required variables.
+Dispatch a workflow to the supervisor with optional key=value variables, and print the run ID. Prompts interactively for missing required variables.
+
+The client resolves everything the run needs: the workflow file (path and contents), the config of the current directory (defaults, global, local), and an allowlisted set of environment variables (`PATH`, system variables, `CLAUDE_*`, `CODEX_*`, `GH_*`, `ANTHROPIC_*`, `OPENAI_*`, plus `supervisor.env_passthrough`). The supervisor stores them in the run directory and never uses its own working directory, so a run dispatched from one repository uses that repository's config even when the supervisor was started elsewhere. The supervisor is started on demand when none is running.
+
+The run goes through the supervisor's queue (see `supervisor.max_parallel_runs` and `supervisor.max_parallel_tasks` in [configuration](configuration.md)). Two runs never share one checkout: a run on a repository that is not using its own worktree waits until the other non-worktree run on that repository ends.
+
+Each run writes a contract run directory, `<runs.root>/YYYY-MM-DD-<slug>/` (default `<global dir>/runs/`), with `run.json`, `events.jsonl`, `dispatch.json` and the engine state `progress.json`. See [harness-contract.md](harness-contract.md).
 
 ```bash
 af run <workflow> [vars...] [options]
@@ -43,7 +49,8 @@ af run <workflow> [vars...] [options]
 | Option                     | Description                                                                                                                                |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--var <key=value>`        | Set workflow variable (repeatable)                                                                                                         |
-| `--slug <slug>`            | Use this slug as the output directory name instead of a generated timestamp ID. Auto-increments on collision.                              |
+| `--slug <slug>`            | Slug of the run ID (`YYYY-MM-DD-<slug>`, default: the workflow name). Auto-increments on collision (`-2`, `-3`).                           |
+| `--foreground`             | Stream the run's events until it ends. Ctrl+C detaches and leaves the run going. Exit code follows the contract (`0` done, `10` waiting).  |
 | `--from-step <step>`       | Resume from a specific step                                                                                                                |
 | `--runtime <runtime>`      | Runtime to use for this invocation (`claude`, `codex`). Overrides config default and workflow settings, but not per-step `runtime` values. |
 | `--no-interactive`         | Disable interactive prompts for missing variables                                                                                          |
@@ -62,8 +69,11 @@ af run plan-build-review --var "task=Add auth" --var "create_pr=true"
 # Run with positional variables
 af run one-shot task="Add dark mode support"
 
-# Run with a custom output slug
+# Run with a custom slug (run ID 2026-11-10-dark-mode)
 af run plan-build-review --slug "dark-mode" --var "task=Add dark mode"
+
+# Dispatch and follow the run until it ends
+af run one-shot --foreground --var "task=Add dark mode"
 
 # Resume from a specific step
 af run one-shot --from-step review --var "task=Add dark mode"
@@ -77,77 +87,79 @@ af run ./agentic/workflows/my-workflow.yaml --var "key=value"
 
 ## resume
 
-Resume a paused or failed workflow execution from where it left off.
+Re-queue a `paused`, `awaiting-human` or `failed` run in the supervisor. It resumes from the last completed step with the inputs stored at dispatch, and reuses the worktree recorded in `run.json`. Runs interrupted by a supervisor crash are resumed automatically when the supervisor starts again (event `run.recovered`).
+
+Legacy runs (under `outputs/`, from versions before the supervisor) cannot be resumed: finish them with the version that started them, or discard them.
 
 ```bash
-af resume <workflow_id> [options]
+af resume <run_id> [options]
 ```
 
 ### Arguments
 
-| Argument        | Required | Description               |
-| --------------- | -------- | ------------------------- |
-| `<workflow_id>` | Yes      | Workflow run ID to resume |
+| Argument   | Required | Description      |
+| ---------- | -------- | ---------------- |
+| `<run_id>` | Yes      | Run ID to resume |
 
 ### Options
 
-| Option                     | Description                                  |
-| -------------------------- | -------------------------------------------- |
-| `--terminal-output <mode>` | Terminal output granularity: `base` or `all` |
+| Option         | Description                                                  |
+| -------------- | ------------------------------------------------------------ |
+| `--foreground` | Stream the run's events until it ends (Ctrl+C detaches only) |
 
 ### Examples
 
 ```bash
-# Resume a failed workflow
-af resume abc123
+# Resume a failed run
+af resume 2026-11-10-dark-mode
 
-# Resume with full terminal output
-af resume abc123 --terminal-output all
+# Resume and follow it
+af resume 2026-11-10-dark-mode --foreground
 ```
 
 ## status
 
-Show status of a running or completed workflow, including current step, retry count, completed steps, pending steps, and errors.
+Show the status of a run from the run registry: status, repository, run directory, worktree, current step, completed steps (interrupted steps are marked `!`), pending steps, and errors. Legacy runs under `outputs/` are shown read-only, marked as legacy. Does not need a running supervisor.
 
 ```bash
-af status <workflow_id>
+af status <run_id>
 ```
 
 ### Arguments
 
-| Argument        | Required | Description     |
-| --------------- | -------- | --------------- |
-| `<workflow_id>` | Yes      | Workflow run ID |
+| Argument   | Required | Description |
+| ---------- | -------- | ----------- |
+| `<run_id>` | Yes      | Run ID      |
 
 ### Examples
 
 ```bash
-af status abc123
+af status 2026-11-10-dark-mode
 ```
 
 ## cancel
 
-Cancel a running or paused workflow. Cannot cancel completed workflows.
+Cancel a run. A queued, paused or waiting run is canceled at once; a running run stops before its next step. Runs that already ended, and legacy runs, cannot be canceled.
 
 ```bash
-af cancel <workflow_id>
+af cancel <run_id>
 ```
 
 ### Arguments
 
-| Argument        | Required | Description               |
-| --------------- | -------- | ------------------------- |
-| `<workflow_id>` | Yes      | Workflow run ID to cancel |
+| Argument   | Required | Description      |
+| ---------- | -------- | ---------------- |
+| `<run_id>` | Yes      | Run ID to cancel |
 
 ### Examples
 
 ```bash
-af cancel abc123
+af cancel 2026-11-10-dark-mode
 ```
 
 ## list
 
-List all workflow runs. Shows ID, name, status, and start time.
+List the runs in the run registry (newest first), then the legacy runs of the current directory (read-only). Shows ID, workflow, status, and start time.
 
 ```bash
 af list [options]
@@ -155,9 +167,9 @@ af list [options]
 
 ### Options
 
-| Option              | Description                                                  |
-| ------------------- | ------------------------------------------------------------ |
-| `--status <status>` | Filter by status: `running`, `completed`, `failed`, `paused` |
+| Option              | Description                                                                                         |
+| ------------------- | --------------------------------------------------------------------------------------------------- |
+| `--status <status>` | Filter by run status: `queued`, `running`, `paused`, `awaiting-human`, `failed`, `canceled`, `done` |
 
 ### Examples
 
@@ -165,10 +177,10 @@ af list [options]
 # List all workflow runs
 af list
 
-# List only running workflows
+# List only running runs
 af list --status running
 
-# List failed workflows
+# List failed runs
 af list --status failed
 ```
 
@@ -327,7 +339,7 @@ Displays: global config, global workflows, global outputs, local config, local w
 
 ## serve
 
-Run the af supervisor: one long-lived background process per user that will own all workflow runs. Clients (`af run`, `af mcp`, `af overseer`) start it on demand, so running `af serve` yourself is optional.
+Run the af supervisor: one long-lived background process per user that owns all workflow runs (registry, queue, execution and crash recovery). Clients (`af run`, `af mcp`, `af overseer`) start it on demand, so running `af serve` yourself is optional.
 
 ```bash
 af serve [options]
@@ -346,6 +358,8 @@ af serve [options]
 | `--port <port>` | Listen on a fixed port instead of a random one (debugging only)            |
 
 Only one supervisor runs per user. Starting a second one prints the running instance and exits. The supervisor listens on `127.0.0.1` with a random port and accepts only requests that carry the per-user token from `supervisor.json` in the global directory (readable by the user only). A detached supervisor writes its output to `supervisor.log` in the same directory.
+
+On start, the supervisor recovers the runs a previous supervisor left `running`: it marks the interrupted step `interrupted`, re-queues the run so it resumes from that step (reusing its recorded worktree), and emits `run.recovered`. The run registry is `runs/index.json` in the global directory.
 
 When a client's version differs from the running supervisor's (for example after `npm i -g agentic-forge`), the client restarts the supervisor if no run is active, and otherwise warns and keeps it.
 

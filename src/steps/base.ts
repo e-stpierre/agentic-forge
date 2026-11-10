@@ -26,6 +26,8 @@ export interface StepContext {
 	variables: Record<string, unknown>;
 	outputs: Record<string, unknown>;
 	cwdOverride?: string | null;
+	/** Environment for runtime processes (the dispatch env under the supervisor). */
+	env?: NodeJS.ProcessEnv | null;
 }
 
 export function buildTemplateContext(context: StepContext): Record<string, unknown> {

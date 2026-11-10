@@ -42,7 +42,8 @@ export async function runRuntime(
 		const { executable, args, env: extraEnv, stdinInput } = command;
 
 		// Merge extra env vars with process.env
-		const env = extraEnv ? { ...process.env, ...extraEnv } : process.env;
+		const baseEnv = options.env ?? process.env;
+		const env = extraEnv ? { ...baseEnv, ...extraEnv } : baseEnv;
 
 		// On Windows, .cmd wrappers from npm cannot be spawned directly by
 		// Node's spawn(). Resolve the underlying .js entry point and run it

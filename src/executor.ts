@@ -1,5 +1,6 @@
 /** Workflow executor for running workflows. */
 
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,6 +46,33 @@ import { resolveStepWorktree, resolveWorktreeEnabled } from "./worktree-settings
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** Callbacks the supervisor uses to write contract state and events. */
+export interface ExecutorHooks {
+	/** Called after the step's start is saved to disk. */
+	onStepStarted?: (step: string) => void | Promise<void>;
+	/** Called after the step's outcome is saved to disk. */
+	onStepFinished?: (step: string, status: string, error: string | null) => void | Promise<void>;
+	/** Called when the workflow-level worktree is created. */
+	onWorktreeCreated?: (worktree: Worktree) => void | Promise<void>;
+}
+
+export interface ExecutorOptions {
+	/** Config snapshot; defaults to `loadConfig(repoRoot)`. */
+	config?: Record<string, unknown>;
+	/** Environment for runtime processes; defaults to `process.env`. */
+	env?: NodeJS.ProcessEnv | null;
+	/** Contract run directory; replaces the output directory when set. */
+	runDir?: string | null;
+	/** Worktree recorded in run.json, reused instead of creating one. */
+	worktree?: Worktree | null;
+	hooks?: ExecutorHooks;
+	/**
+	 * Checked at every step boundary. Returning a workflow status (for example
+	 * "canceled") stops the run with that status before the next step.
+	 */
+	shouldStop?: () => string | null;
+}
+
 export class WorkflowExecutor {
 	repoRoot: string;
 	config: Record<string, unknown>;
@@ -67,9 +95,17 @@ export class WorkflowExecutor {
 	serialExecutor: SerialStepExecutor;
 	conditionalExecutor: ConditionalStepExecutor;
 
-	constructor(repoRoot?: string, strictMode = false, runtimeOverride?: string | null) {
-		this.repoRoot = repoRoot ?? process.cwd();
-		this.config = loadConfig(this.repoRoot);
+	options: ExecutorOptions;
+
+	constructor(
+		repoRoot: string,
+		strictMode = false,
+		runtimeOverride?: string | null,
+		options: ExecutorOptions = {},
+	) {
+		this.repoRoot = repoRoot;
+		this.options = options;
+		this.config = options.config ?? loadConfig(this.repoRoot);
 		this.strictMode = strictMode;
 		this.runtimeOverride = runtimeOverride ?? null;
 		this.renderer = new TemplateRenderer(undefined, strictMode);
@@ -117,6 +153,7 @@ export class WorkflowExecutor {
 			const childAdapter = getAdapter(childRuntimeId);
 			const childContext: StepContext = {
 				...context,
+				env: this.options.env ?? null,
 				runtimeAdapter: childAdapter,
 			};
 
@@ -216,7 +253,9 @@ export class WorkflowExecutor {
 				}
 			}
 
-			workflowId = generateWorkflowId(workflow.name, slug);
+			workflowId = this.options.runDir
+				? path.basename(this.options.runDir)
+				: generateWorkflowId(workflow.name, slug);
 			const stepNames = workflow.steps.map((s) => s.name);
 			progress = createProgress(workflowId, workflow.name, stepNames, vars, workflowFile);
 		}
@@ -229,12 +268,18 @@ export class WorkflowExecutor {
 				: false;
 
 		// Resolve output dir: worktree mode always uses global directory keyed by main repo root
-		const baseOutputDir =
-			resumeProgress?.outputDir ??
-			(worktreeEnabled
-				? path.join(getWorktreeOutputRoot(this.repoRoot), workflowId)
-				: getOutputDir(workflowId, this.config, this.repoRoot));
-		const outputDir = resumeProgress ? baseOutputDir : resolveOutputDir(baseOutputDir);
+		// Under the supervisor, the contract run dir is the output dir.
+		let outputDir: string;
+		if (this.options.runDir) {
+			outputDir = this.options.runDir;
+		} else {
+			const baseOutputDir =
+				resumeProgress?.outputDir ??
+				(worktreeEnabled
+					? path.join(getWorktreeOutputRoot(this.repoRoot), workflowId)
+					: getOutputDir(workflowId, this.config, this.repoRoot));
+			outputDir = resumeProgress ? baseOutputDir : resolveOutputDir(baseOutputDir);
+		}
 		progress.outputDir = outputDir;
 		saveProgress(progress, outputDir);
 
@@ -254,8 +299,13 @@ export class WorkflowExecutor {
 			const wtLocation = worktreeSettings.location ?? "sibling";
 			const wtDirectory = worktreeSettings.directory ?? null;
 
-			// On resume, try to reuse the existing worktree (preserves pending changes)
-			if (resumeProgress) {
+			// Reuse the worktree recorded in run.json (resume and crash recovery)
+			if (this.options.worktree && existsSync(this.options.worktree.path)) {
+				workflowWorktree = this.options.worktree;
+				logger.info("workflow", `Reusing recorded worktree: ${workflowWorktree.path}`);
+				console.info(`Worktree (resumed): ${workflowWorktree.path}`);
+			} else if (resumeProgress && !this.options.runDir) {
+				// Legacy resume: find the worktree by id (preserves pending changes)
 				workflowWorktree = findExistingWorktree(worktreeId, this.repoRoot, wtLocation, wtDirectory);
 				if (workflowWorktree) {
 					logger.info("workflow", `Reusing existing worktree: ${workflowWorktree.path}`);
@@ -277,6 +327,7 @@ export class WorkflowExecutor {
 					`Worktree created: ${workflowWorktree.path} (branch: ${workflowWorktree.branch})`,
 				);
 				console.info(`Worktree: ${workflowWorktree.path}`);
+				await this.options.hooks?.onWorktreeCreated?.(workflowWorktree);
 			}
 
 			if (workflowWorktree) {
@@ -310,9 +361,21 @@ export class WorkflowExecutor {
 					continue;
 				}
 
+				// Boundary check: the supervisor may ask to stop before the next step
+				const stopStatus = this.options.shouldStop?.() ?? null;
+				if (stopStatus) {
+					logger.info("workflow", `Stopping before step ${step.name}: ${stopStatus}`);
+					progress.status = stopStatus;
+					break;
+				}
+
 				try {
 					await this.executeStep(step, progress, vars, logger, console, workflowWorktree);
 					saveProgress(progress, outputDir);
+					const record = [...progress.completedSteps].reverse().find((s) => s.name === step.name);
+					if (record) {
+						await this.options.hooks?.onStepFinished?.(step.name, record.status, record.error);
+					}
 
 					if (
 						progress.status === WORKFLOW_STATUS.FAILED ||
@@ -327,6 +390,7 @@ export class WorkflowExecutor {
 					updateStepFailed(progress, step.name, errorMsg);
 					progress.status = WORKFLOW_STATUS.FAILED;
 					saveProgress(progress, outputDir);
+					await this.options.hooks?.onStepFinished?.(step.name, STEP_STATUS.FAILED, errorMsg);
 					break;
 				}
 			}
@@ -500,6 +564,7 @@ export class WorkflowExecutor {
 			variables,
 			outputs: progress.stepOutputs,
 			cwdOverride: workflowWorktree?.path ?? null,
+			env: this.options.env ?? null,
 		};
 
 		const resolvedModel = resolveModel(context, step.model);
@@ -508,6 +573,7 @@ export class WorkflowExecutor {
 		console.stepStart(step.name, step.type, resolvedModel);
 		updateStepStarted(progress, step.name);
 		saveProgress(progress, outputDir);
+		await this.options.hooks?.onStepStarted?.(step.name);
 
 		const executor = this.executors[step.type];
 		if (!executor) {
