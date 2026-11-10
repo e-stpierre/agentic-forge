@@ -24,6 +24,7 @@ export const EVENTS_FILE = "events.jsonl";
 export const DISPATCH_FILE = "dispatch.json";
 export const WORKFLOW_COPY_FILE = "workflow.yaml";
 export const DECISIONS_FILE = "decisions.jsonl";
+export const AMENDMENTS_FILE = "amendments.jsonl";
 
 export interface RunJson {
 	contract_version: 1;
@@ -65,6 +66,9 @@ export type EventType =
 	| "step.retried"
 	| "message.queued"
 	| "message.delivered"
+	| "amendment.applied"
+	| "needs_input"
+	| "input.answered"
 	| "supervisor.restarted"
 	| "run.recovered";
 
@@ -74,6 +78,18 @@ export interface RunEvent {
 	run: string;
 	type: string;
 	data?: Record<string, unknown>;
+}
+
+/** One line of `amendments.jsonl` (contract `amendment.schema.json`). */
+export interface AmendmentEntry {
+	id: string;
+	at: string;
+	from?: "user" | "overseer" | "agent";
+	text: string;
+	affects: string[];
+	/** Plan version the amendment produced, or null when it was delivered as a message. */
+	plan_version: number | null;
+	[key: `x-${string}`]: unknown;
 }
 
 /** One line of `decisions.jsonl` (contract `decision.schema.json`). */
@@ -201,28 +217,54 @@ export class RunStore {
 		return path.join(this.dir, DECISIONS_FILE);
 	}
 
+	get amendmentsFile(): string {
+		return path.join(this.dir, AMENDMENTS_FILE);
+	}
+
 	/** Appends one validated entry to `decisions.jsonl` under the contract lock. */
 	async appendDecision(entry: DecisionEntry): Promise<void> {
-		const result = validateArtifact("decision", entry);
-		if (!result.valid) {
-			throw new ContractWriteError(
-				this.decisionsFile,
-				result.errors.map((e) => `${e.path} ${e.message}`),
-			);
-		}
-		await withLock(this.decisionsFile, async () => {
-			appendFileSync(this.decisionsFile, `${JSON.stringify(entry)}\n`, "utf-8");
-		});
+		await this.appendJsonl("decision", this.decisionsFile, entry);
 	}
 
 	/** Entries of `decisions.jsonl` (torn lines skipped). */
 	readDecisions(): DecisionEntry[] {
-		if (!existsSync(this.decisionsFile)) return [];
-		const out: DecisionEntry[] = [];
-		for (const line of readFileSync(this.decisionsFile, "utf-8").split("\n")) {
+		return this.readJsonl<DecisionEntry>(this.decisionsFile);
+	}
+
+	/** Appends one validated entry to `amendments.jsonl` under the contract lock. */
+	async appendAmendment(entry: AmendmentEntry): Promise<void> {
+		await this.appendJsonl("amendment", this.amendmentsFile, entry);
+	}
+
+	/** Entries of `amendments.jsonl` (torn lines skipped). */
+	readAmendments(): AmendmentEntry[] {
+		return this.readJsonl<AmendmentEntry>(this.amendmentsFile);
+	}
+
+	private async appendJsonl(
+		artifact: "decision" | "amendment",
+		file: string,
+		entry: unknown,
+	): Promise<void> {
+		const result = validateArtifact(artifact, entry);
+		if (!result.valid) {
+			throw new ContractWriteError(
+				file,
+				result.errors.map((e) => `${e.path} ${e.message}`),
+			);
+		}
+		await withLock(file, async () => {
+			appendFileSync(file, `${JSON.stringify(entry)}\n`, "utf-8");
+		});
+	}
+
+	private readJsonl<T>(file: string): T[] {
+		if (!existsSync(file)) return [];
+		const out: T[] = [];
+		for (const line of readFileSync(file, "utf-8").split("\n")) {
 			if (!line.trim()) continue;
 			try {
-				out.push(JSON.parse(line) as DecisionEntry);
+				out.push(JSON.parse(line) as T);
 			} catch {
 				// torn line
 			}

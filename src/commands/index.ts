@@ -11,7 +11,14 @@ export {
 	getProjectWorkflowsDir,
 } from "./run.js";
 export { cmdResume } from "./resume.js";
-export { cmdPause, cmdSend } from "./control.js";
+export {
+	cmdAmend,
+	cmdAnswer,
+	cmdPause,
+	cmdReprioritize,
+	cmdRetryStep,
+	cmdSend,
+} from "./control.js";
 export { cmdStatus, cmdCancel, cmdList } from "./status.js";
 export { cmdInit, cmdConfigure } from "./init.js";
 export { cmdPaths } from "./paths.js";

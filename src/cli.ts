@@ -18,6 +18,8 @@ function optStringArray(val: unknown): string[] | undefined {
 
 import {
 	CliExitError,
+	cmdAmend,
+	cmdAnswer,
 	cmdAuthoringDir,
 	cmdCancel,
 	cmdConfig,
@@ -28,7 +30,9 @@ import {
 	cmdPaths,
 	cmdPause,
 	cmdReleaseNotes,
+	cmdReprioritize,
 	cmdResume,
+	cmdRetryStep,
 	cmdRun,
 	cmdSend,
 	cmdServe,
@@ -110,12 +114,18 @@ program
 // send command
 program
 	.command("send")
-	.description("Queue an operator message, injected at the start of the next step or iteration")
+	.description(
+		"Queue an operator message, injected at the start of the next step or iteration (--mode now: restart the current step with it)",
+	)
 	.argument("<run_id>", "run ID")
 	.argument("<text>", "message text")
 	.option("--step <name>", "deliver to this step only (default: the next step of the run)")
 	.option("--from <sender>", "sender: user or overseer", "user")
-	.option("--mode <mode>", "delivery mode (only next is supported)", "next")
+	.option(
+		"--mode <mode>",
+		"next: deliver at the next boundary; now: kill the current step and restart it with the message",
+		"next",
+	)
 	.action(async (runId: string, text: string, opts: Record<string, unknown>) => {
 		await cmdSend({
 			runId,
@@ -134,6 +144,66 @@ program
 	.option("--now", "stop the current step now (its process tree is killed; it reruns on resume)")
 	.action(async (runId: string, opts: Record<string, unknown>) => {
 		await cmdPause({ runId, now: optBool(opts.now) });
+	});
+
+// answer command
+program
+	.command("answer")
+	.description("Answer the pending needs_input request of an awaiting-human run and resume it")
+	.argument("<run_id>", "run ID")
+	.argument("<request_id>", "needs_input request ID (from the needs_input event or af status)")
+	.argument("<answer>", "option ID, option label, or free-form answer")
+	.option("--from <sender>", "sender: user or overseer", "user")
+	.action(
+		async (runId: string, requestId: string, answer: string, opts: Record<string, unknown>) => {
+			await cmdAnswer({ runId, requestId, answer, from: optString(opts.from) });
+		},
+	);
+
+// amend command
+program
+	.command("amend")
+	.description(
+		"Record a requirement change; runs the workflow's amend step at the next boundary, or delivers it as an operator message",
+	)
+	.argument("<run_id>", "run ID")
+	.argument("<text>", "the requirement change")
+	.option("--affects <ids>", "comma-separated milestone IDs the amendment changes")
+	.option("--from <sender>", "sender: user or overseer", "user")
+	.action(async (runId: string, text: string, opts: Record<string, unknown>) => {
+		await cmdAmend({
+			runId,
+			text,
+			affects: optString(opts.affects),
+			from: optString(opts.from),
+		});
+	});
+
+// retry-step command
+program
+	.command("retry-step")
+	.description("Rerun a top-level step of a stopped run, and every step after it")
+	.argument("<run_id>", "run ID")
+	.argument("<step>", "top-level step name")
+	.option("--context <text>", "extra context, delivered to the step as an operator message")
+	.option("--from <sender>", "sender: user or overseer", "user")
+	.action(async (runId: string, step: string, opts: Record<string, unknown>) => {
+		await cmdRetryStep({
+			runId,
+			step,
+			context: optString(opts.context),
+			from: optString(opts.from),
+		});
+	});
+
+// reprioritize command
+program
+	.command("reprioritize")
+	.description("Change the queue priority of a run that has not ended (higher runs first)")
+	.argument("<run_id>", "run ID")
+	.argument("<priority>", "integer priority (default 0)")
+	.action(async (runId: string, priority: string) => {
+		await cmdReprioritize({ runId, priority });
 	});
 
 // list command

@@ -17,7 +17,12 @@ export function dispatchRun(
 }
 
 /** Statuses at which `--foreground` stops following a run. */
-const STOP_STATUSES = new Set<string>([...TERMINAL_RUN_STATUSES, "paused", "awaiting-human"]);
+const STOP_STATUSES = new Set<string>([
+	...TERMINAL_RUN_STATUSES,
+	"paused",
+	"awaiting-human",
+	"blocked",
+]);
 
 export interface FollowOptions {
 	/** Poll interval in ms (default 500). */
@@ -30,7 +35,7 @@ export interface FollowOptions {
 }
 
 /**
- * Follows a run's events until it reaches a terminal, paused or awaiting-human
+ * Follows a run's events until it reaches a terminal, paused, blocked or awaiting-human
  * status, or `signal` aborts. Returns the last status seen.
  */
 export async function followRun(

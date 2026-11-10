@@ -42,6 +42,8 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		max_parallel_runs: 4,
 		max_parallel_tasks: 2,
 		env_passthrough: [],
+		/** Minutes before a non-blocking needs_input request gets its recommended option (null: never). */
+		needs_input_timeout: null,
 	},
 };
 

@@ -56,7 +56,7 @@ Workflow step handlers (prompt, parallel, serial, conditional, ralph-loop).
 
 #### `contract/`
 
-Harness contract helpers: `validateArtifact()`, `validateContractFile()`, `exitCodeFor()`, `EXIT_CODES`. Loads the schemas from `schemas/contract-v1/`.
+Harness contract helpers: `validateArtifact()`, `validateContractFile()`, `exitCodeFor()`, `EXIT_CODES`. Loads the schemas from `schemas/contract-v1/`. `result.ts`: `parseResultBlock()` (result block on the last output line), `resultStatusFromExit()`, `exitCodeForRun()`, `ResultBlock`, `NeedsInput`. `plan.ts`: `latestPlan()` (`plan.md` / `plan.v<N>.md`).
 
 #### `supervisor/`
 
@@ -73,7 +73,7 @@ Tests that start a supervisor or write locks use `tests/helpers/temp-home.ts` (`
 
 Runs owned by the supervisor:
 
-- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send`, `pause`, `cancel`, `resume`)
+- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines)
 - `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
 - `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`)
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)

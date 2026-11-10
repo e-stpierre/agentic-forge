@@ -118,6 +118,7 @@ export async function runRuntime(
 		const accumulatedText: Map<number, string> = new Map();
 		let hasStreamedContent = false;
 		let currentModel: string | null = null;
+		let sessionId: string | null = null;
 		let stderrData = "";
 
 		// Collect stderr
@@ -147,6 +148,8 @@ export async function runRuntime(
 						if (line) rawStdout.push(line);
 						continue;
 					}
+
+					if (event.sessionId) sessionId = event.sessionId;
 
 					// Track model across events
 					if (event.model) {
@@ -244,6 +247,7 @@ export async function runRuntime(
 			// Process any remaining data in the line buffer
 			if (lineBuffer.trim()) {
 				const event = adapter.parseStreamLine(lineBuffer);
+				if (event?.sessionId) sessionId = event.sessionId;
 				if (event && event.type === "result") {
 					resultText = event.text ?? null;
 				} else if (lineBuffer.trim()) {
@@ -258,7 +262,13 @@ export async function runRuntime(
 			const streamOutput = collectedText.join("");
 			const finalOutput = resultText ?? (streamOutput || rawStdout.join("\n"));
 
-			const result = adapter.buildFinalResult(code ?? 1, finalOutput, stderrData, options);
+			const result = adapter.buildFinalResult(
+				code ?? 1,
+				finalOutput,
+				stderrData,
+				options,
+				sessionId,
+			);
 
 			resolve(result);
 		});

@@ -1,4 +1,7 @@
-/** Run control command handlers: send and pause (cancel and resume live in status.ts and resume.ts). */
+/**
+ * Run control command handlers: send, pause, answer, amend, retry-step and
+ * reprioritize (cancel and resume live in status.ts and resume.ts).
+ */
 
 import { RunRegistry } from "../runs/registry.js";
 import { CliExitError } from "./run.js";
@@ -45,9 +48,15 @@ export async function cmdSend(options: {
 			},
 		);
 		const target = res.message.step ? `step '${res.message.step}'` : "the next step";
-		process.stdout.write(
-			`Message queued: ${res.message.id} (delivered to ${target} of ${options.runId})\n`,
-		);
+		if (options.mode === "now") {
+			process.stdout.write(
+				`Message sent: ${res.message.id} (a running step of ${options.runId} restarts with it now)\n`,
+			);
+		} else {
+			process.stdout.write(
+				`Message queued: ${res.message.id} (delivered to ${target} of ${options.runId})\n`,
+			);
+		}
 	} catch (err) {
 		throw new CliExitError(`Error: ${(err as Error).message}`);
 	}
@@ -71,6 +80,95 @@ export async function cmdPause(options: { runId: string; now?: boolean }): Promi
 				`Pause requested: ${options.runId} stops at its next step or iteration boundary\n`,
 			);
 		}
+	} catch (err) {
+		throw new CliExitError(`Error: ${(err as Error).message}`);
+	}
+}
+
+export async function cmdAnswer(options: {
+	runId: string;
+	requestId: string;
+	answer: string;
+	from?: string;
+}): Promise<void> {
+	requireRun(options.runId);
+	const client = await supervisorClient();
+	try {
+		await client.request<{ status: string; message: string }>(
+			"POST",
+			`/v1/runs/${encodeURIComponent(options.runId)}/answer`,
+			{ request_id: options.requestId, answer: options.answer, from: options.from ?? "user" },
+		);
+		process.stdout.write(
+			`Answered ${options.requestId}: ${options.runId} resumes and the step runs again with the answer\n`,
+		);
+	} catch (err) {
+		throw new CliExitError(`Error: ${(err as Error).message}`);
+	}
+}
+
+export async function cmdAmend(options: {
+	runId: string;
+	text: string;
+	affects?: string;
+	from?: string;
+}): Promise<void> {
+	requireRun(options.runId);
+	const client = await supervisorClient();
+	const affects = (options.affects ?? "")
+		.split(",")
+		.map((a) => a.trim())
+		.filter(Boolean);
+	try {
+		const res = await client.request<{ amendment: string; delivery: string; step: string | null }>(
+			"POST",
+			`/v1/runs/${encodeURIComponent(options.runId)}/amend`,
+			{ text: options.text, affects, from: options.from ?? "user" },
+		);
+		const how =
+			res.delivery === "amend-step"
+				? `the amend step '${res.step}' runs at the next step boundary`
+				: "delivered as an operator message at the next boundary";
+		process.stdout.write(`Amendment recorded: ${res.amendment} (${how})\n`);
+	} catch (err) {
+		throw new CliExitError(`Error: ${(err as Error).message}`);
+	}
+}
+
+export async function cmdRetryStep(options: {
+	runId: string;
+	step: string;
+	context?: string;
+	from?: string;
+}): Promise<void> {
+	requireRun(options.runId);
+	const client = await supervisorClient();
+	try {
+		await client.request<{ status: string }>(
+			"POST",
+			`/v1/runs/${encodeURIComponent(options.runId)}/retry`,
+			{ step: options.step, context: options.context ?? null, from: options.from ?? "user" },
+		);
+		process.stdout.write(
+			`Run queued: ${options.runId} reruns '${options.step}' and every later step\n`,
+		);
+	} catch (err) {
+		throw new CliExitError(`Error: ${(err as Error).message}`);
+	}
+}
+
+export async function cmdReprioritize(options: { runId: string; priority: string }): Promise<void> {
+	requireRun(options.runId);
+	const priority = Number(options.priority);
+	if (!Number.isInteger(priority)) {
+		throw new CliExitError(`Error: priority must be an integer, got '${options.priority}'`);
+	}
+	const client = await supervisorClient();
+	try {
+		await client.request("POST", `/v1/runs/${encodeURIComponent(options.runId)}/priority`, {
+			priority,
+		});
+		process.stdout.write(`Priority of ${options.runId}: ${priority}\n`);
 	} catch (err) {
 		throw new CliExitError(`Error: ${(err as Error).message}`);
 	}

@@ -1,6 +1,7 @@
 /** Runtime abstraction types for multi-runtime support. */
 
 import type { ConsoleOutput } from "../console.js";
+import { type ResultBlock, parseResultBlock } from "../contract/result.js";
 
 /** Supported runtime identifiers. */
 export type RuntimeId = "claude" | "codex";
@@ -46,8 +47,10 @@ export interface RuntimeResult {
 
 /** Parsed streaming event, normalized across runtimes. */
 export interface StreamEvent {
-	type: "text" | "user_text" | "model_info" | "result" | "error";
+	type: "text" | "user_text" | "model_info" | "result" | "error" | "session";
 	text?: string;
+	/** Runtime session id (`session` events, or carried by any event). */
+	sessionId?: string;
 	model?: string;
 	index?: number;
 	/** True when this event starts a new assistant turn (triggers streamComplete). */
@@ -87,16 +90,26 @@ export interface RuntimeAdapter {
 		stdout: string,
 		stderr: string,
 		options: RuntimeRunOptions,
+		sessionId?: string | null,
 	): RuntimeResult;
 }
 
-/** Session output extracted from runtime response. */
+/**
+ * Session output extracted from a runtime response.
+ *
+ * `result` is the contract result block printed on the last output line (see
+ * docs/harness-contract.md). `isSuccess` and `context` derive from it
+ * (`done`/`merged`, `summary`). The session id comes from the runtime stream,
+ * not from the block. The legacy `{ sessionId, isSuccess, context }` block is
+ * still read when no result block is present.
+ */
 export class SessionOutput {
 	sessionId: string | null;
 	isSuccess: boolean;
 	context: string;
 	extra: Record<string, unknown>;
 	rawJson: Record<string, unknown> | null;
+	result: ResultBlock | null;
 
 	constructor(
 		sessionId: string | null = null,
@@ -104,23 +117,36 @@ export class SessionOutput {
 		context = "",
 		extra: Record<string, unknown> = {},
 		rawJson: Record<string, unknown> | null = null,
+		result: ResultBlock | null = null,
 	) {
 		this.sessionId = sessionId;
 		this.isSuccess = isSuccess;
 		this.context = context;
 		this.extra = extra;
 		this.rawJson = rawJson;
+		this.result = result;
 	}
 
 	/**
-	 * Extract the session output JSON from stdout.
-	 *
-	 * Looks for the last JSON block that contains the required base keys
-	 * (sessionId, isSuccess, context).
+	 * Extract the session output from stdout: the contract result block first,
+	 * then the last legacy JSON block with `sessionId`, `isSuccess`, `context`.
 	 */
-	static fromStdout(stdout: string): SessionOutput {
+	static fromStdout(stdout: string, streamSessionId: string | null = null): SessionOutput {
 		if (!stdout) {
-			return new SessionOutput(null, false, "No output received from session");
+			return new SessionOutput(streamSessionId, false, "No output received from session");
+		}
+
+		const block = parseResultBlock(stdout);
+		if (block) {
+			const { status, summary, ...extra } = block;
+			return new SessionOutput(
+				streamSessionId,
+				status === "done" || status === "merged",
+				summary,
+				extra,
+				block as unknown as Record<string, unknown>,
+				block,
+			);
 		}
 
 		// Find all JSON blocks in code blocks
@@ -145,7 +171,7 @@ export class SessionOutput {
 						}
 					}
 					return new SessionOutput(
-						data.sessionId as string | null,
+						streamSessionId ?? (data.sessionId as string | null),
 						Boolean(data.isSuccess),
 						(data.context as string) ?? "",
 						extra,
@@ -157,6 +183,10 @@ export class SessionOutput {
 			}
 		}
 
-		return new SessionOutput(null, false, "No valid session output JSON found in response");
+		return new SessionOutput(
+			streamSessionId,
+			false,
+			"No valid session output JSON found in response",
+		);
 	}
 }

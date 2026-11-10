@@ -72,6 +72,14 @@ settings:
     # Cleanup policy: on-success (default), on-complete, manual
     cleanup: "on-success"
 
+  # Amend step (optional): the top-level step `af amend` runs at the next step
+  # boundary. It receives the amendment as an "## Operator Messages" section,
+  # writes plan.v<N>.md in {{ output_dir }}, and later steps read the latest
+  # plan through {{ plan_path }}. Without it, an amendment is delivered to the
+  # next step as an "Amendment:" operator message.
+  amend:
+    step: generate-plan
+
 # Optional: Input variables for the workflow
 variables:
   # Required string variable

@@ -1,6 +1,6 @@
 /** Resume command handler: re-queues a supervisor run from its last completed step. */
 
-import { exitCodeFor } from "../contract/index.js";
+import { exitCodeForRun } from "../contract/index.js";
 import { RunRegistry } from "../runs/registry.js";
 import { CliExitError } from "./run.js";
 import { resolveLegacyOutputDir } from "./status.js";
@@ -55,6 +55,6 @@ export async function cmdResume(options: {
 		return;
 	}
 	process.stdout.write(`\nWorkflow ${status}: ${entry.id}\n`);
-	const code = status === "done" || status === "merged" ? 0 : exitCodeFor(status);
+	const code = exitCodeForRun(status);
 	if (code !== 0) throw new CliExitError(`Run ${entry.id} ended with status '${status}'`, code);
 }

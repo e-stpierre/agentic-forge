@@ -124,6 +124,11 @@ export class CodexAdapter implements RuntimeAdapter {
 
 		const eventType = data.type;
 
+		// The thread id is the session id used by `codex exec resume`
+		if (eventType === "thread.started" && typeof data.thread_id === "string") {
+			return { type: "session", sessionId: data.thread_id };
+		}
+
 		// Handle item completion with agent message
 		if (eventType === "item.completed") {
 			const item = data.item;
@@ -171,8 +176,9 @@ export class CodexAdapter implements RuntimeAdapter {
 		stdout: string,
 		stderr: string,
 		options: RuntimeRunOptions,
+		sessionId: string | null = null,
 	): RuntimeResult {
-		const sessionOutput = SessionOutput.fromStdout(stdout);
+		const sessionOutput = SessionOutput.fromStdout(stdout, sessionId);
 		return {
 			returncode,
 			stdout,

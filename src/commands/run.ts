@@ -7,7 +7,7 @@ import confirm from "@inquirer/confirm";
 import input from "@inquirer/input";
 
 import { loadConfig } from "../config.js";
-import { exitCodeFor } from "../contract/index.js";
+import { exitCodeForRun } from "../contract/index.js";
 import { getGlobalRoot } from "../paths.js";
 import { type DispatchPayload, filterEnv, getEnvPassthrough } from "../runs/dispatch.js";
 
@@ -344,8 +344,7 @@ export async function cmdRun(options: {
 		return;
 	}
 	process.stdout.write(`\nWorkflow ${finalStatus}: ${result.run.id}\n`);
-	const exitCode =
-		finalStatus === "done" || finalStatus === "merged" ? 0 : exitCodeFor(finalStatus);
+	const exitCode = exitCodeForRun(finalStatus);
 	if (exitCode !== 0) {
 		throw new CliExitError(`Run ${result.run.id} ended with status '${finalStatus}'`, exitCode);
 	}

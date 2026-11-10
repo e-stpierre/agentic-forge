@@ -51,6 +51,13 @@ export interface WorkflowSettings {
 	runtime?: string | null;
 	requiredTools: string[];
 	worktree: WorktreeSettings;
+	/** `settings.amend`: the step `af amend` runs before the next step boundary. */
+	amend?: AmendSettings | null;
+}
+
+/** Amend step settings (`settings.amend.step`). */
+export interface AmendSettings {
+	step: string;
 }
 
 export interface StepDefinition {
@@ -112,6 +119,8 @@ export interface StepProgress {
 	error: string | null;
 	humanInput: string | null;
 	sessionId?: string | null;
+	/** Status of the step's contract result block, when it printed one. */
+	resultStatus?: string | null;
 }
 
 export interface ParallelBranch {
@@ -149,4 +158,9 @@ export interface WorkflowProgress {
 	stepOutputs: Record<string, unknown>;
 	workflowFile: string;
 	outputDir?: string;
+	/**
+	 * Top-level step that `af retry-step` asked to rerun: it and every later step
+	 * run again even when already completed. Cleared once that step starts.
+	 */
+	retryFrom?: string | null;
 }

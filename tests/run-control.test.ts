@@ -294,9 +294,11 @@ describe("af send", () => {
 		await expect(client.request("POST", route, { text: "  " })).rejects.toMatchObject({
 			status: 400,
 		});
-		await expect(client.request("POST", route, { text: "x", mode: "now" })).rejects.toMatchObject({
-			status: 400,
-		});
+		await expect(client.request("POST", route, { text: "x", mode: "later" })).rejects.toMatchObject(
+			{
+				status: 400,
+			},
+		);
 		await expect(client.request("POST", route, { text: "x", from: "bot" })).rejects.toMatchObject({
 			status: 400,
 		});

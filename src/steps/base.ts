@@ -2,6 +2,8 @@
 
 import { getRuntimeModel } from "../config.js";
 import type { ConsoleOutput } from "../console.js";
+import { latestPlan } from "../contract/plan.js";
+import type { ResultBlock } from "../contract/result.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import type { TemplateRenderer } from "../renderer.js";
 import type { RuntimeAdapter, RuntimeId } from "../runtimes/index.js";
@@ -38,6 +40,12 @@ export interface StepContext {
 	operatorMessages?: ((step: string) => Promise<string>) | null;
 	/** Checked at ralph-loop iteration boundaries; a workflow status stops the loop. */
 	shouldStop?: (() => string | null) | null;
+	/**
+	 * Called with the result block a step printed. Returns the block to use: the
+	 * supervisor writes it to `steps/<NN-step>/result.json`, or returns the file
+	 * the step wrote itself (the file wins).
+	 */
+	recordResult?: ((step: string, block: ResultBlock) => Promise<ResultBlock | null>) | null;
 }
 
 /** Thrown or reported when a step was stopped through `StepContext.signal`. */
@@ -54,11 +62,14 @@ export async function withOperatorMessages(
 }
 
 export function buildTemplateContext(context: StepContext): Record<string, unknown> {
+	const plan = latestPlan(context.outputDir);
 	return {
 		variables: context.variables,
 		outputs: context.outputs,
 		workflow_id: context.workflowId,
 		output_dir: context.outputDir ?? "",
+		plan_path: plan.path ?? "",
+		plan_version: plan.version,
 		...(context.variables as Record<string, unknown>),
 	};
 }

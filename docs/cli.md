@@ -7,11 +7,15 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | Command         | Description                                          |
 | --------------- | ---------------------------------------------------- |
 | `run`           | Dispatch a workflow run to the supervisor            |
-| `resume`        | Resume a paused, waiting or failed run               |
+| `resume`        | Resume a paused, waiting, blocked or failed run      |
 | `status`        | Show status of a run                                 |
 | `cancel`        | Cancel a queued, running or paused run               |
 | `send`          | Queue an operator message for a run                  |
 | `pause`         | Pause a run at its next boundary, or now             |
+| `answer`        | Answer a step's needs_input request and resume       |
+| `amend`         | Record a requirement change for a run                |
+| `retry-step`    | Rerun a step of a stopped run, with extra context    |
+| `reprioritize`  | Change the queue priority of a run                   |
 | `list`          | List runs                                            |
 | `input`         | Provide input to a paused workflow                   |
 | `init`          | Initialize directory structure                       |
@@ -48,16 +52,16 @@ af run <workflow> [vars...] [options]
 
 ### Options
 
-| Option                     | Description                                                                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--var <key=value>`        | Set workflow variable (repeatable)                                                                                                         |
-| `--slug <slug>`            | Slug of the run ID (`YYYY-MM-DD-<slug>`, default: the workflow name). Auto-increments on collision (`-2`, `-3`).                           |
-| `--foreground`             | Stream the run's events until it ends. Ctrl+C detaches and leaves the run going. Exit code follows the contract (`0` done, `10` waiting).  |
-| `--from-step <step>`       | Resume from a specific step                                                                                                                |
-| `--runtime <runtime>`      | Runtime to use for this invocation (`claude`, `codex`). Overrides config default and workflow settings, but not per-step `runtime` values. |
-| `--no-interactive`         | Disable interactive prompts for missing variables                                                                                          |
-| `--terminal-output <mode>` | Terminal output granularity: `base` or `all`                                                                                               |
-| `--list`                   | List all available workflows                                                                                                               |
+| Option                     | Description                                                                                                                                                                                                            |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--var <key=value>`        | Set workflow variable (repeatable)                                                                                                                                                                                     |
+| `--slug <slug>`            | Slug of the run ID (`YYYY-MM-DD-<slug>`, default: the workflow name). Auto-increments on collision (`-2`, `-3`).                                                                                                       |
+| `--foreground`             | Stream the run's events until it ends. Ctrl+C detaches and leaves the run going. Exit code follows the contract: `0` done or merged, `10` awaiting-human, `20` halted, `30` blocked (a step escalated), `1` otherwise. |
+| `--from-step <step>`       | Resume from a specific step                                                                                                                                                                                            |
+| `--runtime <runtime>`      | Runtime to use for this invocation (`claude`, `codex`). Overrides config default and workflow settings, but not per-step `runtime` values.                                                                             |
+| `--no-interactive`         | Disable interactive prompts for missing variables                                                                                                                                                                      |
+| `--terminal-output <mode>` | Terminal output granularity: `base` or `all`                                                                                                                                                                           |
+| `--list`                   | List all available workflows                                                                                                                                                                                           |
 
 ### Examples
 
@@ -89,7 +93,7 @@ af run ./agentic/workflows/my-workflow.yaml --var "key=value"
 
 ## resume
 
-Re-queue a `paused`, `awaiting-human` or `failed` run in the supervisor. It resumes from the last completed step with the inputs stored at dispatch, and reuses the worktree recorded in `run.json`. Runs interrupted by a supervisor crash are resumed automatically when the supervisor starts again (event `run.recovered`).
+Re-queue a `paused`, `awaiting-human`, `blocked` or `failed` run in the supervisor. It resumes from the last completed step with the inputs stored at dispatch, and reuses the worktree recorded in `run.json`. Runs interrupted by a supervisor crash are resumed automatically when the supervisor starts again (event `run.recovered`).
 
 Legacy runs (under `outputs/`, from versions before the supervisor) cannot be resumed: finish them with the version that started them, or discard them.
 
@@ -176,11 +180,11 @@ af send <run_id> <text> [options]
 
 ### Options
 
-| Option            | Description                                                           |
-| ----------------- | --------------------------------------------------------------------- |
-| `--step <name>`   | Deliver to this step only (default: the next step of the run)         |
-| `--from <sender>` | Sender recorded in the message: `user` (default) or `overseer`        |
-| `--mode <mode>`   | Delivery mode; only `next` (the default) is supported in this version |
+| Option            | Description                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `--step <name>`   | Deliver to this step only (default: the next step of the run)                                                |
+| `--from <sender>` | Sender recorded in the message: `user` (default) or `overseer`                                               |
+| `--mode <mode>`   | `next` (default): deliver at the next boundary. `now`: kill the current step and restart it with the message |
 
 ### Examples
 
@@ -190,7 +194,12 @@ af send 2026-11-10-dark-mode "Reuse the existing theme tokens instead of adding 
 
 # Target the review step
 af send 2026-11-10-dark-mode "Check the contrast ratios too." --step review
+
+# Correct the running step immediately
+af send 2026-11-10-dark-mode "Stop: use pnpm, not npm." --mode now
 ```
+
+With `--mode now`, the supervisor kills the running step's process tree (as `pause --now` does) and runs the step again from its start, with the message in its `## Operator Messages` section. The event log shows `step.retried` with `reason: message`, and no `run.paused`. A run that is not executing a step delivers the message at its next start, as with `next`.
 
 ## pause
 
@@ -218,6 +227,79 @@ af pause <run_id> [--now]
 af pause 2026-11-10-dark-mode
 af pause 2026-11-10-dark-mode --now
 af resume 2026-11-10-dark-mode
+```
+
+## answer
+
+Answer the pending `needs_input` request of an `awaiting-human` run. A step asks by ending with a result block whose `status` is `awaiting-human` and whose `needs_input` holds the question (see [harness contract](harness-contract.md#needs_input-protocol)). The supervisor stores the request in `run.json` (`x-af-needs-input`) and emits a `needs_input` event with the request in `data`.
+
+`af answer` records an `input.answered` event and an `operator` decision, queues the answer as an operator message for the asking step, and resumes the run. The step runs again from its start with `Answer to <id> ("<question>"): <answer>` in its `## Operator Messages` section.
+
+```bash
+af answer <run_id> <request_id> <answer> [--from user|overseer]
+```
+
+### Arguments
+
+| Argument       | Required | Description                                       |
+| -------------- | -------- | ------------------------------------------------- |
+| `<run_id>`     | Yes      | Run ID                                            |
+| `<request_id>` | Yes      | `needs_input` request ID (`data.id` of the event) |
+| `<answer>`     | Yes      | Option ID, option label, or a free-form answer    |
+
+A non-blocking request (`blocking: false`) with a `recommended` option is answered automatically with that option after `supervisor.needs_input_timeout` minutes, when the key is set (see [configuration](configuration.md)). The decision is logged with `source: policy`. Without the key, every request waits for an answer.
+
+### Examples
+
+```bash
+af answer 2026-11-10-dark-mode q1 a
+af answer 2026-11-10-dark-mode q2 "Keep both stores for one release."
+```
+
+## amend
+
+Record a requirement change for a run that has not ended.
+
+- When the workflow names an amend step in `settings.amend.step`, the amendment is queued for that step: at the next step boundary the supervisor runs the amend step (with `Amendment A001 (affects M2): <text>` in its `## Operator Messages` section), then continues with the next step. When the amend step completes, the amendment is appended to `amendments.jsonl` with the latest plan version (`plan.v<N>.md` in the run directory), and `amendment.applied` and an `operator` decision follow. Later steps read the new plan through `{{ plan_path }}`.
+- Otherwise, the amendment is recorded at once with `plan_version: null`, logged as an `operator` decision, and delivered to the next step as an operator message prefixed `Amendment:`, with no pause.
+
+```bash
+af amend <run_id> <text> [--affects M2,M3] [--from user|overseer]
+```
+
+### Options
+
+| Option            | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| `--affects <ids>` | Comma-separated milestone IDs the amendment changes |
+| `--from <sender>` | Sender: `user` (default) or `overseer`              |
+
+### Examples
+
+```bash
+af amend 2026-11-10-oauth "Support GitHub Enterprise hosts too." --affects M2,M3
+```
+
+## retry-step
+
+Rerun a top-level step of a `failed`, `paused`, `blocked` or `awaiting-human` run. The step and every step after it run again, even the ones that completed. `--context` is delivered to the step as an operator message. The supervisor emits `step.retried` with `reason: operator`.
+
+```bash
+af retry-step <run_id> <step> [--context <text>] [--from user|overseer]
+```
+
+### Examples
+
+```bash
+af retry-step 2026-11-10-dark-mode build --context "The flaky test is fixed on main; rebase first."
+```
+
+## reprioritize
+
+Change the queue priority of a run that has not ended. The scheduler starts queued runs by priority (higher first), then by creation time. The default priority is `0`.
+
+```bash
+af reprioritize <run_id> <priority>
 ```
 
 ## list

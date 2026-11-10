@@ -20,9 +20,8 @@
       "$ref": "urn:harness-contract:v1:common#/$defs/string_list"
     },
     "plan_version": {
-      "description": "Plan version produced by the amendment (plan.v<N>.md). plan.md is version 1.",
-      "type": "integer",
-      "minimum": 2
+      "description": "Plan version produced by the amendment (plan.v<N>.md). plan.md is version 1. null when the workflow has no amend step and the amendment was delivered as an operator message.",
+      "anyOf": [{ "type": "integer", "minimum": 2 }, { "type": "null" }]
     }
   }
 }

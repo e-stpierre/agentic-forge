@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { loadConfig } from "./config.js";
 import { ConsoleOutput, OutputLevel } from "./console.js";
+import type { ResultBlock } from "./contract/result.js";
 import {
 	type Worktree,
 	copyLocalDirs,
@@ -18,6 +19,7 @@ import { WorkflowLogger } from "./logging/logger.js";
 import { getOutputDir, getWorktreeOutputRoot, resolveOutputDir } from "./paths.js";
 import {
 	STEP_STATUS,
+	WAITING_WORKFLOW_STATUSES,
 	WORKFLOW_STATUS,
 	createProgress,
 	generateWorkflowId,
@@ -83,18 +85,34 @@ export interface ExecutorOptions {
 	signal?: AbortSignal | null;
 	/** Returns the `## Operator Messages` section for a step or iteration prompt. */
 	operatorMessages?: ((step: string) => Promise<string>) | null;
+	/** See `StepContext.recordResult`. */
+	recordResult?: ((step: string, block: ResultBlock) => Promise<ResultBlock | null>) | null;
+	/**
+	 * Called at each top-level step boundary, before the boundary stop check.
+	 * Returns true when an amendment is pending: the executor then runs the
+	 * workflow's `settings.amend.step` before the next step.
+	 */
+	takeAmendment?: (() => Promise<boolean>) | null;
+	/** Called after the amend step ran (successfully or not). */
+	onAmendStepFinished?: ((step: string, status: string | null) => Promise<void>) | null;
 }
 
+/** Run endings that always keep the worktree, whatever the cleanup policy. */
+const KEEP_WORKTREE_STATUSES: readonly string[] = [
+	...WAITING_WORKFLOW_STATUSES,
+	WORKFLOW_STATUS.HALTED,
+];
+
 /**
- * Worktree cleanup decision for a workflow-level worktree. Paused and
- * awaiting-human runs always keep it; canceled runs are safety-committed first.
+ * Worktree cleanup decision for a workflow-level worktree. Paused,
+ * awaiting-human, blocked and halted runs always keep it; canceled runs are safety-committed first.
  */
 export function shouldRemoveWorktree(
 	cleanup: string,
 	status: string,
 	options: { awaitingHuman?: boolean } = {},
 ): boolean {
-	if (status === WORKFLOW_STATUS.PAUSED || options.awaitingHuman) return false;
+	if (KEEP_WORKTREE_STATUSES.includes(status) || options.awaitingHuman) return false;
 	if (cleanup === "on-complete") return true;
 	return cleanup === "on-success" && status === WORKFLOW_STATUS.COMPLETED;
 }
@@ -373,12 +391,23 @@ export class WorkflowExecutor {
 			}
 		}
 
-		// Build set of completed step names to skip on resume
+		// Build set of completed step names to skip on resume. `af retry-step`
+		// reruns its step and every later step even when they completed.
+		const retryIndex = progress.retryFrom
+			? workflow.steps.findIndex((s) => s.name === progress.retryFrom)
+			: -1;
+		const rerun = new Set(
+			retryIndex >= 0 ? workflow.steps.slice(retryIndex).map((s) => s.name) : [],
+		);
 		const completedStepNames = new Set(
 			progress.completedSteps
 				.filter((s) => s.status === STEP_STATUS.COMPLETED || s.status === STEP_STATUS.SKIPPED)
-				.map((s) => s.name),
+				.map((s) => s.name)
+				.filter((name) => !rerun.has(name)),
 		);
+		const amendStep = workflow.settings.amend
+			? (workflow.steps.find((s) => s.name === workflow.settings.amend?.step) ?? null)
+			: null;
 
 		let skipUntil = fromStep ?? null;
 
@@ -407,49 +436,49 @@ export class WorkflowExecutor {
 					break;
 				}
 
-				const recordsBefore = progress.completedSteps.length;
-				try {
-					await this.executeStep(step, progress, vars, logger, console, workflowWorktree);
-					if (await this.handleInterruption(step.name, progress, recordsBefore, logger)) {
-						saveProgress(progress, outputDir);
-						break;
-					}
+				if (progress.retryFrom === step.name) {
+					progress.retryFrom = null;
 					saveProgress(progress, outputDir);
-					const record = progress.completedSteps
-						.slice(recordsBefore)
-						.reverse()
-						.find((s) => s.name === step.name);
-					if (record) {
-						await this.options.hooks?.onStepFinished?.(step.name, record.status, record.error);
-					}
-
-					if (
-						progress.status === WORKFLOW_STATUS.FAILED ||
-						progress.status === WORKFLOW_STATUS.PAUSED ||
-						progress.status === WORKFLOW_STATUS.CANCELED
-					) {
-						break;
-					}
-				} catch (e: unknown) {
-					if (await this.handleInterruption(step.name, progress, recordsBefore, logger)) {
-						saveProgress(progress, outputDir);
-						break;
-					}
-					const errorMsg = e instanceof Error ? e.message : String(e);
-					logger.error(step.name, `Step failed: ${errorMsg}`);
-					console.stepFailed(step.name, errorMsg);
-					updateStepFailed(progress, step.name, errorMsg);
-					progress.status = WORKFLOW_STATUS.FAILED;
-					saveProgress(progress, outputDir);
-					await this.options.hooks?.onStepFinished?.(step.name, STEP_STATUS.FAILED, errorMsg);
-					break;
 				}
+
+				// Pending amendment: run the amend step at this boundary, then continue
+				let amending = false;
+				if (amendStep && (await this.options.takeAmendment?.())) {
+					amending = true;
+					if (amendStep.name !== step.name) {
+						logger.info("workflow", `Running amend step ${amendStep.name} before ${step.name}`);
+						const amended = await this.runTopLevelStep(
+							amendStep,
+							progress,
+							vars,
+							logger,
+							console,
+							workflowWorktree,
+							outputDir,
+						);
+						await this.options.onAmendStepFinished?.(amendStep.name, amended.status);
+						amending = false;
+						if (amended.stop || progress.status !== WORKFLOW_STATUS.RUNNING) break;
+					}
+				}
+
+				const outcome = await this.runTopLevelStep(
+					step,
+					progress,
+					vars,
+					logger,
+					console,
+					workflowWorktree,
+					outputDir,
+				);
+				if (amending) await this.options.onAmendStepFinished?.(step.name, outcome.status);
+				if (outcome.stop || progress.status !== WORKFLOW_STATUS.RUNNING) break;
 			}
 
 			if (progress.status === WORKFLOW_STATUS.RUNNING) {
 				progress.status = WORKFLOW_STATUS.COMPLETED;
 			}
-			if (progress.status !== WORKFLOW_STATUS.PAUSED) {
+			if (!WAITING_WORKFLOW_STATUSES.includes(progress.status)) {
 				progress.completedAt = new Date().toISOString();
 			}
 			saveProgress(progress, outputDir);
@@ -493,6 +522,52 @@ export class WorkflowExecutor {
 		console.workflowComplete(workflow.name, progress.status);
 		logger.info("workflow", `Workflow ${progress.status}: ${workflow.name}`);
 		return progress;
+	}
+
+	/**
+	 * Runs one top-level step and fires its hooks. Returns `stop: true` when the
+	 * operator stopped it or it failed with an exception, and the status of the
+	 * record the step added (null when it added none).
+	 */
+	private async runTopLevelStep(
+		step: StepDefinition,
+		progress: WorkflowProgress,
+		vars: Record<string, unknown>,
+		logger: WorkflowLogger,
+		console: ConsoleOutput,
+		workflowWorktree: Worktree | null,
+		outputDir: string,
+	): Promise<{ stop: boolean; status: string | null }> {
+		const recordsBefore = progress.completedSteps.length;
+		try {
+			await this.executeStep(step, progress, vars, logger, console, workflowWorktree);
+			if (await this.handleInterruption(step.name, progress, recordsBefore, logger)) {
+				saveProgress(progress, outputDir);
+				return { stop: true, status: STEP_STATUS.INTERRUPTED };
+			}
+			saveProgress(progress, outputDir);
+			const record = progress.completedSteps
+				.slice(recordsBefore)
+				.reverse()
+				.find((s) => s.name === step.name);
+			if (record) {
+				await this.options.hooks?.onStepFinished?.(step.name, record.status, record.error);
+			}
+			return { stop: false, status: record?.status ?? null };
+		} catch (e: unknown) {
+			if (await this.handleInterruption(step.name, progress, recordsBefore, logger)) {
+				saveProgress(progress, outputDir);
+				return { stop: true, status: STEP_STATUS.INTERRUPTED };
+			}
+			const errorMsg = e instanceof Error ? e.message : String(e);
+			logger.error(step.name, `Step failed: ${errorMsg}`);
+			console.stepFailed(step.name, errorMsg);
+			updateStepFailed(progress, step.name, errorMsg);
+			progress.status = WORKFLOW_STATUS.FAILED;
+			saveProgress(progress, outputDir);
+			await this.options.hooks?.onStepFinished?.(step.name, STEP_STATUS.FAILED, errorMsg);
+			return { stop: true, status: STEP_STATUS.FAILED };
+		}
 	}
 
 	/**
@@ -647,6 +722,7 @@ export class WorkflowExecutor {
 			env: this.options.env ?? null,
 			signal: this.options.signal ?? null,
 			operatorMessages: this.options.operatorMessages ?? null,
+			recordResult: this.options.recordResult ?? null,
 			shouldStop: this.checkStop,
 		};
 

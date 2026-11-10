@@ -25,6 +25,17 @@
 - Changed step processes to be killed as a whole process tree (`taskkill /T /F` on Windows, process group on POSIX) on `pause --now`, `cancel` and step timeouts, and spawned with `windowsHide`
 - Fixed the `on-complete` worktree cleanup policy removing the worktree of a paused or awaiting-human run; such runs now always keep their worktree
 - Changed `pruneOrphaned` to accept the worktree paths af recorded, so it never prunes nested worktrees created by a step
+- **Breaking:** The agentic system prompt now asks for the contract result block (one JSON line, `status` and `summary`, optional `needs_input`, `outputs`, `max_risk`, `pr`, ...) instead of `{ sessionId, isSuccess, context }`; the adapters read the session id from the stream (Claude `session_id`, Codex `thread.started`). The legacy block is still read when no result block is present
+- Added result-status handling for prompt steps: `done`/`merged` complete the step (a run with a `merged` step ends `merged`), `failed` fails it, `awaiting-human` puts the run in `awaiting-human`, `halted` ends it `halted`, `escalate` puts it in `blocked`; without a block, process exit codes `0`/`10`/`20`/`30` map the same way. Blocks are written to `steps/<NN-step>/result.json`, and `max_risk` and `pr` are copied to `run.json`. `af run --foreground` exits `20` for halted and `30` for blocked runs
+- Added `needs_input` handling: an `awaiting-human` result with `needs_input` emits a `needs_input` event and stores the request in `run.json` (`x-af-needs-input`); `af answer <run> <request> <answer>` (`POST /v1/runs/:id/answer`) logs `input.answered` and an `operator` decision, and reruns the step with the answer as an operator message
+- Added `supervisor.needs_input_timeout` (minutes, default `null`): a non-blocking request with a `recommended` option is answered with it after the timeout, logged as a `policy` decision; deadlines survive a supervisor restart
+- Added `af amend <run> <text> [--affects]` (`POST /v1/runs/:id/amend`) and the `settings.amend.step` workflow setting: the amend step runs at the next step boundary with the amendment, then the harness appends it to `amendments.jsonl` with the latest plan version, emits `amendment.applied` and logs an `operator` decision; without an amend step the amendment is recorded with `plan_version: null` and delivered as an `Amendment:` operator message
+- Added the `{{ plan_path }}` and `{{ plan_version }}` template variables (latest `plan.md` / `plan.v<N>.md` in the run directory)
+- Added `af retry-step <run> <step> [--context]` (`POST /v1/runs/:id/retry`): reruns a top-level step and every later step of a failed, paused, blocked or awaiting-human run, emitting `step.retried`
+- Added `af send --mode now`: kills the running step and restarts it at once with the message (`step.retried` with `reason: message`)
+- Added `af reprioritize <run> <priority>` (`POST /v1/runs/:id/priority`)
+- Changed `af resume` to accept `blocked` runs, and worktrees of `blocked` and `halted` runs to be kept whatever the cleanup policy
+- Contract delta (no version bump, loosening): `amendments.jsonl` `plan_version` accepts `null` for an amendment delivered as an operator message because the workflow has no amend step
 
 ## 0.11.0
 

@@ -567,6 +567,15 @@ describe("helpers", () => {
 				currentStep: { name: "x", retryCount: 0, startedAt: "", type: "wait-for-human" },
 			}),
 		).toBe("awaiting-human");
+		expect(toRunStatus({ ...base, status: "awaiting-human" })).toBe("awaiting-human");
+		expect(toRunStatus({ ...base, status: "halted" })).toBe("halted");
+		expect(toRunStatus({ ...base, status: "blocked" })).toBe("blocked");
+		const merged = {
+			...base,
+			status: "completed",
+			completedSteps: [{ name: "merge", status: "completed", resultStatus: "merged" }],
+		} as unknown as Parameters<typeof toRunStatus>[0];
+		expect(toRunStatus(merged)).toBe("merged");
 	});
 
 	it("keeps progress.json as engine state next to run.json", async () => {

@@ -47,11 +47,12 @@ Replaced by `runs.root`. `"global"` (the default) maps to `<global dir>/runs/`. 
 
 Settings of the supervisor (`af serve`) and its scheduler.
 
-| Key                             | Type     | Default | Description                                                                                       |
-| ------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------- |
-| `supervisor.max_parallel_runs`  | integer  | `4`     | Runs executing at once, all repositories together. Read from the global config only.              |
-| `supervisor.max_parallel_tasks` | integer  | `2`     | Runs executing at once in one repository. Read from the dispatching repository's config.          |
-| `supervisor.env_passthrough`    | string[] | `[]`    | Extra environment variable names a client forwards to its runs, on top of the built-in allowlist. |
+| Key                              | Type           | Default | Description                                                                                                                                                                                                            |
+| -------------------------------- | -------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `supervisor.max_parallel_runs`   | integer        | `4`     | Runs executing at once, all repositories together. Read from the global config only.                                                                                                                                   |
+| `supervisor.max_parallel_tasks`  | integer        | `2`     | Runs executing at once in one repository. Read from the dispatching repository's config.                                                                                                                               |
+| `supervisor.env_passthrough`     | string[]       | `[]`    | Extra environment variable names a client forwards to its runs, on top of the built-in allowlist.                                                                                                                      |
+| `supervisor.needs_input_timeout` | number or null | `null`  | Minutes before a non-blocking `needs_input` request (`blocking: false` with a `recommended` option) is answered with its recommended option. `null` never auto-answers. Read from the dispatching repository's config. |
 
 Whatever the limits, two runs never share one checkout: a run without its own worktree waits while another run without a worktree is running on the same repository.
 
