@@ -75,11 +75,13 @@ Runs owned by the supervisor:
 
 - `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines)
 - `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
-- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`)
+- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
+- `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
+- `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
 - `scheduler.ts` — `pickRunnable()` (global and per-repo limits, one run per checkout)
 - `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment)
-- `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`
+- `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`
 
 Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
 

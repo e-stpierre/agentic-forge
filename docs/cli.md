@@ -17,6 +17,8 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `retry-step`    | Rerun a step of a stopped run, with extra context    |
 | `reprioritize`  | Change the queue priority of a run                   |
 | `list`          | List runs                                            |
+| `events`        | Print or follow run events                           |
+| `artifacts`     | Show the plan, summary, decisions and review files   |
 | `input`         | Provide input to a paused workflow                   |
 | `init`          | Initialize directory structure                       |
 | `config`        | Get or set configuration values                      |
@@ -304,7 +306,7 @@ af reprioritize <run_id> <priority>
 
 ## list
 
-List the runs in the run registry (newest first), then the legacy runs of the current directory (read-only). Shows ID, workflow, status, and start time.
+List the runs in the run registry (newest first), then the legacy runs of the current directory (read-only, only when no filter other than a single `--status` is set). Shows ID, workflow, status, and start time.
 
 ```bash
 af list [options]
@@ -312,9 +314,13 @@ af list [options]
 
 ### Options
 
-| Option              | Description                                                                                         |
-| ------------------- | --------------------------------------------------------------------------------------------------- |
-| `--status <status>` | Filter by run status: `queued`, `running`, `paused`, `awaiting-human`, `failed`, `canceled`, `done` |
+| Option              | Description                                                                                                                                         |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--status <status>` | Filter by run status, or a comma-separated list: `queued`, `running`, `paused`, `awaiting-human`, `blocked`, `halted`, `failed`, `canceled`, `done` |
+| `--repo <path>`     | Only runs dispatched from this repository root                                                                                                      |
+| `--since <when>`    | Only runs created since an ISO date or a duration (`30m`, `2h`, `7d`, `1w`)                                                                         |
+| `--parent <run>`    | Only child runs of this parent run (`run.json` `parent`)                                                                                            |
+| `--json`            | Print the registry entries as JSON (supervisor runs only)                                                                                           |
 
 ### Examples
 
@@ -322,11 +328,86 @@ af list [options]
 # List all workflow runs
 af list
 
-# List only running runs
-af list --status running
+# Runs that need attention
+af list --status paused,awaiting-human,blocked
 
-# List failed runs
-af list --status failed
+# Runs of this repository from the last day, as JSON
+af list --repo . --since 1d --json
+```
+
+## events
+
+Print the events of every run (or of one run) from the run's `events.jsonl`, oldest first, and optionally follow new ones. Each event is a contract envelope `{ seq, at, run, type, data }` (see [Harness contract](harness-contract.md)). Goes through the supervisor, which is started on demand.
+
+```bash
+af events [options]
+```
+
+A cursor records the last event seen in each run. When the command ends, it prints the cursor on stderr (`Cursor: c1....`); passing it back with `--cursor` continues exactly after it, without gaps or duplicates, even across runs that started in between. `--cursor-file` reads the cursor at start and rewrites it after every batch, which is the way to run a resumable background monitor. Type filters never hold the cursor back: a filtered-out event is skipped, not delivered later.
+
+With `--follow`, the command long-polls the supervisor (`--wait` seconds per request) and prints events as they arrive until Ctrl+C.
+
+### Options
+
+| Option                 | Description                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| `--run <run>`          | Only events of this run                                                                        |
+| `--types <types>`      | Comma-separated event types. A trailing `*` matches a prefix: `run.*`, `step.*`, `iteration.*` |
+| `--follow`             | Keep streaming new events until Ctrl+C                                                         |
+| `--cursor <cursor>`    | Start after this cursor                                                                        |
+| `--cursor-file <path>` | Read the start cursor from this file and keep it updated                                       |
+| `--new`                | Skip the existing events and only print new ones (ignored with a cursor)                       |
+| `--json`               | Print events as JSON lines instead of one readable line per event                              |
+| `--wait <seconds>`     | Long-poll length per request with `--follow` (default 30, max 120)                             |
+
+### Event types
+
+| Group    | Types                                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------------------------------------- |
+| Run      | `run.queued`, `run.started`, `run.paused`, `run.resumed`, `run.canceled`, `run.halted`, `run.failed`, `run.completed` |
+| Step     | `step.started`, `step.completed`, `step.failed`, `step.retried`, `iteration.started`, `iteration.completed`           |
+| Steering | `message.queued`, `message.delivered`, `amendment.applied`, `needs_input`, `input.answered`                           |
+| Harness  | `supervisor.restarted`, `run.recovered`                                                                               |
+
+`run.queued` is also emitted when a stopped run is queued again (`data.reason: resumed`, from `af resume`, `af answer` or `af retry-step`). `step.retried` carries `data.reason`: `retry` (automatic retry after a failed attempt), `operator` (`af retry-step`) or `message` (`af send --mode now`). `iteration.completed` carries `data.outcome`: `continue`, `complete`, `failed`, `error` or `max_iterations`. A supervisor that takes over runs left `running` or `queued` by a previous one emits `supervisor.restarted` once in each of them.
+
+### Examples
+
+```bash
+# Everything so far, as JSON lines
+af events --json
+
+# Follow one run
+af events --run 2026-11-10-dark-mode --follow
+
+# Background monitor: wake on questions and run status changes, resumable
+af events --follow --types needs_input,run.*,step.failed --cursor-file ~/.af-monitor-cursor
+```
+
+## artifacts
+
+Show the contract artifacts of a run: plan versions (`plan.md`, `plan.v<N>.md`), `summary.md`, `decisions.jsonl` and review files (`review-<n>.md`). Reads the run registry directly.
+
+```bash
+af artifacts <run_id> [options]
+```
+
+### Options
+
+| Option          | Description                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| `--kind <kind>` | Only one kind: `plan`, `summary`, `decisions` or `review`          |
+| `--content`     | Print the latest file of `--kind` (truncated at 20,000 characters) |
+| `--json`        | Print the paths as JSON                                            |
+
+### Examples
+
+```bash
+# All artifact paths of a run
+af artifacts 2026-11-10-dark-mode
+
+# The current plan
+af artifacts 2026-11-10-dark-mode --kind plan --content
 ```
 
 ## input

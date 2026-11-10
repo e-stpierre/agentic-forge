@@ -46,6 +46,34 @@ export interface StepContext {
 	 * the step wrote itself (the file wins).
 	 */
 	recordResult?: ((step: string, block: ResultBlock) => Promise<ResultBlock | null>) | null;
+	/**
+	 * Emits a contract event from inside a step (ralph-loop iterations, prompt
+	 * retries). The supervisor appends it to `events.jsonl`. Call it after the
+	 * matching state is saved (event rule).
+	 */
+	emitEvent?: StepEventEmitter | null;
+}
+
+/** Events a step emits itself; the run and step events are emitted by the executor hooks. */
+export type StepEventType = "iteration.started" | "iteration.completed" | "step.retried";
+
+export type StepEventEmitter = (
+	type: StepEventType,
+	data: Record<string, unknown>,
+) => Promise<void>;
+
+/** Emits a step event when the context has an emitter; never throws into the step. */
+export async function emitStepEvent(
+	context: StepContext,
+	type: StepEventType,
+	data: Record<string, unknown>,
+): Promise<void> {
+	if (!context.emitEvent) return;
+	try {
+		await context.emitEvent(type, data);
+	} catch {
+		// Events are observability: a failed append must not fail the step
+	}
 }
 
 /** Thrown or reported when a step was stopped through `StepContext.signal`. */

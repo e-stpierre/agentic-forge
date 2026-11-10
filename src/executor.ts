@@ -30,7 +30,12 @@ import {
 } from "./progress.js";
 import { TemplateRenderer, buildTemplateContext, renderWorkflowOutput } from "./renderer.js";
 import { getAdapter, resolveRuntime } from "./runtimes/index.js";
-import { type StepContext, type StepResult, resolveModel } from "./steps/base.js";
+import {
+	type StepContext,
+	type StepEventEmitter,
+	type StepResult,
+	resolveModel,
+} from "./steps/base.js";
 import { ConditionalStepExecutor } from "./steps/conditional-step.js";
 import { ParallelStepExecutor } from "./steps/parallel-step.js";
 import { PromptStepExecutor } from "./steps/prompt-step.js";
@@ -87,6 +92,8 @@ export interface ExecutorOptions {
 	operatorMessages?: ((step: string) => Promise<string>) | null;
 	/** See `StepContext.recordResult`. */
 	recordResult?: ((step: string, block: ResultBlock) => Promise<ResultBlock | null>) | null;
+	/** See `StepContext.emitEvent` (ralph-loop iterations, prompt retries). */
+	emitEvent?: StepEventEmitter | null;
 	/**
 	 * Called at each top-level step boundary, before the boundary stop check.
 	 * Returns true when an amendment is pending: the executor then runs the
@@ -723,6 +730,7 @@ export class WorkflowExecutor {
 			signal: this.options.signal ?? null,
 			operatorMessages: this.options.operatorMessages ?? null,
 			recordResult: this.options.recordResult ?? null,
+			emitEvent: this.options.emitEvent ?? null,
 			shouldStop: this.checkStop,
 		};
 

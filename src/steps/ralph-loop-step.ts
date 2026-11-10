@@ -22,6 +22,7 @@ import {
 	StepExecutor,
 	type StepResult,
 	buildTemplateContext,
+	emitStepEvent,
 	resolveModel,
 	withOperatorMessages,
 } from "./base.js";
@@ -131,6 +132,11 @@ export class RalphLoopStepExecutor extends StepExecutor {
 
 			// Display iteration header BEFORE running runtime
 			console.ralphIterationStart(step.name, iteration, maxIterations);
+			const iterationEvent = { step: step.name, iteration, max_iterations: maxIterations };
+			await emitStepEvent(context, "iteration.started", {
+				...iterationEvent,
+				...(iteration === startIteration && existingState?.active ? { resumed: true } : {}),
+			});
 
 			const result = await runRuntime(context.runtimeAdapter, {
 				prompt: fullPrompt,
@@ -159,12 +165,22 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				console.ralphIteration(step.name, iteration, maxIterations, `Failed: ${errorSummary}`);
 				if (iteration < maxIterations) {
 					updateRalphIteration(progress.workflowId, step.name, outputDir);
+					await emitStepEvent(context, "iteration.completed", {
+						...iterationEvent,
+						outcome: "error",
+						error: errorSummary,
+					});
 					continue;
 				}
 				deactivateRalphState(progress.workflowId, step.name, outputDir);
 				const errorMsg = `Ralph loop failed after ${maxIterations} iterations`;
 				console.stepFailed(step.name, errorMsg);
 				updateStepFailed(progress, step.name, errorMsg);
+				await emitStepEvent(context, "iteration.completed", {
+					...iterationEvent,
+					outcome: "error",
+					error: errorSummary,
+				});
 				progress.status = WORKFLOW_STATUS.FAILED;
 				return { success: false, error: errorMsg };
 			}
@@ -186,6 +202,11 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				console.stepFailed(step.name, errorMsg);
 				updateStepFailed(progress, step.name, errorMsg);
 				progress.status = WORKFLOW_STATUS.FAILED;
+				await emitStepEvent(context, "iteration.completed", {
+					...iterationEvent,
+					outcome: "failed",
+					error: completionResult.failureReason,
+				});
 				return { success: false, error: errorMsg, fullOutput: combinedOutput };
 			}
 
@@ -196,12 +217,20 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				const outputSummary = `Completed in ${iteration} iterations`;
 				updateStepCompleted(progress, step.name, outputSummary, combinedOutput);
 				console.ralphComplete(step.name, iteration, maxIterations);
+				await emitStepEvent(context, "iteration.completed", {
+					...iterationEvent,
+					outcome: "complete",
+				});
 				return { success: true, outputSummary, fullOutput: combinedOutput };
 			}
 
 			if (iteration < maxIterations) {
 				updateRalphIteration(progress.workflowId, step.name, outputDir);
 			}
+			await emitStepEvent(context, "iteration.completed", {
+				...iterationEvent,
+				outcome: iteration < maxIterations ? "continue" : "max_iterations",
+			});
 		}
 
 		logger.warning(

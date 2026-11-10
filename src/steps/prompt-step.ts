@@ -24,6 +24,7 @@ import {
 	StepExecutor,
 	type StepResult,
 	buildTemplateContext,
+	emitStepEvent,
 	resolveModel,
 	withOperatorMessages,
 } from "./base.js";
@@ -170,6 +171,13 @@ export class PromptStepExecutor extends StepExecutor {
 				if (progress.currentStep) {
 					progress.currentStep.retryCount = attempt + 1;
 				}
+				await emitStepEvent(context, "step.retried", {
+					step: step.name,
+					reason: "retry",
+					attempt: attempt + 2,
+					max_attempts: maxRetry + 1,
+					error: errorSummary,
+				});
 			} else {
 				const errorMsg = failure || "Step failed";
 				const errorSummary = errorMsg ? extractSummary(errorMsg) : "Unknown error";

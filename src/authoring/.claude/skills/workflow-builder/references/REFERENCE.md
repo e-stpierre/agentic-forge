@@ -279,6 +279,7 @@ Iterative prompt execution with completion detection. Each iteration runs in a f
 3. Loop exits when the agent outputs completion JSON or max iterations reached
 4. Additional template variables: `{{ iteration }}` (current), `{{ max_iterations }}` (max)
 5. Iteration boundaries are safe points: `af pause` stops between two iterations, and operator messages (`af send`) are injected at the start of the next iteration prompt
+6. Each iteration emits `iteration.started` and `iteration.completed` (`data.outcome`: `continue`, `complete`, `failed`, `error`, `max_iterations`) in the run's `events.jsonl`
 
 **Completion JSON format** (agent must output this when done):
 
@@ -498,6 +499,15 @@ agentic-forge retry-step <workflow-id> <step> [--context "text"]
 
 # Change the queue priority of a run
 agentic-forge reprioritize <workflow-id> <priority>
+
+# List runs with filters
+agentic-forge list [--status paused,awaiting-human] [--repo <path>] [--since 2h] [--parent <run>] [--json]
+
+# Print or follow run events (resumable with a cursor)
+agentic-forge events [--run <workflow-id>] [--types needs_input,run.*] [--follow] [--cursor-file <path>] [--json]
+
+# Show a run's plan, summary, decisions and review files
+agentic-forge artifacts <workflow-id> [--kind plan|summary|decisions|review] [--content]
 
 # Provide human input (for wait-for-human steps)
 agentic-forge input <workflow-id> "response text"

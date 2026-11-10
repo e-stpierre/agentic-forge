@@ -84,3 +84,70 @@ export class RunRegistry {
 		});
 	}
 }
+
+/** Filters of `af list` and `GET /v1/runs` (the MCP `af_list_runs` filters). */
+export interface RunListFilter {
+	/** One status or a comma-separated list. */
+	status?: string;
+	/** Repository root (compared as resolved paths, case-insensitive on Windows). */
+	repo?: string;
+	/** ISO timestamp or a relative duration (`30m`, `2h`, `7d`): runs created at or after it. */
+	since?: string;
+	/** Parent run id (`run.json` `parent`). */
+	parent?: string;
+}
+
+const DURATION = /^(\d+)\s*(m|h|d|w)$/i;
+const UNIT_MS: Record<string, number> = {
+	m: 60_000,
+	h: 3_600_000,
+	d: 86_400_000,
+	w: 604_800_000,
+};
+
+/** Parses a `since` filter to epoch ms, or null when unset. Throws on an invalid value. */
+export function parseSince(since: string | null | undefined, now = Date.now()): number | null {
+	if (since == null || since.trim() === "") return null;
+	const duration = DURATION.exec(since.trim());
+	if (duration) return now - Number(duration[1]) * UNIT_MS[duration[2].toLowerCase()];
+	const at = Date.parse(since);
+	if (Number.isNaN(at)) {
+		throw new Error(`Invalid since: ${since} (use an ISO date or a duration like 2h, 7d)`);
+	}
+	return at;
+}
+
+function samePath(a: string, b: string): boolean {
+	const ra = path.resolve(a);
+	const rb = path.resolve(b);
+	return process.platform === "win32" ? ra.toLowerCase() === rb.toLowerCase() : ra === rb;
+}
+
+function readParent(entry: RegistryEntry): string | null {
+	try {
+		const run = JSON.parse(readFileSync(path.join(entry.dir, "run.json"), "utf-8")) as {
+			parent?: string | null;
+		};
+		return run.parent ?? null;
+	} catch {
+		return null;
+	}
+}
+
+/** Applies list filters to registry entries (`since` already parsed to epoch ms). */
+export function filterRuns(
+	entries: readonly RegistryEntry[],
+	filter: Omit<RunListFilter, "since"> & { since?: number | null },
+): RegistryEntry[] {
+	const statuses = (filter.status ?? "")
+		.split(",")
+		.map((s) => s.trim())
+		.filter(Boolean);
+	return entries.filter(
+		(r) =>
+			(statuses.length === 0 || statuses.includes(r.status)) &&
+			(!filter.repo || samePath(r.repo, filter.repo)) &&
+			(filter.since == null || Date.parse(r.created_at) >= filter.since) &&
+			(!filter.parent || readParent(r) === filter.parent),
+	);
+}

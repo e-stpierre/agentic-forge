@@ -12,7 +12,13 @@ import path from "node:path";
 import { getMainRepoRoot } from "../git/worktree.js";
 import { findOutputDir, getGlobalRoot, getWorktreeOutputRoot, slugifyCwdName } from "../paths.js";
 import { loadProgress } from "../progress.js";
-import { type RegistryEntry, RunRegistry } from "../runs/registry.js";
+import {
+	type RegistryEntry,
+	type RunListFilter,
+	RunRegistry,
+	filterRuns,
+	parseSince,
+} from "../runs/registry.js";
 import { RunStore } from "../runs/run-store.js";
 import type { WorkflowProgress } from "../types.js";
 import { CliExitError } from "./run.js";
@@ -190,16 +196,42 @@ function row(id: string, name: string, status: string, started: string): string 
 	return `${id.padEnd(40)} ${name.slice(0, 25).padEnd(25)} ${status.padEnd(14)} ${started.slice(0, 19)}\n`;
 }
 
-export function cmdList(statusFilter?: string): void {
+export interface ListOptions extends RunListFilter {
+	/** Print the registry entries as JSON (legacy runs are not included). */
+	json?: boolean;
+}
+
+/**
+ * Lists supervisor runs from the registry, newest first, with the
+ * `af_list_runs` filters. Legacy runs are listed when only `status` filters.
+ */
+export function cmdList(options: ListOptions | string = {}): void {
+	const opts: ListOptions = typeof options === "string" ? { status: options } : options;
+	const statusFilter = opts.status;
 	const cwd = process.cwd();
-	const runs = new RunRegistry()
-		.list()
-		.filter((r) => statusFilter == null || r.status === statusFilter)
-		.sort((a, b) => b.created_at.localeCompare(a.created_at));
-	const legacy = legacyEntries(cwd, statusFilter);
+	let since: number | null;
+	try {
+		since = parseSince(opts.since);
+	} catch (err) {
+		throw new CliExitError(`Error: ${(err as Error).message}`);
+	}
+	const runs = filterRuns(new RunRegistry().list(), { ...opts, since }).sort((a, b) =>
+		b.created_at.localeCompare(a.created_at),
+	);
+	if (opts.json) {
+		process.stdout.write(`${JSON.stringify(runs, null, 2)}\n`);
+		return;
+	}
+	const legacy =
+		opts.repo || opts.since || opts.parent || statusFilter?.includes(",")
+			? []
+			: legacyEntries(cwd, statusFilter);
 
 	if (runs.length === 0 && legacy.length === 0) {
-		const suffix = statusFilter ? ` (status=${statusFilter})` : "";
+		const filters = (["status", "repo", "since", "parent"] as const)
+			.filter((k) => opts[k])
+			.map((k) => `${k}=${opts[k]}`);
+		const suffix = filters.length > 0 ? ` (${filters.join(", ")})` : "";
 		process.stdout.write(`No runs found.${suffix}\n`);
 		return;
 	}

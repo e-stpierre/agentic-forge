@@ -555,7 +555,9 @@ describe("af retry-step", () => {
 		expect(prompts("PLAN")[0]).toContain("Use the v2 API.");
 		expect(prompts("BUILD")).toHaveLength(1);
 		expect(prompts("REVIEW")).toHaveLength(1);
-		const event = store.readEvents().find((e) => e.type === "step.retried");
+		const event = store
+			.readEvents()
+			.find((e) => e.type === "step.retried" && e.data?.reason === "operator");
 		expect(event?.data).toMatchObject({
 			step: "plan",
 			reason: "operator",

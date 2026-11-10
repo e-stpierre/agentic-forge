@@ -36,6 +36,11 @@
 - Added `af reprioritize <run> <priority>` (`POST /v1/runs/:id/priority`)
 - Changed `af resume` to accept `blocked` runs, and worktrees of `blocked` and `halted` runs to be kept whatever the cleanup policy
 - Contract delta (no version bump, loosening): `amendments.jsonl` `plan_version` accepts `null` for an amendment delivered as an operator message because the workflow has no amend step
+- Added `af events [--run] [--types] [--follow] [--cursor | --cursor-file] [--new] [--json]` and `GET /v1/events`: the event stream across runs with type filters (`run.*` prefixes), opaque cursors that resume without gaps or duplicates, and a long-poll (`wait`, max 120 s) for `--follow` and the coming MCP `af_events`
+- Added `iteration.started` / `iteration.completed` events for ralph-loop iterations, `step.retried` with `reason: retry` for automatic prompt retries, `run.queued` with `reason: resumed` when a stopped run is queued again, and `supervisor.restarted` in each run a new supervisor takes over
+- Added `af list` filters `--status` (comma-separated), `--repo`, `--since` (ISO date or `2h`, `7d`), `--parent` and `--json`, also on `GET /v1/runs`
+- Added `af artifacts <run> [--kind plan|summary|decisions|review] [--content] [--json]`
+- Fixed `events.jsonl` appends after a torn last line: the new event starts on its own line and its `seq` follows the last valid event
 
 ## 0.11.0
 

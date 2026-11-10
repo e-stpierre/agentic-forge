@@ -44,8 +44,21 @@ import type {
 } from "../types.js";
 import { resolveWorktreeEnabled } from "../worktree-settings.js";
 import { type DispatchPayload, validateDispatch } from "./dispatch.js";
+import {
+	CursorError,
+	type EventPage,
+	type EventQuery,
+	parseTypeFilter,
+	readEventPage,
+} from "./events.js";
 import { Inbox, type InboxMessage, type NewMessage, formatOperatorMessages } from "./inbox.js";
-import { type RegistryEntry, RunRegistry } from "./registry.js";
+import {
+	type RegistryEntry,
+	type RunListFilter,
+	RunRegistry,
+	filterRuns,
+	parseSince,
+} from "./registry.js";
 import {
 	type AmendmentEntry,
 	type DecisionEntry,
@@ -173,6 +186,30 @@ export class RunError extends Error {
 	}
 }
 
+/** Longest `wait` of an event long-poll, in seconds. */
+export const MAX_EVENT_WAIT_SECONDS = 120;
+/** How often a long-poll re-reads the event files. */
+const EVENT_POLL_MS = 200;
+
+/** `GET /v1/events` response. */
+export interface EventResponse extends EventPage {
+	/** Status of the run when the query names one. */
+	status?: RunStatus | null;
+}
+
+function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
+	return new Promise((resolve) => {
+		if (signal.aborted) return resolve();
+		const timer = setTimeout(done, ms);
+		function done() {
+			clearTimeout(timer);
+			signal.removeEventListener("abort", done);
+			resolve();
+		}
+		signal.addEventListener("abort", done, { once: true });
+	});
+}
+
 export interface RunManagerOptions {
 	/** af global dir (defaults to `getGlobalRoot()`). */
 	root?: string;
@@ -258,6 +295,11 @@ export class RunManager {
 	private scheduling = false;
 	private rescheduleRequested = false;
 	private closed = false;
+	/** Resolves pending event long-polls when the manager closes. */
+	private readonly closing = new AbortController();
+	/** Identifies this supervisor process in `supervisor.restarted` events. */
+	private readonly startedAt = new Date().toISOString();
+	private supervisorVersion: string | null = null;
 
 	constructor(options: RunManagerOptions = {}) {
 		this.root = options.root ?? getGlobalRoot();
@@ -274,6 +316,7 @@ export class RunManager {
 	/** Registers the `/v1/runs` routes and the active-run count on a supervisor. */
 	attach(supervisor: Supervisor): void {
 		supervisor.activeRuns = () => this.activeCount();
+		this.supervisorVersion = supervisor.version;
 		const wrap =
 			<T>(fn: () => Promise<T> | T, status = 200) =>
 			async () => {
@@ -292,8 +335,22 @@ export class RunManager {
 				runs: this.list({
 					status: query.get("status") ?? undefined,
 					repo: query.get("repo") ?? undefined,
+					since: query.get("since") ?? undefined,
+					parent: query.get("parent") ?? undefined,
 				}),
 			}))(),
+		);
+		supervisor.route("GET", "/v1/events", ({ query }) =>
+			wrap(() =>
+				this.events({
+					cursor: query.get("cursor"),
+					run: query.get("run"),
+					types: parseTypeFilter(query.get("types")),
+					limit: Number.parseInt(query.get("limit") ?? "", 10) || undefined,
+					fromNow: query.get("from") === "now",
+					waitSeconds: Number.parseFloat(query.get("wait") ?? "0") || 0,
+				}),
+			)(),
 		);
 		supervisor.route("GET", "/v1/runs/:id", ({ params }) => wrap(() => this.details(params.id))());
 		supervisor.route("GET", "/v1/runs/:id/events", ({ params, query }) =>
@@ -345,6 +402,7 @@ export class RunManager {
 	/** Stops scheduling new runs. Executing runs are not interrupted. */
 	close(): void {
 		this.closed = true;
+		this.closing.abort();
 		for (const id of [...this.timers.keys()]) this.clearTimer(id);
 	}
 
@@ -356,11 +414,42 @@ export class RunManager {
 		}
 	}
 
-	list(filter: { status?: string; repo?: string } = {}): RegistryEntry[] {
-		return this.registry
-			.list()
-			.filter((r) => !filter.status || r.status === filter.status)
-			.filter((r) => !filter.repo || path.resolve(r.repo) === path.resolve(filter.repo));
+	list(filter: RunListFilter = {}): RegistryEntry[] {
+		let since: number | null;
+		try {
+			since = parseSince(filter.since);
+		} catch (err) {
+			throw new RunError((err as Error).message);
+		}
+		return filterRuns(this.registry.list(), { ...filter, since });
+	}
+
+	/**
+	 * Events after a cursor across runs (or one run), filtered by type. With
+	 * `waitSeconds`, waits up to that long (max 120 s) for a first event:
+	 * the long-poll behind `af events --follow` and `af_events`.
+	 */
+	async events(query: EventQuery & { waitSeconds?: number }): Promise<EventResponse> {
+		if (query.run) this.requireEntry(query.run);
+		const waitMs = Math.min(Math.max(query.waitSeconds ?? 0, 0), MAX_EVENT_WAIT_SECONDS) * 1000;
+		const deadline = Date.now() + waitMs;
+		let page: EventPage;
+		let current = query;
+		for (;;) {
+			try {
+				page = readEventPage(this.registry.list(), current);
+			} catch (err) {
+				if (err instanceof CursorError) throw new RunError(err.message);
+				throw err;
+			}
+			if (page.events.length > 0 || Date.now() >= deadline || this.closing.signal.aborted) break;
+			// Keep the positions reached (a `from: now` read pins the start)
+			current = { ...query, cursor: page.cursor, fromNow: false };
+			await abortableDelay(EVENT_POLL_MS, this.closing.signal);
+		}
+		const response: EventResponse = { ...page };
+		if (query.run) response.status = this.registry.get(query.run)?.status ?? null;
+		return response;
 	}
 
 	details(id: string): RunDetails {
@@ -1048,6 +1137,7 @@ export class RunManager {
 		this.clearTimer(id);
 		await store.updateRun(patch);
 		await this.registry.update(id, { status: "queued" });
+		await store.appendEvent("run.queued", { reason: "resumed", from: entry.status });
 		this.schedule();
 		return { id, status: "queued" };
 	}
@@ -1179,6 +1269,9 @@ export class RunManager {
 				},
 				operatorMessages: (step) => this.deliverMessages(store, step),
 				recordResult: (step, block) => this.recordResult(entry, store, step, block),
+				emitEvent: async (type, data) => {
+					await store.appendEvent(type, data);
+				},
 				takeAmendment: async () => pendingAmendments(store.readRun()).length > 0,
 				onAmendStepFinished: (step, status) => this.finishAmendments(store, step, status),
 				hooks: {
@@ -1274,6 +1367,14 @@ export class RunManager {
 			const store = new RunStore(entry.dir);
 			if (!store.exists()) continue;
 			const run = store.readRun();
+			if (run.status === "running" || run.status === "queued" || entry.status === "running") {
+				// Runs this supervisor takes over from a previous one (once per process)
+				await store.appendEventOnce(
+					"supervisor.restarted",
+					{ pid: process.pid, started_at: this.startedAt, version: this.supervisorVersion },
+					(e) => e.data?.pid === process.pid && e.data?.started_at === this.startedAt,
+				);
+			}
 			if (run.status === "running" || entry.status === "running") {
 				await this.recoverRun(entry, store);
 				recovered.push(entry.id);

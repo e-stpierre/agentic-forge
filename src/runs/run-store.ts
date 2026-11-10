@@ -64,6 +64,8 @@ export type EventType =
 	| "step.completed"
 	| "step.failed"
 	| "step.retried"
+	| "iteration.started"
+	| "iteration.completed"
 	| "message.queued"
 	| "message.delivered"
 	| "amendment.applied"
@@ -119,6 +121,27 @@ function writeAtomic(file: string, content: string): void {
 	const tmp = `${file}.${process.pid}.tmp`;
 	writeFileSync(tmp, content, "utf-8");
 	renameSync(tmp, file);
+}
+
+/**
+ * Parses events.jsonl content. A torn line (crash mid-append, or a line still
+ * being written) is skipped, and so is a line whose seq does not increase.
+ */
+export function parseEvents(content: string): RunEvent[] {
+	const events: RunEvent[] = [];
+	let last = 0;
+	for (const line of content.split("\n")) {
+		if (line.trim().length === 0) continue;
+		try {
+			const event = JSON.parse(line) as RunEvent;
+			if (typeof event.seq !== "number" || event.seq <= last) continue;
+			last = event.seq;
+			events.push(event);
+		} catch {
+			// torn line
+		}
+	}
+	return events;
 }
 
 /** Accessor for the files of one run directory. */
@@ -186,7 +209,10 @@ export class RunStore {
 	/** Appends one event with the next `seq` under the contract lock. */
 	async appendEvent(type: EventType, data: Record<string, unknown> = {}): Promise<RunEvent> {
 		return withLock(this.eventsFile, async () => {
-			const seq = this.readEvents().length + 1;
+			const content = existsSync(this.eventsFile) ? readFileSync(this.eventsFile, "utf-8") : "";
+			// seq follows the last valid line, so a torn line (crash mid-append)
+			// never makes two events share a seq
+			const seq = (parseEvents(content).at(-1)?.seq ?? 0) + 1;
 			const event: RunEvent = { seq, at: new Date().toISOString(), run: this.id, type, data };
 			const result = validateArtifact("event", event);
 			if (!result.valid) {
@@ -195,7 +221,9 @@ export class RunStore {
 					result.errors.map((e) => `${e.path} ${e.message}`),
 				);
 			}
-			appendFileSync(this.eventsFile, `${JSON.stringify(event)}\n`, "utf-8");
+			// Terminate a torn last line so the new event starts on its own line
+			const prefix = content.length > 0 && !content.endsWith("\n") ? "\n" : "";
+			appendFileSync(this.eventsFile, `${prefix}${JSON.stringify(event)}\n`, "utf-8");
 			return event;
 		});
 	}
@@ -275,17 +303,7 @@ export class RunStore {
 	/** Returns the events with `seq > after`. */
 	readEvents(after = 0): RunEvent[] {
 		if (!existsSync(this.eventsFile)) return [];
-		const events: RunEvent[] = [];
-		for (const line of readFileSync(this.eventsFile, "utf-8").split("\n")) {
-			if (line.trim().length === 0) continue;
-			try {
-				const event = JSON.parse(line) as RunEvent;
-				if (event.seq > after) events.push(event);
-			} catch {
-				// A torn last line (crash mid-append) is ignored.
-			}
-		}
-		return events;
+		return parseEvents(readFileSync(this.eventsFile, "utf-8")).filter((e) => e.seq > after);
 	}
 
 	writeJson(name: string, value: unknown): void {

@@ -20,10 +20,12 @@ import {
 	CliExitError,
 	cmdAmend,
 	cmdAnswer,
+	cmdArtifacts,
 	cmdAuthoringDir,
 	cmdCancel,
 	cmdConfig,
 	cmdConfigure,
+	cmdEvents,
 	cmdInit,
 	cmdInput,
 	cmdList,
@@ -209,9 +211,65 @@ program
 // list command
 program
 	.command("list")
-	.option("--status <status>", "filter by status (running, completed, failed, paused)")
+	.description("List runs from the run registry, newest first")
+	.option(
+		"--status <status>",
+		"filter by status (comma-separated: running,paused,awaiting-human,...)",
+	)
+	.option("--repo <path>", "only runs dispatched from this repository root")
+	.option("--since <when>", "only runs created since an ISO date or a duration (30m, 2h, 7d)")
+	.option("--parent <run>", "only child runs of this parent run")
+	.option("--json", "print the registry entries as JSON")
 	.action((opts: Record<string, unknown>) => {
-		cmdList(optString(opts.status));
+		cmdList({
+			status: optString(opts.status),
+			repo: optString(opts.repo),
+			since: optString(opts.since),
+			parent: optString(opts.parent),
+			json: optBool(opts.json),
+		});
+	});
+
+// events command
+program
+	.command("events")
+	.description("Print run events (all runs, or one) and optionally follow new ones")
+	.option("--run <run>", "only events of this run")
+	.option("--types <types>", "comma-separated event types; a trailing * matches a prefix (run.*)")
+	.option("--follow", "keep streaming new events (Ctrl+C stops)")
+	.option("--cursor <cursor>", "start after this cursor (printed on stderr when the command ends)")
+	.option("--cursor-file <path>", "read the start cursor from this file and keep it updated")
+	.option("--new", "skip existing events and only print new ones (ignored with a cursor)")
+	.option("--json", "print events as JSON lines (contract envelopes)")
+	.option("--wait <seconds>", "long-poll length per request with --follow", "30")
+	.action(async (opts: Record<string, unknown>) => {
+		await cmdEvents({
+			run: optString(opts.run),
+			types: optString(opts.types),
+			follow: optBool(opts.follow),
+			cursor: optString(opts.cursor),
+			cursorFile: optString(opts.cursorFile),
+			new: optBool(opts.new),
+			json: optBool(opts.json),
+			wait: optString(opts.wait),
+		});
+	});
+
+// artifacts command
+program
+	.command("artifacts")
+	.description("Show the plan, summary, decisions and review files of a run")
+	.argument("<run>", "run ID")
+	.option("--kind <kind>", "plan, summary, decisions or review")
+	.option("--content", "print the latest file of --kind instead of the paths")
+	.option("--json", "print the paths as JSON")
+	.action((runId: string, opts: Record<string, unknown>) => {
+		cmdArtifacts({
+			runId,
+			kind: optString(opts.kind),
+			content: optBool(opts.content),
+			json: optBool(opts.json),
+		});
 	});
 
 // input command
