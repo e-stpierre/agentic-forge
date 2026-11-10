@@ -23,6 +23,7 @@ export const RUN_FILE = "run.json";
 export const EVENTS_FILE = "events.jsonl";
 export const DISPATCH_FILE = "dispatch.json";
 export const WORKFLOW_COPY_FILE = "workflow.yaml";
+export const DECISIONS_FILE = "decisions.jsonl";
 
 export interface RunJson {
 	contract_version: 1;
@@ -62,6 +63,8 @@ export type EventType =
 	| "step.completed"
 	| "step.failed"
 	| "step.retried"
+	| "message.queued"
+	| "message.delivered"
 	| "supervisor.restarted"
 	| "run.recovered";
 
@@ -71,6 +74,22 @@ export interface RunEvent {
 	run: string;
 	type: string;
 	data?: Record<string, unknown>;
+}
+
+/** One line of `decisions.jsonl` (contract `decision.schema.json`). */
+export interface DecisionEntry {
+	id: string;
+	at: string;
+	phase: string;
+	source: "agent" | "operator" | "policy";
+	risk: "low" | "medium" | "high";
+	decision: string;
+	rationale: string;
+	alternatives?: string[];
+	files?: string[];
+	commit?: string | null;
+	refs?: string[];
+	[key: `x-${string}`]: unknown;
 }
 
 export class ContractWriteError extends Error {
@@ -176,6 +195,39 @@ export class RunStore {
 	): Promise<RunEvent | null> {
 		if (this.readEvents().some((e) => e.type === type && match(e))) return null;
 		return this.appendEvent(type, data);
+	}
+
+	get decisionsFile(): string {
+		return path.join(this.dir, DECISIONS_FILE);
+	}
+
+	/** Appends one validated entry to `decisions.jsonl` under the contract lock. */
+	async appendDecision(entry: DecisionEntry): Promise<void> {
+		const result = validateArtifact("decision", entry);
+		if (!result.valid) {
+			throw new ContractWriteError(
+				this.decisionsFile,
+				result.errors.map((e) => `${e.path} ${e.message}`),
+			);
+		}
+		await withLock(this.decisionsFile, async () => {
+			appendFileSync(this.decisionsFile, `${JSON.stringify(entry)}\n`, "utf-8");
+		});
+	}
+
+	/** Entries of `decisions.jsonl` (torn lines skipped). */
+	readDecisions(): DecisionEntry[] {
+		if (!existsSync(this.decisionsFile)) return [];
+		const out: DecisionEntry[] = [];
+		for (const line of readFileSync(this.decisionsFile, "utf-8").split("\n")) {
+			if (!line.trim()) continue;
+			try {
+				out.push(JSON.parse(line) as DecisionEntry);
+			} catch {
+				// torn line
+			}
+		}
+		return out;
 	}
 
 	/** Returns the events with `seq > after`. */

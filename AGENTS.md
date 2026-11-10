@@ -45,7 +45,8 @@ Runtime adapter layer for coding agent integrations:
 - `types.ts` — `RuntimeId`, `RuntimeAdapter`, `RuntimeCommand`, `StreamEvent`, `RuntimeRunOptions`, `RuntimeResult`
 - `claude.ts` — `ClaudeAdapter` (extracted from `runner.ts`)
 - `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
-- `process-runner.ts` — `runRuntime()` shared process spawning
+- `process-runner.ts` — `runRuntime()` shared process spawning (`options.signal` kills the process tree)
+- `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
 - `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
 - `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
 
@@ -72,9 +73,10 @@ Tests that start a supervisor or write locks use `tests/helpers/temp-home.ts` (`
 
 Runs owned by the supervisor:
 
-- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery)
+- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send`, `pause`, `cancel`, `resume`)
 - `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
 - `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`)
+- `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
 - `scheduler.ts` — `pickRunnable()` (global and per-repo limits, one run per checkout)
 - `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment)
 - `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`

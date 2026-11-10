@@ -23,6 +23,7 @@ import {
 	generateWorkflowId,
 	saveProgress,
 	updateStepFailed,
+	updateStepInterrupted,
 	updateStepStarted,
 } from "./progress.js";
 import { TemplateRenderer, buildTemplateContext, renderWorkflowOutput } from "./renderer.js";
@@ -54,6 +55,8 @@ export interface ExecutorHooks {
 	onStepFinished?: (step: string, status: string, error: string | null) => void | Promise<void>;
 	/** Called when the workflow-level worktree is created. */
 	onWorktreeCreated?: (worktree: Worktree) => void | Promise<void>;
+	/** Called after a step stopped by the operator is saved as `interrupted`. */
+	onStepInterrupted?: (step: string, stopStatus: string) => void | Promise<void>;
 }
 
 export interface ExecutorOptions {
@@ -68,9 +71,32 @@ export interface ExecutorOptions {
 	hooks?: ExecutorHooks;
 	/**
 	 * Checked at every step boundary. Returning a workflow status (for example
-	 * "canceled") stops the run with that status before the next step.
+	 * "canceled") stops the run with that status before the next step. Also
+	 * checked between ralph-loop iterations.
 	 */
 	shouldStop?: () => string | null;
+	/**
+	 * Aborted to stop the running step now. The step's process tree is killed,
+	 * the step is recorded `interrupted`, and the run stops with the status
+	 * `shouldStop()` returns (paused by default).
+	 */
+	signal?: AbortSignal | null;
+	/** Returns the `## Operator Messages` section for a step or iteration prompt. */
+	operatorMessages?: ((step: string) => Promise<string>) | null;
+}
+
+/**
+ * Worktree cleanup decision for a workflow-level worktree. Paused and
+ * awaiting-human runs always keep it; canceled runs are safety-committed first.
+ */
+export function shouldRemoveWorktree(
+	cleanup: string,
+	status: string,
+	options: { awaitingHuman?: boolean } = {},
+): boolean {
+	if (status === WORKFLOW_STATUS.PAUSED || options.awaitingHuman) return false;
+	if (cleanup === "on-complete") return true;
+	return cleanup === "on-success" && status === WORKFLOW_STATUS.COMPLETED;
 }
 
 export class WorkflowExecutor {
@@ -96,6 +122,15 @@ export class WorkflowExecutor {
 	conditionalExecutor: ConditionalStepExecutor;
 
 	options: ExecutorOptions;
+	/** Stop status returned by `shouldStop` during this run (boundary or interrupt). */
+	private stopStatus: string | null = null;
+
+	/** `shouldStop` wrapper that remembers the status it returned. */
+	private readonly checkStop = (): string | null => {
+		const status = this.options.shouldStop?.() ?? null;
+		if (status) this.stopStatus = status;
+		return status;
+	};
 
 	constructor(
 		repoRoot: string,
@@ -154,6 +189,9 @@ export class WorkflowExecutor {
 			const childContext: StepContext = {
 				...context,
 				env: this.options.env ?? null,
+				signal: this.options.signal ?? null,
+				operatorMessages: this.options.operatorMessages ?? null,
+				shouldStop: this.checkStop,
 				runtimeAdapter: childAdapter,
 			};
 
@@ -362,28 +400,41 @@ export class WorkflowExecutor {
 				}
 
 				// Boundary check: the supervisor may ask to stop before the next step
-				const stopStatus = this.options.shouldStop?.() ?? null;
+				const stopStatus = this.checkStop();
 				if (stopStatus) {
 					logger.info("workflow", `Stopping before step ${step.name}: ${stopStatus}`);
 					progress.status = stopStatus;
 					break;
 				}
 
+				const recordsBefore = progress.completedSteps.length;
 				try {
 					await this.executeStep(step, progress, vars, logger, console, workflowWorktree);
+					if (await this.handleInterruption(step.name, progress, recordsBefore, logger)) {
+						saveProgress(progress, outputDir);
+						break;
+					}
 					saveProgress(progress, outputDir);
-					const record = [...progress.completedSteps].reverse().find((s) => s.name === step.name);
+					const record = progress.completedSteps
+						.slice(recordsBefore)
+						.reverse()
+						.find((s) => s.name === step.name);
 					if (record) {
 						await this.options.hooks?.onStepFinished?.(step.name, record.status, record.error);
 					}
 
 					if (
 						progress.status === WORKFLOW_STATUS.FAILED ||
-						progress.status === WORKFLOW_STATUS.PAUSED
+						progress.status === WORKFLOW_STATUS.PAUSED ||
+						progress.status === WORKFLOW_STATUS.CANCELED
 					) {
 						break;
 					}
 				} catch (e: unknown) {
+					if (await this.handleInterruption(step.name, progress, recordsBefore, logger)) {
+						saveProgress(progress, outputDir);
+						break;
+					}
 					const errorMsg = e instanceof Error ? e.message : String(e);
 					logger.error(step.name, `Step failed: ${errorMsg}`);
 					console.stepFailed(step.name, errorMsg);
@@ -406,9 +457,14 @@ export class WorkflowExecutor {
 			// Cleanup workflow-level worktree according to the cleanup policy
 			if (workflowWorktree && worktreeSettings) {
 				const cleanup = worktreeSettings.cleanup ?? "on-success";
-				const succeeded = progress.status === WORKFLOW_STATUS.COMPLETED;
+				const shouldRemove = shouldRemoveWorktree(cleanup, progress.status, {
+					awaitingHuman: progress.currentStep?.type === "wait-for-human",
+				});
 
-				const shouldRemove = cleanup === "on-complete" || (cleanup === "on-success" && succeeded);
+				// cancel: commit pending work even when the policy keeps the worktree
+				if (!shouldRemove && progress.status === WORKFLOW_STATUS.CANCELED) {
+					safetyCommit(workflowWorktree.path, logger);
+				}
 
 				if (shouldRemove) {
 					const commitResult = safetyCommit(workflowWorktree.path, logger);
@@ -437,6 +493,30 @@ export class WorkflowExecutor {
 		console.workflowComplete(workflow.name, progress.status);
 		logger.info("workflow", `Workflow ${progress.status}: ${workflow.name}`);
 		return progress;
+	}
+
+	/**
+	 * After a step returns or throws: when the operator stopped it (signal
+	 * aborted, or a ralph-loop iteration boundary stop), records the step as
+	 * `interrupted` and sets the stop status. Returns true when it did.
+	 */
+	private async handleInterruption(
+		stepName: string,
+		progress: WorkflowProgress,
+		recordsBefore: number,
+		logger: WorkflowLogger,
+	): Promise<boolean> {
+		const aborted = this.options.signal?.aborted ?? false;
+		if (!aborted && !this.stopStatus) return false;
+		const status = this.stopStatus ?? this.checkStop() ?? WORKFLOW_STATUS.PAUSED;
+		const reason = aborted
+			? `Interrupted by operator (${status})`
+			: `Stopped at an iteration boundary (${status})`;
+		updateStepInterrupted(progress, stepName, reason, recordsBefore);
+		progress.status = status;
+		logger.info(stepName, reason);
+		await this.options.hooks?.onStepInterrupted?.(stepName, status);
+		return true;
 	}
 
 	private renderOutputs(
@@ -565,6 +645,9 @@ export class WorkflowExecutor {
 			outputs: progress.stepOutputs,
 			cwdOverride: workflowWorktree?.path ?? null,
 			env: this.options.env ?? null,
+			signal: this.options.signal ?? null,
+			operatorMessages: this.options.operatorMessages ?? null,
+			shouldStop: this.checkStop,
 		};
 
 		const resolvedModel = resolveModel(context, step.model);

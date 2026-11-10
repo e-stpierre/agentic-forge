@@ -10,6 +10,8 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `resume`        | Resume a paused, waiting or failed run               |
 | `status`        | Show status of a run                                 |
 | `cancel`        | Cancel a queued, running or paused run               |
+| `send`          | Queue an operator message for a run                  |
+| `pause`         | Pause a run at its next boundary, or now             |
 | `list`          | List runs                                            |
 | `input`         | Provide input to a paused workflow                   |
 | `init`          | Initialize directory structure                       |
@@ -139,7 +141,7 @@ af status 2026-11-10-dark-mode
 
 ## cancel
 
-Cancel a run. A queued, paused or waiting run is canceled at once; a running run stops before its next step. Runs that already ended, and legacy runs, cannot be canceled.
+Cancel a run. A running run stops now: the supervisor kills the current step's whole process tree (`taskkill /T /F` on Windows, the process group on POSIX), then commits pending work in the run's worktree (`safetyCommit`) and applies the worktree cleanup policy (`on-complete` removes it, `on-success` and `manual` keep it). A queued, paused or waiting run is canceled at once, with the same safety commit and policy applied to its recorded worktree. Runs that already ended, and legacy runs, cannot be canceled.
 
 ```bash
 af cancel <run_id>
@@ -155,6 +157,67 @@ af cancel <run_id>
 
 ```bash
 af cancel 2026-11-10-dark-mode
+```
+
+## send
+
+Queue an operator message for a run. The supervisor writes it to the run's `inbox/` and prepends it, as an `## Operator Messages` section, to the next step prompt or ralph-loop iteration prompt of the run (or of the step named with `--step`). Each message is delivered once, then marked delivered (`delivered_at`), with the events `message.queued` and `message.delivered` and an `operator` entry in `decisions.jsonl`. A message sent to a paused run is delivered when it resumes.
+
+```bash
+af send <run_id> <text> [options]
+```
+
+### Arguments
+
+| Argument   | Required | Description  |
+| ---------- | -------- | ------------ |
+| `<run_id>` | Yes      | Run ID       |
+| `<text>`   | Yes      | Message text |
+
+### Options
+
+| Option            | Description                                                           |
+| ----------------- | --------------------------------------------------------------------- |
+| `--step <name>`   | Deliver to this step only (default: the next step of the run)         |
+| `--from <sender>` | Sender recorded in the message: `user` (default) or `overseer`        |
+| `--mode <mode>`   | Delivery mode; only `next` (the default) is supported in this version |
+
+### Examples
+
+```bash
+# Add an instruction for the next step
+af send 2026-11-10-dark-mode "Reuse the existing theme tokens instead of adding new ones."
+
+# Target the review step
+af send 2026-11-10-dark-mode "Check the contrast ratios too." --step review
+```
+
+## pause
+
+Pause a running or queued run. By default a running run stops at its next boundary: before its next step, or between two ralph-loop iterations. With `--now`, the supervisor kills the current step's process tree; the step is recorded as `interrupted` and reruns from its start on `af resume`. A paused run keeps its worktree whatever the cleanup policy. Resume it with `af resume`.
+
+```bash
+af pause <run_id> [--now]
+```
+
+### Arguments
+
+| Argument   | Required | Description     |
+| ---------- | -------- | --------------- |
+| `<run_id>` | Yes      | Run ID to pause |
+
+### Options
+
+| Option  | Description                                               |
+| ------- | --------------------------------------------------------- |
+| `--now` | Stop the current step now instead of at the next boundary |
+
+### Examples
+
+```bash
+af pause 2026-11-10-dark-mode
+af pause 2026-11-10-dark-mode --now
+af resume 2026-11-10-dark-mode
 ```
 
 ## list

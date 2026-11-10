@@ -11,7 +11,9 @@
  *
  * By default every prompt succeeds. `fakeRuntime.on(match, behavior)` changes
  * the outcome for prompts containing `match`: "fail", "hang" (never settles,
- * as a step whose supervisor died), or a function returning the result.
+ * as a step whose supervisor died, unless `options.signal` aborts it, as the
+ * real runner does when it kills the process tree), or a function returning
+ * the result.
  */
 
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions } from "../../src/runtimes/types.js";
@@ -20,6 +22,8 @@ export interface FakeCall {
 	prompt: string;
 	cwd: string | null;
 	env: NodeJS.ProcessEnv | null;
+	/** True once the call was stopped through `options.signal`. */
+	aborted: boolean;
 }
 
 type Behavior =
@@ -64,11 +68,28 @@ class FakeRuntime {
 	}
 
 	run = async (_adapter: RuntimeAdapter, options: RuntimeRunOptions): Promise<RuntimeResult> => {
-		this.calls.push({ prompt: options.prompt, cwd: options.cwd ?? null, env: options.env ?? null });
+		const call: FakeCall = {
+			prompt: options.prompt,
+			cwd: options.cwd ?? null,
+			env: options.env ?? null,
+			aborted: false,
+		};
+		this.calls.push(call);
 		for (const w of this.waiters.filter((x) => options.prompt.includes(x.match))) w.resolve();
 		this.waiters = this.waiters.filter((x) => !options.prompt.includes(x.match));
 		const behavior = this.behaviors.find(([m]) => options.prompt.includes(m))?.[1] ?? "succeed";
-		if (behavior === "hang") return new Promise<RuntimeResult>(() => {});
+		if (behavior === "hang") {
+			return new Promise<RuntimeResult>((resolve) => {
+				const signal = options.signal;
+				if (!signal) return;
+				const abort = () => {
+					call.aborted = true;
+					resolve(result(options, false));
+				};
+				if (signal.aborted) abort();
+				else signal.addEventListener("abort", abort, { once: true });
+			});
+		}
 		if (behavior === "fail") return result(options, false);
 		if (behavior === "succeed") return result(options, true);
 		return behavior(options);

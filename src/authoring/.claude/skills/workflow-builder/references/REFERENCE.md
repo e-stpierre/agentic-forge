@@ -277,6 +277,7 @@ Iterative prompt execution with completion detection. Each iteration runs in a f
 2. State persists in `{output_dir}/ralph-{step-name}.md`
 3. Loop exits when the agent outputs completion JSON or max iterations reached
 4. Additional template variables: `{{ iteration }}` (current), `{{ max_iterations }}` (max)
+5. Iteration boundaries are safe points: `af pause` stops between two iterations, and operator messages (`af send`) are injected at the start of the next iteration prompt
 
 **Completion JSON format** (agent must output this when done):
 
@@ -419,6 +420,18 @@ outputs:
     when: failed
 ```
 
+## Operator Messages
+
+Under the supervisor, `af send` queues messages in the run's `inbox/`. Before each step prompt (prompt and ralph-loop steps, nested ones included) and each ralph-loop iteration, pending messages for the run, or for that step when sent with `--step`, are prepended as a section, then marked delivered so they never repeat:
+
+```md
+## Operator Messages
+
+- [user, 2026-11-10T12:00:00Z, m-1a2b3c4d] Reuse the existing theme tokens.
+```
+
+Prompts need no placeholder for it. Write prompts so that an instruction in this section takes precedence over the step's defaults.
+
 ## CLI Commands
 
 ```bash
@@ -431,8 +444,14 @@ agentic-forge resume <workflow-id>
 # Check workflow status
 agentic-forge status <workflow-id>
 
-# Cancel a running workflow
+# Cancel a run (stops the current step now, safety-commits, applies the worktree cleanup policy)
 agentic-forge cancel <workflow-id>
+
+# Queue an operator message for the next step or iteration (optionally one step)
+agentic-forge send <workflow-id> "text" [--step <name>]
+
+# Pause at the next step or iteration boundary (--now stops the current step)
+agentic-forge pause <workflow-id> [--now]
 
 # Provide human input (for wait-for-human steps)
 agentic-forge input <workflow-id> "response text"

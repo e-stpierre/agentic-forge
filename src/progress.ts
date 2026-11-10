@@ -23,6 +23,8 @@ export const STEP_STATUS = {
 	COMPLETED: "completed",
 	FAILED: "failed",
 	SKIPPED: "skipped",
+	/** Stopped by the operator (`pause --now`, `cancel`) or by a supervisor crash. */
+	INTERRUPTED: "interrupted",
 } as const;
 
 // --- ID and path helpers ---
@@ -122,6 +124,38 @@ export function updateStepStarted(progress: WorkflowProgress, stepName: string):
 		retryCount: 0,
 		startedAt: new Date().toISOString(),
 	};
+}
+
+/**
+ * Records that `stepName` was stopped before it finished. Records that nested
+ * steps added since `fromIndex` (failures caused by the kill) are dropped, so a
+ * resume reruns the step from its start.
+ */
+export function updateStepInterrupted(
+	progress: WorkflowProgress,
+	stepName: string,
+	reason: string,
+	fromIndex = progress.completedSteps.length,
+): void {
+	progress.completedSteps.splice(fromIndex);
+	const runIdx = progress.runningSteps.indexOf(stepName);
+	if (runIdx !== -1) {
+		progress.runningSteps.splice(runIdx, 1);
+	}
+	if (!progress.pendingSteps.includes(stepName)) {
+		progress.pendingSteps.unshift(stepName);
+	}
+	progress.completedSteps.push({
+		name: stepName,
+		status: STEP_STATUS.INTERRUPTED,
+		startedAt: progress.currentStep?.name === stepName ? progress.currentStep.startedAt : null,
+		completedAt: new Date().toISOString(),
+		retryCount: 0,
+		outputSummary: "",
+		error: reason,
+		humanInput: null,
+	});
+	progress.currentStep = null;
 }
 
 export function updateStepCompleted(

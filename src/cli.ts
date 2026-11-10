@@ -26,9 +26,11 @@ import {
 	cmdInput,
 	cmdList,
 	cmdPaths,
+	cmdPause,
 	cmdReleaseNotes,
 	cmdResume,
 	cmdRun,
+	cmdSend,
 	cmdServe,
 	cmdSkillsDir,
 	cmdStatus,
@@ -97,9 +99,41 @@ program
 // cancel command
 program
 	.command("cancel")
+	.description(
+		"Cancel a run: stop its current step now, safety-commit its worktree, apply the cleanup policy",
+	)
 	.argument("<workflow_id>", "run ID to cancel")
 	.action(async (workflowId: string) => {
 		await cmdCancel(workflowId);
+	});
+
+// send command
+program
+	.command("send")
+	.description("Queue an operator message, injected at the start of the next step or iteration")
+	.argument("<run_id>", "run ID")
+	.argument("<text>", "message text")
+	.option("--step <name>", "deliver to this step only (default: the next step of the run)")
+	.option("--from <sender>", "sender: user or overseer", "user")
+	.option("--mode <mode>", "delivery mode (only next is supported)", "next")
+	.action(async (runId: string, text: string, opts: Record<string, unknown>) => {
+		await cmdSend({
+			runId,
+			text,
+			step: optString(opts.step),
+			from: optString(opts.from),
+			mode: optString(opts.mode),
+		});
+	});
+
+// pause command
+program
+	.command("pause")
+	.description("Pause a run at its next step or ralph-loop iteration boundary")
+	.argument("<run_id>", "run ID")
+	.option("--now", "stop the current step now (its process tree is killed; it reruns on resume)")
+	.action(async (runId: string, opts: Record<string, unknown>) => {
+		await cmdPause({ runId, now: optBool(opts.now) });
 	});
 
 // list command

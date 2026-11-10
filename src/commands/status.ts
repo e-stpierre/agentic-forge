@@ -129,7 +129,7 @@ export async function cmdCancel(workflowId: string): Promise<void> {
 		);
 		process.stdout.write(
 			res.status === "canceling"
-				? `Cancel requested: ${workflowId} stops before its next step\n`
+				? `Cancel requested: ${workflowId} stops its current step now\n`
 				: `Run canceled: ${workflowId}\n`,
 		);
 	} catch (err) {

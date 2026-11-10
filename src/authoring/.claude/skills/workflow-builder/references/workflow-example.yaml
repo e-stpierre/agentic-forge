@@ -219,6 +219,9 @@ steps:
 
   # ==================== RALPH LOOP STEP ====================
   # Iterative prompt execution with completion detection
+  # Iteration boundaries are safe points: `af pause` stops between iterations,
+  # and `af send` messages are prepended to the next iteration prompt as an
+  # "## Operator Messages" section (no placeholder needed)
   - name: implement-incrementally
     type: ralph-loop
 

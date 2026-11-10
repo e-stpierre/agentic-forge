@@ -19,6 +19,12 @@
 - Added `runs.root`; **Deprecated** `outputDirectory` (`local` maps to `<repo>/agentic/runs/` with a warning)
 - Changed `af status`, `af list`, `af cancel` and `af resume` to use the run registry; legacy `outputs/` runs are listed read-only and cannot be resumed; `af resume --terminal-output` is replaced by `--foreground`, and `af cancel` stops a running run before its next step
 - Fixed the global config path ignoring `AGENTIC_FORGE_HOME`
+- Added `af send <run> <text>` (`POST /v1/runs/:id/messages`): queues a contract inbox message (`inbox/<timestamp>-<id>.json`) that the supervisor prepends as an `## Operator Messages` section to the next step or ralph-loop iteration prompt (or to the step named with `--step`), delivered once, marked `delivered_at`, with `message.queued` and `message.delivered` events and an `operator` entry in `decisions.jsonl`; only `mode: next` is supported so far
+- Added `af pause <run> [--now]` (`POST /v1/runs/:id/pause`): stops a run at its next step or ralph-loop iteration boundary, or with `--now` kills the current step (recorded `interrupted`, rerun on resume)
+- **Breaking:** `af cancel` now stops a running run immediately instead of at its next step, then runs `safetyCommit` and applies the worktree cleanup policy; canceling a queued or paused run applies the same policy to its recorded worktree
+- Changed step processes to be killed as a whole process tree (`taskkill /T /F` on Windows, process group on POSIX) on `pause --now`, `cancel` and step timeouts, and spawned with `windowsHide`
+- Fixed the `on-complete` worktree cleanup policy removing the worktree of a paused or awaiting-human run; such runs now always keep their worktree
+- Changed `pruneOrphaned` to accept the worktree paths af recorded, so it never prunes nested worktrees created by a step
 
 ## 0.11.0
 

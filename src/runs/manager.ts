@@ -16,8 +16,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { deepMerge, getDefaultConfig } from "../config.js";
 import { type RunStatus, TERMINAL_RUN_STATUSES } from "../contract/index.js";
-import { WorkflowExecutor } from "../executor.js";
-import type { Worktree } from "../git/worktree.js";
+import { WorkflowExecutor, shouldRemoveWorktree } from "../executor.js";
+import { type Worktree, pruneOrphaned, removeWorktree, safetyCommit } from "../git/worktree.js";
 import { WorkflowParseError, WorkflowParser } from "../parser.js";
 import { getGlobalRoot, resolveRunsRoot, runDatePrefix, sanitizeSlug } from "../paths.js";
 import {
@@ -29,11 +29,17 @@ import {
 } from "../progress.js";
 import { TemplateRenderer } from "../renderer.js";
 import type { Supervisor } from "../supervisor/server.js";
-import type { StepProgress, WorkflowDefinition, WorkflowProgress } from "../types.js";
+import type {
+	StepDefinition,
+	StepProgress,
+	WorkflowDefinition,
+	WorkflowProgress,
+} from "../types.js";
 import { resolveWorktreeEnabled } from "../worktree-settings.js";
 import { type DispatchPayload, validateDispatch } from "./dispatch.js";
+import { Inbox, type InboxMessage, type NewMessage, formatOperatorMessages } from "./inbox.js";
 import { type RegistryEntry, RunRegistry } from "./registry.js";
-import { type RunEvent, type RunJson, RunStore } from "./run-store.js";
+import { type DecisionEntry, type RunEvent, type RunJson, RunStore } from "./run-store.js";
 import {
 	DEFAULT_MAX_PARALLEL_RUNS,
 	DEFAULT_MAX_PARALLEL_TASKS,
@@ -41,10 +47,25 @@ import {
 } from "./scheduler.js";
 
 /** Step status recorded for the step that was running when the supervisor died. */
-export const STEP_INTERRUPTED = "interrupted";
+export const STEP_INTERRUPTED = STEP_STATUS.INTERRUPTED;
 
 /** Statuses a run can be resumed from with `af resume`. */
 export const RESUMABLE_STATUSES: readonly RunStatus[] = ["paused", "awaiting-human", "failed"];
+
+/** Statuses `af send` accepts (the message waits for the next boundary). */
+const SENDABLE_STATUSES: readonly RunStatus[] = [
+	"queued",
+	"running",
+	"paused",
+	"blocked",
+	"awaiting-human",
+];
+
+/** Statuses `af pause` accepts. */
+const PAUSABLE_STATUSES: readonly RunStatus[] = ["queued", "running"];
+
+/** Stop requested by the operator for an executing run. */
+type StopRequest = { status: "paused" | "canceled"; now: boolean };
 
 /** Statuses `af cancel` accepts. */
 const CANCELABLE_STATUSES: readonly RunStatus[] = [
@@ -129,7 +150,8 @@ export class RunManager {
 	readonly registry: RunRegistry;
 	private readonly log: (message: string) => void;
 	private readonly executing = new Map<string, Promise<void>>();
-	private readonly cancelRequests = new Set<string>();
+	private readonly stopRequests = new Map<string, StopRequest>();
+	private readonly controllers = new Map<string, AbortController>();
 	private readonly perRepoLimit = new Map<string, number>();
 	private scheduling = false;
 	private rescheduleRequested = false;
@@ -184,6 +206,15 @@ export class RunManager {
 		);
 		supervisor.route("POST", "/v1/runs/:id/cancel", ({ params }) =>
 			wrap(() => this.cancel(params.id))(),
+		);
+		supervisor.route("POST", "/v1/runs/:id/pause", ({ params, body }) =>
+			wrap(() => this.pause(params.id, { now: (body as { now?: unknown })?.now === true }))(),
+		);
+		supervisor.route("POST", "/v1/runs/:id/messages", ({ params, body }) =>
+			wrap(() => this.send(params.id, (body ?? {}) as NewMessage), 201)(),
+		);
+		supervisor.route("GET", "/v1/runs/:id/messages", ({ params }) =>
+			wrap(() => ({ messages: new Inbox(this.requireEntry(params.id).dir).list() }))(),
 		);
 		supervisor.route("POST", "/v1/runs/:id/resume", ({ params }) =>
 			wrap(() => this.resume(params.id))(),
@@ -331,18 +362,192 @@ export class RunManager {
 		return new RunStore(path.join(runsRoot, id));
 	}
 
-	/** Cancels a queued, paused or waiting run now, or a running run at its next boundary. */
+	/**
+	 * Cancels a run. A running run is stopped now: its step's process tree is
+	 * killed, then the executor runs `safetyCommit` and the worktree cleanup
+	 * policy. A queued, paused or waiting run is canceled directly, with the
+	 * same safety commit and policy applied to its recorded worktree.
+	 */
 	async cancel(id: string): Promise<{ id: string; status: RunStatus | "canceling" }> {
 		const entry = this.requireEntry(id);
 		if (!CANCELABLE_STATUSES.includes(entry.status)) {
 			throw new RunError(`Cannot cancel run in '${entry.status}' status`, 409);
 		}
-		if (entry.status === "running" && this.executing.has(id)) {
-			this.cancelRequests.add(id);
+		if (this.executing.has(id)) {
+			this.stopRequests.set(id, { status: "canceled", now: true });
+			this.controllers.get(id)?.abort();
 			return { id, status: "canceling" };
 		}
-		await this.setStatus(entry, "canceled", { reason: "canceled by operator" });
+		const worktree = this.cleanupIdleWorktree(entry);
+		await this.setStatus(entry, "canceled", {
+			reason: "canceled by operator",
+			...(worktree ? { worktree } : {}),
+		});
 		return { id, status: "canceled" };
+	}
+
+	/**
+	 * Pauses a run. A running run stops at its next step or ralph-loop
+	 * iteration boundary, or now with `now` (the step's process tree is killed
+	 * and the step reruns on resume). A queued run is paused directly.
+	 */
+	async pause(
+		id: string,
+		options: { now?: boolean } = {},
+	): Promise<{ id: string; status: RunStatus | "pausing" }> {
+		const entry = this.requireEntry(id);
+		if (!PAUSABLE_STATUSES.includes(entry.status)) {
+			throw new RunError(`Cannot pause run in '${entry.status}' status`, 409);
+		}
+		if (this.executing.has(id)) {
+			const current = this.stopRequests.get(id);
+			if (current?.status === "canceled") return { id, status: "pausing" };
+			const now = options.now === true || (current?.now ?? false);
+			this.stopRequests.set(id, { status: "paused", now });
+			if (now) this.controllers.get(id)?.abort();
+			return { id, status: "pausing" };
+		}
+		await this.setStatus(entry, "paused", { reason: "paused by operator" });
+		return { id, status: "paused" };
+	}
+
+	/**
+	 * Queues an operator message (`mode: next`). It is injected as an
+	 * `## Operator Messages` section at the start of the next step or
+	 * ralph-loop iteration prompt (of the named step when `step` is set).
+	 */
+	async send(id: string, input: NewMessage): Promise<{ id: string; message: InboxMessage }> {
+		const entry = this.requireEntry(id);
+		const text = typeof input.text === "string" ? input.text.trim() : "";
+		if (!text) throw new RunError("Message text is required");
+		const mode = input.mode ?? "next";
+		if (mode !== "next") {
+			throw new RunError(
+				`mode '${String(mode)}' is not supported yet; use mode 'next' (delivered at the next boundary)`,
+			);
+		}
+		const from = input.from ?? "user";
+		if (from !== "user" && from !== "overseer") {
+			throw new RunError(`Invalid sender '${String(from)}': expected user or overseer`);
+		}
+		if (!SENDABLE_STATUSES.includes(entry.status)) {
+			throw new RunError(`Cannot send a message to a run in '${entry.status}' status`, 409);
+		}
+		const step = input.step ? String(input.step) : null;
+		if (step) {
+			const names = this.stepNames(entry);
+			if (names && !names.includes(step)) {
+				throw new RunError(`Unknown step '${step}'. Steps: ${names.join(", ")}`);
+			}
+		}
+		const store = new RunStore(entry.dir);
+		const message = new Inbox(entry.dir).queue({ text, from, mode, step });
+		await store.appendEvent("message.queued", messageEventData(message));
+		return { id, message };
+	}
+
+	/** Every step name of a run's workflow, nested steps included (null if unreadable). */
+	private stepNames(entry: RegistryEntry): string[] | null {
+		try {
+			const workflow = this.parseWorkflow(
+				new RunStore(entry.dir).readJson<DispatchPayload>("dispatch.json"),
+			);
+			const names: string[] = [];
+			const walk = (steps: StepDefinition[] | undefined) => {
+				for (const s of steps ?? []) {
+					names.push(s.name);
+					walk(s.steps);
+					walk(s.thenSteps);
+					walk(s.elseSteps);
+				}
+			};
+			walk(workflow.steps);
+			return names;
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Cancel of a run that is not executing: safety-commits its recorded
+	 * worktree, then applies the workflow's cleanup policy. Returns what
+	 * happened to the worktree, or null when the run has none.
+	 */
+	private cleanupIdleWorktree(entry: RegistryEntry): "removed" | "kept" | null {
+		const store = new RunStore(entry.dir);
+		if (!store.exists()) return null;
+		const run = store.readRun();
+		if (!run.worktree || !existsSync(run.worktree)) return null;
+		let repoRoot = entry.repo;
+		let cleanup = "on-success";
+		try {
+			const payload = store.readJson<DispatchPayload>("dispatch.json");
+			repoRoot = payload.repo_root;
+			const configWorktree = payload.config.worktree as { cleanup?: string } | undefined;
+			cleanup =
+				this.parseWorkflow(payload).settings.worktree?.cleanup ??
+				configWorktree?.cleanup ??
+				"on-success";
+		} catch {
+			// Default policy
+		}
+		if (!existsSync(path.join(run.worktree, ".git"))) {
+			// Orphaned directory of a worktree af recorded: prune only that one
+			pruneOrphaned(repoRoot, undefined, [run.worktree]);
+			return "removed";
+		}
+		const commit = safetyCommit(run.worktree);
+		if (commit.failed || !shouldRemoveWorktree(cleanup, WORKFLOW_STATUS.CANCELED)) return "kept";
+		removeWorktree(
+			{ path: run.worktree, branch: run.branch ?? "", baseBranch: run.base ?? "" },
+			repoRoot,
+			false,
+		);
+		return "removed";
+	}
+
+	/**
+	 * Appends the message events and decisions that the inbox files prove
+	 * happened but the logs are missing (crash between the file write and the
+	 * event). Idempotent.
+	 */
+	private async rebuildMessageEvents(store: RunStore): Promise<void> {
+		const messages = new Inbox(store.dir).list();
+		if (messages.length === 0) return;
+		const events = store.readEvents();
+		const has = (type: string, id: string) =>
+			events.some((e) => e.type === type && e.data?.id === id);
+		const decisions = store.readDecisions();
+		for (const m of messages) {
+			if (!has("message.queued", m.id)) {
+				await store.appendEvent("message.queued", { ...messageEventData(m), rebuilt: true });
+			}
+			if (!m.delivered_at) continue;
+			const step = deliveredTo(m);
+			if (!has("message.delivered", m.id)) {
+				await store.appendEvent("message.delivered", { id: m.id, step, rebuilt: true });
+			}
+			if (!decisions.some((d) => d.refs?.includes(m.id))) {
+				await store.appendDecision(messageDecision(m, step ?? "run"));
+			}
+		}
+	}
+
+	/** Delivers the pending messages of `step`: files first, then events and decisions. */
+	private async deliverMessages(store: RunStore, step: string): Promise<string> {
+		const inbox = new Inbox(store.dir);
+		const pending = inbox.pending(step).filter((m) => m.mode === "next");
+		if (pending.length === 0) return "";
+		const delivered = inbox.markDelivered(
+			pending.map((m) => m.id),
+			step,
+		);
+		for (const m of delivered) {
+			await store.appendEvent("message.delivered", { id: m.id, step });
+			await store.appendDecision(messageDecision(m, step));
+		}
+		this.log(`Run ${store.id}: delivered ${delivered.length} operator message(s) to ${step}`);
+		return formatOperatorMessages(delivered);
 	}
 
 	/** Re-queues a paused, waiting or failed run; it resumes from the last completed step. */
@@ -468,13 +673,26 @@ export class RunManager {
 				run.worktree && run.branch
 					? { path: run.worktree, branch: run.branch, baseBranch: run.base ?? "" }
 					: null;
+			await this.rebuildMessageEvents(store);
+			const controller = new AbortController();
+			this.controllers.set(entry.id, controller);
+			let interruptedStep: string | null = null;
 			const executor = new WorkflowExecutor(payload.repo_root, false, payload.runtime ?? null, {
 				config: payload.config,
 				env: payload.env,
 				runDir: entry.dir,
 				worktree: recorded,
-				shouldStop: () => (this.cancelRequests.has(entry.id) ? WORKFLOW_STATUS.CANCELED : null),
+				signal: controller.signal,
+				shouldStop: () => {
+					const request = this.stopRequests.get(entry.id);
+					if (!request) return null;
+					return request.status === "canceled" ? WORKFLOW_STATUS.CANCELED : WORKFLOW_STATUS.PAUSED;
+				},
+				operatorMessages: (step) => this.deliverMessages(store, step),
 				hooks: {
+					onStepInterrupted: (step) => {
+						interruptedStep = step;
+					},
 					onStepStarted: async (step) => {
 						await store.appendEvent("step.started", { step });
 					},
@@ -503,18 +721,23 @@ export class RunManager {
 			);
 			const status = toRunStatus(progress);
 			const lastError = progress.errors.at(-1) as { error?: string } | undefined;
-			await this.setStatus(
-				entry,
-				status === "running" ? "failed" : status,
-				status === "failed" ? { error: lastError?.error ?? null } : {},
-			);
+			const data: Record<string, unknown> = {};
+			if (status === "failed") data.error = lastError?.error ?? null;
+			const request = this.stopRequests.get(entry.id);
+			if ((status === "paused" || status === "canceled") && request) {
+				data.reason = `${status} by operator`;
+				data.now = request.now;
+				if (interruptedStep) data.interrupted_step = interruptedStep;
+			}
+			await this.setStatus(entry, status === "running" ? "failed" : status, data);
 			this.log(`Run ${entry.id} ended: ${status}`);
 		} catch (err) {
 			const message = (err as Error).message;
 			this.log(`Run ${entry.id} failed: ${message}`);
 			if (store.exists()) await this.setStatus(entry, "failed", { error: message });
 		} finally {
-			this.cancelRequests.delete(entry.id);
+			this.stopRequests.delete(entry.id);
+			this.controllers.delete(entry.id);
 		}
 	}
 
@@ -557,6 +780,7 @@ export class RunManager {
 		} catch {
 			topLevel = progress ? [...new Set(progress.completedSteps.map((s) => s.name))] : [];
 		}
+		await this.rebuildMessageEvents(store);
 		const interrupted: string[] = [];
 		if (progress) {
 			await this.rebuildStepEvents(store, progress, new Set(topLevel));
@@ -639,4 +863,28 @@ export class RunManager {
 			}
 		}
 	}
+}
+
+function messageEventData(m: InboxMessage): Record<string, unknown> {
+	return { id: m.id, from: m.from, mode: m.mode, target: m.target, step: m.step ?? null };
+}
+
+/** Step a delivered message was injected into (af extension field of the inbox file). */
+function deliveredTo(m: InboxMessage): string | null {
+	const value = m["x-af-delivered-to"];
+	return typeof value === "string" ? value : null;
+}
+
+/** `operator` decision logged for every delivered message (contract rule). */
+function messageDecision(m: InboxMessage, step: string): DecisionEntry {
+	return {
+		id: `d-${m.id}`,
+		at: m.delivered_at ?? new Date().toISOString(),
+		phase: step,
+		source: "operator",
+		risk: "low",
+		decision: `Operator message delivered to ${step}: ${m.text}`,
+		rationale: `Message from ${m.from} (mode ${m.mode}), injected as an Operator Messages section`,
+		refs: [m.id],
+	};
 }

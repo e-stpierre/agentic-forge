@@ -17,11 +17,13 @@ import {
 import { runRuntime } from "../runtimes/process-runner.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import {
+	STEP_INTERRUPTED_ERROR,
 	type StepContext,
 	StepExecutor,
 	type StepResult,
 	buildTemplateContext,
 	resolveModel,
+	withOperatorMessages,
 } from "./base.js";
 
 export class RalphLoopStepExecutor extends StepExecutor {
@@ -82,6 +84,17 @@ export class RalphLoopStepExecutor extends StepExecutor {
 		}
 
 		for (let iteration = startIteration; iteration <= maxIterations; iteration++) {
+			// Iteration boundary: the supervisor may pause or cancel between iterations.
+			// The ralph state keeps the next iteration, so a resume continues from it.
+			if (iteration > startIteration) {
+				const stopStatus = context.shouldStop?.() ?? null;
+				if (stopStatus) {
+					logger.info(step.name, `Stopping before iteration ${iteration}: ${stopStatus}`);
+					progress.status = stopStatus;
+					return { success: false, error: `Stopped before iteration ${iteration}` };
+				}
+			}
+
 			logger.info(step.name, `Ralph loop iteration ${iteration}/${maxIterations}`);
 
 			// Render prompt with iteration context
@@ -110,7 +123,11 @@ export class RalphLoopStepExecutor extends StepExecutor {
 			}
 
 			const systemMessage = buildRalphSystemMessage(iteration, maxIterations, completionPromise);
-			const fullPrompt = `${systemMessage}${prompt}`;
+			const fullPrompt = await withOperatorMessages(
+				context,
+				step.name,
+				`${systemMessage}${prompt}`,
+			);
 
 			// Display iteration header BEFORE running runtime
 			console.ralphIterationStart(step.name, iteration, maxIterations);
@@ -128,7 +145,13 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				outputDir: context.outputDir,
 				sandbox: getSandboxMode(context.config),
 				env: context.env ?? null,
+				signal: context.signal ?? null,
 			});
+
+			// Stopped by the supervisor: the iteration reruns on resume
+			if (context.signal?.aborted) {
+				return { success: false, error: STEP_INTERRUPTED_ERROR };
+			}
 
 			if (!result.success) {
 				const errorSummary = result.stderr ? extractSummary(result.stderr) : "Unknown error";

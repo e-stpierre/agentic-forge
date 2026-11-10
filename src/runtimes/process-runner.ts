@@ -5,6 +5,7 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
 import type { ConsoleOutput } from "../console.js";
+import { killProcessTree, treeSpawnOptions } from "./kill-tree.js";
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions, StreamEvent } from "./types.js";
 import { resolveCmdScript } from "./utils.js";
 
@@ -39,6 +40,10 @@ export async function runRuntime(
 ): Promise<RuntimeResult> {
 	return new Promise((resolve) => {
 		const command = adapter.buildCommand(options);
+		if (options.signal?.aborted) {
+			resolve(adapter.buildFinalResult(-1, "", "Step interrupted before it started", options));
+			return;
+		}
 		const { executable, args, env: extraEnv, stdinInput } = command;
 
 		// Merge extra env vars with process.env
@@ -75,10 +80,21 @@ export async function runRuntime(
 			cwd: options.cwd ?? undefined,
 			env,
 			stdio: [useStdin ? "pipe" : "ignore", "pipe", "pipe"],
+			...treeSpawnOptions(),
 		});
+
+		// pause --now / cancel: kill the whole process tree
+		const onAbort = () => {
+			spawnDebug(options.outputDir, "ABORT", { pid: proc.pid });
+			proc.stdout?.destroy();
+			proc.stderr?.destroy();
+			killProcessTree(proc.pid);
+		};
+		options.signal?.addEventListener("abort", onAbort, { once: true });
 
 		// Handle spawn errors (e.g., executable not found at runtime)
 		proc.on("error", (err) => {
+			options.signal?.removeEventListener("abort", onAbort);
 			spawnDebug(options.outputDir, "SPAWN_ERROR", err.message);
 			const result = adapter.buildFinalResult(-1, "", err.message, options);
 			resolve(result);
@@ -208,12 +224,13 @@ export async function runRuntime(
 			timeoutId = setTimeout(() => {
 				proc.stdout?.destroy();
 				proc.stderr?.destroy();
-				proc.kill();
+				killProcessTree(proc.pid);
 			}, options.timeout * 1000);
 		}
 
 		proc.on("close", (code) => {
 			if (timeoutId) clearTimeout(timeoutId);
+			options.signal?.removeEventListener("abort", onAbort);
 
 			spawnDebug(options.outputDir, "CLOSE", {
 				exitCode: code,

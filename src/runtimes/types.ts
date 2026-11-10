@@ -25,6 +25,11 @@ export interface RuntimeRunOptions {
 	 * supervisor passes the allowlisted environment of the dispatching client.
 	 */
 	env?: NodeJS.ProcessEnv | null;
+	/**
+	 * Aborting the signal kills the runtime's whole process tree (`pause --now`,
+	 * `cancel`). The run resolves as a failure.
+	 */
+	signal?: AbortSignal | null;
 }
 
 /** Result from runtime execution. */

@@ -12,11 +12,13 @@ import { WORKFLOW_STATUS, updateStepCompleted, updateStepFailed } from "../progr
 import { runRuntime } from "../runtimes/process-runner.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import {
+	STEP_INTERRUPTED_ERROR,
 	type StepContext,
 	StepExecutor,
 	type StepResult,
 	buildTemplateContext,
 	resolveModel,
+	withOperatorMessages,
 } from "./base.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -50,6 +52,9 @@ export class PromptStepExecutor extends StepExecutor {
 			}
 		}
 
+		// Pending operator messages start the prompt (delivered once, reused by retries)
+		prompt = await withOperatorMessages(context, step.name, prompt);
+
 		const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
 		const defaults = context.config.defaults as Record<string, unknown> | undefined;
 		const maxRetry = step.stepMaxRetry ?? (defaults?.maxRetry as number) ?? 3;
@@ -76,7 +81,13 @@ export class PromptStepExecutor extends StepExecutor {
 				outputDir: context.outputDir,
 				sandbox: getSandboxMode(context.config),
 				env: context.env ?? null,
+				signal: context.signal ?? null,
 			});
+
+			// Stopped by the supervisor: no retry, the executor records the interruption
+			if (context.signal?.aborted) {
+				return { success: false, error: STEP_INTERRUPTED_ERROR };
+			}
 
 			if (result.success) {
 				// Use session output context if available, fall back to extracted summary

@@ -28,6 +28,29 @@ export interface StepContext {
 	cwdOverride?: string | null;
 	/** Environment for runtime processes (the dispatch env under the supervisor). */
 	env?: NodeJS.ProcessEnv | null;
+	/** Aborted by the supervisor to stop the running step now (`pause --now`, `cancel`). */
+	signal?: AbortSignal | null;
+	/**
+	 * Returns the `## Operator Messages` section to prepend to the prompt of
+	 * `step` (empty when no message is pending). Marks the returned messages
+	 * delivered, so call it once per step attempt or ralph-loop iteration.
+	 */
+	operatorMessages?: ((step: string) => Promise<string>) | null;
+	/** Checked at ralph-loop iteration boundaries; a workflow status stops the loop. */
+	shouldStop?: (() => string | null) | null;
+}
+
+/** Thrown or reported when a step was stopped through `StepContext.signal`. */
+export const STEP_INTERRUPTED_ERROR = "Step interrupted by operator";
+
+/** Prepends pending operator messages to a prompt. */
+export async function withOperatorMessages(
+	context: StepContext,
+	step: string,
+	prompt: string,
+): Promise<string> {
+	const section = context.operatorMessages ? await context.operatorMessages(step) : "";
+	return section ? `${section}${prompt}` : prompt;
 }
 
 export function buildTemplateContext(context: StepContext): Record<string, unknown> {
