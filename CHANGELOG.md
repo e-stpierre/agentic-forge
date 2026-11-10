@@ -7,6 +7,9 @@
 - Added `src/contract` validation helpers (`validateArtifact`, `validateContractFile`, `exitCodeFor`) backed by `ajv`
 - Decided the runs root default: harness runs go to `<global dir>/runs/`, separate from skill pack roots; recap tools read a list of roots
 - Contract deltas from the esp-skills draft: schema titles drop the `(draft)` marker; fixtures reformatted by prettier (no value changes); inbox messages with `target: step` must name a non-empty `step`; jsonl files reject interior blank lines, so event `seq` matches the physical line number
+- Added the af supervisor (`af serve`): one long-lived process per user, single instance through a pidfile and the contract lock, HTTP IPC on `127.0.0.1` with a random port and a per-user token in a user-only `supervisor.json` discovery file; runs in the foreground or detached (`--detach`, hidden with no console on Windows), with `--status`, `--stop`, `--restart` and stale lock and pidfile recovery
+- Added a supervisor client that starts the supervisor on demand and applies a version handshake (restarts an idle supervisor with a different version, warns when runs are active); shutdown uses a named request on every platform, with `SIGTERM` as the POSIX fallback
+- Added the `AGENTIC_FORGE_HOME` environment variable to override the global directory on every platform
 
 ## 0.11.0
 

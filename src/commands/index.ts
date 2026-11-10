@@ -21,3 +21,4 @@ export { cmdSkillsDir } from "./skills-dir.js";
 export { cmdAuthoringDir } from "./authoring-dir.js";
 export { cmdWorkflows } from "./workflows.js";
 export { cmdInput } from "./shortcuts.js";
+export { cmdServe } from "./serve.js";

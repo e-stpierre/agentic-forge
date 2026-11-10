@@ -57,6 +57,17 @@ Workflow step handlers (prompt, parallel, serial, conditional, ralph-loop).
 
 Harness contract helpers: `validateArtifact()`, `validateContractFile()`, `exitCodeFor()`, `EXIT_CODES`. Loads the schemas from `schemas/contract-v1/`.
 
+#### `supervisor/`
+
+The af supervisor (`af serve`) and its thin client:
+
+- `server.ts` — `Supervisor` (HTTP on 127.0.0.1, per-user token, single instance, `route()` for new endpoints)
+- `client.ts` — `SupervisorClient`, `findSupervisor()`, `ensureSupervisor()` (on-demand start, version handshake), `stopSupervisor()`, `spawnDetachedSupervisor()`
+- `discovery.ts` — `supervisor.json` discovery file, `supervisor.pid`, `isPidAlive()`
+- `lock.ts` — contract lock protocol (`<file>.lock`, exclusive create, 30 s stale timeout)
+
+Tests that start a supervisor or write locks use `tests/helpers/temp-home.ts` (`useTempGlobalRoot()`, which sets `AGENTIC_FORGE_HOME` to a temp dir).
+
 #### `workflows/`
 
 Bundled YAML workflow definitions (12 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `plan-loop`, `analyze-codebase`, `analyze-single`, `claude-demo`, `codex-demo`, `multi-demo`, `multi-plan-build-review`, `permission-test-claude`, `permission-test-codex`).

@@ -29,6 +29,7 @@ import {
 	cmdReleaseNotes,
 	cmdResume,
 	cmdRun,
+	cmdServe,
 	cmdSkillsDir,
 	cmdStatus,
 	cmdVersion,
@@ -223,6 +224,28 @@ program
 	.action((opts: Record<string, unknown>) => {
 		cmdWorkflows({
 			verbose: optBool(opts.verbose),
+		});
+	});
+
+// serve command
+program
+	.command("serve")
+	.description("Run the af supervisor (foreground by default), or start, inspect or stop it")
+	.option("--foreground", "run in this process until stopped (default)")
+	.option("--detach", "start a detached background supervisor if none is running")
+	.option("--status", "show whether a supervisor is running")
+	.option("--stop", "stop the running supervisor")
+	.option("--restart", "stop the running supervisor and start a detached one")
+	.option("--force", "with --stop or --restart, stop even when runs are active")
+	.option("--port <port>", "listen on a fixed port instead of a random one (debugging)")
+	.action(async (opts: Record<string, unknown>) => {
+		await cmdServe({
+			detach: optBool(opts.detach),
+			status: optBool(opts.status),
+			stop: optBool(opts.stop),
+			restart: optBool(opts.restart),
+			force: optBool(opts.force),
+			port: optString(opts.port),
 		});
 	});
 

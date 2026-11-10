@@ -17,6 +17,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `configure`     | Display current configuration                        |
 | `workflows`     | List available workflows with descriptions           |
 | `paths`         | Show resolved directory and config paths             |
+| `serve`         | Run, start, inspect or stop the supervisor           |
 | `skills-dir`    | Print path to bundled workflow skills directory      |
 | `authoring-dir` | Print path to interactive authoring skills directory |
 | `release-notes` | Show release notes and changelog                     |
@@ -323,6 +324,43 @@ af paths
 ```
 
 Displays: global config, global workflows, global outputs, local config, local workflows, local outputs, bundled workflows, and the resolved output directory.
+
+## serve
+
+Run the af supervisor: one long-lived background process per user that will own all workflow runs. Clients (`af run`, `af mcp`, `af overseer`) start it on demand, so running `af serve` yourself is optional.
+
+```bash
+af serve [options]
+```
+
+### Options
+
+| Option          | Description                                                                |
+| --------------- | -------------------------------------------------------------------------- |
+| `--foreground`  | Run in this process until stopped (the default)                            |
+| `--detach`      | Start a detached background supervisor if none is running                  |
+| `--status`      | Show whether a supervisor is running, its pid, version and active runs     |
+| `--stop`        | Stop the running supervisor (refused while runs are active, see `--force`) |
+| `--restart`     | Stop the running supervisor and start a detached one                       |
+| `--force`       | With `--stop` or `--restart`, stop even when runs are active               |
+| `--port <port>` | Listen on a fixed port instead of a random one (debugging only)            |
+
+Only one supervisor runs per user. Starting a second one prints the running instance and exits. The supervisor listens on `127.0.0.1` with a random port and accepts only requests that carry the per-user token from `supervisor.json` in the global directory (readable by the user only). A detached supervisor writes its output to `supervisor.log` in the same directory.
+
+When a client's version differs from the running supervisor's (for example after `npm i -g agentic-forge`), the client restarts the supervisor if no run is active, and otherwise warns and keeps it.
+
+### Examples
+
+```bash
+# Start a background supervisor
+af serve --detach
+
+# Check it
+af serve --status
+
+# Stop it
+af serve --stop
+```
 
 ## skills-dir
 

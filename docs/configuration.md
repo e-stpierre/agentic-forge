@@ -11,6 +11,8 @@ Agentic Forge uses a 3-layer configuration system. Values merge in order: **buil
 
 Use `af configure` to view the current merged configuration.
 
+Set the `AGENTIC_FORGE_HOME` environment variable to use another directory as `<global-dir>` on every platform (for isolated setups and tests).
+
 ## Managing Configuration
 
 ```bash

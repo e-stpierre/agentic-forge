@@ -7,11 +7,19 @@ import { getDefaultConfig } from "./config.js";
 
 // --- Global root ---
 
+/** Environment variable that overrides the global directory (tests, isolated setups). */
+export const GLOBAL_ROOT_ENV = "AGENTIC_FORGE_HOME";
+
 /**
  * Returns the platform-native global directory for agentic-forge.
+ * `AGENTIC_FORGE_HOME`, when set, wins on every platform.
  * @param platform - override process.platform (used for testing)
  */
 export function getGlobalRoot(platform = process.platform): string {
+	const override = process.env[GLOBAL_ROOT_ENV];
+	if (override) {
+		return path.resolve(override);
+	}
 	if (platform === "win32") {
 		const base = process.env.APPDATA ?? path.join(homedir(), "AppData", "Roaming");
 		return path.join(base, "agentic-forge");
