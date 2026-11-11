@@ -8,7 +8,8 @@ export type StepType =
 	| "serial"
 	| "conditional"
 	| "ralph-loop"
-	| "wait-for-human";
+	| "skill"
+	| "human-input";
 
 export const VALID_STEP_TYPES: StepType[] = [
 	"prompt",
@@ -16,8 +17,14 @@ export const VALID_STEP_TYPES: StepType[] = [
 	"serial",
 	"conditional",
 	"ralph-loop",
-	"wait-for-human",
+	"skill",
+	"human-input",
 ];
+
+/** Step types still accepted by the parser, mapped to their replacement. */
+export const STEP_TYPE_ALIASES: Record<string, StepType> = {
+	"wait-for-human": "human-input",
+};
 
 // --- Workflow definition types ---
 
@@ -71,9 +78,20 @@ export interface StepDefinition {
 	elseSteps: StepDefinition[];
 	maxIterations: number | string;
 	completionPromise?: string | null;
+	/** `human-input`: the question asked. */
 	message?: string | null;
-	pollingInterval: number;
-	onTimeout: string;
+	/** `skill`: skill to invoke, `<plugin>:<skill>` or a plain skill name. */
+	skill?: string | null;
+	/** `skill`: arguments passed after the skill name (rendered as a template). */
+	args?: string | null;
+	/** `human-input`: options offered (empty for a free-form answer). */
+	options?: HumanInputOption[];
+	/** `human-input`: id of the recommended option. */
+	recommended?: string | null;
+	/** `human-input`: false lets the harness apply `recommended` after the timeout. */
+	blocking?: boolean;
+	/** `human-input`: background the answerer needs. */
+	context?: string | null;
 	model?: string | null;
 	runtime?: string | null;
 	stepTimeoutMinutes?: number | null;
@@ -84,6 +102,13 @@ export interface StepDefinition {
 	bypassPermissions?: boolean | null;
 	worktree?: boolean | string | null;
 	onFailure?: "fail" | "warn";
+}
+
+/** `human-input` option (contract `needs_input` option). */
+export interface HumanInputOption {
+	id: string;
+	label: string;
+	description?: string;
 }
 
 export interface OutputDefinition {

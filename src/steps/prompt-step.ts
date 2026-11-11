@@ -71,7 +71,32 @@ function stoppedSession(
 	return null;
 }
 
+/** Prepends the step's `agent:` file to a prompt (fallback to bundled agents). */
+export function withAgent(step: StepDefinition, context: StepContext, prompt: string): string {
+	if (!step.agent) return prompt;
+	let agentPath = path.join(context.repoRoot, step.agent);
+	if (!existsSync(agentPath)) {
+		agentPath = path.join(__dirname, "..", "agents", path.basename(step.agent));
+	}
+	if (!existsSync(agentPath)) return prompt;
+	return `${readFileSync(agentPath, "utf-8")}\n\n${prompt}`;
+}
+
 export class PromptStepExecutor extends StepExecutor {
+	/** The step's prompt, rendered, before operator messages are prepended. */
+	protected buildPrompt(step: StepDefinition, context: StepContext): string {
+		let prompt = step.prompt ?? "";
+		if (context.renderer.hasVariables(prompt)) {
+			prompt = context.renderer.renderString(prompt, buildTemplateContext(context));
+		}
+		return withAgent(step, context, prompt);
+	}
+
+	/** The prompt with the `## Operator Messages` section (first by default). */
+	protected withMessages(section: string, prompt: string): string {
+		return `${section}${prompt}`;
+	}
+
 	async execute(
 		step: StepDefinition,
 		progress: WorkflowProgress,
@@ -79,26 +104,8 @@ export class PromptStepExecutor extends StepExecutor {
 		logger: WorkflowLogger,
 		console: ConsoleOutput,
 	): Promise<StepResult> {
-		let prompt = step.prompt ?? "";
-		const templateContext = buildTemplateContext(context);
-
-		if (context.renderer.hasVariables(prompt)) {
-			prompt = context.renderer.renderString(prompt, templateContext);
-		}
-
+		let prompt = this.buildPrompt(step, context);
 		const cwd = context.cwdOverride ?? context.repoRoot;
-
-		// Load agent file if specified (fallback to bundled agents)
-		if (step.agent) {
-			let agentPath = path.join(context.repoRoot, step.agent);
-			if (!existsSync(agentPath)) {
-				agentPath = path.join(__dirname, "..", "agents", path.basename(step.agent));
-			}
-			if (existsSync(agentPath)) {
-				const agentContent = readFileSync(agentPath, "utf-8");
-				prompt = `${agentContent}\n\n${prompt}`;
-			}
-		}
 
 		// Pending operator messages start the prompt (delivered once, reused by retries)
 		const operatorSection = context.operatorMessages
@@ -112,7 +119,7 @@ export class PromptStepExecutor extends StepExecutor {
 				? stoppedSession(progress, step.name, operatorSection.length > 0)
 				: null;
 		let resumeSessionId = resumed?.id ?? null;
-		const freshPrompt = `${operatorSection}${prompt}`;
+		const freshPrompt = this.withMessages(operatorSection, prompt);
 		prompt = resumed ? `${operatorSection}${resumed.instruction}` : freshPrompt;
 
 		const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
@@ -192,9 +199,10 @@ export class PromptStepExecutor extends StepExecutor {
 					logger.info(step.name, `Session ID: ${sessionOut.sessionId}`);
 				}
 
-				// Try to extract structured JSON from skill output
+				// `outputs` of the result block, else a fenced JSON block, else the output:
+				// later steps read it as `{{ outputs.<step>.<key> }}`
 				const stepOutput = result.stdout ? extractJson(result.stdout) : null;
-				const outputValue = stepOutput ?? result.stdout;
+				const outputValue = block?.outputs ?? stepOutput ?? result.stdout;
 
 				updateStepCompleted(
 					progress,

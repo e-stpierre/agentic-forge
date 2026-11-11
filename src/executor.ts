@@ -34,16 +34,19 @@ import { TemplateRenderer, buildTemplateContext, renderWorkflowOutput } from "./
 import { getAdapter, resolveRuntime } from "./runtimes/index.js";
 import type { SessionHost } from "./runtimes/session.js";
 import {
+	type InputAnswer,
 	type StepContext,
 	type StepEventEmitter,
 	type StepResult,
 	resolveModel,
 } from "./steps/base.js";
 import { ConditionalStepExecutor } from "./steps/conditional-step.js";
+import { HumanInputStepExecutor } from "./steps/human-input-step.js";
 import { ParallelStepExecutor } from "./steps/parallel-step.js";
 import { PromptStepExecutor } from "./steps/prompt-step.js";
 import { RalphLoopStepExecutor } from "./steps/ralph-loop-step.js";
 import { SerialStepExecutor } from "./steps/serial-step.js";
+import { SkillStepExecutor } from "./steps/skill-step.js";
 import type {
 	OutputDefinition,
 	StepDefinition,
@@ -99,6 +102,8 @@ export interface ExecutorOptions {
 	recordResult?: ((step: string, block: ResultBlock) => Promise<ResultBlock | null>) | null;
 	/** See `StepContext.emitEvent` (ralph-loop iterations, prompt retries). */
 	emitEvent?: StepEventEmitter | null;
+	/** See `StepContext.inputAnswer` (human-input steps). */
+	inputAnswer?: ((step: string, requestId: string) => Promise<InputAnswer | null>) | null;
 	/**
 	 * Called at each top-level step boundary, before the boundary stop check.
 	 * Returns true when an amendment is pending: the executor then runs the
@@ -143,9 +148,13 @@ export class WorkflowExecutor {
 		| SerialStepExecutor
 		| ConditionalStepExecutor
 		| RalphLoopStepExecutor
+		| SkillStepExecutor
+		| HumanInputStepExecutor
 	>;
 
 	promptExecutor: PromptStepExecutor;
+	skillExecutor: SkillStepExecutor;
+	humanInputExecutor: HumanInputStepExecutor;
 	ralphLoopExecutor: RalphLoopStepExecutor;
 	parallelExecutor: ParallelStepExecutor;
 	serialExecutor: SerialStepExecutor;
@@ -178,6 +187,8 @@ export class WorkflowExecutor {
 		// Initialize step executors
 		this.promptExecutor = new PromptStepExecutor();
 		this.ralphLoopExecutor = new RalphLoopStepExecutor();
+		this.skillExecutor = new SkillStepExecutor();
+		this.humanInputExecutor = new HumanInputStepExecutor();
 
 		// Branch executor function for nested steps
 		const branchExecutors: Record<
@@ -194,6 +205,8 @@ export class WorkflowExecutor {
 		> = {
 			prompt: this.promptExecutor,
 			"ralph-loop": this.ralphLoopExecutor,
+			skill: this.skillExecutor,
+			"human-input": this.humanInputExecutor,
 		};
 
 		const branchExecute = async (
@@ -222,6 +235,7 @@ export class WorkflowExecutor {
 				signal: this.options.signal ?? null,
 				operatorMessages: this.options.operatorMessages ?? null,
 				sessionHost: this.options.sessionHost ?? null,
+				inputAnswer: this.options.inputAnswer ?? null,
 				shouldStop: this.checkStop,
 				runtimeAdapter: childAdapter,
 			};
@@ -243,27 +257,8 @@ export class WorkflowExecutor {
 			serial: this.serialExecutor,
 			conditional: this.conditionalExecutor,
 			"ralph-loop": this.ralphLoopExecutor,
-			"wait-for-human": {
-				execute: async (
-					step: StepDefinition,
-					progress: WorkflowProgress,
-					_context: StepContext,
-					logger: WorkflowLogger,
-				): Promise<StepResult> => {
-					logger.info(step.name, `Waiting for human input: ${step.message}`);
-					progress.status = WORKFLOW_STATUS.PAUSED;
-					progress.currentStep = {
-						name: step.name,
-						retryCount: 0,
-						startedAt: new Date().toISOString(),
-						type: "wait-for-human",
-						message: step.message,
-						timeoutMinutes: step.stepTimeoutMinutes ?? 5,
-						onTimeout: step.onTimeout,
-					};
-					return { success: true, outputSummary: "Paused for human input" };
-				},
-			},
+			skill: this.skillExecutor,
+			"human-input": this.humanInputExecutor,
 		};
 	}
 
@@ -502,9 +497,7 @@ export class WorkflowExecutor {
 			// Cleanup workflow-level worktree according to the cleanup policy
 			if (workflowWorktree && worktreeSettings) {
 				const cleanup = worktreeSettings.cleanup ?? "on-success";
-				const shouldRemove = shouldRemoveWorktree(cleanup, progress.status, {
-					awaitingHuman: progress.currentStep?.type === "wait-for-human",
-				});
+				const shouldRemove = shouldRemoveWorktree(cleanup, progress.status);
 
 				// cancel: commit pending work even when the policy keeps the worktree
 				if (!shouldRemove && progress.status === WORKFLOW_STATUS.CANCELED) {
@@ -741,10 +734,12 @@ export class WorkflowExecutor {
 			sessionHost: this.options.sessionHost ?? null,
 			recordResult: this.options.recordResult ?? null,
 			emitEvent: this.options.emitEvent ?? null,
+			inputAnswer: this.options.inputAnswer ?? null,
 			shouldStop: this.checkStop,
 		};
 
-		const resolvedModel = resolveModel(context, step.model);
+		// A human-input step runs no runtime: no model to show
+		const resolvedModel = step.type === "human-input" ? null : resolveModel(context, step.model);
 
 		logger.info(step.name, `Starting step: ${step.name}`);
 		console.stepStart(step.name, step.type, resolvedModel);

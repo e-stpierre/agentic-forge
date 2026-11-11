@@ -42,6 +42,7 @@ import type {
 	SessionHost,
 	SessionRequest,
 } from "../runtimes/session.js";
+import type { InputAnswer } from "../steps/base.js";
 import type { Supervisor } from "../supervisor/server.js";
 import type {
 	StepDefinition,
@@ -297,6 +298,7 @@ export function toRunStatus(progress: WorkflowProgress): RunStatus {
 		case WORKFLOW_STATUS.CANCELED:
 			return "canceled";
 		case WORKFLOW_STATUS.PAUSED:
+			// `wait-for-human` progress written before the human-input step (0.12)
 			return progress.currentStep?.type === "wait-for-human" ? "awaiting-human" : "paused";
 		case WORKFLOW_STATUS.RUNNING:
 			return "running";
@@ -1617,6 +1619,7 @@ export class RunManager {
 				operatorMessages: (step) => this.deliverMessages(store, step),
 				sessionHost: (step) => this.sessionHost(entry, store, payload.config, step),
 				recordResult: (step, block) => this.recordResult(entry, store, step, block),
+				inputAnswer: async (_step, requestId) => answerOf(store, requestId),
 				emitEvent: async (type, data) => {
 					await store.appendEvent(type, data);
 				},
@@ -2047,13 +2050,34 @@ export function pendingInput(run: RunJson): PendingInput | null {
 	return pendingInputs(run)[0] ?? null;
 }
 
-/** A pending request; non-blocking requests with a recommended option get the timeout deadline. */
+/** The latest `input.answered` event of a request, as a step reads it. */
+function answerOf(store: RunStore, requestId: string): InputAnswer | null {
+	const event = store
+		.readEvents()
+		.filter((e) => e.type === "input.answered" && e.data?.id === requestId)
+		.at(-1);
+	if (!event?.data) return null;
+	const option = event.data.option;
+	return {
+		answer: String(event.data.answer ?? ""),
+		option: typeof option === "string" ? option : null,
+		from: String(event.data.from ?? "user"),
+	};
+}
+
+/**
+ * A pending request; non-blocking requests with a recommended option get the
+ * timeout deadline: the request's `x-af-timeout-minutes` (human-input
+ * `timeout-minutes`), else `supervisor.needs_input_timeout`.
+ */
 function newPendingInput(
 	step: string,
 	request: NeedsInput,
 	config: Record<string, unknown>,
 ): PendingInput {
-	const minutes = needsInputTimeout(config);
+	const own = request["x-af-timeout-minutes"];
+	const minutes =
+		typeof own === "number" && Number.isFinite(own) && own >= 0 ? own : needsInputTimeout(config);
 	const autoApply = request.blocking === false && request.recommended != null;
 	const now = Date.now();
 	return {

@@ -300,10 +300,11 @@ program
 // input command
 program
 	.command("input")
-	.argument("<workflow_id>", "workflow ID")
-	.argument("<response>", "response to provide")
-	.action((workflowId: string, response: string) => {
-		cmdInput(workflowId, response);
+	.description("Answer the single pending request of an awaiting-human run (af answer shortcut)")
+	.argument("<run_id>", "run ID")
+	.argument("<response>", "option ID, option label, or free-form answer")
+	.action(async (runId: string, response: string) => {
+		await cmdInput(runId, response);
 	});
 
 // configure command

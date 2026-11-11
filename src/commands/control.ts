@@ -90,22 +90,28 @@ export async function cmdPause(options: { runId: string; now?: boolean }): Promi
 
 export async function cmdAnswer(options: {
 	runId: string;
-	requestId: string;
+	/** Optional when the run has a single pending request. */
+	requestId?: string;
 	answer: string;
 	from?: string;
 }): Promise<void> {
 	requireRun(options.runId);
 	const client = await supervisorClient();
 	try {
-		const res = await client.request<{ status: string; message: string | null }>(
+		const res = await client.request<{ request?: string; message: string | null }>(
 			"POST",
 			`/v1/runs/${encodeURIComponent(options.runId)}/answer`,
-			{ request_id: options.requestId, answer: options.answer, from: options.from ?? "user" },
+			{
+				...(options.requestId ? { request_id: options.requestId } : {}),
+				answer: options.answer,
+				from: options.from ?? "user",
+			},
 		);
+		const id = res.request ?? options.requestId;
 		process.stdout.write(
 			res.message === null
-				? `Answered ${options.requestId}: the live session of ${options.runId} continues with the answer\n`
-				: `Answered ${options.requestId}: ${options.runId} resumes and the step runs again with the answer\n`,
+				? `Answered ${id}: the live session of ${options.runId} continues with the answer\n`
+				: `Answered ${id}: ${options.runId} resumes and the step runs again with the answer\n`,
 		);
 	} catch (err) {
 		throw new CliExitError(`Error: ${(err as Error).message}`);

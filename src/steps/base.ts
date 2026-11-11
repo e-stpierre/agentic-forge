@@ -59,6 +59,21 @@ export interface StepContext {
 	 * matching state is saved (event rule).
 	 */
 	emitEvent?: StepEventEmitter | null;
+	/**
+	 * The answer `af answer` gave to a `needs_input` request of this run (the
+	 * `input.answered` event), or null while it is unanswered. Read by the
+	 * `human-input` step when it runs again after asking.
+	 */
+	inputAnswer?: ((step: string, requestId: string) => Promise<InputAnswer | null>) | null;
+}
+
+/** An answer to a `needs_input` request. */
+export interface InputAnswer {
+	/** Option id when the answer matched an option, else the free-form text. */
+	answer: string;
+	option: string | null;
+	/** `user`, `overseer` or `policy` (the needs_input timeout). */
+	from: string;
 }
 
 /** Events a step emits itself; the run and step events are emitted by the executor hooks. */

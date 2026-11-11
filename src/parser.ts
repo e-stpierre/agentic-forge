@@ -5,6 +5,7 @@ import path from "node:path";
 import yaml from "js-yaml";
 import type {
 	AmendSettings,
+	HumanInputOption,
 	OutputDefinition,
 	StepDefinition,
 	StepType,
@@ -15,7 +16,20 @@ import type {
 	WorktreeLocation,
 	WorktreeSettings,
 } from "./types.js";
-import { VALID_STEP_TYPES } from "./types.js";
+import { STEP_TYPE_ALIASES, VALID_STEP_TYPES } from "./types.js";
+
+/** `<plugin>:<skill>` or `<skill>` (Claude plugin and skill names). */
+const SKILL_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*(:[A-Za-z0-9][A-Za-z0-9._-]*)?$/;
+
+/** Contract id from an option label: `Ship it` -> `ship-it`. */
+function optionId(label: string): string {
+	return label
+		.trim()
+		.replace(/[^A-Za-z0-9._-]+/g, "-")
+		.replace(/^[^A-Za-z0-9]+/, "")
+		.replace(/-+$/, "")
+		.slice(0, 200);
+}
 
 export class WorkflowParseError extends Error {
 	constructor(message: string) {
@@ -181,7 +195,8 @@ export class WorkflowParser {
 
 	private parseStep(data: Record<string, unknown>, parentIsParallel = false): StepDefinition {
 		const name = this.required(data, "name") as string;
-		const typeStr = this.required(data, "type") as string;
+		const declaredType = this.required(data, "type") as string;
+		const typeStr = STEP_TYPE_ALIASES[declaredType] ?? declaredType;
 
 		if (!VALID_STEP_TYPES.includes(typeStr as StepType)) {
 			throw new WorkflowParseError(
@@ -209,8 +224,6 @@ export class WorkflowParser {
 			maxIterations: 5,
 			completionPromise: null,
 			message: null,
-			pollingInterval: 15,
-			onTimeout: "abort",
 			model: null,
 			runtime: null,
 			stepTimeoutMinutes: null,
@@ -257,11 +270,11 @@ export class WorkflowParser {
 			step.prompt = (data.prompt as string) ?? null;
 			step.maxIterations = (data["max-iterations"] as number) ?? 5;
 			step.completionPromise = (data["completion-promise"] as string) ?? null;
-		} else if (stepType === "wait-for-human") {
-			step.message = (data.message as string) ?? null;
-			step.pollingInterval = (data["polling-interval"] as number) ?? 15;
-			step.onTimeout = (data["on-timeout"] as string) ?? "abort";
-			step.stepTimeoutMinutes = (data["timeout-minutes"] as number) ?? 5;
+		} else if (stepType === "skill") {
+			step.skill = this.parseSkillName(name, data.skill);
+			step.args = data.args === undefined || data.args === null ? null : String(data.args);
+		} else if (stepType === "human-input") {
+			this.parseHumanInput(step, data, declaredType === "wait-for-human");
 		}
 
 		step.model = (data.model as string) ?? null;
@@ -274,6 +287,112 @@ export class WorkflowParser {
 		step.bypassPermissions = (data["bypass-permissions"] as boolean | undefined) ?? null;
 
 		return step;
+	}
+
+	/** `skill: <plugin>:<skill>` or a plain skill name; a template is checked when rendered. */
+	private parseSkillName(stepName: string, raw: unknown): string {
+		if (typeof raw !== "string" || !raw.trim()) {
+			throw new WorkflowParseError(`Skill step '${stepName}' needs a 'skill' field`);
+		}
+		const skill = raw.trim().replace(/^\//, "");
+		if (!skill.includes("{{") && !SKILL_NAME.test(skill)) {
+			throw new WorkflowParseError(
+				`Invalid skill '${raw}' in step '${stepName}': expected <plugin>:<skill> or <skill>`,
+			);
+		}
+		return skill;
+	}
+
+	/**
+	 * `human-input` fields. `wait-for-human` (before 0.12) is an alias:
+	 * `on-timeout: continue` becomes a non-blocking request whose recommended
+	 * `continue` option is applied after `timeout-minutes`; any other value
+	 * waits for an answer.
+	 */
+	private parseHumanInput(
+		step: StepDefinition,
+		data: Record<string, unknown>,
+		legacy: boolean,
+	): void {
+		const message = data.message ?? data.question;
+		if (typeof message !== "string" || !message.trim()) {
+			throw new WorkflowParseError(`Human-input step '${step.name}' needs a 'message' field`);
+		}
+		step.message = message;
+		step.context = typeof data.context === "string" ? data.context : null;
+		if (legacy) {
+			const timeout = data["timeout-minutes"];
+			const proceed = data["on-timeout"] === "continue";
+			step.options = proceed
+				? [
+						{ id: "continue", label: "Continue" },
+						{ id: "abort", label: "Abort" },
+					]
+				: [];
+			step.recommended = proceed ? "continue" : null;
+			step.blocking = !proceed;
+			step.stepTimeoutMinutes = proceed ? ((timeout as number) ?? 5) : null;
+			return;
+		}
+		step.options = this.parseHumanInputOptions(step.name, data.options);
+		const recommended = data.recommended;
+		if (recommended !== undefined && recommended !== null) {
+			if (!step.options.some((o) => o.id === String(recommended))) {
+				throw new WorkflowParseError(
+					`Human-input step '${step.name}': recommended '${String(recommended)}' is not one of its options`,
+				);
+			}
+			step.recommended = String(recommended);
+		} else {
+			step.recommended = null;
+		}
+		const blocking = data.blocking ?? true;
+		if (typeof blocking !== "boolean") {
+			throw new WorkflowParseError(`Human-input step '${step.name}': blocking must be a boolean`);
+		}
+		step.blocking = blocking;
+		if (data["timeout-minutes"] !== undefined && (blocking || step.recommended === null)) {
+			throw new WorkflowParseError(
+				`Human-input step '${step.name}': timeout-minutes needs blocking: false and a recommended option`,
+			);
+		}
+	}
+
+	/** Options as strings (id = label) or `{ id, label, description }` objects. */
+	private parseHumanInputOptions(stepName: string, raw: unknown): HumanInputOption[] {
+		if (raw === undefined || raw === null) return [];
+		if (!Array.isArray(raw)) {
+			throw new WorkflowParseError(`Human-input step '${stepName}': options must be a list`);
+		}
+		const options = raw.map((item): HumanInputOption => {
+			if (typeof item === "string" || typeof item === "number") {
+				const label = String(item);
+				return { id: optionId(label), label };
+			}
+			const o = (item ?? {}) as Record<string, unknown>;
+			const label = o.label ?? o.id;
+			if (typeof label !== "string" || !label.trim()) {
+				throw new WorkflowParseError(
+					`Human-input step '${stepName}': each option needs an id or a label`,
+				);
+			}
+			const option: HumanInputOption = {
+				id: typeof o.id === "string" && o.id ? optionId(o.id) : optionId(label),
+				label,
+			};
+			if (typeof o.description === "string") option.description = o.description;
+			return option;
+		});
+		const ids = new Set<string>();
+		for (const o of options) {
+			if (!o.id || ids.has(o.id)) {
+				throw new WorkflowParseError(
+					`Human-input step '${stepName}': option ids must be unique and non-empty ('${o.label}')`,
+				);
+			}
+			ids.add(o.id);
+		}
+		return options;
 	}
 
 	private parseOutput(data: Record<string, unknown>): OutputDefinition {
