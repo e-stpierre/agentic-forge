@@ -35,12 +35,14 @@
   "dependencies": {
     "@inquirer/confirm": "^6.0.10",
     "@inquirer/input": "^5.0.10",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "commander": "^14.0.3",
     "js-yaml": "^4.1.1",
     "nunjucks": "^3.2.4",
-    "proper-lockfile": "^4.1.2"
+    "proper-lockfile": "^4.1.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

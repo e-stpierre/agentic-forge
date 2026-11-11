@@ -118,6 +118,16 @@ claude --add-dir $(af authoring-dir)
 
 Then use `/af-workflow-builder` to create, validate, explain, or debug workflows.
 
+### MCP Server
+
+`af mcp` is a stdio MCP server that lets an agent dispatch, follow and steer runs (`af_dispatch`, `af_events`, `af_send`, ...). Add it to Claude Code:
+
+```bash
+claude mcp add agentic-forge -- af mcp
+```
+
+See the [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md#mcp) for the tools and other clients.
+
 ## Documentation
 
 | Document                                                                                           | Description                                                                     |

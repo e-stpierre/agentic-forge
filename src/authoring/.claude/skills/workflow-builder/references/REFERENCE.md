@@ -509,6 +509,9 @@ agentic-forge events [--run <workflow-id>] [--types needs_input,run.*] [--follow
 # Show a run's plan, summary, decisions and review files
 agentic-forge artifacts <workflow-id> [--kind plan|summary|decisions|review] [--content]
 
+# Run a stdio MCP server that dispatches and steers runs (claude mcp add agentic-forge -- af mcp)
+agentic-forge mcp
+
 # Provide human input (for wait-for-human steps)
 agentic-forge input <workflow-id> "response text"
 
