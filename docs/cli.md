@@ -649,7 +649,7 @@ Missing required variable: task (HTTP 400). Pass it in vars (for example vars: {
 The af supervisor is not reachable: <reason>. Start it with af serve --detach, then call af_list_runs again.
 ```
 
-When the supervisor becomes unreachable (for example after a restart on a new port), the server finds or starts it again and retries the call once.
+When the supervisor becomes unreachable (for example after a restart on a new port), the server finds or starts it again on the next call. The read tools (`af_status`, `af_list_runs`, `af_events`) retry the call once; the other tools return the error without resending, since the supervisor may already have handled the request (check with `af_status` or `af_list_runs` before calling them again).
 
 ### Setup
 

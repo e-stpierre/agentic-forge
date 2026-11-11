@@ -30,6 +30,9 @@ export interface ToolContext {
 	cwd: string;
 }
 
+/** `withClient()` options of the read tools: a GET is retried once when the supervisor is unreachable. */
+const READ = { idempotent: true } as const;
+
 export const RUN_STATUS_VALUES = [
 	"queued",
 	"running",
@@ -205,16 +208,21 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 		async (input) => {
 			if (input.run) {
 				const id = input.run;
-				const details = await withClient(ctx.clients, (client) =>
-					client.request<RunDetails>("GET", `/v1/runs/${encodeURIComponent(id)}`),
+				const details = await withClient(
+					ctx.clients,
+					(client) => client.request<RunDetails>("GET", `/v1/runs/${encodeURIComponent(id)}`),
+					READ,
 				);
 				return jsonResult(details);
 			}
-			const res = await withClient(ctx.clients, (client) =>
-				client.request<{ runs: RegistryEntry[] }>(
-					"GET",
-					runsQuery({ status: ACTIVE_RUN_STATUSES.join(",") }),
-				),
+			const res = await withClient(
+				ctx.clients,
+				(client) =>
+					client.request<{ runs: RegistryEntry[] }>(
+						"GET",
+						runsQuery({ status: ACTIVE_RUN_STATUSES.join(",") }),
+					),
+				READ,
 			);
 			return jsonResult({ runs: newestFirst(res.runs) });
 		},
@@ -252,11 +260,14 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 		async (input) => {
 			const status = Array.isArray(input.status) ? input.status.join(",") : input.status;
 			const repo = input.repo ? path.resolve(ctx.cwd, input.repo) : undefined;
-			const res = await withClient(ctx.clients, (client) =>
-				client.request<{ runs: RegistryEntry[] }>(
-					"GET",
-					runsQuery({ status, repo, since: input.since, parent: input.parent }),
-				),
+			const res = await withClient(
+				ctx.clients,
+				(client) =>
+					client.request<{ runs: RegistryEntry[] }>(
+						"GET",
+						runsQuery({ status, repo, since: input.since, parent: input.parent }),
+					),
+				READ,
 			);
 			const runs = newestFirst(res.runs);
 			return jsonResult({
@@ -306,15 +317,18 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 			},
 		},
 		async (input) => {
-			const page = await withClient(ctx.clients, (client) =>
-				fetchEvents(client, {
-					cursor: input.cursor ?? null,
-					run: input.run ?? null,
-					types: input.types,
-					waitSeconds: input.wait_seconds ?? 0,
-					limit: input.limit,
-					fromNow: input.from_now === true,
-				}),
+			const page = await withClient(
+				ctx.clients,
+				(client) =>
+					fetchEvents(client, {
+						cursor: input.cursor ?? null,
+						run: input.run ?? null,
+						types: input.types,
+						waitSeconds: input.wait_seconds ?? 0,
+						limit: input.limit,
+						fromNow: input.from_now === true,
+					}),
+				READ,
 			);
 			return jsonResult(page);
 		},

@@ -10,6 +10,7 @@ export {
 	toolError,
 	withClient,
 } from "./errors.js";
+export type { WithClientOptions } from "./errors.js";
 export {
 	ACTIVE_RUN_STATUSES,
 	MAX_WAIT_SECONDS,

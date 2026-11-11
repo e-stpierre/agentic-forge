@@ -884,4 +884,20 @@ describe("errors", () => {
 		await callTool(mcp, "af_list_runs");
 		expect(calls).toBe(2);
 	});
+
+	it("does not resend a control call when the supervisor is unreachable", async () => {
+		const { client: live } = await startSupervisor();
+		const stale = new SupervisorClient({ ...live.discovery, port: 1 });
+		const handed: SupervisorClient[] = [stale, live];
+		let calls = 0;
+		const mcp = await connect({ getClient: async () => handed[calls++] ?? live });
+		const res = await callTool(mcp, "af_cancel", { run: "nope" });
+		expect(res.isError).toBe(true);
+		expect(res.text).toContain("The af supervisor is not reachable");
+		expect(calls).toBe(1);
+		// The stale client was dropped: the next call finds the live supervisor
+		const next = await callTool(mcp, "af_cancel", { run: "nope" });
+		expect(next.text).toContain("(HTTP 404)");
+		expect(calls).toBe(2);
+	});
 });

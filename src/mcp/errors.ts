@@ -1,7 +1,7 @@
 /**
  * MCP tool results and errors: JSON text results, `isError` results with an
- * actionable next step, and the cached supervisor client with one retry when
- * the supervisor is unreachable.
+ * actionable next step, and the cached supervisor client with one retry of
+ * idempotent calls when the supervisor is unreachable.
  */
 
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -106,19 +106,32 @@ export class ClientCache {
 	}
 }
 
+/** Options of `withClient()`. */
+export interface WithClientOptions {
+	/**
+	 * True when `fn` can be sent twice without side effects (a GET). Only an
+	 * idempotent call is retried: a POST that failed may already have been
+	 * handled by the supervisor (a timeout or a reset after the body was sent).
+	 */
+	idempotent?: boolean;
+}
+
 /**
  * Runs `fn` with the cached client. When the supervisor is unreachable (for
- * example it restarted on a new port), drops the cache and retries once.
+ * example it restarted on a new port), drops the cache so the next call finds
+ * the supervisor again, and retries once when the call is idempotent.
  */
 export async function withClient<T>(
 	clients: ClientCache,
 	fn: (client: SupervisorClient) => Promise<T>,
+	options: WithClientOptions = {},
 ): Promise<T> {
 	try {
 		return await fn(await clients.get());
 	} catch (err) {
 		if (!(err instanceof SupervisorUnavailableError)) throw err;
 		clients.reset();
+		if (!options.idempotent) throw err;
 		return fn(await clients.get());
 	}
 }
