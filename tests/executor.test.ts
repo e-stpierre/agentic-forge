@@ -113,15 +113,11 @@ describe("WorkflowExecutor", () => {
 		expect(executor.executors["ralph-loop"]).toBeTruthy();
 	});
 
-	it("uses cwd when no root specified", () => {
-		const originalCwd = process.cwd();
-		try {
-			process.chdir(tempDir);
-			const executor = new WorkflowExecutor();
-			expect(executor.repoRoot).toBe(tempDir);
-		} finally {
-			process.chdir(originalCwd);
-		}
+	it("uses the config snapshot instead of loading config from disk", () => {
+		const snapshot = { defaults: { runtime: "codex" }, marker: true };
+		const executor = new WorkflowExecutor(tempDir, false, null, { config: snapshot });
+		expect(executor.repoRoot).toBe(tempDir);
+		expect(executor.config).toBe(snapshot);
 	});
 
 	it("accepts runtimeOverride as third constructor parameter", () => {

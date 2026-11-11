@@ -33,6 +33,7 @@ All settings are optional with sensible defaults.
 | `model`              | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                      |
 | `runtime`            | string | `null`     | claude, codex                | Default coding agent runtime for all steps       |
 | `required-tools`     | list   | `[]`       | Tool names                   | Tools Claude can use without prompting           |
+| `amend.step`         | string | none       | A top-level step name        | Step `af amend` runs before the next step        |
 
 **Runtime resolution order:** `step.runtime` > `--runtime` CLI flag > `settings.runtime` > `config.defaults.runtime` > `"claude"`
 
@@ -277,6 +278,8 @@ Iterative prompt execution with completion detection. Each iteration runs in a f
 2. State persists in `{output_dir}/ralph-{step-name}.md`
 3. Loop exits when the agent outputs completion JSON or max iterations reached
 4. Additional template variables: `{{ iteration }}` (current), `{{ max_iterations }}` (max)
+5. Iteration boundaries are safe points: `af pause` stops between two iterations, and operator messages (`af send`) are injected at the start of the next iteration prompt
+6. Each iteration emits `iteration.started` and `iteration.completed` (`data.outcome`: `continue`, `complete`, `failed`, `error`, `max_iterations`) in the run's `events.jsonl`
 
 **Completion JSON format** (agent must output this when done):
 
@@ -342,14 +345,16 @@ Workflows use Nunjucks for dynamic content in prompts, conditions, and output pa
 
 ### Built-in Variables
 
-| Variable                       | Description                            |
-| ------------------------------ | -------------------------------------- |
-| `{{ workflow_id }}`            | Unique workflow execution ID           |
-| `{{ workflow_name }}`          | Workflow name from YAML                |
-| `{{ variables.<name> }}`       | User-defined variable                  |
-| `{{ outputs.<step>.<field> }}` | Output from a previous step            |
-| `{{ iteration }}`              | Current ralph-loop iteration (1-based) |
-| `{{ max_iterations }}`         | Max iterations for ralph-loop          |
+| Variable                       | Description                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `{{ workflow_id }}`            | Unique workflow execution ID                                                                |
+| `{{ workflow_name }}`          | Workflow name from YAML                                                                     |
+| `{{ variables.<name> }}`       | User-defined variable                                                                       |
+| `{{ outputs.<step>.<field> }}` | Output from a previous step                                                                 |
+| `{{ iteration }}`              | Current ralph-loop iteration (1-based)                                                      |
+| `{{ max_iterations }}`         | Max iterations for ralph-loop                                                               |
+| `{{ plan_path }}`              | Latest plan in the run directory (`plan.md` or the highest `plan.v<N>.md`), empty when none |
+| `{{ plan_version }}`           | Version of that plan (`plan.md` is 1, none is 0)                                            |
 
 ### Nunjucks Filters
 
@@ -403,7 +408,7 @@ Template resolution order:
 2. `agentic/templates/`
 3. Bundled plugin templates
 
-Step prompt template variables: `{{ workflow_id }}`, `{{ output_dir }}` (absolute path to the workflow output directory), `{{ variables.* }}`, `{{ outputs.* }}`
+Step prompt template variables: `{{ workflow_id }}`, `{{ output_dir }}` (absolute path to the run directory, `<runs.root>/YYYY-MM-DD-<slug>/`, which also holds `run.json`, `events.jsonl` and `progress.json`), `{{ variables.* }}`, `{{ outputs.* }}`
 
 Template context variables: `workflow`, `variables`, `outputs`, `progress`, `steps`, `analysis_steps`, `fix_steps`, `files_changed`, `branches`, `pull_requests`, `inputs`
 
@@ -419,6 +424,46 @@ outputs:
     when: failed
 ```
 
+## Operator Messages
+
+Under the supervisor, `af send` queues messages in the run's `inbox/`. Before each step prompt (prompt and ralph-loop steps, nested ones included) and each ralph-loop iteration, pending messages for the run, or for that step when sent with `--step`, are prepended as a section, then marked delivered so they never repeat:
+
+```md
+## Operator Messages
+
+- [user, 2026-11-10T12:00:00Z, m-1a2b3c4d] Reuse the existing theme tokens.
+```
+
+Prompts need no placeholder for it. Write prompts so that an instruction in this section takes precedence over the step's defaults.
+
+`af send --mode now` kills the running step and runs it again at once with the message. `af answer` and `af retry-step --context` also reach the step through this section.
+
+## Step Results
+
+Every prompt step ends with a contract result block on its last output line (the bundled system prompt asks for it): `{"status": "done", "summary": "..."}`. Its `status` decides what happens next:
+
+| Result status    | Step / run outcome                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| `done`, `merged` | Step completed; a run with a `merged` step ends `merged`                             |
+| `failed`         | Step failed (retried up to `max-retry`, then the run fails)                          |
+| `awaiting-human` | Run `awaiting-human`; with `needs_input`, `af answer` resumes it and the step reruns |
+| `halted`         | Run `halted` (terminal); the worktree is kept                                        |
+| `escalate`       | Run `blocked`; `af resume` or `af retry-step` reruns the step                        |
+
+Without a valid block, the process exit code is used: `0` done, `10` awaiting-human, `20` halted, `30` escalate, anything else failed. The supervisor writes the block to `steps/<NN-step>/result.json` in the run directory. Statuses other than `done` and `failed` stop the run only for top-level steps; nested steps report them to their parent as a failure.
+
+## Amendments
+
+`af amend <run> "<text>"` records a requirement change. Name an amend step to apply it to the plan:
+
+```yaml
+settings:
+  amend:
+    step: plan # top-level step that rewrites the plan as plan.v<N>.md
+```
+
+At the next step boundary, the supervisor runs the amend step with the amendment in its `## Operator Messages` section (`Amendment A001 (affects M2): ...`), then continues with the step it was about to run. The amend step writes `plan.v<N>.md` in `{{ output_dir }}`; later steps read the latest plan through `{{ plan_path }}`. Without `settings.amend`, the amendment is delivered to the next step as an `Amendment:` operator message.
+
 ## CLI Commands
 
 ```bash
@@ -431,8 +476,38 @@ agentic-forge resume <workflow-id>
 # Check workflow status
 agentic-forge status <workflow-id>
 
-# Cancel a running workflow
+# Cancel a run (stops the current step now, safety-commits, applies the worktree cleanup policy)
 agentic-forge cancel <workflow-id>
+
+# Queue an operator message for the next step or iteration (optionally one step)
+agentic-forge send <workflow-id> "text" [--step <name>]
+
+# Pause at the next step or iteration boundary (--now stops the current step)
+agentic-forge pause <workflow-id> [--now]
+
+# Interrupt the current step and restart it with a message
+agentic-forge send <workflow-id> "text" --mode now
+
+# Answer a needs_input request (option id, label or free text) and resume
+agentic-forge answer <workflow-id> <request-id> "answer"
+
+# Record a requirement change (runs settings.amend.step at the next boundary)
+agentic-forge amend <workflow-id> "text" [--affects M2,M3]
+
+# Rerun a step (and every later step) of a stopped run
+agentic-forge retry-step <workflow-id> <step> [--context "text"]
+
+# Change the queue priority of a run
+agentic-forge reprioritize <workflow-id> <priority>
+
+# List runs with filters
+agentic-forge list [--status paused,awaiting-human] [--repo <path>] [--since 2h] [--parent <run>] [--json]
+
+# Print or follow run events (resumable with a cursor)
+agentic-forge events [--run <workflow-id>] [--types needs_input,run.*] [--follow] [--cursor-file <path>] [--json]
+
+# Show a run's plan, summary, decisions and review files
+agentic-forge artifacts <workflow-id> [--kind plan|summary|decisions|review] [--content]
 
 # Provide human input (for wait-for-human steps)
 agentic-forge input <workflow-id> "response text"
@@ -505,6 +580,7 @@ When validating a workflow, check for these issues:
 - Missing `name` field
 - Missing `steps` field or empty steps list
 - Invalid step type (not one of: prompt, serial, parallel, conditional, ralph-loop, wait-for-human)
+- `settings.amend.step` naming a step that is not a top-level step
 - Nested parallel steps (parallel inside parallel)
 - Prompt step without `prompt` field
 - Conditional step without `condition` field

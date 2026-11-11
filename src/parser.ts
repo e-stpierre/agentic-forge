@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
 import type {
+	AmendSettings,
 	OutputDefinition,
 	StepDefinition,
 	StepType,
@@ -81,6 +82,12 @@ export class WorkflowParser {
 			this.parseOutput(o as Record<string, unknown>),
 		);
 
+		if (settings.amend && !steps.some((s) => s.name === settings.amend?.step)) {
+			throw new WorkflowParseError(
+				`settings.amend.step '${settings.amend.step}' is not a top-level step`,
+			);
+		}
+
 		return { name, version, description, settings, variables, steps, outputs };
 	}
 
@@ -147,7 +154,19 @@ export class WorkflowParser {
 			runtime: (data.runtime as string) ?? null,
 			requiredTools: (data["required-tools"] as string[]) ?? [],
 			worktree: this.parseWorktreeSettings(data),
+			amend: this.parseAmendSettings(data),
 		};
+	}
+
+	/** `settings.amend: { step: <top-level step name> }` (validated against the steps in parseDict). */
+	private parseAmendSettings(data: Record<string, unknown>): AmendSettings | null {
+		const raw = data.amend;
+		if (raw === undefined || raw === null) return null;
+		const step = (raw as Record<string, unknown>).step;
+		if (typeof raw !== "object" || Array.isArray(raw) || typeof step !== "string" || !step) {
+			throw new WorkflowParseError("settings.amend must be an object with a non-empty 'step'");
+		}
+		return { step };
 	}
 
 	private parseVariable(data: Record<string, unknown>): Variable {

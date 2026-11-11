@@ -15,6 +15,12 @@ export const WORKFLOW_STATUS = {
 	FAILED: "failed",
 	PAUSED: "paused",
 	CANCELED: "canceled",
+	/** A step returned `awaiting-human` (needs_input); resumes with `af answer`. */
+	AWAITING_HUMAN: "awaiting-human",
+	/** A step returned `halted`: a stop policy triggered. Terminal. */
+	HALTED: "halted",
+	/** A step returned `escalate`: the run waits for the operator. */
+	BLOCKED: "blocked",
 } as const;
 
 export const STEP_STATUS = {
@@ -23,7 +29,22 @@ export const STEP_STATUS = {
 	COMPLETED: "completed",
 	FAILED: "failed",
 	SKIPPED: "skipped",
+	/** Stopped by the operator (`pause --now`, `cancel`) or by a supervisor crash. */
+	INTERRUPTED: "interrupted",
+	/** The step returned `awaiting-human`; it reruns with the answer. */
+	AWAITING_HUMAN: "awaiting-human",
+	/** The step returned `halted`. */
+	HALTED: "halted",
+	/** The step returned `escalate`; it reruns on resume. */
+	ESCALATED: "escalated",
 } as const;
+
+/** Workflow statuses that stop the run without ending it (the run can resume). */
+export const WAITING_WORKFLOW_STATUSES: readonly string[] = [
+	WORKFLOW_STATUS.PAUSED,
+	WORKFLOW_STATUS.AWAITING_HUMAN,
+	WORKFLOW_STATUS.BLOCKED,
+];
 
 // --- ID and path helpers ---
 
@@ -124,12 +145,97 @@ export function updateStepStarted(progress: WorkflowProgress, stepName: string):
 	};
 }
 
+/**
+ * Records that `stepName` was stopped before it finished. Records that nested
+ * steps added since `fromIndex` (failures caused by the kill) are dropped, so a
+ * resume reruns the step from its start.
+ */
+export function updateStepInterrupted(
+	progress: WorkflowProgress,
+	stepName: string,
+	reason: string,
+	fromIndex = progress.completedSteps.length,
+): void {
+	progress.completedSteps.splice(fromIndex);
+	const runIdx = progress.runningSteps.indexOf(stepName);
+	if (runIdx !== -1) {
+		progress.runningSteps.splice(runIdx, 1);
+	}
+	if (!progress.pendingSteps.includes(stepName)) {
+		progress.pendingSteps.unshift(stepName);
+	}
+	progress.completedSteps.push({
+		name: stepName,
+		status: STEP_STATUS.INTERRUPTED,
+		startedAt: progress.currentStep?.name === stepName ? progress.currentStep.startedAt : null,
+		completedAt: new Date().toISOString(),
+		retryCount: 0,
+		outputSummary: "",
+		error: reason,
+		humanInput: null,
+	});
+	progress.currentStep = null;
+}
+
+/**
+ * Records that `stepName` ended with a result status that stops the run
+ * (`awaiting-human`, `halted`, `escalate`). Except for `halted`, the step is
+ * re-pended so a resume runs it again.
+ */
+/** A completed or skipped step record that `af retry-step` did not invalidate. */
+export function isStepDone(record: StepProgress): boolean {
+	return (
+		(record.status === STEP_STATUS.COMPLETED || record.status === STEP_STATUS.SKIPPED) &&
+		!record.superseded
+	);
+}
+
+/**
+ * Invalidates the completions of `stepNames` durably (they rerun on every
+ * later resume until they complete again), then lets `retryFrom` be cleared.
+ */
+export function supersedeCompletions(progress: WorkflowProgress, stepNames: Set<string>): void {
+	for (const record of progress.completedSteps) {
+		if (stepNames.has(record.name) && isStepDone(record)) record.superseded = true;
+	}
+}
+
+export function updateStepStopped(
+	progress: WorkflowProgress,
+	stepName: string,
+	stepStatus: string,
+	outputSummary: string,
+	resultStatus: string,
+	repend = true,
+): void {
+	const runIdx = progress.runningSteps.indexOf(stepName);
+	if (runIdx !== -1) {
+		progress.runningSteps.splice(runIdx, 1);
+	}
+	if (repend && !progress.pendingSteps.includes(stepName)) {
+		progress.pendingSteps.unshift(stepName);
+	}
+	progress.completedSteps.push({
+		name: stepName,
+		status: stepStatus,
+		startedAt: progress.currentStep?.startedAt ?? null,
+		completedAt: new Date().toISOString(),
+		retryCount: progress.currentStep?.retryCount ?? 0,
+		outputSummary,
+		error: null,
+		humanInput: null,
+		resultStatus,
+	});
+	progress.currentStep = null;
+}
+
 export function updateStepCompleted(
 	progress: WorkflowProgress,
 	stepName: string,
 	outputSummary = "",
 	output?: unknown,
 	sessionId?: string | null,
+	resultStatus?: string | null,
 ): void {
 	const runIdx = progress.runningSteps.indexOf(stepName);
 	if (runIdx !== -1) {
@@ -146,6 +252,7 @@ export function updateStepCompleted(
 		error: null,
 		humanInput: null,
 		sessionId: sessionId ?? null,
+		...(resultStatus ? { resultStatus } : {}),
 	};
 	progress.completedSteps.push(step);
 
@@ -257,6 +364,8 @@ export function progressToDict(progress: WorkflowProgress): Record<string, unkno
 			output_summary: s.outputSummary,
 			error: s.error,
 			human_input: s.humanInput,
+			...(s.resultStatus ? { result_status: s.resultStatus } : {}),
+			...(s.superseded ? { superseded: true } : {}),
 		})),
 		pending_steps: progress.pendingSteps,
 		running_steps: progress.runningSteps,
@@ -271,6 +380,7 @@ export function progressToDict(progress: WorkflowProgress): Record<string, unkno
 		step_outputs: progress.stepOutputs,
 		workflow_file: progress.workflowFile,
 		output_dir: progress.outputDir,
+		...(progress.retryFrom ? { retry_from: progress.retryFrom } : {}),
 	};
 }
 
@@ -285,6 +395,8 @@ export function dictToProgress(data: Record<string, unknown>): WorkflowProgress 
 			outputSummary: (s.output_summary as string) ?? "",
 			error: (s.error as string) ?? null,
 			humanInput: (s.human_input as string) ?? null,
+			...(typeof s.result_status === "string" ? { resultStatus: s.result_status } : {}),
+			...(s.superseded === true ? { superseded: true } : {}),
 		}),
 	);
 
@@ -328,5 +440,6 @@ export function dictToProgress(data: Record<string, unknown>): WorkflowProgress 
 		stepOutputs: (data.step_outputs as Record<string, unknown>) ?? {},
 		workflowFile: (data.workflow_file as string) ?? "",
 		outputDir: (data.output_dir as string) ?? undefined,
+		...(typeof data.retry_from === "string" ? { retryFrom: data.retry_from } : {}),
 	};
 }

@@ -1,119 +1,60 @@
-/** Resume command handler. */
+/** Resume command handler: re-queues a supervisor run from its last completed step. */
 
-import { existsSync } from "node:fs";
-import path from "node:path";
-
-import { getRepoRoot } from "../git/worktree.js";
-import { findOutputDir } from "../paths.js";
-import { WORKFLOW_STATUS, loadProgress, prepareForResume, saveProgress } from "../progress.js";
-import { discoverWorkflow } from "./run.js";
+import { exitCodeForRun } from "../contract/index.js";
+import { RunRegistry } from "../runs/registry.js";
+import { CliExitError } from "./run.js";
+import { resolveLegacyOutputDir } from "./status.js";
 
 export async function cmdResume(options: {
 	workflowId: string;
-	terminalOutput?: string;
+	foreground?: boolean;
 }): Promise<void> {
-	const { WorkflowExecutor } = await import("../executor.js");
-	const { WorkflowParser, WorkflowParseError } = await import("../parser.js");
+	const entry = new RunRegistry().get(options.workflowId);
+	if (!entry) {
+		if (resolveLegacyOutputDir(options.workflowId)) {
+			throw new CliExitError(
+				`Error: ${options.workflowId} is a legacy run (pre-supervisor outputs/) and cannot be resumed.\nFinish it with the agentic-forge version that started it, or discard it.`,
+			);
+		}
+		throw new CliExitError(`Error: Run not found: ${options.workflowId}`);
+	}
 
-	const cwd = process.cwd();
-	let repoRoot: string | undefined;
+	const { ensureSupervisor } = await import("../supervisor/client.js");
+	const { followRun, formatEvent } = await import("../runs/client.js");
+	const { getVersion } = await import("./version.js");
+	const { client } = await ensureSupervisor({
+		version: getVersion(),
+		onWarn: (message) => process.stderr.write(`Warning: ${message}\n`),
+	});
+	const eventsRoute = `/v1/runs/${encodeURIComponent(entry.id)}/events`;
+	let after = 0;
 	try {
-		const root = getRepoRoot(cwd);
-		if (root !== cwd) repoRoot = root;
-	} catch {
-		// Not in a git repo; skip worktree output root lookup
+		after = (await client.request<{ events: { seq: number }[] }>("GET", eventsRoute)).events.length;
+		await client.request("POST", `/v1/runs/${encodeURIComponent(entry.id)}/resume`);
+	} catch (err) {
+		throw new CliExitError(`Error: ${(err as Error).message}`);
 	}
-	const outputDir = findOutputDir(options.workflowId, cwd, repoRoot);
-	if (outputDir === null) {
-		process.stderr.write(`Error: Workflow not found: ${options.workflowId}\n`);
-		process.exit(1);
-	}
-	const progress = loadProgress(options.workflowId, outputDir);
-	if (progress === null) {
-		process.stderr.write(`Error: Workflow not found: ${options.workflowId}\n`);
-		process.exit(1);
-	}
+	process.stdout.write(`Run resumed: ${entry.id}\n`);
+	if (!options.foreground) return;
 
-	// Only reject completed workflows
-	if (progress.status === WORKFLOW_STATUS.COMPLETED) {
-		process.stderr.write(
-			`Error: Cannot resume a completed workflow (status: '${progress.status}')\n`,
-		);
-		process.exit(1);
-	}
-
-	// Resolve workflow YAML file
-	let workflowPath: string | null = null;
-
-	// Try stored workflow_file first
-	if (progress.workflowFile) {
-		if (existsSync(progress.workflowFile)) {
-			workflowPath = progress.workflowFile;
-		}
-	}
-
-	// Fall back to discovery by workflow name
-	if (workflowPath === null) {
-		const [discovered] = discoverWorkflow(progress.workflowName);
-		if (discovered !== null) {
-			workflowPath = discovered;
-		}
-	}
-
-	if (workflowPath === null) {
-		process.stderr.write(
-			`Error: Cannot find workflow file for '${progress.workflowName}'.\nProvide the workflow YAML at one of the standard locations or re-run with 'agentic-forge run <path>'.\n`,
-		);
-		process.exit(1);
-	}
-
-	// Parse workflow
-	let workflow: import("../types.js").WorkflowDefinition;
+	const controller = new AbortController();
+	const onSigint = () => controller.abort();
+	process.on("SIGINT", onSigint);
+	let status: string;
 	try {
-		const parser = new WorkflowParser();
-		workflow = parser.parseFile(workflowPath);
-	} catch (e: unknown) {
-		if (e instanceof WorkflowParseError) {
-			process.stderr.write(`Error parsing workflow: ${e.message}\n`);
-			process.exit(1);
-		}
-		throw e;
+		status = await followRun(client, entry.id, {
+			after,
+			signal: controller.signal,
+			onEvent: (event) => process.stdout.write(`${formatEvent(event)}\n`),
+		});
+	} finally {
+		process.off("SIGINT", onSigint);
 	}
-
-	// Normalize state for resume
-	prepareForResume(progress);
-	saveProgress(progress, outputDir);
-
-	// Execute with resume
-	const executor = new WorkflowExecutor();
-	try {
-		let terminalOutput = "base";
-		if (options.terminalOutput != null) {
-			terminalOutput = options.terminalOutput;
-		} else if (workflow.settings?.terminalOutput) {
-			terminalOutput = workflow.settings.terminalOutput;
-		}
-
-		const result = await executor.run(
-			workflow,
-			progress.variables as Record<string, unknown> | undefined,
-			null,
-			terminalOutput,
-			path.resolve(workflowPath),
-			progress,
-		);
-		process.stdout.write(`\nWorkflow ${result.status}: ${result.workflowId}\n`);
-		if (result.errors && result.errors.length > 0) {
-			process.stdout.write("\nErrors:\n");
-			for (const error of result.errors) {
-				process.stdout.write(
-					`  - ${(error as Record<string, string>).step}: ${(error as Record<string, string>).error}\n`,
-				);
-			}
-		}
-	} catch (e: unknown) {
-		const msg = e instanceof Error ? e.message : String(e);
-		process.stderr.write(`Error running workflow: ${msg}\n`);
-		process.exit(1);
+	if (status === "detached") {
+		process.stdout.write("\nDetached. The run continues in the supervisor.\n");
+		return;
 	}
+	process.stdout.write(`\nWorkflow ${status}: ${entry.id}\n`);
+	const code = exitCodeForRun(status);
+	if (code !== 0) throw new CliExitError(`Run ${entry.id} ended with status '${status}'`, code);
 }

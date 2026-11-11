@@ -26,7 +26,7 @@ settings:
   # Maximum time for entire workflow in minutes (default: 60)
   timeout-minutes: 180
 
-  # Track progress in progress.json file (default: true)
+  # Track progress in progress.json in the run directory (default: true)
   track-progress: true
 
   # Auto-fix severity level: none, minor, major, critical (default: none)
@@ -71,6 +71,14 @@ settings:
 
     # Cleanup policy: on-success (default), on-complete, manual
     cleanup: "on-success"
+
+  # Amend step (optional): the top-level step `af amend` runs at the next step
+  # boundary. It receives the amendment as an "## Operator Messages" section,
+  # writes plan.v<N>.md in {{ output_dir }}, and later steps read the latest
+  # plan through {{ plan_path }}. Without it, an amendment is delivered to the
+  # next step as an "Amendment:" operator message.
+  amend:
+    step: generate-plan
 
 # Optional: Input variables for the workflow
 variables:
@@ -219,6 +227,9 @@ steps:
 
   # ==================== RALPH LOOP STEP ====================
   # Iterative prompt execution with completion detection
+  # Iteration boundaries are safe points: `af pause` stops between iterations,
+  # and `af send` messages are prepended to the next iteration prompt as an
+  # "## Operator Messages" section (no placeholder needed)
   - name: implement-incrementally
     type: ralph-loop
 

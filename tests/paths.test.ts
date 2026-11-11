@@ -62,6 +62,20 @@ describe("getGlobalRoot", () => {
 		expect(root).toBe(path.join("/custom/config", "agentic-forge"));
 	});
 
+	it("should prefer AGENTIC_FORGE_HOME on every platform", () => {
+		const previous = process.env.AGENTIC_FORGE_HOME;
+		process.env.AGENTIC_FORGE_HOME = path.join(tmpdir(), "af-override");
+		try {
+			for (const platform of ["win32", "darwin", "linux"] as const) {
+				expect(getGlobalRoot(platform)).toBe(path.resolve(tmpdir(), "af-override"));
+			}
+		} finally {
+			// biome-ignore lint/performance/noDelete: required to unset env var for test
+			if (previous === undefined) delete process.env.AGENTIC_FORGE_HOME;
+			else process.env.AGENTIC_FORGE_HOME = previous;
+		}
+	});
+
 	it("should fallback to ~/.config on Linux without XDG_CONFIG_HOME", () => {
 		// biome-ignore lint/performance/noDelete: required to unset env var for test
 		delete process.env.XDG_CONFIG_HOME;

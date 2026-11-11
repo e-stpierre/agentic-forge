@@ -294,3 +294,20 @@ describe("CodexAdapter identity", () => {
 		expect(adapter.executableName).toBe("codex");
 	});
 });
+
+describe("CodexAdapter session id", () => {
+	it("reads the thread id of thread.started as the session id", () => {
+		expect(
+			adapter.parseStreamLine(JSON.stringify({ type: "thread.started", thread_id: "t-1" })),
+		).toEqual({ type: "session", sessionId: "t-1" });
+		const result = adapter.buildFinalResult(
+			0,
+			JSON.stringify({ status: "escalate", summary: "Need a decision." }),
+			"",
+			{ prompt: "p" },
+			"t-1",
+		);
+		expect(result.sessionOutput).toMatchObject({ sessionId: "t-1", isSuccess: false });
+		expect(result.sessionOutput.result?.status).toBe("escalate");
+	});
+});

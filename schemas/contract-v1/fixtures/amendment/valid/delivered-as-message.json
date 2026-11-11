@@ -1,0 +1,8 @@
+{
+  "id": "A002",
+  "at": "2026-11-10T12:30:00.000Z",
+  "from": "overseer",
+  "text": "Keep the public API unchanged.",
+  "affects": [],
+  "plan_version": null
+}

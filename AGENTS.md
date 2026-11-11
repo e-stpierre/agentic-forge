@@ -45,7 +45,8 @@ Runtime adapter layer for coding agent integrations:
 - `types.ts` — `RuntimeId`, `RuntimeAdapter`, `RuntimeCommand`, `StreamEvent`, `RuntimeRunOptions`, `RuntimeResult`
 - `claude.ts` — `ClaudeAdapter` (extracted from `runner.ts`)
 - `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
-- `process-runner.ts` — `runRuntime()` shared process spawning
+- `process-runner.ts` — `runRuntime()` shared process spawning (`options.signal` kills the process tree)
+- `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
 - `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
 - `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
 
@@ -55,7 +56,34 @@ Workflow step handlers (prompt, parallel, serial, conditional, ralph-loop).
 
 #### `contract/`
 
-Harness contract helpers: `validateArtifact()`, `validateContractFile()`, `exitCodeFor()`, `EXIT_CODES`. Loads the schemas from `schemas/contract-v1/`.
+Harness contract helpers: `validateArtifact()`, `validateContractFile()`, `exitCodeFor()`, `EXIT_CODES`. Loads the schemas from `schemas/contract-v1/`. `result.ts`: `parseResultBlock()` (result block on the last output line), `resultStatusFromExit()`, `exitCodeForRun()`, `ResultBlock`, `NeedsInput`. `plan.ts`: `latestPlan()` (`plan.md` / `plan.v<N>.md`).
+
+#### `supervisor/`
+
+The af supervisor (`af serve`) and its thin client:
+
+- `server.ts` — `Supervisor` (HTTP on 127.0.0.1, per-user token, single instance, `route()` for new endpoints)
+- `client.ts` — `SupervisorClient`, `findSupervisor()`, `ensureSupervisor()` (on-demand start, version handshake), `stopSupervisor()`, `spawnDetachedSupervisor()`
+- `discovery.ts` — `supervisor.json` discovery file, `supervisor.pid`, `isPidAlive()`
+- `lock.ts` — contract lock protocol (`<file>.lock`, exclusive create, 30 s stale timeout)
+
+Tests that start a supervisor or write locks use `tests/helpers/temp-home.ts` (`useTempGlobalRoot()`, which sets `AGENTIC_FORGE_HOME` to a temp dir).
+
+#### `runs/`
+
+Runs owned by the supervisor:
+
+- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines)
+- `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
+- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
+- `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
+- `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
+- `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
+- `scheduler.ts` — `pickRunnable()` (global and per-repo limits, one run per checkout)
+- `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment)
+- `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`
+
+Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
 
 #### `workflows/`
 

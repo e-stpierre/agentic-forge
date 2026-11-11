@@ -34,6 +34,17 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		directory: null,
 		cleanup: "on-success",
 	},
+	runs: {
+		// null: <global dir>/runs/. Replaces outputDirectory.
+		root: null,
+	},
+	supervisor: {
+		max_parallel_runs: 4,
+		max_parallel_tasks: 2,
+		env_passthrough: [],
+		/** Minutes before a non-blocking needs_input request gets its recommended option (null: never). */
+		needs_input_timeout: null,
+	},
 };
 
 /**
@@ -41,6 +52,10 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
  * Inlined here to avoid a circular dependency with paths.ts.
  */
 function getGlobalConfigPath(): string {
+	const override = process.env.AGENTIC_FORGE_HOME;
+	if (override) {
+		return path.join(path.resolve(override), "config.json");
+	}
 	const platform = process.platform;
 	let base: string;
 	if (platform === "win32") {

@@ -441,10 +441,30 @@ function pruneWorktreesDir(worktreesDir: string, prefixes: string[] | null): num
 	return cleaned;
 }
 
-export function pruneOrphaned(repoRoot?: string | null, prune?: PruneLocation): number {
+/**
+ * Prunes orphaned worktree directories. With `recorded`, only those paths
+ * (worktrees af created and recorded in run.json) are considered, so nested
+ * worktrees created by a step are never touched.
+ */
+export function pruneOrphaned(
+	repoRoot?: string | null,
+	prune?: PruneLocation,
+	recorded?: string[] | null,
+): number {
 	const root = repoRoot || getRepoRoot();
 
 	runGit(["worktree", "prune"], root, false);
+
+	if (recorded) {
+		let removed = 0;
+		for (const wtDir of recorded) {
+			if (!existsSync(wtDir) || !statSync(wtDir).isDirectory()) continue;
+			if (existsSync(path.join(wtDir, ".git"))) continue;
+			rmSync(wtDir, { recursive: true, force: true });
+			removed++;
+		}
+		return removed;
+	}
 
 	if (prune) {
 		const { location, directory } = prune;

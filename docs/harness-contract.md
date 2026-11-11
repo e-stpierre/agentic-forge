@@ -300,16 +300,18 @@ An amendment changes the requirements of the remaining work. `amendments.jsonl` 
 
 Required: `id`, `at`, `text`, `affects`, `plan_version`.
 
-| Field          | Type      | Description                                                              |
-| -------------- | --------- | ------------------------------------------------------------------------ |
-| `id`           | ID        | `A001`, `A002`, ...                                                      |
-| `at`           | timestamp | When it was applied                                                      |
-| `from`         | enum      | `user`, `overseer` or `agent` (optional)                                 |
-| `text`         | string    | The requirement change                                                   |
-| `affects`      | string[]  | IDs of the milestones it changes. Completed milestones are never changed |
-| `plan_version` | integer   | Version of the plan produced by the amendment, at least `2`              |
+| Field          | Type            | Description                                                                                                       |
+| -------------- | --------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `id`           | ID              | `A001`, `A002`, ...                                                                                               |
+| `at`           | timestamp       | When it was applied                                                                                               |
+| `from`         | enum            | `user`, `overseer` or `agent` (optional)                                                                          |
+| `text`         | string          | The requirement change                                                                                            |
+| `affects`      | string[]        | IDs of the milestones it changes. Completed milestones are never changed                                          |
+| `plan_version` | integer or null | Version of the plan produced by the amendment, at least `2`. `null` when no plan version was produced (see below) |
 
 Plan versions are immutable files: `plan.md` is version 1, `plan.v2.md` is version 2, and so on. The amending step writes `plan.v<N>.md` first, then appends the amendment, emits `amendment.applied` and logs an `operator` decision that references the amendment and the affected milestones. Every later step reads the highest plan version present.
+
+A workflow without an amend step still records the amendment, with `plan_version: null`: the harness appends it, logs the `operator` decision, emits `amendment.applied`, and delivers the text as an operator message prefixed `Amendment:` at the next boundary.
 
 ## events.jsonl
 

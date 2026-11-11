@@ -241,3 +241,25 @@ describe("ClaudeAdapter identity", () => {
 		expect(adapter.executableName).toBe("claude");
 	});
 });
+
+describe("ClaudeAdapter session id and result block", () => {
+	it("reads the session id from the stream", () => {
+		const init = adapter.parseStreamLine(
+			JSON.stringify({ type: "system", subtype: "init", session_id: "s-42", model: "opus" }),
+		);
+		expect(init?.sessionId).toBe("s-42");
+		const bare = adapter.parseStreamLine(JSON.stringify({ type: "other", session_id: "s-43" }));
+		expect(bare).toEqual({ type: "session", sessionId: "s-43" });
+	});
+
+	it("builds the result from the contract result block and the stream session id", () => {
+		const stdout = `Done.\n${JSON.stringify({ status: "done", summary: "Built." })}`;
+		const result = adapter.buildFinalResult(0, stdout, "", { prompt: "p" }, "s-42");
+		expect(result.sessionOutput).toMatchObject({
+			sessionId: "s-42",
+			isSuccess: true,
+			context: "Built.",
+		});
+		expect(result.sessionOutput.result?.status).toBe("done");
+	});
+});

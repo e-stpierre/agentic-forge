@@ -9,6 +9,7 @@ import {
 	type StepContext,
 	StepExecutor,
 	type StepResult,
+	propagateChildStop,
 } from "./base.js";
 
 export class SerialStepExecutor extends StepExecutor {
@@ -40,6 +41,8 @@ export class SerialStepExecutor extends StepExecutor {
 				const result = await this.branchExecutor(subStep, progress, context, logger, console);
 
 				if (!result.success) {
+					const stopped = propagateChildStop(progress, step.name, subStep.name, console);
+					if (stopped) return stopped;
 					logger.warning(
 						step.name,
 						`Serial block stopped at step '${subStep.name}' due to failure`,
