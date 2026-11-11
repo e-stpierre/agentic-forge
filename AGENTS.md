@@ -92,7 +92,7 @@ The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
 - `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
 - `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) over the `/v1/runs/:id/*` control endpoints
-- `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry when the supervisor is unreachable)
+- `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)
 
 MCP tests (`tests/mcp-server.test.ts`) connect an SDK `Client` to `createMcpServer()` through `InMemoryTransport.createLinkedPair()`, with an in-process `Supervisor` and `RunManager` and `fakeRuntime`. `tests/mcp-stdio.test.ts` runs the built `dist/cli.js mcp` over real stdio (skipped without a build).

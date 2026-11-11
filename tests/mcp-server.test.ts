@@ -894,6 +894,10 @@ describe("errors", () => {
 		const res = await callTool(mcp, "af_cancel", { run: "nope" });
 		expect(res.isError).toBe(true);
 		expect(res.text).toContain("The af supervisor is not reachable");
+		expect(res.text).toContain(
+			"The supervisor may already have handled the request: check with af_status or af_list_runs before calling af_cancel again.",
+		);
+		expect(res.text).not.toContain("then call af_cancel again");
 		expect(calls).toBe(1);
 		// The stale client was dropped: the next call finds the live supervisor
 		const next = await callTool(mcp, "af_cancel", { run: "nope" });

@@ -43,6 +43,17 @@ function hintFor400(tool: string, message: string): string {
 	return `Fix the arguments and call ${tool} again.`;
 }
 
+/**
+ * Tools that only read: calling them again is safe. Any other tool may have
+ * reached the supervisor before the connection failed.
+ */
+export const READ_ONLY_TOOLS: ReadonlySet<string> = new Set([
+	"af_status",
+	"af_list_runs",
+	"af_events",
+	"af_artifacts",
+]);
+
 function withPeriod(message: string): string {
 	return /[.!?]$/.test(message) ? message : `${message}.`;
 }
@@ -68,8 +79,12 @@ export function toolError(tool: string, err: unknown): CallToolResult {
 		}
 	}
 	if (err instanceof SupervisorUnavailableError) {
+		const problem = `The af supervisor is not reachable: ${withPeriod(err.message)}`;
+		if (READ_ONLY_TOOLS.has(tool)) {
+			return errorResult(`${problem} Start it with af serve --detach, then call ${tool} again.`);
+		}
 		return errorResult(
-			`The af supervisor is not reachable: ${withPeriod(err.message)} Start it with af serve --detach, then call ${tool} again.`,
+			`${problem} Start it with af serve --detach. The supervisor may already have handled the request: check with af_status or af_list_runs before calling ${tool} again.`,
 		);
 	}
 	if (err instanceof CliExitError) {
