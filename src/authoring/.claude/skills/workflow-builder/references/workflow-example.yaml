@@ -11,7 +11,7 @@ version: "1.0"
 # Optional: Human-readable description
 description: |
   Comprehensive example workflow demonstrating all available features:
-  - All step types (prompt, serial, parallel, conditional, ralph-loop, wait-for-human)
+  - All step types (prompt, skill, serial, parallel, conditional, ralph-loop, human-input)
   - Worktree isolation (workflow-level and step-level)
   - Error handling and retries
   - Checkpoints and progress tracking
@@ -164,14 +164,17 @@ steps:
     # For codex, omit it (Codex CLI picks its own default) or pin an ID
     # such as "gpt-5.3-codex". Omitted here on purpose.
 
-  # ==================== SKILL INVOCATION ====================
-  # Invoke a Claude slash command skill
-  # IMPORTANT: Always use fully qualified skill names in workflows (e.g., /sdlc-plan)
-  # to avoid conflicts with skills from other plugins or built-in commands.
+  # ==================== SKILL STEP ====================
+  # Invoke a skill by namespace (claude runtime only; Codex fails with "not supported yet").
+  # The prompt is: /<skill> <args> --run-dir <run dir> --config-snapshot <file>
+  # The snapshot file holds af config skill_config.<plugin> ({} when unset).
+  # The result block's `outputs` become {{ outputs.generate-plan.<key> }} for later steps.
   - name: generate-plan
-    type: prompt
-    prompt: /sdlc-plan --type {{ variables.plan_type }} --output_dir "{{ output_dir }}" {{ variables.task }}
-    checkpoint: true
+    type: skill
+    # Required: <plugin>:<skill> or <skill> (template, no leading slash)
+    skill: esp-skills:esp-plan
+    # Optional: arguments after the skill name (template)
+    args: "--type {{ variables.plan_type }} {{ variables.task }}"
     timeout-minutes: 20
 
   # ==================== SERIAL STEP ====================
@@ -309,37 +312,42 @@ steps:
         type: prompt
         prompt: "Validation passed! No issues found at severity {{ variables.fix_severity }} or higher."
 
-  # ==================== WAIT FOR HUMAN STEP ====================
-  # Pause workflow and wait for human input
+  # ==================== HUMAN INPUT STEP ====================
+  # Ask a question through needs_input and wait for `af answer` (or `af input`).
+  # No coding agent runs. The run is awaiting-human until the answer arrives;
+  # the step then completes with outputs: answer, option, from, request_id.
+  # (`wait-for-human` from before 0.12 still parses as an alias.)
   - name: request-approval
-    type: wait-for-human
+    type: human-input
 
-    # Message shown to human
-    message: |
-      Please review the implementation and validation results.
+    # Required: the question (template)
+    message: "Create a PR for {{ variables.task }}?"
 
-      Review the following:
-      - Implementation plan: {{ output_dir }}/plan.md
-      - Review results: outputs.review_implementation
+    # Optional: background for the answerer (template)
+    context: |
+      Plan: {{ plan_path }}
+      Review results: {{ outputs.review_implementation | tojson }}
 
-      Respond with:
-      - "approved" to continue and create PR
-      - "rejected" to stop without PR
-      - Provide feedback for additional changes
+    # Optional: strings (id = label with dashes) or { id, label, description }.
+    # Empty or omitted: free-form answer.
+    options:
+      - approved
+      - { id: rejected, label: Rejected, description: Stop without a PR }
 
-    # Polling interval in seconds (default: 15)
-    polling-interval: 30
+    # Optional: id of the recommended option
+    recommended: approved
 
-    # Action on timeout: abort (stop workflow), continue (proceed anyway)
-    on-timeout: abort
+    # Optional (default: true): false lets the harness apply `recommended`
+    # after timeout-minutes (or supervisor.needs_input_timeout)
+    blocking: false
 
-    # Timeout in minutes (default: 1440 = 24 hours)
+    # Optional: only with blocking: false and recommended
     timeout-minutes: 120
 
   # ==================== CONDITIONAL STEP (CREATE PR) ====================
   - name: create-pull-request
     type: conditional
-    condition: "{{ variables.create_pr and outputs.request_approval.response == 'approved' }}"
+    condition: "{{ variables.create_pr and outputs['request-approval'].answer == 'approved' }}"
     then:
       - name: open-pr
         type: prompt
@@ -433,9 +441,6 @@ outputs:
 #   - /git-branch - Create git branch
 #   - /git-commit - Create commit
 #   - /git-pr - Create pull request
-#
-# Workflow Support:
-#   - /orchestrate - Workflow state evaluation
 #
 # ==================== BUILT-IN VARIABLES ====================
 #

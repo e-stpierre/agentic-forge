@@ -56,7 +56,7 @@ Runtime adapter layer for coding agent integrations:
 
 #### `steps/`
 
-Workflow step handlers (prompt, parallel, serial, conditional, ralph-loop).
+Workflow step handlers (prompt, skill, human-input, parallel, serial, conditional, ralph-loop).
 
 #### `contract/`
 

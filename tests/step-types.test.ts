@@ -129,9 +129,7 @@ describe("parsing", () => {
 		expect(wf.steps[1].args).toBeNull();
 		expect(wf.steps[2].skill).toBe("{{ variables.pack }}:review");
 		expect(() => parse("  - { name: s, type: skill }")).toThrow(/needs a 'skill' field/);
-		expect(() => parse('  - { name: s, type: skill, skill: "a b:c" }')).toThrow(
-			WorkflowParseError,
-		);
+		expect(() => parse('  - { name: s, type: skill, skill: "a b:c" }')).toThrow(WorkflowParseError);
 	});
 
 	it("parses human-input steps with string and object options", () => {
@@ -168,12 +166,12 @@ describe("parsing", () => {
 		expect(() =>
 			parse("  - { name: a, type: human-input, message: Q, options: [x], recommended: y }"),
 		).toThrow(/not one of its options/);
-		expect(() =>
-			parse("  - { name: a, type: human-input, message: Q, options: [x, x] }"),
-		).toThrow(/unique/);
-		expect(() =>
-			parse("  - { name: a, type: human-input, message: Q, blocking: maybe }"),
-		).toThrow(/boolean/);
+		expect(() => parse("  - { name: a, type: human-input, message: Q, options: [x, x] }")).toThrow(
+			/unique/,
+		);
+		expect(() => parse("  - { name: a, type: human-input, message: Q, blocking: maybe }")).toThrow(
+			/boolean/,
+		);
 		expect(() =>
 			parse(
 				"  - { name: a, type: human-input, message: Q, options: [x], recommended: x, timeout-minutes: 5 }",
@@ -362,10 +360,7 @@ steps:
 			blocking: true,
 			deadline: null,
 		});
-		expect(pendingInput(store.readRun())?.request.options.map((o) => o.id)).toEqual([
-			"yes",
-			"no",
-		]);
+		expect(pendingInput(store.readRun())?.request.options.map((o) => o.id)).toEqual(["yes", "no"]);
 		expect(stepResult(res.dir, "approve")).toMatchObject({ status: "awaiting-human" });
 
 		// The single pending request is answered without its id (af input)

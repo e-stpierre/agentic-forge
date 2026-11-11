@@ -20,7 +20,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `events`        | Print or follow run events                           |
 | `logs`          | Print or follow the live transcript of a run         |
 | `artifacts`     | Show the plan, summary, decisions and review files   |
-| `input`         | Provide input to a paused workflow                   |
+| `input`         | Answer the single pending request of a run           |
 | `init`          | Initialize directory structure                       |
 | `config`        | Get or set configuration values                      |
 | `configure`     | Display current configuration                        |
@@ -465,23 +465,23 @@ af artifacts 2026-11-10-dark-mode --kind plan --content
 
 ## input
 
-Provide a text response to a paused workflow that is waiting for human input.
+Answer the single pending `needs_input` request of an `awaiting-human` run, such as the question of a `human-input` step. A shortcut for [`af answer`](#answer) without a request id: it fails when several requests are pending.
 
 ```bash
-af input <workflow_id> <response>
+af input <run_id> <response>
 ```
 
 ### Arguments
 
-| Argument        | Required | Description              |
-| --------------- | -------- | ------------------------ |
-| `<workflow_id>` | Yes      | Workflow run ID          |
-| `<response>`    | Yes      | Response text to provide |
+| Argument     | Required | Description                                  |
+| ------------ | -------- | -------------------------------------------- |
+| `<run_id>`   | Yes      | Run ID                                       |
+| `<response>` | Yes      | Option ID, option label, or free-form answer |
 
 ### Examples
 
 ```bash
-af input abc123 "yes, proceed with the refactor"
+af input 2026-11-10-release yes
 ```
 
 ## init

@@ -10,12 +10,7 @@ import {
 	updateStepStopped,
 } from "../progress.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
-import {
-	type StepContext,
-	StepExecutor,
-	type StepResult,
-	buildTemplateContext,
-} from "./base.js";
+import { type StepContext, StepExecutor, type StepResult, buildTemplateContext } from "./base.js";
 
 /** `needs_input` id of the n-th question a step asks: `input-<step>-<n>`. */
 export function humanInputRequestId(step: string, n: number): string {

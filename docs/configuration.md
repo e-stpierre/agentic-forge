@@ -142,6 +142,18 @@ Per-runtime driver settings. See [Coding Agents](coding-agents.md#drivers).
 
 Installed Claude plugins and skills load on both Claude drivers through your Claude settings, as with `claude -p`; `plugins` adds directories that are not installed.
 
+### skill_config
+
+Configuration snapshots for skill packs, keyed by pack (the plugin of `<plugin>:<skill>`, or the skill name). A `skill` step writes `skill_config.<pack>` to `<run dir>/skill-config/<pack>.json` and passes it as `--config-snapshot` (see [harness contract](harness-contract.md#invocation)). The format belongs to the skill pack; its values win over the pack's own config files. Unset packs get `{}`.
+
+| Key                   | Type   | Default | Description                          |
+| --------------------- | ------ | ------- | ------------------------------------ |
+| `skill_config.<pack>` | object | unset   | Snapshot passed to the pack's skills |
+
+```json
+{ "skill_config": { "esp-skills": { "plan": { "depth": "deep" } } } }
+```
+
 ### execution
 
 Controls parallel execution behavior.

@@ -117,6 +117,7 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 | Capability                          | Claude (`claude`) |   Codex (`codex`)   |
 | ----------------------------------- | :---------------: | :-----------------: |
 | Bundled skills (`/af-*`)            |        Yes        |         No          |
+| `skill` steps (`<plugin>:<skill>`)  |        Yes        | No (fails, not yet) |
 | System prompt injection             |        Yes        | Prepended to prompt |
 | Agent sub-configurations            |        Yes        |         No          |
 | Streaming output                    |        Yes        |         Yes         |
