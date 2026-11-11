@@ -258,6 +258,31 @@ describe("Claude session driver", () => {
 		expect(result.stderr).toBe("Step interrupted");
 	});
 
+	it("stops the step timeout while a request waits for its answer", async () => {
+		fakeSdk.on("SLOW", async (s, first) => {
+			s.init();
+			await s.tool("Bash", { command: "x" });
+			s.result(resultBlock(), [first]);
+			await s.nextUser();
+		});
+		const answered = await run(
+			"SLOW",
+			{
+				requestInput: () =>
+					new Promise((resolve) => setTimeout(() => resolve({ option: "allow", text: "" }), 150)),
+			},
+			{ timeout: 0.05 },
+		);
+		expect(answered.returncode).toBe(0);
+		fakeSdk.on("HANGS", async (s) => {
+			s.init();
+			await new Promise(() => {});
+		});
+		const hung = await run("HANGS", {}, { timeout: 0.05 });
+		expect(hung.returncode).toBe(-1);
+		expect(hung.stderr).toBe("Step timed out after 0.05 seconds");
+	});
+
 	it("fails a session that ends without a result", async () => {
 		fakeSdk.on("EMPTY", async (s) => {
 			s.init();

@@ -89,6 +89,9 @@ export async function runSession(
 				break;
 			case "state":
 				if (event.state === "idle") void onIdle();
+				// The step timeout does not run while the session waits for an answer
+				if (event.state === "awaiting-input") pauseTimer();
+				if (event.state === "running") resumeTimer();
 				break;
 			case "error":
 				lastError = event.message;
@@ -110,12 +113,23 @@ export async function runSession(
 	});
 
 	let timer: ReturnType<typeof setTimeout> | null = null;
-	if (options.timeout) {
+	let remainingMs = options.timeout ? options.timeout * 1000 : 0;
+	let timerStart = 0;
+	function resumeTimer(): void {
+		if (!options.timeout || timer || stop.signal.aborted) return;
+		timerStart = Date.now();
 		timer = setTimeout(() => {
 			timedOut = true;
 			stop.abort();
-		}, options.timeout * 1000);
+		}, remainingMs);
 	}
+	function pauseTimer(): void {
+		if (!timer) return;
+		clearTimeout(timer);
+		timer = null;
+		remainingMs = Math.max(0, remainingMs - (Date.now() - timerStart));
+	}
+	resumeTimer();
 
 	if (console) {
 		console.streamText(options.prompt, "user");
@@ -126,7 +140,7 @@ export async function runSession(
 	else session.start(start);
 
 	const failure = await session.done;
-	if (timer) clearTimeout(timer);
+	pauseTimer();
 	options.signal?.removeEventListener("abort", onAbort);
 	unregister?.();
 
