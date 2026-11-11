@@ -99,8 +99,23 @@ export function removeSupervisorFiles(pid: number, root?: string): void {
 export function isPidAlive(pid: number): boolean {
 	try {
 		process.kill(pid, 0);
-		return true;
 	} catch (err) {
 		return (err as NodeJS.ErrnoException).code === "EPERM";
+	}
+	return !isZombie(pid);
+}
+
+/**
+ * Linux: an exited process whose parent has not reaped it yet (a zombie)
+ * still answers `kill(pid, 0)`. It has stopped, so it is not alive.
+ */
+function isZombie(pid: number): boolean {
+	if (process.platform !== "linux") return false;
+	try {
+		const stat = readFileSync(`/proc/${pid}/stat`, "utf-8");
+		// Format: "<pid> (<comm>) <state> ...". comm may contain spaces or ")".
+		return stat.slice(stat.lastIndexOf(")") + 2, stat.lastIndexOf(")") + 3) === "Z";
+	} catch {
+		return false;
 	}
 }
