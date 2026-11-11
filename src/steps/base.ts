@@ -139,7 +139,10 @@ export function driverOptions(
 		getRuntimeDriver(context.config, runtimeId) === "session" &&
 		Boolean(context.runtimeAdapter.createSession);
 	// The `cli` driver only feeds the live transcript
-	if (!session) return host.onEvent ? { driver: "cli", sessionHost: { onEvent: host.onEvent } } : { driver: "cli" };
+	if (!session)
+		return host.onEvent
+			? { driver: "cli", sessionHost: { onEvent: host.onEvent } }
+			: { driver: "cli" };
 	const messages = context.operatorMessages;
 	return {
 		driver: "session",

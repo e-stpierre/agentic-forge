@@ -28,6 +28,7 @@ const TOOLS = [
 	"af_dispatch",
 	"af_events",
 	"af_list_runs",
+	"af_logs",
 	"af_pause",
 	"af_resume",
 	"af_retry_step",
@@ -59,7 +60,7 @@ afterEach(async () => {
 });
 
 describe.skipIf(!existsSync(cliPath))("af mcp over stdio", () => {
-	it("lists the twelve tools and answers tool calls through an on-demand supervisor", async () => {
+	it("lists the thirteen tools and answers tool calls through an on-demand supervisor", async () => {
 		const transport = new StdioClientTransport({
 			command: process.execPath,
 			args: [cliPath, "mcp"],

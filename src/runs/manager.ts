@@ -74,18 +74,18 @@ import {
 	RunStore,
 } from "./run-store.js";
 import {
-	type TranscriptPage,
+	DEFAULT_MAX_PARALLEL_RUNS,
+	DEFAULT_MAX_PARALLEL_TASKS,
+	pickRunnable,
+} from "./scheduler.js";
+import {
 	TranscriptCursorError,
+	type TranscriptPage,
 	TranscriptWriter,
 	readStepSession,
 	readTranscriptPage,
 	stepDirName,
 } from "./transcript.js";
-import {
-	DEFAULT_MAX_PARALLEL_RUNS,
-	DEFAULT_MAX_PARALLEL_TASKS,
-	pickRunnable,
-} from "./scheduler.js";
 
 /** Step status recorded for the step that was running when the supervisor died. */
 export const STEP_INTERRUPTED = STEP_STATUS.INTERRUPTED;
@@ -1114,7 +1114,9 @@ export class RunManager {
 				try {
 					transcript.write(event);
 				} catch (err) {
-					this.log(`Run ${entry.id}: transcript write failed for ${step}: ${(err as Error).message}`);
+					this.log(
+						`Run ${entry.id}: transcript write failed for ${step}: ${(err as Error).message}`,
+					);
 				}
 			},
 			requestInput: (request, sessionId) =>

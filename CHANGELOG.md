@@ -50,6 +50,11 @@
 - Changed `af send` on session steps: `--mode next` is sent as the session's next turn, and `--mode now` is delivered into the running turn with no step restart (`steered: true` in the response); the kill-and-restart path stays for the `cli` driver
 - Changed `af answer` on a session step that ended `awaiting-human` to resume the same session by id with the answer instead of rerunning the step from its start; step session ids are now kept in `progress.json` (`session_id`)
 - Added `runtimes.claude.plugins` (local plugin directories for the session driver)
+- Added live step transcripts: every step writes `steps/<NN-step>/transcript.jsonl` (prompt and operator messages, assistant messages, tool calls and results, file diffs, permission requests and answers, turns) in one normalized format on both drivers; the `cli` driver maps the `claude -p` stream-json and `codex exec --json` lines. Transcripts are kept apart from `events.jsonl` and have their own cursor
+- Added `af logs <run> [--step] [--follow] [--cursor] [--limit] [--json]` and `GET /v1/runs/:id/logs` (cursor, long-poll): prints the tail of a run's transcript, and with `--follow` streams it until the step (or the run) ends
+- Added the `af_logs` MCP tool: a compact, capped tail of a run's transcript with a cursor (default 20 entries, 500 characters per text, about 8 KB per page, `truncated: true` when cut; `max_chars` opts in to more)
+- Added session resume after a supervisor restart: the step's session id is stored in `steps/<NN-step>/session.json`, and recovery resumes a prompt step's session on the session driver (or restarts the step from its boundary otherwise), listed in `run.recovered` `data.sessions` and logged as a `policy` decision; a resumed session that fails is retried from the step's start
+- Fixed a supervisor shutdown dropping the live requests of a run that waited `awaiting-human` on a session, which left it waiting with nothing to answer; the requests are kept, and after the restart `af answer` resumes the stored session with the answer
 
 ## 0.11.0
 

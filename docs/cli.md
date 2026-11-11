@@ -18,6 +18,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `reprioritize`  | Change the queue priority of a run                   |
 | `list`          | List runs                                            |
 | `events`        | Print or follow run events                           |
+| `logs`          | Print or follow the live transcript of a run         |
 | `artifacts`     | Show the plan, summary, decisions and review files   |
 | `input`         | Provide input to a paused workflow                   |
 | `init`          | Initialize directory structure                       |
@@ -385,6 +386,57 @@ af events --run 2026-11-10-dark-mode --follow
 af events --follow --types needs_input,run.*,step.failed --cursor-file ~/.af-monitor-cursor
 ```
 
+## logs
+
+Print the live transcript of a run: every step (or one with `--step`), oldest first, merged across steps by time. Goes through the supervisor, which is started on demand.
+
+```bash
+af logs <run_id> [options]
+```
+
+Each step writes `steps/<NN-step>/transcript.jsonl` while it runs, on both drivers (see [Coding Agents](coding-agents.md#transcripts)): the prompt and operator messages, assistant messages, tool calls and their results, file diffs, permission requests and their answers, and the end of each turn. The transcript is separate from `events.jsonl`, which only records state changes, and has its own cursor.
+
+Without `--cursor`, the command prints the last `--limit` entries. With `--follow`, it then long-polls the supervisor (`--wait` seconds per request) and prints new entries until the step ends (with `--step`) or the run stops executing (without it), then exits. A step that has not started yet is waited for. Ctrl+C stops earlier. When the command ends, it prints the cursor on stderr (`Cursor: ...`); `--cursor` continues after it.
+
+### Options
+
+| Option              | Description                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| `--step <step>`     | Only the transcript of this step                                   |
+| `--follow`          | Keep streaming new entries until the step (or the run) ends        |
+| `--cursor <cursor>` | Start after this cursor instead of the tail                        |
+| `--limit <n>`       | Entries of the tail and of each page (default 50, max 500)         |
+| `--json`            | Print entries as JSON lines instead of one readable line per entry |
+| `--wait <seconds>`  | Long-poll length per request with `--follow` (default 30, max 120) |
+
+### Transcript entries
+
+Every line of `transcript.jsonl` is one JSON object with `seq` (position in the step's transcript), `at`, `step` and `type`:
+
+| Type          | Fields                                                                   |
+| ------------- | ------------------------------------------------------------------------ |
+| `session`     | `session_id`, `runtime`, `driver`, `model`, `auth`                       |
+| `message`     | `id`, `role` (`user` or `assistant`), `text`                             |
+| `tool_call`   | `id`, `tool`, `input`                                                    |
+| `tool_result` | `id` (the tool call's), `text`, `is_error`                               |
+| `diff`        | `id`, `path`, `change` (`add`, `update`, `delete`), `patch` (when known) |
+| `request`     | `id` (the `needs_input` request id), `kind`, `tool`, `question`          |
+| `answer`      | `id`, `option`, `text`                                                   |
+| `turn`        | `text` (the turn's final message), `is_error`                            |
+| `error`       | `text`                                                                   |
+
+Long texts are cut when written (20,000 characters per text, 2,000 per tool input value, 8,000 per patch), with `truncated: true`. Transcripts are private to agentic-forge (not part of the harness contract).
+
+### Examples
+
+```bash
+# The last 50 entries of a run
+af logs 2026-11-10-dark-mode
+
+# Watch one step until it ends
+af logs 2026-11-10-dark-mode --step build --follow
+```
+
 ## artifacts
 
 Show the contract artifacts of a run: plan versions (`plan.md`, `plan.v<N>.md`), `summary.md`, `decisions.jsonl` and review files (`review-<n>.md`). Reads the run registry directly.
@@ -586,7 +638,7 @@ af serve [options]
 
 Only one supervisor runs per user. Starting a second one prints the running instance and exits. The supervisor listens on `127.0.0.1` with a random port and accepts only requests that carry the per-user token from `supervisor.json` in the global directory (readable by the user only). A detached supervisor writes its output to `supervisor.log` in the same directory.
 
-On start, the supervisor recovers the runs a previous supervisor left `running`: it marks the interrupted step `interrupted`, re-queues the run so it resumes from that step (reusing its recorded worktree), and emits `run.recovered`. The run registry is `runs/index.json` in the global directory.
+On start, the supervisor recovers the runs a previous supervisor left `running`: it marks the interrupted step `interrupted`, re-queues the run so it resumes from that step (reusing its recorded worktree), and emits `run.recovered`. A prompt step that ran on the session driver resumes its own session from the session id stored in `steps/<NN-step>/session.json`, with a prompt that tells the agent the harness restarted; every other step (the `cli` driver, ralph-loop and composite steps, or no recorded session) restarts from its boundary. `run.recovered` lists the choice per step in `data.sessions` (`{ step, action: resume | restart, session_id, reason }`), and each choice about a recorded session is a `policy` entry in `decisions.jsonl` (`d-recover-<n>-<step>`). A resumed session that fails is retried from the step's start. A run that was `awaiting-human` on a live session keeps waiting: its request is no longer live, and `af answer` resumes the stored session with the answer. The run registry is `runs/index.json` in the global directory.
 
 When a client's version differs from the running supervisor's (for example after `npm i -g agentic-forge`), the client restarts the supervisor if no run is active, and otherwise warns and keeps it.
 
@@ -621,6 +673,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 | `af_status`     | `run?` (without it: the active runs)                                           | `GET /v1/runs/:id`, `GET /v1/runs`          | `af status`     |
 | `af_list_runs`  | `status?` (one or a list), `repo?`, `since?`, `parent?`, `limit?`              | `GET /v1/runs`                              | `af list`       |
 | `af_events`     | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_now?` | `GET /v1/events`                            | `af events`     |
+| `af_logs`       | `run`, `step?`, `cursor?`, `limit?`, `max_chars?`, `wait_seconds?` (0 to 120)  | `GET /v1/runs/:id/logs`                     | `af logs`       |
 | `af_send`       | `run`, `text`, `mode?` (`next` or `now`), `step?`, `from?`                     | `POST /v1/runs/:id/messages`                | `af send`       |
 | `af_amend`      | `run`, `text`, `affects?`, `from?`                                             | `POST /v1/runs/:id/amend`                   | `af amend`      |
 | `af_answer`     | `run`, `answer`, `request_id?`, `from?`                                        | `POST /v1/runs/:id/answer`                  | `af answer`     |
@@ -633,6 +686,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 - `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. Returns `{ run_id, status, dir, workflow, warnings }`
 - `af_list_runs`: newest first, cut to `limit` (default 50); returns `{ runs, total }`
 - `af_events`: returns `{ events, cursor, more, status }`; pass `cursor` back to resume without duplicates. `wait_seconds` long-polls until a new event arrives or the wait ends. `types` takes exact types or prefixes such as `run.*`
+- `af_logs`: the live transcript of a run (see [logs](#logs)), as compact JSON `{ run, step, entries, cursor, more, truncated, active, status }`. Without `cursor`, the last `limit` entries (default 20); with it, only newer ones. Each entry's text is cut to 500 characters and the page to about 8 KB, with `truncated: true`; an explicit `max_chars` (up to 20,000) lifts the page budget. `active` is false once the step (or run) ended; `wait_seconds` long-polls for new entries while it is active
 - `af_artifacts`: `content: true` needs a `kind` and returns the latest file of that kind (cut at 20,000 characters)
 - `from` (steering tools) is `user` or `overseer` (default `overseer`)
 
@@ -649,7 +703,7 @@ Missing required variable: task (HTTP 400). Pass it in vars (for example vars: {
 The af supervisor is not reachable: <reason>. Start it with af serve --detach, then call af_list_runs again.
 ```
 
-When the supervisor becomes unreachable (for example after a restart on a new port), the server finds or starts it again on the next call. The read tools (`af_status`, `af_list_runs`, `af_events`) retry the call once; the other tools return the error without resending, since the supervisor may already have handled the request (check with `af_status` or `af_list_runs` before calling them again).
+When the supervisor becomes unreachable (for example after a restart on a new port), the server finds or starts it again on the next call. The read tools (`af_status`, `af_list_runs`, `af_events`, `af_logs`) retry the call once; the other tools return the error without resending, since the supervisor may already have handled the request (check with `af_status` or `af_list_runs` before calling them again).
 
 ### Setup
 

@@ -174,4 +174,3 @@ export async function runSession(
 	}
 	return adapter.buildFinalResult(returncode, stdout, stderr, options, session.sessionId);
 }
-

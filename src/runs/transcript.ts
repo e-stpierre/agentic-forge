@@ -10,7 +10,14 @@
  * session (id, runtime, driver), read by crash recovery to resume it.
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import {
+	appendFileSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	writeFileSync,
+} from "node:fs";
 import path from "node:path";
 
 import { sanitizeSlug } from "../paths.js";
@@ -415,7 +422,9 @@ export function readTranscriptPage(runDir: string, query: TranscriptQuery = {}):
 	}
 	all.sort(
 		(a, b) =>
-			a.entry.at.localeCompare(b.entry.at) || a.dir.localeCompare(b.dir) || a.entry.seq - b.entry.seq,
+			a.entry.at.localeCompare(b.entry.at) ||
+			a.dir.localeCompare(b.dir) ||
+			a.entry.seq - b.entry.seq,
 	);
 	let page: { dir: string; entry: TranscriptEntry }[];
 	let more = false;
@@ -430,7 +439,7 @@ export function readTranscriptPage(runDir: string, query: TranscriptQuery = {}):
 	for (const { dir, entry } of start ? page : all) {
 		position[dir] = Math.max(position[dir] ?? 0, entry.seq);
 	}
-	let entries = page.map(({ entry }) => shorten(entry, query.maxChars ?? 0));
+	const entries = page.map(({ entry }) => shorten(entry, query.maxChars ?? 0));
 	if (entries.some((e) => e.truncated)) truncated = true;
 	if (query.maxBytes && query.maxBytes > 0) {
 		let size = JSON.stringify(entries).length;

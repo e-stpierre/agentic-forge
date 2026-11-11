@@ -229,7 +229,14 @@ export function codexStreamEvents(data: Record<string, unknown>): SessionEvent[]
 		case "agent_message":
 			if (!done || typeof item.text !== "string") return [];
 			return [
-				{ type: "item", id, kind: "message", status: "completed", role: "assistant", text: item.text },
+				{
+					type: "item",
+					id,
+					kind: "message",
+					status: "completed",
+					role: "assistant",
+					text: item.text,
+				},
 			];
 		case "command_execution":
 		case "mcp_tool_call": {

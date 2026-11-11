@@ -6,8 +6,8 @@ import path from "node:path";
 
 import type { ConsoleOutput } from "../console.js";
 import { killProcessTree, treeSpawnOptions } from "./kill-tree.js";
-import { type SessionEvent, userMessageItem } from "./session.js";
 import { runSession } from "./session-runner.js";
+import { type SessionEvent, userMessageItem } from "./session.js";
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions, StreamEvent } from "./types.js";
 import { resolveCmdScript } from "./utils.js";
 
@@ -303,4 +303,3 @@ export async function runRuntime(
 		});
 	});
 }
-

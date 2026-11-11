@@ -44,7 +44,8 @@ Runtime adapter layer for coding agent integrations:
 
 - `types.ts` — `RuntimeId`, `RuntimeAdapter`, `RuntimeCommand`, `StreamEvent`, `RuntimeRunOptions`, `RuntimeResult`
 - `claude.ts` — `ClaudeAdapter` (extracted from `runner.ts`; `createSession()` and `sessionOptions()` for the session driver)
-- `session.ts` — `RuntimeSession` interface, normalized `SessionEvent` model, `SessionHost` (supervisor callbacks: `requestInput`, `nextMessages`, `onLive`), `AsyncQueue`
+- `session.ts` — `RuntimeSession` interface, normalized `SessionEvent` model, `SessionHost` (supervisor callbacks: `requestInput`, `nextMessages`, `onLive`, `onEvent` for transcripts on both drivers), `AsyncQueue`
+- `claude-stream.ts` — Claude stream message to `SessionEvent` items, shared by the session driver and `ClaudeAdapter.parseTranscriptLine()` (`cli`); Codex maps its JSONL in `codexStreamEvents()`
 - `claude-session.ts` — `ClaudeSession`, the Claude Agent SDK session driver (streaming input, `canUseTool` permission and `AskUserQuestion` requests); SDK pinned in `CLAUDE_AGENT_SDK_VERSION`
 - `session-runner.ts` — `runSession()`: one step on a session (`runRuntime` delegates to it with `driver: session`)
 - `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
@@ -76,15 +77,16 @@ Tests that start a supervisor or write locks use `tests/helpers/temp-home.ts` (`
 
 Runs owned by the supervisor:
 
-- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines)
+- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines; live transcripts through the session host and `logs()` behind `GET /v1/runs/:id/logs`; session resume or restart in recovery, `run.recovered` `sessions`)
 - `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
 - `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
 - `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
 - `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
+- `transcript.ts` — per-step live transcripts (`steps/<NN-step>/transcript.jsonl`, `TranscriptWriter`, `transcriptEntries()`, `readTranscriptPage()` with its own cursor and caps) and `session.json` (`readStepSession()`, read by crash recovery to resume a session); `stepDirName()`
 - `scheduler.ts` — `pickRunnable()` (global and per-repo limits, one run per checkout)
 - `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment), `buildDispatchPayload()` (shared by `af run` and `af_dispatch`)
-- `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`
+- `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`; `fetchLogs()`, `followLogs()` used by `af logs` and `af_logs`
 
 Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthropic-ai/claude-agent-sdk`; never mock `runRuntime` there). Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
 
@@ -93,7 +95,7 @@ Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthrop
 The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
-- `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
+- `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_logs`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
 - `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) over the `/v1/runs/:id/*` control endpoints
 - `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)

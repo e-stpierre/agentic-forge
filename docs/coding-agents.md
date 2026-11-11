@@ -28,7 +28,13 @@ A step on the `session` driver stays alive while it works and while it waits:
 - **Result**: the final message of the last turn holds the result block, read the same way as on the `cli` driver.
 - **Resume**: when a session step ends with an `awaiting-human` result block, `af answer` resumes the same session by its id with the answer, instead of running the step again from its start.
 
+- **Supervisor restart**: the session id is stored in `steps/<NN-step>/session.json`. When the supervisor stops while a prompt step runs (or waits for an answer), the next supervisor resumes that session with a prompt saying the harness restarted, instead of running the step from its start. The choice is in `run.recovered` and `decisions.jsonl` (see [`af serve`](cli.md#serve)).
+
 Parallel steps each run their own session and can each wait on a request; answer them by request id.
+
+### Transcripts
+
+Both drivers write a live transcript per step, `steps/<NN-step>/transcript.jsonl`, in one normalized format: messages, tool calls and results, file diffs, permission requests and answers. The session driver maps the Agent SDK messages; the `cli` driver maps the `claude -p` stream-json lines and the `codex exec --json` lines (Codex commands, MCP tool calls and file changes). Edits by Claude's `Edit`, `MultiEdit`, `Write` and `NotebookEdit` tools get a `diff` entry with a line patch; Codex file changes get one with the path and change kind. Read it with [`af logs`](cli.md#logs) or the `af_logs` MCP tool.
 
 ### Authentication and billing
 
@@ -117,6 +123,8 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 | `--skip-permissions`                |        Yes        |         Yes         |
 | Session driver (live steering)      |        Yes        |         No          |
 | Permission requests (`needs_input`) |   Yes (session)   |         No          |
+| Live transcript (`af logs`)         |        Yes        |         Yes         |
+| Session resume after a restart      |   Yes (session)   |         No          |
 | OS-level sandbox (Linux/macOS)      |        N/A        |         Yes         |
 | OS-level sandbox (Windows)          |        N/A        |         No          |
 
