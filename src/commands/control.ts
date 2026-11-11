@@ -53,7 +53,7 @@ export async function cmdSend(options: {
 			);
 		} else if (options.mode === "now") {
 			process.stdout.write(
-				`Message sent: ${res.message.id} (a running step of ${options.runId} restarts with it now)\n`,
+				`Message sent: ${res.message.id} (a running step of ${options.runId} is interrupted and resumes with it now)\n`,
 			);
 		} else {
 			process.stdout.write(
