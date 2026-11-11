@@ -7,7 +7,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SupervisorClient } from "../supervisor/client.js";
 import { ClientCache } from "./errors.js";
-import { registerRunTools } from "./tools.js";
+import { registerControlTools } from "./tools-control.js";
+import { type ToolContext, registerRunTools } from "./tools.js";
 
 export const MCP_SERVER_NAME = "agentic-forge";
 
@@ -28,10 +29,12 @@ export interface CreateMcpServerOptions {
 
 export function createMcpServer(options: CreateMcpServerOptions): McpServer {
 	const server = new McpServer({ name: MCP_SERVER_NAME, version: options.version });
-	registerRunTools(server, {
+	const ctx: ToolContext = {
 		clients: new ClientCache(options.getClient),
 		registryRoot: options.registryRoot,
 		cwd: options.cwd ?? process.cwd(),
-	});
+	};
+	registerRunTools(server, ctx);
+	registerControlTools(server, ctx);
 	return server;
 }

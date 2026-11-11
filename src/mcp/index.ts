@@ -17,3 +17,4 @@ export {
 	registerRunTools,
 } from "./tools.js";
 export type { ToolContext } from "./tools.js";
+export { SENDERS, registerControlTools } from "./tools-control.js";

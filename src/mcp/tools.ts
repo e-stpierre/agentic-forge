@@ -1,8 +1,9 @@
 /**
  * MCP tools that dispatch and read runs: af_dispatch, af_status,
- * af_list_runs, af_events and af_artifacts. Each tool validates its input
- * with a zod schema, then makes one supervisor call (af_artifacts reads the
- * run registry and the run directory directly, like `af artifacts`).
+ * af_list_runs, af_events and af_artifacts (the steering tools are in
+ * tools-control.ts). Each tool validates its input with a zod schema, then
+ * makes one supervisor call (af_artifacts reads the run registry and the run
+ * directory directly, like `af artifacts`).
  */
 
 import { existsSync, statSync } from "node:fs";
@@ -56,16 +57,16 @@ export const MAX_WAIT_SECONDS = 120;
 
 const DEFAULT_LIST_LIMIT = 50;
 
-const LIST_RUNS_HINT = "use af_list_runs to find run ids";
+export const LIST_RUNS_HINT = "use af_list_runs to find run ids";
 
-function runId(description: string) {
+export function runId(description: string) {
 	return z
 		.string({ error: `run must be a run id string (${LIST_RUNS_HINT})` })
 		.min(1, { error: `run must be a non-empty run id (${LIST_RUNS_HINT})` })
 		.describe(description);
 }
 
-function nonEmpty(field: string, description: string) {
+export function nonEmpty(field: string, description: string) {
 	return z
 		.string({ error: `${field} must be a string` })
 		.min(1, { error: `${field} must not be empty` })
@@ -77,7 +78,7 @@ const statusEnum = z.enum(RUN_STATUS_VALUES, {
 });
 
 /** Registers a tool whose handler errors become `isError` results with a next step. */
-function register<Shape extends z.ZodRawShape>(
+export function register<Shape extends z.ZodRawShape>(
 	server: McpServer,
 	name: string,
 	config: { title: string; description: string; inputSchema: Shape },

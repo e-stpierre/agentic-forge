@@ -1,7 +1,9 @@
 /**
- * Tests for the af MCP server (ORC-010): af_dispatch, af_status,
- * af_list_runs, af_events and af_artifacts over an in-memory MCP transport,
- * against an in-process supervisor with the fake runtime.
+ * Tests for the af MCP server (ORC-010): the dispatch and read tools
+ * (af_dispatch, af_status, af_list_runs, af_events, af_artifacts) and the
+ * steering tools (af_send, af_amend, af_answer, af_pause, af_resume,
+ * af_cancel, af_retry_step) over an in-memory MCP transport, against an
+ * in-process supervisor with the fake runtime.
  */
 
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -139,17 +141,38 @@ async function callTool(
 	return { isError: result.isError === true, text, json };
 }
 
-function reply(options: RuntimeRunOptions, stdout: string): RuntimeResult {
+function reply(options: RuntimeRunOptions, stdout: string, returncode = 0): RuntimeResult {
 	return {
-		returncode: 0,
+		returncode,
 		stdout,
-		stderr: "",
+		stderr: returncode === 0 ? "" : "exit",
 		prompt: options.prompt,
 		cwd: null,
 		model: null,
-		success: true,
+		success: returncode === 0,
 		sessionOutput: SessionOutput.fromStdout(stdout),
 	};
+}
+
+function block(value: Record<string, unknown>): string {
+	return `Work log...
+${JSON.stringify(value)}`;
+}
+
+const QUESTION = {
+	id: "q1",
+	question: "Which token store?",
+	options: [
+		{ id: "a", label: "Redis cache" },
+		{ id: "b", label: "Database table" },
+	],
+	recommended: "a",
+	context: "Both exist.",
+	blocking: true,
+};
+
+function prompts(match: string): string[] {
+	return fakeRuntime.calls.filter((c) => c.prompt.includes(match)).map((c) => c.prompt);
 }
 
 /** Holds prompts containing `match` until the returned function is called. */
@@ -193,14 +216,21 @@ afterEach(async () => {
 });
 
 describe("server", () => {
-	it("lists exactly the dispatch and read tools, each with a title and a description", async () => {
+	it("lists the twelve dispatch, read and steering tools, each with a title and a description", async () => {
 		const { mcp } = await setup();
 		const { tools } = await mcp.listTools();
 		expect(tools.map((t) => t.name).sort()).toEqual([
+			"af_amend",
+			"af_answer",
 			"af_artifacts",
+			"af_cancel",
 			"af_dispatch",
 			"af_events",
 			"af_list_runs",
+			"af_pause",
+			"af_resume",
+			"af_retry_step",
+			"af_send",
 			"af_status",
 		]);
 		for (const tool of tools) {
@@ -501,6 +531,273 @@ describe("af_artifacts", () => {
 	});
 });
 
+describe("af_send", () => {
+	it("queues a next message for a step and rejects an unknown step and a finished run", async () => {
+		const { client, manager, mcp } = await setup();
+		const release = hold("PLAN");
+		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
+		const id = res.json.run_id as string;
+		await fakeRuntime.waitFor("PLAN");
+
+		const sent = await callTool(mcp, "af_send", { run: id, text: "Use pnpm.", step: "build" });
+		expect(sent.isError, sent.text).toBe(false);
+		expect(sent.json.message).toMatchObject({
+			text: "Use pnpm.",
+			mode: "next",
+			target: "step",
+			step: "build",
+			from: "overseer",
+		});
+		const listed = await client.request<{ messages: { id: string }[] }>(
+			"GET",
+			`/v1/runs/${id}/messages`,
+		);
+		expect(listed.messages.map((m) => m.id)).toEqual([sent.json.message.id]);
+
+		const unknown = await callTool(mcp, "af_send", { run: id, text: "x", step: "nope" });
+		expect(unknown.isError).toBe(true);
+		expect(unknown.text).toContain("Unknown step 'nope'. Steps: plan, build (HTTP 400)");
+		expect(unknown.text).toContain("call af_send again");
+
+		release();
+		await waitForStatus(manager, id, "done");
+		expect(prompts("BUILD")[0]).toContain("Use pnpm.");
+		expect(prompts("PLAN")[0]).not.toContain("Use pnpm.");
+
+		const finished = await callTool(mcp, "af_send", { run: id, text: "Too late.", from: "user" });
+		expect(finished.isError).toBe(true);
+		expect(finished.text).toContain("Cannot send a message to a run in 'done' status (HTTP 409)");
+		expect(finished.text).toContain("Call af_status to see the run's current status.");
+	});
+
+	it("mode now restarts the running step with the message", async () => {
+		const { manager, mcp } = await setup();
+		fakeRuntime.on("BUILD", "hang");
+		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
+		const id = res.json.run_id as string;
+		await fakeRuntime.waitFor("BUILD");
+		fakeRuntime.reset();
+		const sent = await callTool(mcp, "af_send", {
+			run: id,
+			text: "Stop, use pnpm.",
+			mode: "now",
+			step: "build",
+		});
+		expect(sent.isError, sent.text).toBe(false);
+		expect(sent.json.message.mode).toBe("now");
+		await waitForStatus(manager, id, "done");
+		const restarted = prompts("BUILD");
+		expect(restarted).toHaveLength(1);
+		expect(restarted[0]).toContain("Stop, use pnpm.");
+	});
+});
+
+describe("af_amend", () => {
+	it("records an amendment with affects and delivers it to the next step", async () => {
+		const { manager, mcp } = await setup();
+		const release = hold("PLAN");
+		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
+		const id = res.json.run_id as string;
+		await fakeRuntime.waitFor("PLAN");
+		const amended = await callTool(mcp, "af_amend", {
+			run: id,
+			text: "Drop the cache layer.",
+			affects: ["M2"],
+		});
+		expect(amended.isError, amended.text).toBe(false);
+		expect(amended.json).toMatchObject({ id, amendment: "A001", delivery: "message", step: null });
+		release();
+		await waitForStatus(manager, id, "done");
+		expect(prompts("BUILD")[0]).toContain("Drop the cache layer.");
+		const finished = await callTool(mcp, "af_amend", { run: id, text: "More." });
+		expect(finished.isError).toBe(true);
+		expect(finished.text).toContain("(HTTP 409)");
+	});
+});
+
+describe("af_answer", () => {
+	it("answers a needs_input question and the run resumes to done", async () => {
+		const { manager, mcp } = await setup();
+		let asks = 0;
+		fakeRuntime.on("BUILD", (o) => {
+			asks++;
+			if (asks === 1) {
+				return reply(
+					o,
+					block({ status: "awaiting-human", summary: "Need a choice.", needs_input: QUESTION }),
+					10,
+				);
+			}
+			return reply(o, block({ status: "done", summary: "Built with Redis." }));
+		});
+		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
+		const id = res.json.run_id as string;
+		await waitForStatus(manager, id, "awaiting-human");
+
+		const status = await callTool(mcp, "af_status", { run: id });
+		const requestId = status.json.run["x-af-needs-input"].request.id as string;
+		expect(requestId).toBe("q1");
+
+		const wrong = await callTool(mcp, "af_answer", { run: id, request_id: "q9", answer: "a" });
+		expect(wrong.isError).toBe(true);
+		expect(wrong.text).toContain("Unknown request 'q9'. Pending: q1 (HTTP 404)");
+
+		const answered = await callTool(mcp, "af_answer", {
+			run: id,
+			request_id: requestId,
+			answer: "a",
+		});
+		expect(answered.isError, answered.text).toBe(false);
+		expect(answered.json).toMatchObject({ id, request: "q1", status: "queued" });
+		await waitForStatus(manager, id, "done");
+		expect(prompts("BUILD")[1]).toContain('Answer to q1 ("Which token store?"): a (Redis cache)');
+
+		const again = await callTool(mcp, "af_answer", { run: id, answer: "b" });
+		expect(again.isError).toBe(true);
+		expect(again.text).toContain("Cannot answer a run in 'done' status (HTTP 409)");
+		expect(again.text).toContain("Call af_status");
+	});
+});
+
+describe("af_pause and af_resume", () => {
+	it("pauses at the step boundary and resumes from the next step", async () => {
+		const { manager, mcp } = await setup();
+		const release = hold("PLAN");
+		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
+		const id = res.json.run_id as string;
+		await fakeRuntime.waitFor("PLAN");
+
+		const running = await callTool(mcp, "af_resume", { run: id });
+		expect(running.isError).toBe(true);
+		expect(running.text).toContain("Cannot resume run in 'running' status (HTTP 409)");
+		expect(running.text).toContain("Call af_status to see the run's current status.");
+
+		const paused = await callTool(mcp, "af_pause", { run: id });
+		expect(paused.isError, paused.text).toBe(false);
+		expect(paused.json).toEqual({ id, status: "pausing" });
+		release();
+		await waitForStatus(manager, id, "paused");
+		expect(prompts("BUILD")).toHaveLength(0);
+
+		const resumed = await callTool(mcp, "af_resume", { run: id });
+		expect(resumed.isError, resumed.text).toBe(false);
+		expect(resumed.json).toEqual({ id, status: "queued" });
+		await waitForStatus(manager, id, "done");
+		expect(prompts("PLAN")).toHaveLength(1);
+		expect(prompts("BUILD")).toHaveLength(1);
+
+		const finished = await callTool(mcp, "af_pause", { run: id });
+		expect(finished.isError).toBe(true);
+		expect(finished.text).toContain("Cannot pause run in 'done' status (HTTP 409)");
+	});
+
+	it("pause now kills the held step, which reruns on resume", async () => {
+		const { manager, mcp } = await setup();
+		fakeRuntime.on("BUILD", "hang");
+		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
+		const id = res.json.run_id as string;
+		await fakeRuntime.waitFor("BUILD");
+		const paused = await callTool(mcp, "af_pause", { run: id, now: true });
+		expect(paused.isError, paused.text).toBe(false);
+		expect(paused.json.status).toBe("pausing");
+		await waitForStatus(manager, id, "paused");
+		expect(fakeRuntime.calls.find((c) => c.prompt.includes("BUILD"))?.aborted).toBe(true);
+
+		fakeRuntime.reset();
+		const resumed = await callTool(mcp, "af_resume", { run: id });
+		expect(resumed.json.status).toBe("queued");
+		await waitForStatus(manager, id, "done");
+		expect(prompts("PLAN")).toHaveLength(0);
+		expect(prompts("BUILD")).toHaveLength(1);
+	});
+});
+
+describe("af_cancel", () => {
+	it("cancels a held run and returns a 409 for a finished run", async () => {
+		const { manager, mcp } = await setup();
+		fakeRuntime.on("BUILD", "hang");
+		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
+		const id = res.json.run_id as string;
+		await fakeRuntime.waitFor("BUILD");
+		const canceled = await callTool(mcp, "af_cancel", { run: id });
+		expect(canceled.isError, canceled.text).toBe(false);
+		expect(canceled.json).toEqual({ id, status: "canceling" });
+		await waitForStatus(manager, id, "canceled");
+		expect(fakeRuntime.calls.find((c) => c.prompt.includes("BUILD"))?.aborted).toBe(true);
+
+		const again = await callTool(mcp, "af_cancel", { run: id });
+		expect(again.isError).toBe(true);
+		expect(again.text).toContain("Cannot cancel run in 'canceled' status (HTTP 409)");
+		expect(again.text).toContain("Call af_status to see the run's current status.");
+	});
+});
+
+describe("af_retry_step", () => {
+	it("reruns a failed run from a step with context", async () => {
+		const { manager, mcp } = await setup();
+		fakeRuntime.on("BUILD", "fail");
+		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
+		const id = res.json.run_id as string;
+		await waitForStatus(manager, id, "failed");
+
+		const notTop = await callTool(mcp, "af_retry_step", { run: id, step: "nope" });
+		expect(notTop.isError).toBe(true);
+		expect(notTop.text).toContain("'nope' is not a top-level step. Steps: plan, build (HTTP 400)");
+
+		fakeRuntime.reset();
+		const retried = await callTool(mcp, "af_retry_step", {
+			run: id,
+			step: "plan",
+			context: "Use the v2 API.",
+		});
+		expect(retried.isError, retried.text).toBe(false);
+		expect(retried.json).toMatchObject({ id, step: "plan", status: "queued" });
+		expect(retried.json.message).toMatch(/^m-/);
+		await waitForStatus(manager, id, "done");
+		expect(prompts("PLAN")[0]).toContain("Use the v2 API.");
+		expect(prompts("BUILD")).toHaveLength(1);
+
+		const finished = await callTool(mcp, "af_retry_step", { run: id, step: "plan" });
+		expect(finished.isError).toBe(true);
+		expect(finished.text).toContain("(HTTP 409)");
+	});
+});
+
+describe("end to end", () => {
+	it("dispatches a workflow by name and follows it to completion through MCP tools only", async () => {
+		const { mcp } = await setup();
+		const res = await callTool(mcp, "af_dispatch", {
+			workflow: "two-steps",
+			vars: { topic: "e2e" },
+		});
+		expect(res.isError, res.text).toBe(false);
+		const id = res.json.run_id as string;
+
+		const types: string[] = [];
+		let cursor: string | undefined;
+		for (let i = 0; i < 20 && !types.includes("run.completed"); i++) {
+			const page = await callTool(mcp, "af_events", {
+				run: id,
+				wait_seconds: 5,
+				...(cursor ? { cursor } : {}),
+			});
+			expect(page.isError, page.text).toBe(false);
+			types.push(...page.json.events.map((e: RunEvent) => e.type));
+			cursor = page.json.cursor;
+		}
+		expect(types).toContain("run.started");
+		expect(types).toContain("run.completed");
+
+		const status = await callTool(mcp, "af_status", { run: id });
+		expect(status.json.entry.status).toBe("done");
+		expect(status.json.steps.map((s: { name: string }) => s.name)).toEqual(["plan", "build"]);
+		const artifacts = await callTool(mcp, "af_artifacts", { run: id });
+		expect(artifacts.isError, artifacts.text).toBe(false);
+		expect(artifacts.json).toMatchObject({ run: id, dir: res.json.dir });
+		expect(artifacts.json.artifacts).toHaveLength(4);
+	});
+});
+
 describe("errors", () => {
 	it("returns isError results for schema violations naming the field", async () => {
 		const { mcp } = await setup();
@@ -514,6 +811,16 @@ describe("errors", () => {
 			["af_list_runs", { limit: 0 }, /limit must be an integer/],
 			["af_dispatch", {}, /workflow/],
 			["af_dispatch", { workflow: "two-steps", runtime: "gpt" }, /runtime must be claude or codex/],
+			["af_send", { run: "x", text: "hi", mode: "later" }, /mode must be next or now/],
+			["af_send", { run: "x", text: "" }, /text must not be empty/],
+			["af_send", { run: "x", text: "hi", from: "bot" }, /from must be user or overseer/],
+			["af_amend", { run: "x", text: "t", affects: [""] }, /affects entry must not be empty/],
+			["af_amend", { run: "x", text: "t", affects: "M2" }, /affects must be a list/],
+			["af_answer", { run: "x" }, /answer/],
+			["af_pause", { run: "x", now: "yes" }, /now must be a boolean/],
+			["af_resume", {}, /run/],
+			["af_cancel", { run: "" }, /af_list_runs/],
+			["af_retry_step", { run: "x" }, /step/],
 		];
 		for (const [tool, args, pattern] of cases) {
 			const res = await callTool(mcp, tool, args);
@@ -528,6 +835,13 @@ describe("errors", () => {
 			["af_status", { run: "nope" }],
 			["af_events", { run: "nope" }],
 			["af_artifacts", { run: "nope" }],
+			["af_send", { run: "nope", text: "hi" }],
+			["af_amend", { run: "nope", text: "hi" }],
+			["af_answer", { run: "nope", answer: "a" }],
+			["af_pause", { run: "nope" }],
+			["af_resume", { run: "nope" }],
+			["af_cancel", { run: "nope" }],
+			["af_retry_step", { run: "nope", step: "plan" }],
 		] as const) {
 			const res = await callTool(mcp, tool, args);
 			expect(res.isError).toBe(true);
