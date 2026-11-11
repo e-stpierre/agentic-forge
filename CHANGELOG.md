@@ -43,6 +43,13 @@
 - Fixed `events.jsonl` appends after a torn last line: the new event starts on its own line and its `seq` follows the last valid event
 - Added `af mcp`: a stdio MCP server, thin client of the supervisor (started on demand at the first tool call), with the tools `af_dispatch`, `af_status`, `af_list_runs`, `af_events` (`wait_seconds` long-poll, max 120), `af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step` and `af_artifacts`; inputs are validated with zod schemas, and errors are `isError` results naming the problem, the HTTP status and a next step. Depends on `@modelcontextprotocol/sdk` and `zod`
 - Changed `af run` to build its dispatch payload with the shared `buildDispatchPayload()` (`src/runs/dispatch.ts`), also used by `af_dispatch`; workflow name and path resolution accept a base directory (no behavior change for `af run`)
+- Added runtime sessions: the `RuntimeSession` interface (`start`, `resume`, `send`, `steer`, `interrupt`, `respond`, `close`) and a normalized session event model (stable item ids, `idle` and `awaiting-input` states)
+- Added the Claude session driver on `@anthropic-ai/claude-agent-sdk` `0.3.322` (pinned), and `runtimes.<id>.driver: session | cli`; **Changed** Claude prompt and ralph-loop steps to run on the session driver by default (`runtimes.claude.driver: cli` restores `claude -p`). The driver uses the Claude Code login, never Claude credentials
+- Added live `needs_input` requests: on the session driver, a tool call outside the allowlist becomes a permission request and `AskUserQuestion` a question request, while the session waits alive (run `awaiting-human`); `af answer` resolves it in the same session (`input.answered` with `live: true`, `message: null`), and the run is `running` again
+- Changed `run.json` `x-af-needs-input` to a list of pending requests keyed by request id (the single-object form is still read); `af answer` needs the request id when several are pending
+- Changed `af send` on session steps: `--mode next` is sent as the session's next turn, and `--mode now` is delivered into the running turn with no step restart (`steered: true` in the response); the kill-and-restart path stays for the `cli` driver
+- Changed `af answer` on a session step that ended `awaiting-human` to resume the same session by id with the answer instead of rerunning the step from its start; step session ids are now kept in `progress.json` (`session_id`)
+- Added `runtimes.claude.plugins` (local plugin directories for the session driver)
 
 ## 0.11.0
 

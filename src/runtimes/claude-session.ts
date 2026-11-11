@@ -42,10 +42,12 @@ export type QueryFunction = (params: {
 	options?: Options;
 }) => Query;
 
-/** Loads the SDK lazily, so the `cli` driver never imports it. */
-async function loadSdkQuery(): Promise<QueryFunction> {
-	const sdk = await import("@anthropic-ai/claude-agent-sdk");
-	return sdk.query as QueryFunction;
+let sdkQuery: Promise<QueryFunction> | null = null;
+
+/** Loads the SDK lazily (once), so the `cli` driver never imports it. */
+function loadSdkQuery(): Promise<QueryFunction> {
+	sdkQuery ??= import("@anthropic-ai/claude-agent-sdk").then((sdk) => sdk.query as QueryFunction);
+	return sdkQuery;
 }
 
 const QUESTION_TOOL = "AskUserQuestion";
@@ -71,7 +73,6 @@ export class ClaudeSession implements RuntimeSession {
 	/** Message ids sent and not yet answered by a `result` message. */
 	private readonly outstanding: string[] = [];
 	private query: Query | null = null;
-	private requestSeq = 0;
 	private started = false;
 	private announced = false;
 	private settle: (error: Error | null) => void = () => {};
@@ -184,7 +185,11 @@ export class ClaudeSession implements RuntimeSession {
 		}
 		if (options.allowedTools?.length) sdk.allowedTools = options.allowedTools;
 		if (options.appendSystemPrompt) {
-			sdk.systemPrompt = { type: "preset", preset: "claude_code", append: options.appendSystemPrompt };
+			sdk.systemPrompt = {
+				type: "preset",
+				preset: "claude_code",
+				append: options.appendSystemPrompt,
+			};
 		}
 		if (options.plugins?.length) {
 			sdk.plugins = options.plugins.map((p) => ({ type: "local", path: p }));
@@ -249,8 +254,8 @@ export class ClaudeSession implements RuntimeSession {
 		fields: Omit<SessionRequest, "id">,
 		signal: AbortSignal,
 	): Promise<SessionDecision> {
-		this.requestSeq += 1;
-		const id = `${this.sessionId?.slice(0, 8) ?? "session"}-r${this.requestSeq}`;
+		// Unique across sessions: parallel steps each raise requests in one run
+		const id = `${fields.kind === "question" ? "ask" : "perm"}-${randomUUID().slice(0, 8)}`;
 		const request: SessionRequest = { id, ...fields };
 		return new Promise((resolve) => {
 			this.pending.set(id, resolve);
@@ -333,7 +338,8 @@ export class ClaudeSession implements RuntimeSession {
 					// Older CLIs do not echo message ids: one result answers the oldest message
 					this.outstanding.shift();
 				}
-				const result = "result" in message && typeof message.result === "string" ? message.result : "";
+				const result =
+					"result" in message && typeof message.result === "string" ? message.result : "";
 				this.emit({
 					type: "turn.completed",
 					result,

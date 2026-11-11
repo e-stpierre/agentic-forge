@@ -43,7 +43,10 @@ System prompt templates used by the workflow runner.
 Runtime adapter layer for coding agent integrations:
 
 - `types.ts` — `RuntimeId`, `RuntimeAdapter`, `RuntimeCommand`, `StreamEvent`, `RuntimeRunOptions`, `RuntimeResult`
-- `claude.ts` — `ClaudeAdapter` (extracted from `runner.ts`)
+- `claude.ts` — `ClaudeAdapter` (extracted from `runner.ts`; `createSession()` and `sessionOptions()` for the session driver)
+- `session.ts` — `RuntimeSession` interface, normalized `SessionEvent` model, `SessionHost` (supervisor callbacks: `requestInput`, `nextMessages`, `onLive`), `AsyncQueue`
+- `claude-session.ts` — `ClaudeSession`, the Claude Agent SDK session driver (streaming input, `canUseTool` permission and `AskUserQuestion` requests); SDK pinned in `CLAUDE_AGENT_SDK_VERSION`
+- `session-runner.ts` — `runSession()`: one step on a session (`runRuntime` delegates to it with `driver: session`)
 - `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
 - `process-runner.ts` — `runRuntime()` shared process spawning (`options.signal` kills the process tree)
 - `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
@@ -83,7 +86,7 @@ Runs owned by the supervisor:
 - `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment), `buildDispatchPayload()` (shared by `af run` and `af_dispatch`)
 - `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`
 
-Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
+Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthropic-ai/claude-agent-sdk`; never mock `runRuntime` there). Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
 
 #### `mcp/`
 

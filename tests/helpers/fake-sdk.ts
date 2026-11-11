@@ -114,6 +114,8 @@ export class FakeSdkSession {
 			parent_tool_use_id: null,
 			message: { id: `msg-tool-${id}`, content: [{ type: "tool_use", id, name, input }] },
 		});
+		// Let the driver read the messages so far (the CLI streams them before it asks)
+		await new Promise((r) => setTimeout(r, 0));
 		let decision: PermissionResult;
 		if (this.options.allowedTools?.includes(name)) {
 			decision = { behavior: "allow", updatedInput: input };

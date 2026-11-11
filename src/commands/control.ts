@@ -40,16 +40,12 @@ export async function cmdSend(options: {
 		const res = await client.request<{
 			message: { id: string; target: string; step?: string };
 			steered?: boolean;
-		}>(
-			"POST",
-			`/v1/runs/${encodeURIComponent(options.runId)}/messages`,
-			{
-				text: options.text,
-				step: options.step ?? null,
-				from: options.from ?? "user",
-				mode: options.mode ?? "next",
-			},
-		);
+		}>("POST", `/v1/runs/${encodeURIComponent(options.runId)}/messages`, {
+			text: options.text,
+			step: options.step ?? null,
+			from: options.from ?? "user",
+			mode: options.mode ?? "next",
+		});
 		const target = res.message.step ? `step '${res.message.step}'` : "the next step";
 		if (options.mode === "now" && res.steered) {
 			process.stdout.write(

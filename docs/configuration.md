@@ -130,6 +130,18 @@ On native Windows, Codex also applies its Windows OS sandbox. When `codex.sandbo
 >
 > **Upgrading:** if an earlier release wrote `codex.model` into your `config.json`, that value still applies and overrides the new CLI-selected default. Delete the `codex.model` key from your global or local `config.json` to let Codex CLI choose its own model.
 
+### runtimes
+
+Per-runtime driver settings. See [Coding Agents](coding-agents.md#drivers).
+
+| Key                       | Type     | Default     | Description                                                               |
+| ------------------------- | -------- | ----------- | ------------------------------------------------------------------------- |
+| `runtimes.claude.driver`  | string   | `"session"` | `"session"` (Claude Agent SDK session) or `"cli"` (one-shot `claude -p`)  |
+| `runtimes.claude.plugins` | string[] | `[]`        | Local plugin directories the session driver loads (skills, agents, hooks) |
+| `runtimes.codex.driver`   | string   | `"cli"`     | Only `"cli"` (`codex exec`) for now; `"session"` falls back to `"cli"`    |
+
+Installed Claude plugins and skills load on both Claude drivers through your Claude settings, as with `claude -p`; `plugins` adds directories that are not installed.
+
 ### execution
 
 Controls parallel execution behavior.

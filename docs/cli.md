@@ -202,7 +202,7 @@ af send 2026-11-10-dark-mode "Check the contrast ratios too." --step review
 af send 2026-11-10-dark-mode "Stop: use pnpm, not npm." --mode now
 ```
 
-With `--mode now`, the supervisor kills the running step's process tree (as `pause --now` does) and runs the step again from its start, with the message in its `## Operator Messages` section. The event log shows `step.retried` with `reason: message`, and no `run.paused`. A run that is not executing a step delivers the message at its next start, as with `next`.
+With `--mode now`, a running step on the Claude session driver (the default, see [Coding Agents](coding-agents.md#drivers)) gets the message in its live session: it reaches the agent at its next tool call, with no restart, and the output says `delivered into the live session`. With `--mode next`, a live session step gets the message as its next turn when the current turn ends. On the `cli` driver, `--mode now` kills the running step's process tree (as `pause --now` does) and runs the step again from its start, with the message in its `## Operator Messages` section. The event log shows `step.retried` with `reason: message`, and no `run.paused`. A run that is not executing a step delivers the message at its next start, as with `next`.
 
 ## pause
 
@@ -234,9 +234,9 @@ af resume 2026-11-10-dark-mode
 
 ## answer
 
-Answer the pending `needs_input` request of an `awaiting-human` run. A step asks by ending with a result block whose `status` is `awaiting-human` and whose `needs_input` holds the question (see [harness contract](harness-contract.md#needs_input-protocol)). The supervisor stores the request in `run.json` (`x-af-needs-input`) and emits a `needs_input` event with the request in `data`.
+Answer the pending `needs_input` request of an `awaiting-human` run. A step asks by ending with a result block whose `status` is `awaiting-human` and whose `needs_input` holds the question (see [harness contract](harness-contract.md#needs_input-protocol)). A step on the Claude session driver also asks while it runs: a tool call outside its allowlist (options `allow` and `deny`) or an `AskUserQuestion` question. The supervisor stores each pending request in the `run.json` list `x-af-needs-input` (keyed by request id, so parallel steps can each wait) and emits a `needs_input` event with the request in `data` (`live: true` and `tool` for a request of a live session).
 
-`af answer` records an `input.answered` event and an `operator` decision, queues the answer as an operator message for the asking step, and resumes the run. The step runs again from its start with `Answer to <id> ("<question>"): <answer>` in its `## Operator Messages` section.
+`af answer` records an `input.answered` event and an `operator` decision. For a request of a live session, the answer goes straight to the waiting session and the run is `running` again once no request is left. Otherwise it queues the answer as an operator message for the asking step and resumes the run: the step runs again with `Answer to <id> ("<question>"): <answer>` in its `## Operator Messages` section, resuming its own session when it ran on the session driver. With several pending requests, `<request_id>` picks the one to answer.
 
 ```bash
 af answer <run_id> <request_id> <answer> [--from user|overseer]

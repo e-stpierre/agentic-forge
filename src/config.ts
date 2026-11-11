@@ -269,7 +269,9 @@ export function getRuntimeDriver(
 	config: Record<string, unknown>,
 	runtimeId: string,
 ): "session" | "cli" {
-	const runtimes = config.runtimes as Record<string, Record<string, unknown> | undefined> | undefined;
+	const runtimes = config.runtimes as
+		| Record<string, Record<string, unknown> | undefined>
+		| undefined;
 	const value = runtimes?.[runtimeId]?.driver;
 	if (value === "session" || value === "cli") return value;
 	return runtimeId === "claude" ? "session" : "cli";
@@ -277,7 +279,11 @@ export function getRuntimeDriver(
 
 /** Local plugin directories loaded by the session driver (`runtimes.<id>.plugins`). */
 export function getRuntimePlugins(config: Record<string, unknown>, runtimeId: string): string[] {
-	const runtimes = config.runtimes as Record<string, Record<string, unknown> | undefined> | undefined;
+	const runtimes = config.runtimes as
+		| Record<string, Record<string, unknown> | undefined>
+		| undefined;
 	const value = runtimes?.[runtimeId]?.plugins;
-	return Array.isArray(value) ? value.filter((p): p is string => typeof p === "string" && p !== "") : [];
+	return Array.isArray(value)
+		? value.filter((p): p is string => typeof p === "string" && p !== "")
+		: [];
 }

@@ -11,6 +11,29 @@ Agentic Forge is a workflow engine for coding agents. Workflows can target Claud
 
 Each runtime must be installed and authenticated independently before use. Agentic Forge does not install or configure the underlying CLI tools.
 
+## Drivers
+
+A runtime runs a step through a driver, set per runtime with `runtimes.<id>.driver` (see [Configuration](configuration.md#runtimes)):
+
+| Driver    | Claude                                                     | Codex                     |
+| --------- | ---------------------------------------------------------- | ------------------------- |
+| `session` | Default. A live Claude Agent SDK session (streaming input) | Not available yet (`cli`) |
+| `cli`     | One-shot `claude -p --output-format stream-json`           | Default. `codex exec`     |
+
+A step on the `session` driver stays alive while it works and while it waits:
+
+- **Permissions**: tool calls allowed by the step's allowlist (`required-tools`) or by your Claude settings run without asking. Any other call becomes a `needs_input` request (`Allow <tool>? <command or path>`, options `allow` and `deny`). The run is `awaiting-human` while the session waits, and `af answer <run> <request> allow` (or `deny`) lets the same session continue. A denied call is reported to the agent, which carries on.
+- **Questions**: when Claude uses `AskUserQuestion`, each question becomes a `needs_input` request with its options (`a`, `b`, ...). The answer (an option id, a label or free text) is returned to Claude as the tool result.
+- **Messages**: `af send` (`--mode next`) reaches the session as its next turn when the current turn ends; `--mode now` is delivered into the running turn, at the next tool call, with no step restart.
+- **Result**: the final message of the last turn holds the result block, read the same way as on the `cli` driver.
+- **Resume**: when a session step ends with an `awaiting-human` result block, `af answer` resumes the same session by its id with the answer, instead of running the step again from its start.
+
+Parallel steps each run their own session and can each wait on a request; answer them by request id.
+
+### Authentication and billing
+
+The Agent SDK (`@anthropic-ai/claude-agent-sdk`, pinned to `0.3.322`) runs the unmodified Claude Code binary with its own login, so a Claude plan sign-in draws from the plan limits exactly like `claude -p`. Agentic Forge never reads, stores or passes Claude credentials, and never sets `ANTHROPIC_API_KEY` or `ANTHROPIC_BASE_URL`. The step environment is the one the dispatching client forwarded: an `ANTHROPIC_API_KEY` set in your shell bills the API key instead of your plan. Anthropic changed the Agent SDK and `-p` billing rules in 2026; check the help article "Use the Claude Agent SDK with your Claude plan" if in doubt, and set `runtimes.claude.driver: cli` to go back to `claude -p`.
+
 ### Claude Code (recommended)
 
 Claude Code is the primary and recommended coding agent for Agentic Forge. It has the deepest integration and supports all features including bundled skills (`/af-*`), agent sub-configurations, system prompt injection, and worktree isolation. All bundled workflows are designed and tested with Claude Code as the default runtime.
@@ -85,15 +108,17 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 
 ## Runtime Capabilities
 
-| Capability                     | Claude (`claude`) |   Codex (`codex`)   |
-| ------------------------------ | :---------------: | :-----------------: |
-| Bundled skills (`/af-*`)       |        Yes        |         No          |
-| System prompt injection        |        Yes        | Prepended to prompt |
-| Agent sub-configurations       |        Yes        |         No          |
-| Streaming output               |        Yes        |         Yes         |
-| `--skip-permissions`           |        Yes        |         Yes         |
-| OS-level sandbox (Linux/macOS) |        N/A        |         Yes         |
-| OS-level sandbox (Windows)     |        N/A        |         No          |
+| Capability                          | Claude (`claude`) |   Codex (`codex`)   |
+| ----------------------------------- | :---------------: | :-----------------: |
+| Bundled skills (`/af-*`)            |        Yes        |         No          |
+| System prompt injection             |        Yes        | Prepended to prompt |
+| Agent sub-configurations            |        Yes        |         No          |
+| Streaming output                    |        Yes        |         Yes         |
+| `--skip-permissions`                |        Yes        |         Yes         |
+| Session driver (live steering)      |        Yes        |         No          |
+| Permission requests (`needs_input`) |   Yes (session)   |         No          |
+| OS-level sandbox (Linux/macOS)      |        N/A        |         Yes         |
+| OS-level sandbox (Windows)          |        N/A        |         No          |
 
 > **Note**: Skill-based prompts (`/af-git-commit`, `/af-sdlc-plan`, etc.) only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
 

@@ -436,7 +436,7 @@ Under the supervisor, `af send` queues messages in the run's `inbox/`. Before ea
 
 Prompts need no placeholder for it. Write prompts so that an instruction in this section takes precedence over the step's defaults.
 
-`af send --mode now` kills the running step and runs it again at once with the message. `af answer` and `af retry-step --context` also reach the step through this section.
+On the Claude session driver (default), `af send --mode now` delivers the message into the running session, and `--mode next` sends it as the session's next turn. On the `cli` driver, `--mode now` kills the running step and runs it again at once with the message. `af answer` and `af retry-step --context` also reach the step through this section.
 
 ## Step Results
 

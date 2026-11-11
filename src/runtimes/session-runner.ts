@@ -139,7 +139,8 @@ export async function runSession(
 		stderr = timedOut ? `Step timed out after ${options.timeout} seconds` : "Step interrupted";
 	} else if (failure || lastError || !final || final.isError) {
 		returncode = 1;
-		stderr = failure?.message ?? lastError ?? (final ? final.text : "Session ended without a result");
+		stderr =
+			failure?.message ?? lastError ?? (final ? final.text : "Session ended without a result");
 	}
 	return adapter.buildFinalResult(returncode, stdout, stderr, options, session.sessionId);
 }

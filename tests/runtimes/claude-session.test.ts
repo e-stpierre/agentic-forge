@@ -61,15 +61,19 @@ describe("Claude session driver", () => {
 	});
 
 	it("maps step options to SDK options and never sets credentials", async () => {
-		await run("OPTS", {}, {
-			model: "opus",
-			allowedTools: ["Read", "Bash(git *)"],
-			plugins: ["/plugins/esp"],
-			resumeSessionId: "abc-session",
-			env: { PATH: "/bin" },
-			workflowId: "wf-1",
-			appendSystemPrompt: true,
-		});
+		await run(
+			"OPTS",
+			{},
+			{
+				model: "opus",
+				allowedTools: ["Read", "Bash(git *)"],
+				plugins: ["/plugins/esp"],
+				resumeSessionId: "abc-session",
+				env: { PATH: "/bin" },
+				workflowId: "wf-1",
+				appendSystemPrompt: true,
+			},
+		);
 		const options = fakeSdk.sessions[0].options;
 		expect(options.model).toBe("opus");
 		expect(options.allowedTools).toEqual(["Read", "Bash(git *)"]);
@@ -314,9 +318,9 @@ describe("driver selection", () => {
 		expect(getRuntimeDriver({ runtimes: { claude: { driver: "bogus" } } }, "claude")).toBe(
 			"session",
 		);
-		expect(getRuntimePlugins({ runtimes: { claude: { plugins: ["/p", 3, ""] } } }, "claude")).toEqual(
-			["/p"],
-		);
+		expect(
+			getRuntimePlugins({ runtimes: { claude: { plugins: ["/p", 3, ""] } } }, "claude"),
+		).toEqual(["/p"]);
 	});
 
 	it("uses the session host for session steps only", async () => {
@@ -330,7 +334,10 @@ describe("driver selection", () => {
 			outputs: {},
 			operatorMessages,
 		};
-		const claude = driverOptions({ ...base, config: getDefaultConfig(), runtimeAdapter: adapter }, "s");
+		const claude = driverOptions(
+			{ ...base, config: getDefaultConfig(), runtimeAdapter: adapter },
+			"s",
+		);
 		expect(claude.driver).toBe("session");
 		expect(await claude.sessionHost?.nextMessages?.()).toBe("msg");
 		expect(operatorMessages).toHaveBeenCalledWith("s");
@@ -340,7 +347,11 @@ describe("driver selection", () => {
 		);
 		expect(cli).toEqual({ driver: "cli" });
 		const codex = driverOptions(
-			{ ...base, config: { runtimes: { codex: { driver: "session" } } }, runtimeAdapter: new CodexAdapter() },
+			{
+				...base,
+				config: { runtimes: { codex: { driver: "session" } } },
+				runtimeAdapter: new CodexAdapter(),
+			},
 			"s",
 		);
 		expect(codex).toEqual({ driver: "cli" });

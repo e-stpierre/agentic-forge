@@ -43,7 +43,9 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 				mode: z
 					.enum(["next", "now"], { error: "mode must be next or now" })
 					.optional()
-					.describe("next: at the next step or session turn (default); now: steer the live session, or restart the running step with it"),
+					.describe(
+						"next: at the next step or session turn (default); now: steer the live session, or restart the running step with it",
+					),
 				step: nonEmpty("step", "Only deliver the message to this step").optional(),
 				from: fromField(),
 			},
