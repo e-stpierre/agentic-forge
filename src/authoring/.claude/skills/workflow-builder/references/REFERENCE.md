@@ -28,11 +28,11 @@ All settings are optional with sensible defaults.
 | `track-progress`     | bool   | `true`     | true/false                   | Track progress in progress.json                  |
 | `autofix`            | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                          |
 | `terminal-output`    | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream) |
-| `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts                   |
+| `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts (warns per step)  |
 | `strict-mode`        | bool   | `false`    | true/false                   | Fail on undefined template variables             |
 | `model`              | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                      |
 | `runtime`            | string | `null`     | claude, codex                | Default coding agent runtime for all steps       |
-| `required-tools`     | list   | `[]`       | Tool names                   | Tools Claude can use without prompting           |
+| `required-tools`     | list   | `[]`       | Tool names                   | Added to `runtimes.claude.allow` (no prompting)  |
 | `amend.step`         | string | none       | A top-level step name        | Step `af amend` runs before the next step        |
 
 **Runtime resolution order:** `step.runtime` > `--runtime` CLI flag > `settings.runtime` > `config.defaults.runtime` > `"claude"`
@@ -468,7 +468,7 @@ Under the supervisor, `af send` queues messages in the run's `inbox/`. Before ea
 
 Prompts need no placeholder for it. Write prompts so that an instruction in this section takes precedence over the step's defaults.
 
-On the Claude session driver (default), `af send --mode now` delivers the message into the running session, and `--mode next` sends it as the session's next turn. On the `cli` driver, `--mode now` kills the running step and runs it again at once with the message. `af answer` and `af retry-step --context` also reach the step through this section.
+On the Claude session driver (default), `af send --mode now` delivers the message into the running session, and `--mode next` sends it as the session's next turn. On the `cli` driver, `--mode now` kills the running step, safety-commits the worktree, and resumes the step's session (`claude --resume`, `codex exec resume`) with the message; when that fails, the step starts over. `af answer` and `af retry-step --context` also reach the step through this section.
 
 ## Step Results
 
@@ -517,7 +517,7 @@ agentic-forge send <workflow-id> "text" [--step <name>]
 # Pause at the next step or iteration boundary (--now stops the current step)
 agentic-forge pause <workflow-id> [--now]
 
-# Interrupt the current step and restart it with a message
+# Interrupt the current step and resume it with a message
 agentic-forge send <workflow-id> "text" --mode now
 
 # Answer a needs_input request (option id, label or free text) and resume

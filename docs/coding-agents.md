@@ -22,7 +22,7 @@ A runtime runs a step through a driver, set per runtime with `runtimes.<id>.driv
 
 A step on the `session` driver stays alive while it works and while it waits:
 
-- **Permissions**: tool calls allowed by the step's allowlist (`required-tools`) or by your Claude settings run without asking. Any other call becomes a `needs_input` request (`Allow <tool>? <command or path>`, options `allow` and `deny`). The run is `awaiting-human` while the session waits, and `af answer <run> <request> allow` (or `deny`) lets the same session continue. A denied call is reported to the agent, which carries on.
+- **Permissions**: tool calls allowed by the step's allowlist (`runtimes.claude.allow` plus the workflow's `required-tools`, see [Permissions](#permissions)) or by your Claude settings run without asking. Any other call becomes a `needs_input` request (`Allow <tool>? <command or path>`, options `allow` and `deny`). The run is `awaiting-human` while the session waits, and `af answer <run> <request> allow` (or `deny`) lets the same session continue. A denied call is reported to the agent, which carries on.
 - **Questions**: when Claude uses `AskUserQuestion`, each question becomes a `needs_input` request with its options (`a`, `b`, ...). The answer (an option id, a label or free text) is returned to Claude as the tool result.
 - **Messages**: `af send` (`--mode next`) reaches the session as its next turn when the current turn ends; `--mode now` is delivered into the running turn, at the next tool call, with no step restart.
 - **Result**: the final message of the last turn holds the result block, read the same way as on the `cli` driver.
@@ -31,6 +31,22 @@ A step on the `session` driver stays alive while it works and while it waits:
 - **Supervisor restart**: the session id is stored in `steps/<NN-step>/session.json`. When the supervisor stops while a prompt step runs (or waits for an answer), the next supervisor resumes that session with a prompt saying the harness restarted, instead of running the step from its start. The choice is in `run.recovered` and `decisions.jsonl` (see [`af serve`](cli.md#serve)).
 
 Parallel steps each run their own session and can each wait on a request; answer them by request id.
+
+### Interrupt and resume on the `cli` driver
+
+A `cli` step is a one-shot process, so `af send --mode now` kills its process tree. The supervisor then runs `safetyCommit` in the run's worktree (never in your own checkout) and starts the step again by resuming the session it recorded in `steps/<NN-step>/session.json`, with the message:
+
+- Claude: `claude -p --resume <session id>`, so the agent keeps its context
+- Codex: `codex exec resume <thread id> <message>`
+
+`af answer` on a `cli` step that ended `awaiting-human` resumes its session the same way, and so does crash recovery after a supervisor restart. When the resume fails (for example the session no longer exists), the step restarts from its start with its original prompt and the message, without using one of its retries. The step log says which one happened, and a failed resume emits `step.retried` with `reason: resume-failed` and its `session_id`.
+
+### Permissions
+
+Steps never bypass permission checks by default. Each runtime has a permission mode, `runtimes.<id>.permissions` (see [Configuration](configuration.md#runtimes)):
+
+- **`allowlist`** (default): Claude steps may use the tools on `runtimes.claude.allow` and the workflow's `required-tools` without asking, on both drivers (`--settings` on the `cli` driver, auto-approved on the session driver). Anything else asks (session driver) or is denied (`cli` driver). Codex steps run in the `codex.sandbox` mode (`workspace-write` by default) with the run directory as an extra write root.
+- **`bypass`**: `--dangerously-skip-permissions` (Claude) or `--dangerously-bypass-approvals-and-sandbox` (Codex). Every step that runs this way logs a warning. `bypass-permissions: true` on a workflow or step has the same effect for that workflow or step.
 
 ### Transcripts
 
@@ -114,20 +130,22 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 
 ## Runtime Capabilities
 
-| Capability                          | Claude (`claude`) |   Codex (`codex`)   |
-| ----------------------------------- | :---------------: | :-----------------: |
-| Bundled skills (`/af-*`)            |        Yes        |         No          |
-| `skill` steps (`<plugin>:<skill>`)  |        Yes        | No (fails, not yet) |
-| System prompt injection             |        Yes        | Prepended to prompt |
-| Agent sub-configurations            |        Yes        |         No          |
-| Streaming output                    |        Yes        |         Yes         |
-| `--skip-permissions`                |        Yes        |         Yes         |
-| Session driver (live steering)      |        Yes        |         No          |
-| Permission requests (`needs_input`) |   Yes (session)   |         No          |
-| Live transcript (`af logs`)         |        Yes        |         Yes         |
-| Session resume after a restart      |   Yes (session)   |         No          |
-| OS-level sandbox (Linux/macOS)      |        N/A        |         Yes         |
-| OS-level sandbox (Windows)          |        N/A        |         No          |
+| Capability                            | Claude (`claude`)  |   Codex (`codex`)   |
+| ------------------------------------- | :----------------: | :-----------------: |
+| Bundled skills (`/af-*`)              |        Yes         |         No          |
+| `skill` steps (`<plugin>:<skill>`)    |        Yes         | No (fails, not yet) |
+| System prompt injection               |        Yes         | Prepended to prompt |
+| Agent sub-configurations              |        Yes         |         No          |
+| Streaming output                      |        Yes         |         Yes         |
+| Permission allowlist (`runtimes`)     | Yes (both drivers) |    Sandbox mode     |
+| Opt-in bypass (`permissions: bypass`) |        Yes         |         Yes         |
+| `send --mode now` on the `cli` driver |  Kill, `--resume`  | Kill, `exec resume` |
+| Session driver (live steering)        |        Yes         |         No          |
+| Permission requests (`needs_input`)   |   Yes (session)    |         No          |
+| Live transcript (`af logs`)           |        Yes         |         Yes         |
+| Session resume after a restart        |        Yes         |         Yes         |
+| OS-level sandbox (Linux/macOS)        |        N/A         |         Yes         |
+| OS-level sandbox (Windows)            |        N/A         |         No          |
 
 > **Note**: Skill-based prompts (`/af-git-commit`, `/af-sdlc-plan`, etc.) only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
 

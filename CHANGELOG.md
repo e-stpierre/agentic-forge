@@ -61,6 +61,9 @@
 - **Breaking:** `wait-for-human` is now an alias of `human-input`: `on-timeout: continue` becomes a non-blocking request with a recommended `continue` option applied after `timeout-minutes`, any other value waits for an answer, and `polling-interval` is ignored
 - **Breaking:** `af input <run> <response>` now answers the single pending `needs_input` request of an awaiting-human run (`af answer` without a request id)
 - **Removed:** the LLM orchestrator (`src/orchestrator.ts`, `WorkflowOrchestrator`) and the `af-orchestrate` skill; workflows stay deterministic and judgment belongs to the overseer
+- Added interrupt and resume on the `cli` driver: `af send --mode now` kills the step, runs `safetyCommit` in the run's worktree, and resumes the session recorded in `steps/<NN-step>/session.json` with the message (`claude -p --resume <id>`, `codex exec resume <thread> <message>`); `af answer` on a `cli` step that ended `awaiting-human` and crash recovery resume it the same way. A failed resume restarts the step from its start without using a retry, with `step.retried` `reason: resume-failed`
+- Added per-runtime permissions: `runtimes.<id>.permissions` (`allowlist` by default, or `bypass`) and `runtimes.claude.allow` (default `Read`, `Glob`, `Grep`, `Edit`, `MultiEdit`, `Write`, `NotebookEdit`, `TodoWrite`, `Skill`, `Task`), extended by a workflow's `required-tools`. The same list drives both Claude drivers (`--settings` permission rules on the `cli` driver, auto-approved on the session driver)
+- **Breaking:** the Claude `cli` driver passes the allowlist as `--settings '{"permissions":{"allow":[...]}}'` instead of `--allowedTools`, and steps without `required-tools` now get the default allowlist. Permission checks are only bypassed through `runtimes.<id>.permissions: bypass` or `bypass-permissions: true`, and every bypassed step logs a warning
 
 ## 0.11.0
 

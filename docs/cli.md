@@ -184,11 +184,11 @@ af send <run_id> <text> [options]
 
 ### Options
 
-| Option            | Description                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------------ |
-| `--step <name>`   | Deliver to this step only (default: the next step of the run)                                                |
-| `--from <sender>` | Sender recorded in the message: `user` (default) or `overseer`                                               |
-| `--mode <mode>`   | `next` (default): deliver at the next boundary. `now`: kill the current step and restart it with the message |
+| Option            | Description                                                                                                                             |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `--step <name>`   | Deliver to this step only (default: the next step of the run)                                                                           |
+| `--from <sender>` | Sender recorded in the message: `user` (default) or `overseer`                                                                          |
+| `--mode <mode>`   | `next` (default): deliver at the next boundary. `now`: steer the live session, or kill the step and resume its session with the message |
 
 ### Examples
 
@@ -203,7 +203,7 @@ af send 2026-11-10-dark-mode "Check the contrast ratios too." --step review
 af send 2026-11-10-dark-mode "Stop: use pnpm, not npm." --mode now
 ```
 
-With `--mode now`, a running step on the Claude session driver (the default, see [Coding Agents](coding-agents.md#drivers)) gets the message in its live session: it reaches the agent at its next tool call, with no restart, and the output says `delivered into the live session`. With `--mode next`, a live session step gets the message as its next turn when the current turn ends. On the `cli` driver, `--mode now` kills the running step's process tree (as `pause --now` does) and runs the step again from its start, with the message in its `## Operator Messages` section. The event log shows `step.retried` with `reason: message`, and no `run.paused`. A run that is not executing a step delivers the message at its next start, as with `next`.
+With `--mode now`, a running step on the Claude session driver (the default, see [Coding Agents](coding-agents.md#drivers)) gets the message in its live session: it reaches the agent at its next tool call, with no restart, and the output says `delivered into the live session`. With `--mode next`, a live session step gets the message as its next turn when the current turn ends. On the `cli` driver, `--mode now` kills the running step's process tree (as `pause --now` does), runs `safetyCommit` in the run's worktree, and runs the step again by resuming its recorded session (`claude --resume`, `codex exec resume`) with the message in its `## Operator Messages` section. When the session cannot resume, the step starts over with its prompt and the message (see [Coding Agents](coding-agents.md#interrupt-and-resume-on-the-cli-driver)). The event log shows `step.retried` with `reason: message`, and no `run.paused`. A run that is not executing a step delivers the message at its next start, as with `next`.
 
 ## pause
 
@@ -371,7 +371,7 @@ With `--follow`, the command long-polls the supervisor (`--wait` seconds per req
 | Steering | `message.queued`, `message.delivered`, `amendment.applied`, `needs_input`, `input.answered`                           |
 | Harness  | `supervisor.restarted`, `run.recovered`                                                                               |
 
-`run.queued` is also emitted when a stopped run is queued again (`data.reason: resumed`, from `af resume`, `af answer` or `af retry-step`). `step.retried` carries `data.reason`: `retry` (automatic retry after a failed attempt), `operator` (`af retry-step`) or `message` (`af send --mode now`). `iteration.completed` carries `data.outcome`: `continue`, `complete`, `failed`, `error` or `max_iterations`. A supervisor that takes over runs left `running` or `queued` by a previous one emits `supervisor.restarted` once in each of them.
+`run.queued` is also emitted when a stopped run is queued again (`data.reason: resumed`, from `af resume`, `af answer` or `af retry-step`). `step.retried` carries `data.reason`: `retry` (automatic retry after a failed attempt), `operator` (`af retry-step`), `message` (`af send --mode now`) or `resume-failed` (a resumed session failed and the step restarts from its start; `data.session_id` names it). `iteration.completed` carries `data.outcome`: `continue`, `complete`, `failed`, `error` or `max_iterations`. A supervisor that takes over runs left `running` or `queued` by a previous one emits `supervisor.restarted` once in each of them.
 
 ### Examples
 
@@ -638,7 +638,7 @@ af serve [options]
 
 Only one supervisor runs per user. Starting a second one prints the running instance and exits. The supervisor listens on `127.0.0.1` with a random port and accepts only requests that carry the per-user token from `supervisor.json` in the global directory (readable by the user only). A detached supervisor writes its output to `supervisor.log` in the same directory.
 
-On start, the supervisor recovers the runs a previous supervisor left `running`: it marks the interrupted step `interrupted`, re-queues the run so it resumes from that step (reusing its recorded worktree), and emits `run.recovered`. A prompt step that ran on the session driver resumes its own session from the session id stored in `steps/<NN-step>/session.json`, with a prompt that tells the agent the harness restarted; every other step (the `cli` driver, ralph-loop and composite steps, or no recorded session) restarts from its boundary. `run.recovered` lists the choice per step in `data.sessions` (`{ step, action: resume | restart, session_id, reason }`), and each choice about a recorded session is a `policy` entry in `decisions.jsonl` (`d-recover-<n>-<step>`). A resumed session that fails is retried from the step's start. A run that was `awaiting-human` on a live session keeps waiting: its request is no longer live, and `af answer` resumes the stored session with the answer. The run registry is `runs/index.json` in the global directory.
+On start, the supervisor recovers the runs a previous supervisor left `running`: it marks the interrupted step `interrupted`, re-queues the run so it resumes from that step (reusing its recorded worktree), and emits `run.recovered`. A prompt step resumes its own session from the session id stored in `steps/<NN-step>/session.json` (the Agent SDK on the session driver, `claude --resume` or `codex exec resume` on the `cli` driver), with a prompt that tells the agent the harness restarted; every other step (ralph-loop and composite steps, or no recorded session) restarts from its boundary. `run.recovered` lists the choice per step in `data.sessions` (`{ step, action: resume | restart, session_id, reason }`), and each choice about a recorded session is a `policy` entry in `decisions.jsonl` (`d-recover-<n>-<step>`). A resumed session that fails restarts the step from its start (`step.retried` with `reason: resume-failed`). A run that was `awaiting-human` on a live session keeps waiting: its request is no longer live, and `af answer` resumes the stored session with the answer. The run registry is `runs/index.json` in the global directory.
 
 When a client's version differs from the running supervisor's (for example after `npm i -g agentic-forge`), the client restarts the supervisor if no run is active, and otherwise warns and keeps it.
 
