@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for coding agents (Claude Code, Codex CLI, and others). It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution.
+Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for coding agents (Claude Code, Codex CLI, and others). It ships an engine, generic demo workflows and prompts, but no opinionated skills: workflows call the user's own skills (for example the esp-skills plugin) through `skill` steps.
 
 ## Purpose
 
@@ -18,21 +18,13 @@ The agentic-forge repository aims to:
 
 TypeScript source code for the CLI and workflow orchestration engine.
 
-#### `agents/`
-
-Bundled sub-agent configurations for specialized, autonomous task execution (`explorer.md`, `reviewer.md`). Agents should be self-contained and focused on a specific domain or task.
-
 #### `authoring/.claude/skills/`
 
 Interactive authoring skills for users to create and manage workflows (e.g., `workflow-builder`). Exposed via the `authoring-dir` CLI command. These are not used by the workflow engine.
 
-#### `claude/.claude/skills/`
-
-Bundled workflow execution skills loaded via `--add-dir`. Skills are reusable Claude Code slash commands. Each skill is a directory in kebab-case containing a `SKILL.md` file. These are used by the workflow engine during execution with the `claude` runtime only.
-
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `skills-dir`, `authoring-dir`, `workflows`, `mcp`, etc.).
+CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `mcp`, etc.).
 
 #### `prompts/`
 
@@ -104,7 +96,7 @@ MCP tests (`tests/mcp-server.test.ts`) connect an SDK `Client` to `createMcpServ
 
 #### `workflows/`
 
-Bundled YAML workflow definitions (12 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `plan-loop`, `analyze-codebase`, `analyze-single`, `claude-demo`, `codex-demo`, `multi-demo`, `multi-plan-build-review`, `permission-test-claude`, `permission-test-codex`).
+Bundled generic demo workflows (7 workflows: `claude-demo`, `codex-demo`, `multi-demo`, `ralph-loop`, `plan-loop`, `permission-test-claude`, `permission-test-codex`). They use only generic steps (no skill calls); `tests/bundled-workflows.test.ts` checks it.
 
 ### `schemas/`
 
@@ -149,9 +141,8 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 ### Naming Conventions
 
-- **Agents**: Use descriptive names with domain prefix (e.g., `explorer.md`, `reviewer.md`)
-- **Skills**: Directory name in kebab-case with `SKILL.md` inside (e.g., `analyze/SKILL.md`, `git-commit/SKILL.md`)
-- **Workflows**: Descriptive kebab-case YAML files (e.g., `plan-build-review.yaml`)
+- **Skills**: Directory name in kebab-case with `SKILL.md` inside (e.g., `workflow-builder/SKILL.md`)
+- **Workflows**: Descriptive kebab-case YAML files (e.g., `claude-demo.yaml`)
 
 ### Documentation Guidelines
 
@@ -160,8 +151,7 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 ### File Formats
 
-- **Agents**: Markdown (`.md`) files in `src/agents/`
-- **Skills**: `SKILL.md` files in skill directories: `src/claude/.claude/skills/<skill-name>/SKILL.md`
+- **Authoring skills**: `SKILL.md` files in skill directories: `src/authoring/.claude/skills/<skill-name>/SKILL.md`
 - **Workflows**: YAML files in `src/workflows/`
 - **TypeScript Source**: TypeScript modules in `src/` with root `package.json`
 
@@ -225,7 +215,7 @@ The workflow engine delegates all coding agent interactions to runtime adapters 
 
 Runtime resolution order: `step.runtime` > `--runtime` CLI flag > `workflow settings.runtime` > `config.defaults.runtime` > `"claude"`.
 
-**Skills only work with the `claude` runtime.** The `codex` runtime does not support `--add-dir` skill injection. Workflows that use `/af-*` skill invocations must run with `runtime: claude` (or the default).
+**Skill steps only work with the `claude` runtime.** agentic-forge bundles no execution skills: a `skill` step calls a skill the user installed (a Claude Code plugin or a `.claude/skills/` directory). On any other runtime it fails with a "not supported yet" message. The prompt step `agent:` file resolves relative to the workflow file, then the repo root.
 
 To add a new runtime: create an adapter in `src/runtimes/`, register it in `src/runtimes/index.ts`, and add the `RuntimeId` to the union type in `src/runtimes/types.ts`.
 

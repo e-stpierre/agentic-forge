@@ -7,7 +7,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 - **Report bugs** - Found something broken? [Open an issue](https://github.com/e-stpierre/agentic-forge/issues)
 - **Suggest features** - Have an idea for a new workflow or enhancement? [Let us know](https://github.com/e-stpierre/agentic-forge/issues)
 - **Improve docs** - Fix typos, clarify explanations, add examples
-- **Write code** - Bug fixes, new skills, improvements to existing ones
+- **Write code** - Bug fixes, new features, improvements to existing ones
 
 ## Development Setup
 
@@ -49,7 +49,7 @@ pnpm check
 
 ### Commit Messages
 
-Write clear, concise commit messages that describe the change. For example: `Add retry logic to workflow executor` or `Fix validation error in analyze skill`.
+Write clear, concise commit messages that describe the change. For example: `Add retry logic to workflow executor` or `Fix validation error in the skill step`.
 
 ### Code Formatting
 
@@ -64,22 +64,20 @@ pnpm test           # Vitest tests
 
 ```text
 src/
-  agents/              # Sub-agent definitions (.md)
-  claude/.claude/      # Skills loaded via --add-dir
-    skills/            # Bundled skills (slash commands)
+  authoring/.claude/   # Authoring skills (workflow-builder)
   commands/            # CLI command implementations
   prompts/             # System prompt templates
   steps/               # Workflow step handlers
-  workflows/           # YAML workflow definitions
+  templates/           # Output templates (.md.j2)
+  workflows/           # Generic demo workflows (YAML)
   *.ts                 # Core TypeScript modules
 tests/                 # Vitest test suite
 ```
 
 ### Naming Conventions
 
-- **Agents**: descriptive with domain prefix (`explorer.md`, `reviewer.md`)
-- **Skills**: directory name in kebab-case with `SKILL.md` inside (`analyze/SKILL.md`, `git-commit/SKILL.md`)
-- **Workflows**: descriptive kebab-case YAML files (`plan-build-review.yaml`)
+- **Skills**: directory name in kebab-case with `SKILL.md` inside (`workflow-builder/SKILL.md`)
+- **Workflows**: descriptive kebab-case YAML files (`claude-demo.yaml`)
 
 ## Pull Request Process
 

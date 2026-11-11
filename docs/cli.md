@@ -28,7 +28,6 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `paths`         | Show resolved directory and config paths             |
 | `serve`         | Run, start, inspect or stop the supervisor           |
 | `mcp`           | Run a stdio MCP server to dispatch and steer runs    |
-| `skills-dir`    | Print path to bundled workflow skills directory      |
 | `authoring-dir` | Print path to interactive authoring skills directory |
 | `release-notes` | Show release notes and changelog                     |
 | `version`       | Show current version                                 |
@@ -71,25 +70,25 @@ af run <workflow> [vars...] [options]
 
 ```bash
 # Run with a variable
-af run one-shot --var "task=Add dark mode support"
+af run ralph-loop --var "task=Add dark mode support"
 
 # Run with multiple variables
-af run plan-build-review --var "task=Add auth" --var "create_pr=true"
+af run ralph-loop --var "task=Add auth" --var "max_iterations=40"
 
 # Run with positional variables
-af run one-shot task="Add dark mode support"
+af run ralph-loop task="Add dark mode support"
 
 # Run with a custom slug (run ID 2026-11-10-dark-mode)
-af run plan-build-review --slug "dark-mode" --var "task=Add dark mode"
+af run plan-loop --slug "dark-mode" --var "input=Add dark mode"
 
 # Dispatch and follow the run until it ends
-af run one-shot --foreground --var "task=Add dark mode"
+af run ralph-loop --foreground --var "task=Add dark mode"
 
 # Resume from a specific step
-af run one-shot --from-step review --var "task=Add dark mode"
+af run plan-loop --from-step execute-plan --var "input=Add dark mode"
 
 # Non-interactive mode (fails if required variables are missing)
-af run one-shot --no-interactive --var "task=Add dark mode"
+af run ralph-loop --no-interactive --var "task=Add dark mode"
 
 # Run a workflow from a YAML file path
 af run ./agentic/workflows/my-workflow.yaml --var "key=value"
@@ -514,7 +513,7 @@ af init
 af init --local
 
 # Copy only one specific workflow locally
-af init --local --workflow plan-build-review
+af init --local --workflow plan-loop
 
 # List available bundled workflows
 af init --list
@@ -727,14 +726,6 @@ Project `.mcp.json` (Claude Code) or `claude_desktop_config.json` (Claude Deskto
 ```
 
 `af_dispatch` uses the server's working directory as the default `repo`. Claude Desktop starts servers outside any project, so pass `repo` explicitly there.
-
-## skills-dir
-
-Print the absolute path to the bundled workflow skills directory. Used internally by the workflow engine.
-
-```bash
-af skills-dir
-```
 
 ## authoring-dir
 

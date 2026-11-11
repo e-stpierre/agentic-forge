@@ -58,7 +58,7 @@ The Agent SDK (`@anthropic-ai/claude-agent-sdk`, pinned to `0.3.322`) runs the u
 
 ### Claude Code (recommended)
 
-Claude Code is the primary and recommended coding agent for Agentic Forge. It has the deepest integration and supports all features including bundled skills (`/af-*`), agent sub-configurations, system prompt injection, and worktree isolation. All bundled workflows are designed and tested with Claude Code as the default runtime.
+Claude Code is the primary and recommended coding agent for Agentic Forge. It has the deepest integration and supports all features including `skill` steps (your own skills, see [Bring your own skills](workflows.md#bring-your-own-skills)), agent sub-configurations, system prompt injection, and worktree isolation. All bundled demo workflows are designed and tested with Claude Code as the default runtime.
 
 Install and authenticate the Claude Code CLI via Anthropic's official documentation. Verify with:
 
@@ -70,12 +70,12 @@ claude --version
 
 Codex CLI is supported as an experimental runtime. Its integration is more limited compared to Claude Code:
 
-- Does not support bundled skills (`/af-*` commands) — steps must use inline prompts
+- Does not support `skill` steps yet — steps must use inline prompts
 - Does not support agent sub-configurations
 - May have permission and file access issues, particularly on Windows
 - OS-level sandboxing is not enforced on Windows
 
-Codex works best as a secondary runtime for independent tasks like code review in mixed-runtime workflows (e.g., `multi-plan-build-review`), where Claude handles planning and implementation while Codex provides an independent review perspective.
+Codex works best as a secondary runtime for independent tasks like code review in mixed-runtime workflows (e.g., `multi-demo`), where Claude handles planning and implementation while Codex provides an independent review perspective.
 
 Install and authenticate the Codex CLI (OpenAI). Verify with:
 
@@ -132,7 +132,6 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 
 | Capability                            | Claude (`claude`)  |   Codex (`codex`)   |
 | ------------------------------------- | :----------------: | :-----------------: |
-| Bundled skills (`/af-*`)              |        Yes         |         No          |
 | `skill` steps (`<plugin>:<skill>`)    |        Yes         | No (fails, not yet) |
 | System prompt injection               |        Yes         | Prepended to prompt |
 | Agent sub-configurations              |        Yes         |         No          |
@@ -147,7 +146,7 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 | OS-level sandbox (Linux/macOS)        |        N/A         |         Yes         |
 | OS-level sandbox (Windows)            |        N/A         |         No          |
 
-> **Note**: Skill-based prompts (`/af-git-commit`, `/af-sdlc-plan`, etc.) only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
+> **Note**: `skill` steps and slash-command prompts only work with the `claude` runtime. agentic-forge bundles no execution skills: they come from the plugins and `.claude/skills/` directories Claude Code loads. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
 
 ## Model Names
 
