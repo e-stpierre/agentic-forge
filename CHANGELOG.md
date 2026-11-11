@@ -41,6 +41,8 @@
 - Added `af list` filters `--status` (comma-separated), `--repo`, `--since` (ISO date or `2h`, `7d`), `--parent` and `--json`, also on `GET /v1/runs`
 - Added `af artifacts <run> [--kind plan|summary|decisions|review] [--content] [--json]`
 - Fixed `events.jsonl` appends after a torn last line: the new event starts on its own line and its `seq` follows the last valid event
+- Added `af mcp`: a stdio MCP server, thin client of the supervisor (started on demand at the first tool call), with the tools `af_dispatch`, `af_status`, `af_list_runs`, `af_events` (`wait_seconds` long-poll, max 120), `af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step` and `af_artifacts`; inputs are validated with zod schemas, and errors are `isError` results naming the problem, the HTTP status and a next step. Depends on `@modelcontextprotocol/sdk` and `zod`
+- Changed `af run` to build its dispatch payload with the shared `buildDispatchPayload()` (`src/runs/dispatch.ts`), also used by `af_dispatch`; workflow name and path resolution accept a base directory (no behavior change for `af run`)
 
 ## 0.11.0
 

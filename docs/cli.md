@@ -26,6 +26,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `workflows`     | List available workflows with descriptions           |
 | `paths`         | Show resolved directory and config paths             |
 | `serve`         | Run, start, inspect or stop the supervisor           |
+| `mcp`           | Run a stdio MCP server to dispatch and steer runs    |
 | `skills-dir`    | Print path to bundled workflow skills directory      |
 | `authoring-dir` | Print path to interactive authoring skills directory |
 | `release-notes` | Show release notes and changelog                     |
@@ -601,6 +602,77 @@ af serve --status
 # Stop it
 af serve --stop
 ```
+
+## mcp
+
+Run a stdio MCP server that MCP clients (Claude Code, Claude Desktop, and other agents) use to dispatch, observe and steer runs. It is a thin client of the supervisor: each tool validates its input, then calls the same supervisor endpoint as the matching CLI command. The supervisor is started on demand at the first tool call, not when the server starts.
+
+```bash
+af mcp
+```
+
+The server speaks MCP over stdin and stdout and writes nothing else to stdout (warnings and logs go to stderr). It runs until the client closes the stream. Tool results are JSON text (`content: [{ type: "text", text: "<json>" }]`), so any client can read them.
+
+### Tools
+
+| Tool            | Inputs                                                                         | Supervisor endpoint                         | CLI equivalent  |
+| --------------- | ------------------------------------------------------------------------------ | ------------------------------------------- | --------------- |
+| `af_dispatch`   | `workflow`, `repo?`, `vars?`, `runtime?`, `slug?`, `priority?`                 | `POST /v1/runs`                             | `af run`        |
+| `af_status`     | `run?` (without it: the active runs)                                           | `GET /v1/runs/:id`, `GET /v1/runs`          | `af status`     |
+| `af_list_runs`  | `status?` (one or a list), `repo?`, `since?`, `parent?`, `limit?`              | `GET /v1/runs`                              | `af list`       |
+| `af_events`     | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_now?` | `GET /v1/events`                            | `af events`     |
+| `af_send`       | `run`, `text`, `mode?` (`next` or `now`), `step?`, `from?`                     | `POST /v1/runs/:id/messages`                | `af send`       |
+| `af_amend`      | `run`, `text`, `affects?`, `from?`                                             | `POST /v1/runs/:id/amend`                   | `af amend`      |
+| `af_answer`     | `run`, `answer`, `request_id?`, `from?`                                        | `POST /v1/runs/:id/answer`                  | `af answer`     |
+| `af_pause`      | `run`, `now?`                                                                  | `POST /v1/runs/:id/pause`                   | `af pause`      |
+| `af_resume`     | `run`                                                                          | `POST /v1/runs/:id/resume`                  | `af resume`     |
+| `af_cancel`     | `run`                                                                          | `POST /v1/runs/:id/cancel`                  | `af cancel`     |
+| `af_retry_step` | `run`, `step`, `context?`, `from?`                                             | `POST /v1/runs/:id/retry`                   | `af retry-step` |
+| `af_artifacts`  | `run`, `kind?` (`plan`, `summary`, `decisions`, `review`), `content?`          | none (reads the run registry and directory) | `af artifacts`  |
+
+- `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. Returns `{ run_id, status, dir, workflow, warnings }`
+- `af_list_runs`: newest first, cut to `limit` (default 50); returns `{ runs, total }`
+- `af_events`: returns `{ events, cursor, more, status }`; pass `cursor` back to resume without duplicates. `wait_seconds` long-polls until a new event arrives or the wait ends. `types` takes exact types or prefixes such as `run.*`
+- `af_artifacts`: `content: true` needs a `kind` and returns the latest file of that kind (cut at 20,000 characters)
+- `from` (steering tools) is `user` or `overseer` (default `overseer`)
+
+The MCP SDK client's default request timeout is 60 seconds, below the `wait_seconds` cap of 120. Use shorter waits (for example 30) unless your client sets a longer timeout.
+
+### Errors
+
+Invalid inputs and supervisor errors come back as tool results with `isError: true`. The text names the problem, the HTTP status when the supervisor returned one, and a next step:
+
+```text
+Run not found: 2026-11-10-dark-mode (HTTP 404). Use af_list_runs to find run ids.
+Cannot resume run in 'running' status (HTTP 409). Call af_status to see the run's current status.
+Missing required variable: task (HTTP 400). Pass it in vars (for example vars: { "task": "<value>" }) and call af_dispatch again.
+The af supervisor is not reachable: <reason>. Start it with af serve --detach, then call af_list_runs again.
+```
+
+When the supervisor becomes unreachable (for example after a restart on a new port), the server finds or starts it again and retries the call once.
+
+### Setup
+
+Claude Code:
+
+```bash
+claude mcp add agentic-forge -- af mcp
+```
+
+Project `.mcp.json` (Claude Code) or `claude_desktop_config.json` (Claude Desktop):
+
+```json
+{
+  "mcpServers": {
+    "agentic-forge": {
+      "command": "af",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+`af_dispatch` uses the server's working directory as the default `repo`. Claude Desktop starts servers outside any project, so pass `repo` explicitly there.
 
 ## skills-dir
 

@@ -32,7 +32,7 @@ Bundled workflow execution skills loaded via `--add-dir`. Skills are reusable Cl
 
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `skills-dir`, `authoring-dir`, `workflows`, etc.).
+CLI command implementations (`run`, `init`, `update`, `skills-dir`, `authoring-dir`, `workflows`, `mcp`, etc.).
 
 #### `prompts/`
 
@@ -80,10 +80,22 @@ Runs owned by the supervisor:
 - `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
 - `scheduler.ts` — `pickRunnable()` (global and per-repo limits, one run per checkout)
-- `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment)
+- `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment), `buildDispatchPayload()` (shared by `af run` and `af_dispatch`)
 - `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`
 
 Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
+
+#### `mcp/`
+
+The stdio MCP server behind `af mcp`, a thin client of the supervisor:
+
+- `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
+- `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
+- `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) over the `/v1/runs/:id/*` control endpoints
+- `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry when the supervisor is unreachable)
+- `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)
+
+MCP tests (`tests/mcp-server.test.ts`) connect an SDK `Client` to `createMcpServer()` through `InMemoryTransport.createLinkedPair()`, with an in-process `Supervisor` and `RunManager` and `fakeRuntime`. `tests/mcp-stdio.test.ts` runs the built `dist/cli.js mcp` over real stdio (skipped without a build).
 
 #### `workflows/`
 
