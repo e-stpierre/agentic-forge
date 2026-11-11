@@ -4,6 +4,10 @@
  * run directory (`dispatch.json`) so a resume uses the same inputs.
  */
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { loadConfig } from "../config.js";
+
 export interface DispatchPayload {
 	/** Absolute repository root of the dispatching client. */
 	repo_root: string;
@@ -105,6 +109,47 @@ export function getEnvPassthrough(config: Record<string, unknown>): string[] {
 	const supervisor = config.supervisor as Record<string, unknown> | undefined;
 	const list = supervisor?.env_passthrough;
 	return Array.isArray(list) ? list.filter((n): n is string => typeof n === "string") : [];
+}
+
+export interface BuildDispatchOptions {
+	/** Resolved workflow file (relative paths resolve against `repoRoot`). */
+	workflowPath: string;
+	/** Repository root of the dispatching client (config and project workflows). */
+	repoRoot: string;
+	variables: Record<string, unknown>;
+	runtime?: string | null;
+	slug?: string | null;
+	/** Queue priority; omitted from the payload when undefined (the supervisor uses 0). */
+	priority?: number;
+	fromStep?: string | null;
+	/** Terminal output level; null lets the workflow settings decide. */
+	terminalOutput?: string | null;
+	/** Client environment to filter (defaults to `process.env`). */
+	env?: NodeJS.ProcessEnv;
+}
+
+/**
+ * Builds the payload of `POST /v1/runs` for a resolved workflow file: reads the
+ * workflow contents, the config of `repoRoot` and the allowlisted environment.
+ * Shared by `af run` and the MCP `af_dispatch` tool. Throws when the workflow
+ * file cannot be read.
+ */
+export function buildDispatchPayload(options: BuildDispatchOptions): DispatchPayload {
+	const workflowPath = path.resolve(options.repoRoot, options.workflowPath);
+	const config = loadConfig(options.repoRoot);
+	const payload: DispatchPayload = {
+		repo_root: options.repoRoot,
+		workflow: { path: workflowPath, contents: readFileSync(workflowPath, "utf-8") },
+		config,
+		env: filterEnv(options.env ?? process.env, getEnvPassthrough(config)),
+		variables: options.variables,
+		runtime: options.runtime ?? null,
+		from_step: options.fromStep ?? null,
+		slug: options.slug ?? null,
+		terminal_output: options.terminalOutput ?? null,
+	};
+	if (options.priority !== undefined) payload.priority = options.priority;
+	return payload;
 }
 
 /** Validates a dispatch payload received over IPC; returns an error message or null. */

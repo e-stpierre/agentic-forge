@@ -1,15 +1,14 @@
 /** Run and resume command handlers with workflow discovery. */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import confirm from "@inquirer/confirm";
 import input from "@inquirer/input";
 
-import { loadConfig } from "../config.js";
 import { exitCodeForRun } from "../contract/index.js";
 import { getGlobalRoot } from "../paths.js";
-import { type DispatchPayload, filterEnv, getEnvPassthrough } from "../runs/dispatch.js";
+import { buildDispatchPayload } from "../runs/dispatch.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,15 +31,17 @@ export function getUserWorkflowsDir(): string {
 	return path.join(getGlobalRoot(), "workflows");
 }
 
-export function getProjectWorkflowsDir(): string {
-	return path.join(process.cwd(), "agentic", "workflows");
+/** Project workflows of the repository at `cwd` (`<cwd>/agentic/workflows`). */
+export function getProjectWorkflowsDir(cwd = process.cwd()): string {
+	return path.join(cwd, "agentic", "workflows");
 }
 
-export function discoverWorkflow(name: string): [string | null, string] {
+/** Finds a workflow by name: project (`<cwd>/agentic/workflows`) > user-global > bundled. */
+export function discoverWorkflow(name: string, cwd = process.cwd()): [string | null, string] {
 	const fileName = name.endsWith(".yaml") ? name : `${name}.yaml`;
 
 	const searchLocations: [string, string][] = [
-		[getProjectWorkflowsDir(), "project-local"],
+		[getProjectWorkflowsDir(cwd), "project-local"],
 		[getUserWorkflowsDir(), "user-global"],
 		[getBundledWorkflowsDir(), "bundled"],
 	];
@@ -55,11 +56,11 @@ export function discoverWorkflow(name: string): [string | null, string] {
 	return [null, "not found"];
 }
 
-export function listAvailableWorkflows(): [string, string, string][] {
+export function listAvailableWorkflows(cwd = process.cwd()): [string, string, string][] {
 	const workflows: [string, string, string][] = [];
 
 	const searchLocations: [string, string][] = [
-		[getProjectWorkflowsDir(), "project-local"],
+		[getProjectWorkflowsDir(cwd), "project-local"],
 		[getUserWorkflowsDir(), "user-global"],
 		[getBundledWorkflowsDir(), "bundled"],
 	];
@@ -79,28 +80,29 @@ export function listAvailableWorkflows(): [string, string, string][] {
 	return workflows;
 }
 
-export function resolveWorkflowPath(workflowArg: string): [string, string] {
+/** Resolves a workflow argument (absolute path, path relative to `cwd`, or name) to a file. */
+export function resolveWorkflowPath(workflowArg: string, cwd = process.cwd()): [string, string] {
 	// Check if it's an absolute path
 	if (path.isAbsolute(workflowArg)) {
 		return [workflowArg, "absolute"];
 	}
 
 	// Check if it exists as a relative path from cwd
-	const localPath = path.resolve(process.cwd(), workflowArg);
+	const localPath = path.resolve(cwd, workflowArg);
 	if (existsSync(localPath)) {
 		return [localPath, "relative"];
 	}
 
 	// If the input looks like a bare name (no path separators), try discovery
 	if (!workflowArg.includes("/") && !workflowArg.includes("\\")) {
-		const [discovered, locationType] = discoverWorkflow(workflowArg);
+		const [discovered, locationType] = discoverWorkflow(workflowArg, cwd);
 		if (discovered) {
 			return [discovered, locationType];
 		}
 	}
 
 	// Fallback: return the resolved path (will fail with appropriate error)
-	return [path.resolve(workflowArg), "not found"];
+	return [path.resolve(cwd, workflowArg), "not found"];
 }
 
 /**
@@ -280,19 +282,15 @@ export async function cmdRun(options: {
 	}
 
 	// The client resolves every input; the supervisor never reads its own cwd.
-	const repoRoot = process.cwd();
-	const config = loadConfig(repoRoot);
-	const payload: DispatchPayload = {
-		repo_root: repoRoot,
-		workflow: { path: path.resolve(workflowPath), contents: readFileSync(workflowPath, "utf-8") },
-		config,
-		env: filterEnv(process.env, getEnvPassthrough(config)),
+	const payload = buildDispatchPayload({
+		workflowPath,
+		repoRoot: process.cwd(),
 		variables,
-		runtime: options.runtime ?? null,
-		from_step: options.fromStep ?? null,
-		slug: options.slug ?? null,
-		terminal_output: terminalOutput,
-	};
+		runtime: options.runtime,
+		fromStep: options.fromStep,
+		slug: options.slug,
+		terminalOutput,
+	});
 
 	const { ensureSupervisor } = await import("../supervisor/client.js");
 	const { dispatchRun, followRun, formatEvent } = await import("../runs/client.js");
