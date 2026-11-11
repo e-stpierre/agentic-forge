@@ -63,6 +63,32 @@ describe("CodexAdapter.buildCommand", () => {
 		expect(cmd.args).toContain("--dangerously-bypass-approvals-and-sandbox");
 	});
 
+	it("resumes the recorded thread with codex exec resume", () => {
+		const cmd = adapter.buildCommand({
+			prompt: "Use pnpm.",
+			resumeSessionId: "thread-1",
+			printOutput: true,
+			model: "gpt-5",
+			cwd: "/repo",
+			appendSystemPrompt: true,
+		});
+		const resume = cmd.args.indexOf("resume");
+		expect(cmd.args.slice(0, 3)).toEqual(["exec", "--sandbox", "workspace-write"]);
+		// exec options before the subcommand, session flags after it
+		expect(cmd.args.indexOf("--cd")).toBeLessThan(resume);
+		expect(cmd.args.indexOf("--add-dir")).toBeLessThan(resume);
+		expect(cmd.args.indexOf("--json")).toBeGreaterThan(resume);
+		expect(cmd.args.indexOf("--model")).toBeGreaterThan(resume);
+		// thread id then the prompt alone (the resumed session has the system prompt)
+		expect(cmd.args.slice(-2)).toEqual(["thread-1", "Use pnpm."]);
+	});
+
+	it("keeps exec without resume when no session is recorded", () => {
+		const cmd = adapter.buildCommand({ prompt: "hello", printOutput: true });
+		expect(cmd.args).not.toContain("resume");
+		expect(cmd.args.indexOf("--json")).toBe(3);
+	});
+
 	it("does not add bypass flag by default", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello" });
 		expect(cmd.args).not.toContain("--dangerously-bypass-approvals-and-sandbox");

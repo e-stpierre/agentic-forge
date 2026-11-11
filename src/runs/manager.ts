@@ -877,6 +877,27 @@ export class RunManager {
 	}
 
 	/**
+	 * `safetyCommit` of the run's worktree before an interrupted step restarts
+	 * (`send --mode now`), so the work of the killed attempt survives even when
+	 * the session cannot resume. Never commits in the user's own checkout.
+	 */
+	private checkpointWorktree(store: RunStore, step: string | null): void {
+		const worktree = store.readRun().worktree;
+		if (!worktree || !existsSync(path.join(worktree, ".git"))) return;
+		const commit = safetyCommit(
+			worktree,
+			undefined,
+			`chore: auto-save work of ${step ?? "the step"} before it restarts`,
+		);
+		if (commit.committed)
+			this.log(
+				`Run ${store.id}: safety commit in ${worktree} before restarting ${step ?? "the step"}`,
+			);
+		if (commit.failed)
+			this.log(`Run ${store.id}: safety commit failed in ${worktree}: ${commit.error}`);
+	}
+
+	/**
 	 * Cancel of a run that is not executing: safety-commits its recorded
 	 * worktree, then applies the workflow's cleanup policy. Returns what
 	 * happened to the worktree, or null when the run has none.
@@ -1620,6 +1641,10 @@ export class RunManager {
 				sessionHost: (step) => this.sessionHost(entry, store, payload.config, step),
 				recordResult: (step, block) => this.recordResult(entry, store, step, block),
 				inputAnswer: async (_step, requestId) => answerOf(store, requestId),
+				lastSession: (step) => {
+					const saved = readStepSession(this.stepDir(entry, step));
+					return saved ? { sessionId: saved.session_id, driver: saved.driver, at: saved.at } : null;
+				},
 				emitEvent: async (type, data) => {
 					await store.appendEvent(type, data);
 				},
@@ -1672,7 +1697,9 @@ export class RunManager {
 			}
 			await this.dropLiveRequests(entry.id, store);
 			if (request?.restart && status === "paused") {
-				// send --mode now: rerun the interrupted step at once with the message
+				// send --mode now: rerun the interrupted step at once with the message. Its
+				// session resumes; the worktree's work is committed first in case it cannot
+				this.checkpointWorktree(store, interruptedStep);
 				await store.updateRun({ status: "queued" });
 				await this.registry.update(entry.id, { status: "queued" });
 				await store.appendEvent("step.retried", {
@@ -1890,10 +1917,12 @@ export class RunManager {
 	/**
 	 * Decides, per interrupted step, whether its runtime session resumes or
 	 * the step restarts from its boundary. A top-level prompt step whose last
-	 * session (`session.json`, written with the transcript) ran on the session
-	 * driver during this attempt resumes: its interrupted record gets the
-	 * session id, and the prompt step resumes it. Every other step restarts
-	 * (`cli` driver, ralph-loop and composite steps, no session recorded).
+	 * session (`session.json`, written with the transcript) was recorded during
+	 * this attempt resumes, on either driver (Agent SDK resume, `claude
+	 * --resume`, `codex exec resume`): its interrupted record gets the session
+	 * id, and the prompt step resumes it (or restarts cold when the resume
+	 * fails). Every other step restarts (ralph-loop and composite steps, no
+	 * session recorded).
 	 */
 	private recoverSessions(
 		entry: RegistryEntry,
@@ -1913,16 +1942,14 @@ export class RunManager {
 			let reason: string | null = null;
 			if (type !== "prompt") reason = `a ${type ?? "composite"} step restarts from its boundary`;
 			else if (!sessionId) reason = "no runtime session was recorded for this attempt";
-			else if (!known.get(step) && current?.driver !== "session") {
-				reason = `the step ran on the ${current?.driver ?? "cli"} driver`;
-			}
+
 			if (reason) return { step, action: "restart", session_id: sessionId, reason };
 			if (record) record.sessionId = sessionId;
 			return {
 				step,
 				action: "resume",
 				session_id: sessionId,
-				reason: "the session driver resumes the stored session id",
+				reason: `the ${current?.driver ?? "session"} driver resumes the stored session id`,
 			};
 		});
 	}

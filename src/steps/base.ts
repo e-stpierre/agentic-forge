@@ -1,6 +1,11 @@
 /** Base class and types for step executors. */
 
-import { getRuntimeDriver, getRuntimeModel, getRuntimePlugins } from "../config.js";
+import {
+	getRuntimeDriver,
+	getRuntimeModel,
+	getRuntimePermissions,
+	getRuntimePlugins,
+} from "../config.js";
 import type { ConsoleOutput } from "../console.js";
 import { latestPlan } from "../contract/plan.js";
 import type { ResultBlock } from "../contract/result.js";
@@ -65,6 +70,20 @@ export interface StepContext {
 	 * `human-input` step when it runs again after asking.
 	 */
 	inputAnswer?: ((step: string, requestId: string) => Promise<InputAnswer | null>) | null;
+	/**
+	 * The last runtime session a step recorded (`steps/<NN-step>/session.json`,
+	 * on both drivers), or null. Read by the prompt step to resume the session
+	 * of an attempt that `send --mode now` killed.
+	 */
+	lastSession?: ((step: string) => LastSession | null) | null;
+}
+
+/** A runtime session a step recorded. */
+export interface LastSession {
+	sessionId: string;
+	driver: string | null;
+	/** ISO time the session started. */
+	at: string;
 }
 
 /** An answer to a `needs_input` request. */
@@ -167,6 +186,43 @@ export function driverOptions(
 		},
 		plugins: getRuntimePlugins(context.config, runtimeId),
 	};
+}
+
+/** Warning logged on every step that runs with permission checks bypassed. */
+export function bypassWarning(runtimeId: string, source: string): string {
+	return `Permission checks are bypassed for this step on ${runtimeId} (${source})`;
+}
+
+/**
+ * Permission options of a step, from `runtimes.<id>` (same allowlist on both
+ * Claude drivers): the runtime allowlist plus the workflow's `required-tools`
+ * as `allowedTools`, and `skipPermissions` only when bypass is opted into
+ * (`runtimes.<id>.permissions: bypass`, or `bypass-permissions: true` on the
+ * step or workflow). A bypass logs a warning on every step.
+ */
+export function permissionOptions(
+	context: StepContext,
+	step: StepDefinition,
+	logger: Pick<WorkflowLogger, "warning">,
+	console: Pick<ConsoleOutput, "warning">,
+): Pick<RuntimeRunOptions, "skipPermissions" | "allowedTools"> {
+	const runtimeId = context.runtimeAdapter.id;
+	const permissions = getRuntimePermissions(context.config, runtimeId);
+	const flag = step.bypassPermissions ?? context.workflowSettings?.bypassPermissions ?? false;
+	const source =
+		permissions.mode === "bypass"
+			? `runtimes.${runtimeId}.permissions: bypass`
+			: flag
+				? "bypass-permissions: true"
+				: null;
+	if (source) {
+		const message = bypassWarning(runtimeId, source);
+		logger.warning(step.name, message);
+		console.warning(message);
+	}
+	const allow = new Set(permissions.allow);
+	for (const tool of context.workflowSettings?.requiredTools ?? []) allow.add(tool);
+	return { skipPermissions: source !== null, allowedTools: allow.size > 0 ? [...allow] : null };
 }
 
 /** Prepends pending operator messages to a prompt. */

@@ -24,6 +24,7 @@ import {
 	buildTemplateContext,
 	driverOptions,
 	emitStepEvent,
+	permissionOptions,
 	resolveModel,
 	withOperatorMessages,
 } from "./base.js";
@@ -57,11 +58,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 		}
 
 		const timeout = (step.stepTimeoutMinutes ?? 30) * 60;
-		const bypassPermissions =
-			step.bypassPermissions ?? context.workflowSettings?.bypassPermissions ?? false;
-		const allowedTools = context.workflowSettings?.requiredTools?.length
-			? context.workflowSettings.requiredTools
-			: null;
+		const permissions = permissionOptions(context, step, logger, console);
 
 		// Always enable streaming when console is provided
 		const printOutput = true;
@@ -145,8 +142,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				model: resolveModel(context, step.model) ?? undefined,
 				timeout,
 				printOutput,
-				skipPermissions: bypassPermissions,
-				allowedTools,
+				...permissions,
 				console,
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,

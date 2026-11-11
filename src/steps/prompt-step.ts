@@ -19,6 +19,7 @@ import {
 import { runRuntime } from "../runtimes/process-runner.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import {
+	type LastSession,
 	STEP_INTERRUPTED_ERROR,
 	type StepContext,
 	StepExecutor,
@@ -26,6 +27,7 @@ import {
 	buildTemplateContext,
 	driverOptions,
 	emitStepEvent,
+	permissionOptions,
 	resolveModel,
 } from "./base.js";
 
@@ -50,24 +52,28 @@ const RECOVERY_INSTRUCTION =
 	"The harness restarted while this step was running. Continue the step where you left off, then end with the result block as before.";
 
 /**
- * Session the step resumes, from its last record: one that stopped
- * awaiting-human on the session driver (resumed by `af answer`, so only
- * with operator messages), or one that crash recovery recorded interrupted
- * with its session id. Null otherwise.
+ * Session the step resumes (both drivers), from its last record: one that
+ * stopped awaiting-human (resumed by `af answer`, so only with operator
+ * messages), one that crash recovery recorded interrupted with its session
+ * id, or an attempt killed by `send --mode now` (interrupted, with operator
+ * messages, and a session recorded since that attempt started). Null otherwise.
  */
-function stoppedSession(
+export function stoppedSession(
 	progress: WorkflowProgress,
 	step: string,
 	hasMessages: boolean,
+	lastSession: LastSession | null = null,
 ): { id: string; instruction: string } | null {
 	const last = [...progress.completedSteps].reverse().find((s) => s.name === step);
-	if (!last?.sessionId) return null;
-	if (last.status === STEP_STATUS.AWAITING_HUMAN && hasMessages) {
+	if (!last) return null;
+	if (last.status === STEP_STATUS.AWAITING_HUMAN && hasMessages && last.sessionId) {
 		return { id: last.sessionId, instruction: RESUME_INSTRUCTION };
 	}
-	if (last.status === STEP_STATUS.INTERRUPTED) {
-		return { id: last.sessionId, instruction: RECOVERY_INSTRUCTION };
-	}
+	if (last.status !== STEP_STATUS.INTERRUPTED) return null;
+	if (last.sessionId) return { id: last.sessionId, instruction: RECOVERY_INSTRUCTION };
+	const current =
+		lastSession && (!last.startedAt || lastSession.at >= last.startedAt) ? lastSession : null;
+	if (hasMessages && current) return { id: current.sessionId, instruction: RESUME_INSTRUCTION };
 	return null;
 }
 
@@ -112,24 +118,28 @@ export class PromptStepExecutor extends StepExecutor {
 			? await context.operatorMessages(step.name)
 			: "";
 		const driver = driverOptions(context, step.name);
-		// A session step that stopped awaiting-human (or was interrupted by a supervisor
-		// restart) resumes its own session instead of starting over
-		const resumed =
-			driver.driver === "session"
-				? stoppedSession(progress, step.name, operatorSection.length > 0)
-				: null;
+		// A step that stopped awaiting-human, was killed by `send --mode now` or was
+		// interrupted by a supervisor restart resumes its own session instead of
+		// starting over (Agent SDK resume, `claude --resume`, `codex exec resume`)
+		const resumed = stoppedSession(
+			progress,
+			step.name,
+			operatorSection.length > 0,
+			context.lastSession?.(step.name) ?? null,
+		);
 		let resumeSessionId = resumed?.id ?? null;
+		if (resumed) {
+			const message = `Resuming session ${resumed.id} on the ${driver.driver ?? "cli"} driver`;
+			logger.info(step.name, message);
+			console.info(message);
+		}
 		const freshPrompt = this.withMessages(operatorSection, prompt);
 		prompt = resumed ? `${operatorSection}${resumed.instruction}` : freshPrompt;
 
 		const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
 		const defaults = context.config.defaults as Record<string, unknown> | undefined;
 		const maxRetry = step.stepMaxRetry ?? (defaults?.maxRetry as number) ?? 3;
-		const bypassPermissions =
-			step.bypassPermissions ?? context.workflowSettings?.bypassPermissions ?? false;
-		const allowedTools = context.workflowSettings?.requiredTools?.length
-			? context.workflowSettings.requiredTools
-			: null;
+		const permissions = permissionOptions(context, step, logger, console);
 
 		// Always enable streaming when console is provided
 		const printOutput = true;
@@ -141,8 +151,7 @@ export class PromptStepExecutor extends StepExecutor {
 				model: resolveModel(context, step.model) ?? undefined,
 				timeout,
 				printOutput,
-				skipPermissions: bypassPermissions,
-				allowedTools,
+				...permissions,
 				console,
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,
@@ -176,7 +185,7 @@ export class PromptStepExecutor extends StepExecutor {
 					summary,
 					status,
 					status !== "halted",
-					driver.driver === "session" ? (result.sessionOutput?.sessionId ?? null) : null,
+					result.sessionOutput?.sessionId ?? null,
 				);
 				progress.status = workflowStatus;
 				console.info(`Step ${step.name} returned ${status}: ${summary}`);
@@ -222,6 +231,26 @@ export class PromptStepExecutor extends StepExecutor {
 				block?.status === "failed"
 					? [block.summary, ...(block.blockers ?? [])].join("\n")
 					: result.stderr;
+			if (resumeSessionId) {
+				// The resumed session failed (or no longer exists): restart the step from
+				// its boundary with the original prompt, without using a retry
+				const errorSummary = failure ? extractSummary(failure) : "Unknown error";
+				const message = `Resumed session ${resumeSessionId} failed, restarting the step: ${errorSummary}`;
+				logger.warning(step.name, message);
+				console.info(message);
+				await emitStepEvent(context, "step.retried", {
+					step: step.name,
+					reason: "resume-failed",
+					session_id: resumeSessionId,
+					attempt: attempt + 1,
+					max_attempts: maxRetry + 1,
+					error: errorSummary,
+				});
+				resumeSessionId = null;
+				prompt = freshPrompt;
+				attempt--;
+				continue;
+			}
 			if (attempt < maxRetry) {
 				const errorSummary = failure ? extractSummary(failure) : "Unknown error";
 				console.stepRetry(step.name, attempt + 1, maxRetry + 1, errorSummary);
@@ -230,12 +259,6 @@ export class PromptStepExecutor extends StepExecutor {
 				});
 				if (progress.currentStep) {
 					progress.currentStep.retryCount = attempt + 1;
-				}
-				if (resumeSessionId) {
-					// The resumed session failed: the retry restarts the step from its boundary
-					logger.warning(step.name, `Resumed session ${resumeSessionId} failed, restarting`);
-					resumeSessionId = null;
-					prompt = freshPrompt;
 				}
 				await emitStepEvent(context, "step.retried", {
 					step: step.name,

@@ -195,7 +195,7 @@ describe("session steps", () => {
 
 	it("denies a tool call with the operator's answer", async () => {
 		const seen: string[] = [];
-		fakeSdk.on("BUILD", toolScript("Write", { file_path: "x" }, seen));
+		fakeSdk.on("BUILD", toolScript("WebFetch", { url: "https://example.com" }, seen));
 		const { manager, client } = await startSupervisor();
 		const res = await dispatchRun(client, payload());
 		await waitForStatus(manager, res.run.id, "awaiting-human");

@@ -355,6 +355,7 @@ export function safetyCommit(
 		info: (step: string, message: string) => void;
 		warning: (step: string, message: string) => void;
 	},
+	message = "chore: auto-save uncommitted changes before worktree cleanup",
 ): SafetyCommitResult {
 	const status = runGit(["status", "--porcelain"], worktreePath, false);
 	if (!status.stdout.trim()) {
@@ -363,10 +364,7 @@ export function safetyCommit(
 
 	try {
 		runGit(["add", "-A"], worktreePath);
-		runGit(
-			["commit", "-m", "chore: auto-save uncommitted changes before worktree cleanup"],
-			worktreePath,
-		);
+		runGit(["commit", "-m", message], worktreePath);
 		logger?.info("worktree", `Safety commit created in worktree: ${worktreePath}`);
 		return { committed: true, failed: false };
 	} catch (e: unknown) {

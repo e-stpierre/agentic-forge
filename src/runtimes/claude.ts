@@ -35,6 +35,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Path to the bundled skills directory for --add-dir. */
 const SKILLS_DIR = path.join(__dirname, "..", "claude");
 
+/**
+ * `--settings` JSON for an allowlist: `{ permissions: { allow } }`, merged by
+ * Claude Code with the user and project settings. Null without tools.
+ */
+export function claudePermissionSettings(allowedTools: string[] | null | undefined): string | null {
+	if (!allowedTools || allowedTools.length === 0) return null;
+	return JSON.stringify({ permissions: { allow: allowedTools } });
+}
+
 /** Claude CLI adapter. */
 export class ClaudeAdapter implements RuntimeAdapter {
 	readonly id = "claude" as const;
@@ -119,10 +128,17 @@ export class ClaudeAdapter implements RuntimeAdapter {
 			args.push("--dangerously-skip-permissions");
 		}
 
-		if (options.allowedTools) {
-			for (const tool of options.allowedTools) {
-				args.push("--allowedTools", tool);
-			}
+		// The allowlist (`runtimes.claude.allow` + `required-tools`) as permission
+		// rules, the same set the session driver auto-approves
+		const settings = claudePermissionSettings(options.allowedTools);
+		if (settings) {
+			args.push("--settings", settings);
+		}
+
+		// Interrupt and resume: `send --mode now` and `af answer` continue the
+		// killed or stopped session with the message
+		if (options.resumeSessionId) {
+			args.push("--resume", options.resumeSessionId);
 		}
 
 		// Append agentic system prompt for standardized output format

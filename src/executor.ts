@@ -35,6 +35,7 @@ import { getAdapter, resolveRuntime } from "./runtimes/index.js";
 import type { SessionHost } from "./runtimes/session.js";
 import {
 	type InputAnswer,
+	type LastSession,
 	type StepContext,
 	type StepEventEmitter,
 	type StepResult,
@@ -104,6 +105,8 @@ export interface ExecutorOptions {
 	emitEvent?: StepEventEmitter | null;
 	/** See `StepContext.inputAnswer` (human-input steps). */
 	inputAnswer?: ((step: string, requestId: string) => Promise<InputAnswer | null>) | null;
+	/** See `StepContext.lastSession` (resume on the `cli` driver). */
+	lastSession?: ((step: string) => LastSession | null) | null;
 	/**
 	 * Called at each top-level step boundary, before the boundary stop check.
 	 * Returns true when an amendment is pending: the executor then runs the
@@ -236,6 +239,7 @@ export class WorkflowExecutor {
 				operatorMessages: this.options.operatorMessages ?? null,
 				sessionHost: this.options.sessionHost ?? null,
 				inputAnswer: this.options.inputAnswer ?? null,
+				lastSession: this.options.lastSession ?? null,
 				shouldStop: this.checkStop,
 				runtimeAdapter: childAdapter,
 			};
@@ -735,6 +739,7 @@ export class WorkflowExecutor {
 			recordResult: this.options.recordResult ?? null,
 			emitEvent: this.options.emitEvent ?? null,
 			inputAnswer: this.options.inputAnswer ?? null,
+			lastSession: this.options.lastSession ?? null,
 			shouldStop: this.checkStop,
 		};
 

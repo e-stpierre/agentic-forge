@@ -63,10 +63,15 @@ export class CodexAdapter implements RuntimeAdapter {
 		const { model, skipPermissions = false, cwd, outputDir } = options;
 		const sandbox = options.sandbox ?? "workspace-write";
 
+		const resume = options.resumeSessionId ?? null;
+
 		const args: string[] = ["exec", "--sandbox", sandbox];
+		// On resume, the `exec` options (sandbox, working dir, write roots) stay
+		// before the `resume` subcommand, which takes the session flags
+		const sessionArgs: string[] = resume ? [] : args;
 
 		if (options.printOutput) {
-			args.push("--json");
+			sessionArgs.push("--json");
 		}
 
 		if (cwd) {
@@ -74,11 +79,11 @@ export class CodexAdapter implements RuntimeAdapter {
 		}
 
 		if (skipPermissions) {
-			args.push("--dangerously-bypass-approvals-and-sandbox");
+			sessionArgs.push("--dangerously-bypass-approvals-and-sandbox");
 		}
 
 		if (model) {
-			args.push("--model", model);
+			sessionArgs.push("--model", model);
 		}
 
 		// Grant explicit write roots for Codex workspace-write runs. The workflow
@@ -102,9 +107,16 @@ export class CodexAdapter implements RuntimeAdapter {
 			env.OTEL_RESOURCE_ATTRIBUTES = `session=${options.workflowId}`;
 		}
 
-		// System prompt is prepended to the user prompt (Codex has no --append-system-prompt flag)
-		const systemPrompt = options.appendSystemPrompt ? getAgenticSystemPrompt() : null;
+		// System prompt is prepended to the user prompt (Codex has no --append-system-prompt
+		// flag); a resumed session already has it
+		const systemPrompt = options.appendSystemPrompt && !resume ? getAgenticSystemPrompt() : null;
 		const prompt = systemPrompt ? `${systemPrompt}\n\n${options.prompt}` : options.prompt;
+
+		// Interrupt and resume: `codex exec resume <thread id> <prompt>` continues the
+		// killed session; when it fails (unknown thread), the prompt step restarts cold
+		if (resume) {
+			args.push("resume", ...sessionArgs, resume);
+		}
 
 		// Codex exec takes the prompt as a positional argument, not via stdin
 		args.push(prompt);
