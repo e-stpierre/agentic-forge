@@ -21,19 +21,19 @@ All settings are optional with sensible defaults.
 
 ### Global Settings
 
-| Key                  | Type   | Default    | Valid Values                 | Description                                      |
-| -------------------- | ------ | ---------- | ---------------------------- | ------------------------------------------------ |
-| `max-retry`          | int    | `3`        | 0+                           | Max retry attempts for failed steps              |
-| `timeout-minutes`    | int    | `60`       | 1+                           | Max time for entire workflow (minutes)           |
-| `track-progress`     | bool   | `true`     | true/false                   | Track progress in progress.json                  |
-| `autofix`            | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                          |
-| `terminal-output`    | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream) |
-| `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts (warns per step)  |
-| `strict-mode`        | bool   | `false`    | true/false                   | Fail on undefined template variables             |
-| `model`              | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                      |
-| `runtime`            | string | `null`     | claude, codex                | Default coding agent runtime for all steps       |
-| `required-tools`     | list   | `[]`       | Tool names                   | Added to `runtimes.claude.allow` (no prompting)  |
-| `amend.step`         | string | none       | A top-level step name        | Step `af amend` runs before the next step        |
+| Key                  | Type   | Default    | Valid Values                 | Description                                                         |
+| -------------------- | ------ | ---------- | ---------------------------- | ------------------------------------------------------------------- |
+| `max-retry`          | int    | `null`     | 0+                           | Max retry attempts for failed steps (unset: `defaults.maxRetry`, 3) |
+| `timeout-minutes`    | int    | `60`       | 1+                           | Max time for entire workflow (minutes)                              |
+| `track-progress`     | bool   | `true`     | true/false                   | Track progress in progress.json                                     |
+| `autofix`            | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                                             |
+| `terminal-output`    | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream)                    |
+| `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts (warns per step)                     |
+| `strict-mode`        | bool   | `false`    | true/false                   | Fail on undefined template variables                                |
+| `model`              | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                                         |
+| `runtime`            | string | `null`     | claude, codex                | Default coding agent runtime for all steps                          |
+| `required-tools`     | list   | `[]`       | Tool names                   | Added to `runtimes.claude.allow` (no prompting)                     |
+| `amend.step`         | string | none       | A top-level step name        | Step `af amend` runs before the next step                           |
 
 **Runtime resolution order:** `step.runtime` > `--runtime` CLI flag > `settings.runtime` > `config.defaults.runtime` > `"claude"`
 
@@ -44,7 +44,7 @@ All settings are optional with sensible defaults.
 
 **Per-runtime default models:** Each runtime resolves its own default model from config (`claude.model` or `codex.model`). Steps that use a non-default runtime do not need an explicit model: `settings.model` is deliberately **not** inherited across runtimes, so a codex step in a claude workflow falls back to `codex.model` or to no `--model` flag at all.
 
-**Note:** Skill invocations (`/sdlc-plan`, `/git-commit`, etc.) only work with `runtime: claude`. Codex does not support bundled skill injection.
+**Note:** `skill` steps and slash-command prompts only work with `runtime: claude`. agentic-forge bundles no execution skills: they come from the user's installed plugins and `.claude/skills/` directories.
 
 ### Worktree Settings
 
@@ -148,10 +148,10 @@ Execute a prompt in a coding agent session. The most common step type.
 
 **Specific properties:**
 
-| Key      | Type   | Required | Description                                     |
-| -------- | ------ | -------- | ----------------------------------------------- |
-| `prompt` | string | Yes      | The prompt text, skill invocation, or template  |
-| `agent`  | string | No       | Path to an agent file to load before the prompt |
+| Key      | Type   | Required | Description                                                                                                                        |
+| -------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `prompt` | string | Yes      | The prompt text, skill invocation, or template                                                                                     |
+| `agent`  | string | No       | Path to an agent file prepended to the prompt, relative to the workflow file, then the repo root (agentic-forge bundles no agents) |
 
 ```yaml
 # Simple prompt
@@ -241,11 +241,11 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
   steps:
     - name: security-scan
       type: prompt
-      prompt: /analyze security
+      prompt: Review the code for security issues and write them to {{ output_dir }}/security.md.
       on-error: skip
     - name: style-check
       type: prompt
-      prompt: /analyze style
+      prompt: Review the code for style issues and write them to {{ output_dir }}/style.md.
       on-error: skip
 ```
 
@@ -277,7 +277,7 @@ Branch execution based on a Nunjucks condition expression.
   then:
     - name: open-pr
       type: prompt
-      prompt: /git-pr
+      prompt: Push the branch and open a pull request with `gh pr create --fill`.
   else:
     - name: skip-pr
       type: prompt
@@ -556,9 +556,6 @@ agentic-forge workflows [-v]
 # Copy bundled workflows to local project
 agentic-forge init [--force] [--list]
 
-# Print path to bundled workflow skills directory
-agentic-forge skills-dir
-
 # Print path to interactive authoring skills directory
 agentic-forge authoring-dir
 
@@ -568,42 +565,34 @@ agentic-forge config set <key> <value>
 agentic-forge configure
 ```
 
-## Available Skills for Prompt Steps
+## Skills
 
-Skills only work with `runtime: claude` (the default). The Codex runtime does not support bundled skill injection.
+agentic-forge bundles no execution skills. Workflows call the skills the user installed (Claude Code plugins, `~/.claude/skills/`, the repo's `.claude/skills/`), with a `skill` step (`skill: <plugin>:<skill>`, preferred: it passes `--run-dir` and `--config-snapshot` and chains the result block `outputs`) or a slash command in a prompt step. Skills only work with `runtime: claude` (the default).
 
-Always use fully qualified names in workflows:
+Use fully qualified `<plugin>:<skill>` names for plugin skills. For example, with the esp-skills plugin installed (`/plugin install esp-skills@esp`):
 
-| Skill               | Description                   |
-| ------------------- | ----------------------------- |
-| `/sdlc-plan`        | Generate implementation plan  |
-| `/sdlc-review`      | Review implementation quality |
-| `/analyze bug`      | Find bugs and logic errors    |
-| `/analyze debt`     | Identify technical debt       |
-| `/analyze doc`      | Check documentation           |
-| `/analyze security` | Security scan                 |
-| `/analyze style`    | Code style check              |
-| `/git-branch`       | Create git branch             |
-| `/git-commit`       | Create commit                 |
-| `/git-pr`           | Create pull request           |
+```yaml
+- name: plan
+  type: skill
+  skill: esp-skills:esp-plan
+  args: "{{ variables.task }}"
+```
+
+When the user has no skill pack, write the instructions in a prompt step instead (the bundled demos do this for git branches and commits).
 
 ## Bundled Workflows
 
-Available via `agentic-forge init` or `agentic-forge run <name>`:
+Generic demos only (no skill calls), available via `agentic-forge init` or `agentic-forge run <name>`:
 
-| Workflow                  | Description                                                             |
-| ------------------------- | ----------------------------------------------------------------------- |
-| `claude-demo`             | Validation workflow for installation testing (Claude runtime)           |
-| `codex-demo`              | Validation workflow for installation testing (Codex runtime)            |
-| `multi-demo`              | Demonstrates mixed-runtime execution at step level                      |
-| `one-shot`                | Complete a single task with optional PR                                 |
-| `plan-build-review`       | Full SDLC: plan -> implement -> review -> fix -> PR                     |
-| `multi-plan-build-review` | Full SDLC with mixed Claude/Codex runtimes per phase                    |
-| `ralph-loop`              | Generic iterative loop for any task                                     |
-| `analyze-codebase`        | Parallel analysis (5 types) with optional autofix, independent branches |
-| `analyze-single`          | Single analysis type with optional autofix                              |
-| `permission-test-claude`  | Test Claude file permissions with and without worktree                  |
-| `permission-test-codex`   | Test Codex file permissions with and without worktree                   |
+| Workflow                 | Description                                                   |
+| ------------------------ | ------------------------------------------------------------- |
+| `claude-demo`            | Validation workflow for installation testing (Claude runtime) |
+| `codex-demo`             | Validation workflow for installation testing (Codex runtime)  |
+| `multi-demo`             | Demonstrates mixed-runtime execution at step level            |
+| `ralph-loop`             | Generic iterative loop for any task                           |
+| `plan-loop`              | Build a checkbox plan, then complete one task per iteration   |
+| `permission-test-claude` | Test Claude file permissions with and without worktree        |
+| `permission-test-codex`  | Test Codex file permissions with and without worktree         |
 
 ## Validation Checklist
 
@@ -631,7 +620,8 @@ When validating a workflow, check for these issues:
 - `completion-promise` missing on ralph-loop (loop will only stop at max-iterations)
 - No `timeout-minutes` on long-running steps
 - `on-error: fail` without `max-retry` (any failure stops the workflow)
-- Non-qualified skill names in prompt steps (e.g., `/sdlc-plan` instead of `/sdlc-plan`)
+- Non-qualified plugin skill names (e.g., `skill: esp-plan` instead of `skill: esp-skills:esp-plan`)
+- `agent:` file that does not exist next to the workflow file or in the repo root (it is silently ignored)
 - Step name not in kebab-case
 - Variable name not in snake_case
 - Skill invocation used with `runtime: codex` (skills not supported by Codex)
