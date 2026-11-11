@@ -149,7 +149,10 @@ export class PromptStepExecutor extends StepExecutor {
 		const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
 		const defaults = context.config.defaults as Record<string, unknown> | undefined;
 		const maxRetry =
-			step.stepMaxRetry ?? context.workflowSettings?.maxRetry ?? (defaults?.maxRetry as number) ?? 3;
+			step.stepMaxRetry ??
+			context.workflowSettings?.maxRetry ??
+			(defaults?.maxRetry as number) ??
+			3;
 		const permissions = permissionOptions(context, step, logger, console);
 
 		// Always enable streaming when console is provided
