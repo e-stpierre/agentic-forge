@@ -131,7 +131,7 @@ export function cmdWorkflows(options: { verbose?: boolean }): void {
 	process.stdout.write("  agentic-forge run <workflow> key=value [key=value ...]\n");
 	process.stdout.write("  agentic-forge run <workflow> --var key=value\n\n");
 	process.stdout.write("Examples:\n");
-	process.stdout.write('  agentic-forge run one-shot task="Add login button"\n');
-	process.stdout.write("  agentic-forge run analyze-single analysis_type=bug\n");
-	process.stdout.write('  agentic-forge run plan-build-review task="Refactor auth"\n');
+	process.stdout.write("  agentic-forge run claude-demo\n");
+	process.stdout.write('  agentic-forge run plan-loop input="Add a login button"\n');
+	process.stdout.write('  agentic-forge run ralph-loop task="Fix the failing tests"\n');
 }

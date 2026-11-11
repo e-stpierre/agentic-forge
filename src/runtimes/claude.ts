@@ -1,8 +1,6 @@
 /** Claude runtime adapter. */
 
 import { existsSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { ClaudeSession } from "./claude-session.js";
 import { claudeStreamEvents } from "./claude-stream.js";
@@ -29,11 +27,6 @@ import {
 	getExecutable,
 	parseStreamJsonLine,
 } from "./utils.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-/** Path to the bundled skills directory for --add-dir. */
-const SKILLS_DIR = path.join(__dirname, "..", "claude");
 
 /**
  * `--settings` JSON for an allowlist: `{ permissions: { allow } }`, merged by
@@ -67,7 +60,6 @@ export class ClaudeAdapter implements RuntimeAdapter {
 	/** Same directories, model, permissions and system prompt as `buildCommand`. */
 	sessionOptions(options: RuntimeRunOptions): SessionStartOptions {
 		const directories: string[] = [];
-		if (existsSync(SKILLS_DIR)) directories.push(SKILLS_DIR);
 		if (options.outputDir && existsSync(options.outputDir)) directories.push(options.outputDir);
 		if (options.cwd && existsSync(options.cwd)) directories.push(options.cwd);
 		const env: NodeJS.ProcessEnv = { ...(options.env ?? process.env) };
@@ -96,11 +88,6 @@ export class ClaudeAdapter implements RuntimeAdapter {
 		} = options;
 
 		const args: string[] = ["--print"];
-
-		// Add bundled skills directory for skill discovery
-		if (existsSync(SKILLS_DIR)) {
-			args.push("--add-dir", SKILLS_DIR);
-		}
 
 		// Add output directory so Claude can write workflow outputs there
 		if (outputDir && existsSync(outputDir)) {

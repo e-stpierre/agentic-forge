@@ -23,7 +23,7 @@
     "agentic-forge-banner.png"
   ],
   "scripts": {
-    "build": "tsc && node scripts/copy-assets.js",
+    "build": "node scripts/clean-dist.js && tsc && node scripts/copy-assets.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "biome check . && prettier --check . && markdownlint-cli2",

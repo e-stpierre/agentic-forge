@@ -109,7 +109,7 @@ steps:
       - If there are already 3 or more facts, output the completion JSON immediately without adding more
       - If there are 0-1 facts, add ONE fact and then STOP (do not output completion JSON yet)
 
-  - name: git-branch
+  - name: create-branch
     type: prompt
     prompt: |
       Create a new git branch for the codex demo.
@@ -122,7 +122,7 @@ steps:
 
       Report the current branch name.
 
-  - name: git-commit
+  - name: commit-files
     type: prompt
     prompt: |
       Commit the demo files to the repository.

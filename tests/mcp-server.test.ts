@@ -327,7 +327,7 @@ describe("af_dispatch", () => {
 		expect(unknown.isError).toBe(true);
 		expect(unknown.text).toContain("Workflow not found: no-such-flow");
 		expect(unknown.text).toContain("two-steps");
-		expect(unknown.text).toContain("one-shot");
+		expect(unknown.text).toContain("ralph-loop");
 		const noRepo = await callTool(mcp, "af_dispatch", {
 			workflow: "two-steps",
 			repo: path.join(repo, "missing"),

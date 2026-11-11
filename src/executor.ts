@@ -722,6 +722,7 @@ export class WorkflowExecutor {
 
 		const context: StepContext = {
 			repoRoot: this.repoRoot,
+			workflowDir: progress.workflowFile ? path.dirname(progress.workflowFile) : null,
 			config: this.config,
 			renderer: this.renderer,
 			runtimeAdapter,

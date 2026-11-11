@@ -157,7 +157,7 @@ export class WorkflowParser {
 
 	private parseSettings(data: Record<string, unknown>): WorkflowSettings {
 		return {
-			maxRetry: (data["max-retry"] as number) ?? 3,
+			maxRetry: (data["max-retry"] as number) ?? null,
 			timeoutMinutes: (data["timeout-minutes"] as number) ?? 60,
 			trackProgress: (data["track-progress"] as boolean) ?? true,
 			autofix: (data.autofix as string) ?? "none",

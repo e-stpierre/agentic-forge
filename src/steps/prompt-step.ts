@@ -2,7 +2,6 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { getSandboxMode } from "../config.js";
 import type { ConsoleOutput } from "../console.js";
@@ -30,8 +29,6 @@ import {
 	permissionOptions,
 	resolveModel,
 } from "./base.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Result statuses that stop the run, with the step and workflow status they record. */
 const STOP_STATUSES: Record<string, { stepStatus: string; workflowStatus: string }> = {
@@ -77,15 +74,28 @@ export function stoppedSession(
 	return null;
 }
 
-/** Prepends the step's `agent:` file to a prompt (fallback to bundled agents). */
+/**
+ * Path of the step's `agent:` file: relative to the workflow file, then to
+ * the repo root (an absolute path is used as is). Null when neither exists.
+ */
+export function resolveAgentPath(agent: string, context: StepContext): string | null {
+	if (path.isAbsolute(agent)) return existsSync(agent) ? agent : null;
+	const bases = [context.workflowDir, context.repoRoot].filter((dir): dir is string => !!dir);
+	for (const base of bases) {
+		const candidate = path.resolve(base, agent);
+		if (existsSync(candidate)) return candidate;
+	}
+	return null;
+}
+
+/** Prepends the step's `agent:` file to a prompt. A missing file is ignored. */
 export function withAgent(step: StepDefinition, context: StepContext, prompt: string): string {
 	if (!step.agent) return prompt;
-	let agentPath = path.join(context.repoRoot, step.agent);
-	if (!existsSync(agentPath)) {
-		agentPath = path.join(__dirname, "..", "agents", path.basename(step.agent));
-	}
-	if (!existsSync(agentPath)) return prompt;
-	return `${readFileSync(agentPath, "utf-8")}\n\n${prompt}`;
+	const agentPath = resolveAgentPath(step.agent, context);
+	if (!agentPath) return prompt;
+	return `${readFileSync(agentPath, "utf-8")}
+
+${prompt}`;
 }
 
 export class PromptStepExecutor extends StepExecutor {
@@ -138,7 +148,8 @@ export class PromptStepExecutor extends StepExecutor {
 
 		const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
 		const defaults = context.config.defaults as Record<string, unknown> | undefined;
-		const maxRetry = step.stepMaxRetry ?? (defaults?.maxRetry as number) ?? 3;
+		const maxRetry =
+			step.stepMaxRetry ?? context.workflowSettings?.maxRetry ?? (defaults?.maxRetry as number) ?? 3;
 		const permissions = permissionOptions(context, step, logger, console);
 
 		// Always enable streaming when console is provided

@@ -20,6 +20,8 @@ import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../type
 
 export interface StepContext {
 	repoRoot: string;
+	/** Directory of the workflow file, used to resolve `agent:` paths. Null when unknown. */
+	workflowDir?: string | null;
 	config: Record<string, unknown>;
 	renderer: TemplateRenderer;
 	runtimeAdapter: RuntimeAdapter;

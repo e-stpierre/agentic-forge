@@ -47,7 +47,8 @@ export interface WorktreeSettings {
 }
 
 export interface WorkflowSettings {
-	maxRetry: number;
+	/** `settings.max-retry`; null when unset, so `defaults.maxRetry` applies. */
+	maxRetry: number | null;
 	timeoutMinutes: number;
 	trackProgress: boolean;
 	autofix: string;

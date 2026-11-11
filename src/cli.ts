@@ -40,7 +40,6 @@ import {
 	cmdRun,
 	cmdSend,
 	cmdServe,
-	cmdSkillsDir,
 	cmdStatus,
 	cmdVersion,
 	cmdWorkflows,
@@ -389,14 +388,6 @@ program
 	.description("Show resolved path configuration (global, local, and bundled directories)")
 	.action(() => {
 		cmdPaths();
-	});
-
-// skills-dir command
-program
-	.command("skills-dir")
-	.description("Print path to bundled skills directory")
-	.action(() => {
-		cmdSkillsDir();
 	});
 
 // authoring-dir command
