@@ -30,6 +30,7 @@ import { getGlobalRoot, resolveRunsRoot, runDatePrefix, sanitizeSlug } from "../
 import {
 	STEP_STATUS,
 	WORKFLOW_STATUS,
+	isStepDone,
 	loadProgress,
 	prepareForResume,
 	saveProgress,
@@ -103,6 +104,8 @@ type StopRequest = {
 	status: "paused" | "canceled";
 	now: boolean;
 	restart?: { message: string };
+	/** Supervisor shutdown: leave the run `running` for the next supervisor to recover. */
+	shutdown?: boolean;
 };
 
 /** Statuses `af cancel` accepts. */
@@ -313,9 +316,10 @@ export class RunManager {
 			.length;
 	}
 
-	/** Registers the `/v1/runs` routes and the active-run count on a supervisor. */
+	/** Registers the `/v1/runs` routes, the active-run count and the shutdown hook on a supervisor. */
 	attach(supervisor: Supervisor): void {
 		supervisor.activeRuns = () => this.activeCount();
+		supervisor.onStop(() => this.shutdown());
 		this.supervisorVersion = supervisor.version;
 		const wrap =
 			<T>(fn: () => Promise<T> | T, status = 200) =>
@@ -404,6 +408,21 @@ export class RunManager {
 		this.closed = true;
 		this.closing.abort();
 		for (const id of [...this.timers.keys()]) this.clearTimer(id);
+	}
+
+	/**
+	 * Supervisor shutdown: stops scheduling, kills the process tree of every
+	 * executing run and waits for the executions to end. The runs stay
+	 * `running` on disk, so the next supervisor recovers them (interrupted
+	 * step rerun) instead of a second supervisor executing them concurrently.
+	 */
+	async shutdown(): Promise<void> {
+		this.close();
+		for (const id of this.executing.keys()) {
+			this.stopRequests.set(id, { status: "paused", now: true, shutdown: true });
+			this.controllers.get(id)?.abort();
+		}
+		await this.idle();
 	}
 
 	/** Resolves when no run is executing (tests). */
@@ -1313,6 +1332,11 @@ export class RunManager {
 			);
 			const status = toRunStatus(progress);
 			const request = this.stopRequests.get(entry.id);
+			if (request?.shutdown) {
+				// Left `running`: the next supervisor recovers the interrupted step.
+				this.log(`Run ${entry.id}: interrupted by supervisor shutdown`);
+				return;
+			}
 			if (request?.restart && status === "paused") {
 				// send --mode now: rerun the interrupted step at once with the message
 				await store.updateRun({ status: "queued" });
@@ -1344,6 +1368,7 @@ export class RunManager {
 		} catch (err) {
 			const message = (err as Error).message;
 			this.log(`Run ${entry.id} failed: ${message}`);
+			if (this.stopRequests.get(entry.id)?.shutdown) return;
 			if (store.exists()) await this.setStatus(entry, "failed", { error: message });
 		} finally {
 			this.stopRequests.delete(entry.id);
@@ -1423,6 +1448,15 @@ export class RunManager {
 					humanInput: null,
 				});
 			}
+			// A graceful shutdown already recorded the step it stopped as interrupted
+			const last = progress.completedSteps.at(-1);
+			if (
+				last?.status === STEP_INTERRUPTED &&
+				topLevel.includes(last.name) &&
+				!interrupted.includes(last.name)
+			) {
+				interrupted.push(last.name);
+			}
 			prepareForResume(progress);
 			saveProgress(progress, entry.dir);
 		}
@@ -1431,12 +1465,7 @@ export class RunManager {
 		await this.registry.update(entry.id, { status: "queued" });
 		const resumeFrom =
 			topLevel.find(
-				(name) =>
-					!progress?.completedSteps.some(
-						(s) =>
-							s.name === name &&
-							(s.status === STEP_STATUS.COMPLETED || s.status === STEP_STATUS.SKIPPED),
-					),
+				(name) => !progress?.completedSteps.some((s) => s.name === name && isStepDone(s)),
 			) ?? null;
 		await store.appendEventOnce(
 			"run.recovered",

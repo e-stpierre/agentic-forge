@@ -121,6 +121,8 @@ export interface StepProgress {
 	sessionId?: string | null;
 	/** Status of the step's contract result block, when it printed one. */
 	resultStatus?: string | null;
+	/** Completion invalidated by `af retry-step`: the step must run again. */
+	superseded?: boolean;
 }
 
 export interface ParallelBranch {

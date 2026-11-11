@@ -5,6 +5,7 @@ import type { ConsoleOutput } from "../console.js";
 import { latestPlan } from "../contract/plan.js";
 import type { ResultBlock } from "../contract/result.js";
 import type { WorkflowLogger } from "../logging/logger.js";
+import { STEP_STATUS, WORKFLOW_STATUS, updateStepStopped } from "../progress.js";
 import type { TemplateRenderer } from "../renderer.js";
 import type { RuntimeAdapter, RuntimeId } from "../runtimes/index.js";
 import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../types.js";
@@ -78,6 +79,44 @@ export async function emitStepEvent(
 
 /** Thrown or reported when a step was stopped through `StepContext.signal`. */
 export const STEP_INTERRUPTED_ERROR = "Step interrupted by operator";
+
+/** Workflow statuses a step result can stop the run with (not failures). */
+const CHILD_STOP_STATUSES: Record<string, { stepStatus: string; resultStatus: string }> = {
+	[WORKFLOW_STATUS.AWAITING_HUMAN]: {
+		stepStatus: STEP_STATUS.AWAITING_HUMAN,
+		resultStatus: "awaiting-human",
+	},
+	[WORKFLOW_STATUS.HALTED]: { stepStatus: STEP_STATUS.HALTED, resultStatus: "halted" },
+	[WORKFLOW_STATUS.BLOCKED]: { stepStatus: STEP_STATUS.ESCALATED, resultStatus: "escalate" },
+};
+
+/**
+ * In a composite step (serial, conditional): when a child stopped the run
+ * with `awaiting-human`, `halted` or `escalate`, records the composite step
+ * with the same stop status and keeps the workflow status, instead of
+ * turning it into a failure. Returns the result to return, or null when the
+ * child failed.
+ */
+export function propagateChildStop(
+	progress: WorkflowProgress,
+	stepName: string,
+	childName: string,
+	console: ConsoleOutput,
+): StepResult | null {
+	const stop = CHILD_STOP_STATUSES[progress.status];
+	if (!stop) return null;
+	const summary = `Step '${childName}' returned ${stop.resultStatus}`;
+	updateStepStopped(
+		progress,
+		stepName,
+		stop.stepStatus,
+		summary,
+		stop.resultStatus,
+		stop.resultStatus !== "halted",
+	);
+	console.info(summary);
+	return { success: false, outputSummary: summary, error: summary };
+}
 
 /** Prepends pending operator messages to a prompt. */
 export async function withOperatorMessages(

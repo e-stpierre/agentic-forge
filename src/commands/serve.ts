@@ -69,8 +69,8 @@ async function runForeground(port: number | undefined): Promise<void> {
 		}
 		throw err;
 	}
+	// The supervisor's stop hook ends the run manager's executions.
 	const onSignal = () => {
-		runs.close();
 		void supervisor.stop();
 	};
 	process.on("SIGINT", onSignal);

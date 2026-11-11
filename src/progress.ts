@@ -182,6 +182,24 @@ export function updateStepInterrupted(
  * (`awaiting-human`, `halted`, `escalate`). Except for `halted`, the step is
  * re-pended so a resume runs it again.
  */
+/** A completed or skipped step record that `af retry-step` did not invalidate. */
+export function isStepDone(record: StepProgress): boolean {
+	return (
+		(record.status === STEP_STATUS.COMPLETED || record.status === STEP_STATUS.SKIPPED) &&
+		!record.superseded
+	);
+}
+
+/**
+ * Invalidates the completions of `stepNames` durably (they rerun on every
+ * later resume until they complete again), then lets `retryFrom` be cleared.
+ */
+export function supersedeCompletions(progress: WorkflowProgress, stepNames: Set<string>): void {
+	for (const record of progress.completedSteps) {
+		if (stepNames.has(record.name) && isStepDone(record)) record.superseded = true;
+	}
+}
+
 export function updateStepStopped(
 	progress: WorkflowProgress,
 	stepName: string,
@@ -347,6 +365,7 @@ export function progressToDict(progress: WorkflowProgress): Record<string, unkno
 			error: s.error,
 			human_input: s.humanInput,
 			...(s.resultStatus ? { result_status: s.resultStatus } : {}),
+			...(s.superseded ? { superseded: true } : {}),
 		})),
 		pending_steps: progress.pendingSteps,
 		running_steps: progress.runningSteps,
@@ -377,6 +396,7 @@ export function dictToProgress(data: Record<string, unknown>): WorkflowProgress 
 			error: (s.error as string) ?? null,
 			humanInput: (s.human_input as string) ?? null,
 			...(typeof s.result_status === "string" ? { resultStatus: s.result_status } : {}),
+			...(s.superseded === true ? { superseded: true } : {}),
 		}),
 	);
 

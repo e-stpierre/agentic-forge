@@ -77,6 +77,7 @@ export class Supervisor {
 	/** Number of active runs; replaced by the run registry (ORC-006). */
 	activeRuns: () => number = () => 0;
 	private discoveryData: SupervisorDiscovery | null = null;
+	private readonly stopHooks: Array<() => Promise<void> | void> = [];
 
 	constructor(options: SupervisorOptions) {
 		this.root = options.root ?? getGlobalRoot();
@@ -120,6 +121,15 @@ export class Supervisor {
 
 	get discovery(): SupervisorDiscovery | null {
 		return this.discoveryData;
+	}
+
+	/**
+	 * Registers a hook that runs on stop, after the server stops listening and
+	 * before the discovery file and pidfile are removed (the run manager ends
+	 * its executions there, so no other supervisor can start meanwhile).
+	 */
+	onStop(hook: () => Promise<void> | void): void {
+		this.stopHooks.push(hook);
 	}
 
 	/** Registers a route. `pattern` may contain `:name` segments. */
@@ -191,12 +201,19 @@ export class Supervisor {
 		return null;
 	}
 
-	/** Stops listening and removes the discovery file and pidfile. Idempotent. */
+	/** Stops listening, runs the stop hooks, then removes the discovery file and pidfile. Idempotent. */
 	stop(): Promise<void> {
 		if (this.stopping) return this.stopping;
 		this.stopping = (async () => {
 			this.server.closeAllConnections?.();
 			await new Promise<void>((resolve) => this.server.close(() => resolve()));
+			for (const hook of this.stopHooks) {
+				try {
+					await hook();
+				} catch (err) {
+					this.log(`Stop hook failed: ${(err as Error).message}`);
+				}
+			}
 			if (this.discoveryData) removeSupervisorFiles(process.pid, this.root);
 			this.log("Supervisor stopped");
 			this.stoppedResolve();

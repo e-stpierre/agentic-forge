@@ -23,7 +23,9 @@ import {
 	WORKFLOW_STATUS,
 	createProgress,
 	generateWorkflowId,
+	isStepDone,
 	saveProgress,
+	supersedeCompletions,
 	updateStepFailed,
 	updateStepInterrupted,
 	updateStepStarted,
@@ -408,7 +410,7 @@ export class WorkflowExecutor {
 		);
 		const completedStepNames = new Set(
 			progress.completedSteps
-				.filter((s) => s.status === STEP_STATUS.COMPLETED || s.status === STEP_STATUS.SKIPPED)
+				.filter(isStepDone)
 				.map((s) => s.name)
 				.filter((name) => !rerun.has(name)),
 		);
@@ -444,6 +446,9 @@ export class WorkflowExecutor {
 				}
 
 				if (progress.retryFrom === step.name) {
+					// Invalidate the old completions before dropping the retry boundary,
+					// so a stop during the rerun does not resume past these steps.
+					supersedeCompletions(progress, rerun);
 					progress.retryFrom = null;
 					saveProgress(progress, outputDir);
 				}

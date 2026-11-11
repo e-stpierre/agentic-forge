@@ -618,3 +618,95 @@ describe("af reprioritize", () => {
 		});
 	});
 });
+
+describe("review fixes", () => {
+	it("supervisor shutdown ends executing runs and leaves them for recovery", async () => {
+		const first = await startSupervisor();
+		fakeRuntime.on("BUILD", "hang");
+		const res = await dispatchRun(first.client, payload());
+		await fakeRuntime.waitFor("BUILD");
+		await first.supervisor.stop();
+		const store = new RunStore(res.dir);
+		expect(fakeRuntime.calls.find((c) => c.prompt.includes("BUILD"))?.aborted).toBe(true);
+		expect(store.readRun().status).toBe("running");
+
+		fakeRuntime.reset();
+		const second = await startSupervisor();
+		await second.manager.idle();
+		expect(store.readRun().status).toBe("done");
+		expect(prompts("PLAN")).toHaveLength(0);
+		expect(prompts("BUILD")).toHaveLength(1);
+		expect(types(store)).toContain("run.recovered");
+	});
+
+	it("keeps awaiting-human from a step nested in a serial step", async () => {
+		const { manager, client } = await startSupervisor();
+		fakeRuntime.on("BUILD", (o) =>
+			reply(
+				o,
+				block({ status: "awaiting-human", summary: "Need a choice.", needs_input: QUESTION }),
+				10,
+			),
+		);
+		const nested = [
+			"name: nested",
+			'version: "1.0"',
+			"settings:",
+			"  max-retry: 0",
+			"steps:",
+			"  - name: group",
+			"    type: serial",
+			"    steps:",
+			"      - name: build",
+			"        type: prompt",
+			'        prompt: "BUILD"',
+			"  - name: review",
+			"    type: prompt",
+			'    prompt: "REVIEW"',
+			"",
+		].join("\n");
+		const res = await dispatchRun(client, payload(nested));
+		await manager.idle();
+		const store = new RunStore(res.dir);
+		expect(store.readRun().status).toBe("awaiting-human");
+		expect(pendingInput(store.readRun())?.request.id).toBe("q1");
+		expect(prompts("REVIEW")).toHaveLength(0);
+	});
+
+	it("retry-step keeps the invalidation when the rerun stops before completing", async () => {
+		const { manager, client } = await startSupervisor();
+		fakeRuntime.on("REVIEW", (o) => reply(o, "", 1));
+		const res = await dispatchRun(client, payload());
+		await manager.idle();
+		const store = new RunStore(res.dir);
+		expect(store.readRun().status).toBe("failed");
+
+		fakeRuntime.reset();
+		let asks = 0;
+		fakeRuntime.on("BUILD", (o) => {
+			asks++;
+			if (asks === 1) {
+				return reply(
+					o,
+					block({ status: "awaiting-human", summary: "Need a choice.", needs_input: QUESTION }),
+					10,
+				);
+			}
+			return reply(o, block({ status: "done", summary: "Built." }));
+		});
+		await client.request("POST", `/v1/runs/${res.run.id}/retry`, { step: "build" });
+		await manager.idle();
+		expect(store.readRun().status).toBe("awaiting-human");
+
+		await client.request("POST", `/v1/runs/${res.run.id}/answer`, {
+			request_id: "q1",
+			answer: "a",
+		});
+		await manager.idle();
+		expect(store.readRun().status).toBe("done");
+		expect(prompts("PLAN")).toHaveLength(0);
+		expect(prompts("BUILD")).toHaveLength(2);
+		expect(prompts("REVIEW")).toHaveLength(1);
+		expectValidRunDir(res.dir);
+	});
+});

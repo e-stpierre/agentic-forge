@@ -10,6 +10,7 @@ import {
 	StepExecutor,
 	type StepResult,
 	buildTemplateContext,
+	propagateChildStop,
 } from "./base.js";
 
 export class ConditionalStepExecutor extends StepExecutor {
@@ -53,6 +54,8 @@ export class ConditionalStepExecutor extends StepExecutor {
 				const result = await this.branchExecutor(subStep, progress, context, logger, console);
 
 				if (!result.success) {
+					const stopped = propagateChildStop(progress, step.name, subStep.name, console);
+					if (stopped) return stopped;
 					logger.warning(step.name, `Conditional '${branchName}' branch stopped due to failure`);
 					const errorMsg = `Step '${subStep.name}' failed: ${result.error}`;
 					updateStepFailed(progress, step.name, errorMsg);
