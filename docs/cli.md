@@ -25,6 +25,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `config`        | Get or set configuration values                      |
 | `configure`     | Display current configuration                        |
 | `workflows`     | List available workflows with descriptions           |
+| `doctor`        | Check runtimes, auth, runs root and skill packs      |
 | `paths`         | Show resolved directory and config paths             |
 | `serve`         | Run, start, inspect or stop the supervisor           |
 | `mcp`           | Run a stdio MCP server to dispatch and steer runs    |
@@ -39,6 +40,10 @@ Dispatch a workflow to the supervisor with optional key=value variables, and pri
 The client resolves everything the run needs: the workflow file (path and contents), the config of the current directory (defaults, global, local), and an allowlisted set of environment variables (`PATH`, system variables, `CLAUDE_*`, `CODEX_*`, `GH_*`, `ANTHROPIC_*`, `OPENAI_*`, plus `supervisor.env_passthrough`). The supervisor stores them in the run directory and never uses its own working directory, so a run dispatched from one repository uses that repository's config even when the supervisor was started elsewhere. The supervisor is started on demand when none is running.
 
 The run goes through the supervisor's queue (see `supervisor.max_parallel_runs` and `supervisor.max_parallel_tasks` in [configuration](configuration.md)). Two runs never share one checkout: a run on a repository that is not using its own worktree waits until the other non-worktree run on that repository ends.
+
+A workflow name is looked up in this order: project `agentic/workflows/`, user-global workflows, installed skill packs (their `af-workflows/` directory, see `skill_packs` in [configuration](configuration.md#skill_packs)), then the bundled demos. The first match wins.
+
+A workflow can declare `requires: { agentic-forge: ">=0.12", contract: 1 }`. The supervisor refuses a workflow whose requirements this install does not meet before any step runs, and the error names the required and installed versions. `--ignore-requires` runs it anyway when only the agentic-forge version is unmet; a contract mismatch is always refused.
 
 Each run writes a contract run directory, `<runs.root>/YYYY-MM-DD-<slug>/` (default `<global dir>/runs/`), with `run.json`, `events.jsonl`, `dispatch.json` and the engine state `progress.json`. See [harness-contract.md](harness-contract.md).
 
@@ -64,7 +69,8 @@ af run <workflow> [vars...] [options]
 | `--runtime <runtime>`      | Runtime to use for this invocation (`claude`, `codex`). Overrides config default and workflow settings, but not per-step `runtime` values.                                                                             |
 | `--no-interactive`         | Disable interactive prompts for missing variables                                                                                                                                                                      |
 | `--terminal-output <mode>` | Terminal output granularity: `base` or `all`                                                                                                                                                                           |
-| `--list`                   | List all available workflows                                                                                                                                                                                           |
+| `--ignore-requires`        | Run a workflow whose `requires` asks for a newer agentic-forge, with a warning. Never overrides the `contract` requirement.                                                                                            |
+| `--list`                   | List all available workflows (same output as `af workflows`)                                                                                                                                                           |
 
 ### Examples
 
@@ -583,7 +589,7 @@ af configure
 
 ## workflows
 
-List available workflows with descriptions, grouped by location (project, user, bundled).
+List available workflows with descriptions, grouped by origin in search order: project, user, each skill pack (by plugin name), bundled. A name that an earlier origin already provides is marked `[shadowed]`: `af run <name>` uses the first one.
 
 ```bash
 af workflows [options]
@@ -604,6 +610,28 @@ af workflows
 # List with variable details
 af workflows --verbose
 ```
+
+## doctor
+
+Check that agentic-forge can run workflows from the current directory. Each check prints as `PASS`, `WARN` or `FAIL`, and every warning or failure comes with a `fix:` line.
+
+```bash
+af doctor [--json]
+```
+
+| Check                                   | What it reports                                                                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `node`, `config`, `git`                 | Node.js 22+, the merged config loads, git is on `PATH`                                                                          |
+| `claude`, `claude auth`                 | Claude Code is installed, and its auth method (`Claude plan login (<plan>)`, or the API key)                                    |
+| `ANTHROPIC_API_KEY`                     | Warns when it is set: Claude steps then bill the API key instead of the Claude plan                                             |
+| `codex`, `codex auth`                   | Codex CLI (optional) and its login method (ChatGPT login or API key)                                                            |
+| `gh`, `gh auth`                         | GitHub CLI (optional) and whether it is logged in                                                                               |
+| `supervisor`                            | Running or not (started on demand); warns when it runs another version than the CLI                                             |
+| `runs root`                             | Where run directories go (also printed at the top, for example to add to esp-skills `recap.roots`)                              |
+| `plugin detection`, `skill_packs.paths` | Claude plugin auto-detection and configured pack paths without `af-workflows/`                                                  |
+| `skill pack <name>`                     | Each discovered pack: fails when a workflow needs another contract or does not parse, warns when it needs a newer agentic-forge |
+
+The command exits with `1` when a check fails. `--json` prints the report (version, contract version, runs root, checks and discovered skill packs) as JSON.
 
 ## paths
 

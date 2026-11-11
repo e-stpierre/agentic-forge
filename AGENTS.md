@@ -24,7 +24,7 @@ Interactive authoring skills for users to create and manage workflows (e.g., `wo
 
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `mcp`, etc.).
+CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, etc.). `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`).
 
 #### `prompts/`
 
@@ -113,7 +113,7 @@ Central path resolver module. Single source of truth for all directory resolutio
 - `getGlobalRoot()` — platform-native global directory (`%APPDATA%`, `~/Library/Application Support`, `$XDG_CONFIG_HOME`)
 - `getOutputRoot(config, cwd)` — resolves output base dir (global default, local override)
 - `getOutputDir(workflowId, config, cwd)` — full output path for a workflow run
-- `getWorkflowDirs(bundledDir)` — ordered workflow search path (project-local > user-global > bundled)
+- `getWorkflowDirs(bundledDir, cwd, packDirs)` — ordered workflow search path (project-local > user-global > skill packs > bundled)
 - `getConfigPaths()` — global and local config file paths
 - `ensureGlobalDir()` — lazy-initializes global directory on first use
 - `sanitizeSlug(input)` — cleans user-provided slugs for safe directory names
@@ -198,7 +198,8 @@ pnpm test           # Vitest tests
 All directory resolution flows through `src/paths.ts`. The system uses a 3-tier model:
 
 - **Config**: built-in defaults -> global (`getGlobalRoot()/config.json`) -> local (`agentic/config.json`)
-- **Workflows**: project-local (`agentic/workflows/`) -> user-global (`getGlobalRoot()/workflows/`) -> bundled
+- **Workflows**: project-local (`agentic/workflows/`) -> user-global (`getGlobalRoot()/workflows/`) -> skill packs (`<plugin>/af-workflows/`, from `src/skill-packs.ts`: config `skill_packs.paths`, then Claude Code's `installed_plugins.json` when `skill_packs.auto_detect`) -> bundled
+- **Requires**: `src/requires.ts` parses a workflow's `requires` (agentic-forge version range, contract version) and `checkRequires()` runs in `RunManager.dispatch()`; `ignore_requires` in the dispatch payload overrides only the version
 - **Outputs**: global by default (`getGlobalRoot()/outputs/<project-slug>/`), or local (`agentic/outputs/`) when `outputDirectory: "local"`
 
 The global directory is lazy-initialized by `ensureGlobalDir()` on first use. No `init` is required to run workflows.

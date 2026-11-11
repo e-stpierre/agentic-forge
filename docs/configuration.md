@@ -179,6 +179,21 @@ Configuration snapshots for skill packs, keyed by pack (the plugin of `<plugin>:
 { "skill_config": { "esp-skills": { "plan": { "depth": "deep" } } } }
 ```
 
+### skill_packs
+
+Where af finds skill packs: plugin directories that ship agentic-forge workflows in an `af-workflows/` directory. Their workflows come after the project and user-global workflows and before the bundled demos (see `af workflows`). A directory without `af-workflows/` is skipped.
+
+| Key                       | Type     | Default | Description                                                                                     |
+| ------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `skill_packs.paths`       | string[] | `[]`    | Plugin root directories (absolute, or relative to the repository), searched first               |
+| `skill_packs.auto_detect` | boolean  | `true`  | Also use the Claude Code plugins listed in `<claude config dir>/plugins/installed_plugins.json` |
+
+Auto-detection reads Claude Code's installed plugin list (`CLAUDE_CONFIG_DIR`, else `~/.claude`), not the plugin cache directory, so only the installed version of each plugin is used. It includes user-scope installs, and project or local installs whose project is the dispatching repository. When Claude Code moves that file, `af doctor` warns, and `skill_packs.paths` still works. A plain array (`"skill_packs": ["../my-pack"]`) is read as `paths` with auto-detection on.
+
+```json
+{ "skill_packs": { "paths": ["C:/src/my-pack"], "auto_detect": true } }
+```
+
 ### execution
 
 Controls parallel execution behavior.

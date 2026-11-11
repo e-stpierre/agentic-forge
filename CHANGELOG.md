@@ -70,6 +70,10 @@
 - **Breaking:** the prompt step `agent:` file now resolves relative to the workflow file, then the repo root (absolute paths as is), with no bundled fallback
 - Fixed `settings.max-retry` being ignored: prompt and skill steps now use it before `defaults.maxRetry` (an unset setting parses as `null` instead of `3`)
 - Changed `pnpm build` to clean `dist/` first, so deleted sources and assets are not shipped
+- Added skill pack workflow discovery: workflows in a plugin's `af-workflows/` directory are found after the project and user-global workflows and before the bundled demos. New config `skill_packs` (`paths`, `auto_detect`, default `true`); auto-detection reads Claude Code's `installed_plugins.json` (`CLAUDE_CONFIG_DIR`, else `~/.claude`), using only the installed version of each user-scope plugin and the project or local installs of the dispatching repository
+- Changed `af workflows` (and `af run --list`, which now prints the same output) to group workflows by origin in search order (project, user, each skill pack, bundled) and mark names shadowed by an earlier origin
+- Added workflow `requires: { agentic-forge: "<range>", contract: <n> }`: the supervisor refuses a workflow whose requirements are unmet before the run exists, naming the required and installed versions. `af run --ignore-requires` (and `ignore_requires` on `af_dispatch`) runs it anyway when only the agentic-forge version is unmet, with a warning; a contract mismatch is always refused
+- Added `af doctor` (`--json`): pass, warn or fail checks with a fix hint for Node.js, config, git, Claude Code and its auth method (plan login or API key, with a warning when `ANTHROPIC_API_KEY` is set), Codex and its login, `gh` and its auth, the supervisor version, the runs root (also printed), Claude plugin detection, and the contract and version compatibility of every discovered skill pack workflow
 
 ## 0.11.0
 

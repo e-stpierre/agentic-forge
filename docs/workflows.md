@@ -279,6 +279,19 @@ af run plan-and-build --var "task=Add dark mode support"
 
 Any other pack works the same way: replace the `skill:` names with your own.
 
+### Skill pack workflows
+
+A skill pack can ship ready-made workflows in an `af-workflows/` directory at its plugin root. af finds them automatically for Claude Code plugins (through Claude Code's installed plugin list), or through `skill_packs.paths` in the [configuration](configuration.md#skill_packs). `af workflows` lists them under `Skill pack: <name>`, and `af run <name>` runs them like any other workflow. Search order: project `agentic/workflows/` -> user-global -> skill packs -> bundled demos.
+
+A pack workflow declares what it needs from the harness:
+
+```yaml
+name: esp-go
+requires: { agentic-forge: ">=0.12", contract: 1 }
+```
+
+`agentic-forge` is a version range (`>=0.12`, `^0.12.0`, `>=0.12 <1`) and `contract` the [harness contract](harness-contract.md) version. af refuses a workflow it cannot satisfy before any step runs, naming the required and installed versions. `af run --ignore-requires` (or `ignore_requires` on `af_dispatch`) overrides only the version check, with a warning. `af doctor` checks every discovered pack.
+
 ## Custom Workflows
 
 You can create your own workflows using the workflow-builder authoring skill, or by writing YAML files directly. For the complete workflow schema and all supported properties (step types, settings, variables, outputs, git options, etc.), see:
