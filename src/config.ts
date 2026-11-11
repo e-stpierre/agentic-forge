@@ -57,6 +57,12 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		// null: <global dir>/runs/. Replaces outputDirectory.
 		root: null,
 	},
+	// Plugin directories with an af-workflows/ dir. auto_detect also reads the
+	// Claude Code installed plugin list (installed_plugins.json).
+	skill_packs: {
+		paths: [],
+		auto_detect: true,
+	},
 	supervisor: {
 		max_parallel_runs: 4,
 		max_parallel_tasks: 2,

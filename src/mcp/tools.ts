@@ -132,7 +132,7 @@ function resolveWorkflow(workflow: string, repo: string): { path: string; locati
 	const shown = names.slice(0, 20).join(", ");
 	const more = names.length > 20 ? ` and ${names.length - 20} more` : "";
 	throw new ToolInputError(
-		`Workflow not found: ${workflow} (searched ${path.join(repo, "agentic", "workflows")}, the user-global and the bundled workflows)`,
+		`Workflow not found: ${workflow} (searched ${path.join(repo, "agentic", "workflows")}, the user-global, the skill pack and the bundled workflows)`,
 		names.length > 0
 			? `Pass one of these names: ${shown}${more}; or a path to a workflow YAML file (absolute, or relative to repo).`
 			: "Pass a path to a workflow YAML file (absolute, or relative to repo).",
@@ -159,7 +159,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 		{
 			title: "Dispatch a workflow run",
 			description:
-				"Queues a run of an agentic-forge workflow in the af supervisor and returns at once with { run_id, status, dir, workflow, warnings }; the run then executes in the background. `workflow` is a workflow name (looked up in <repo>/agentic/workflows, then the user-global and the bundled workflows) or a path to a YAML file (absolute, or relative to repo). `repo` is the repository the run works in (default: the MCP server's working directory). `vars` sets workflow variables; a missing required variable is rejected with its name. The returned status is usually queued or running. Next: follow the run with af_events (run, wait_seconds) or check it with af_status (run).",
+				"Queues a run of an agentic-forge workflow in the af supervisor and returns at once with { run_id, status, dir, workflow, warnings }; the run then executes in the background. `workflow` is a workflow name (looked up in <repo>/agentic/workflows, then the user-global, the skill pack and the bundled workflows) or a path to a YAML file (absolute, or relative to repo). `repo` is the repository the run works in (default: the MCP server's working directory). `vars` sets workflow variables; a missing required variable is rejected with its name, and a workflow whose `requires` is unmet is refused with the required and installed versions. The returned status is usually queued or running. Next: follow the run with af_events (run, wait_seconds) or check it with af_status (run).",
 			inputSchema: {
 				workflow: nonEmpty("workflow", "Workflow name or path to a workflow YAML file"),
 				repo: nonEmpty(
@@ -182,6 +182,12 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 					.int({ error: "priority must be an integer" })
 					.optional()
 					.describe("Queue priority, higher runs first (default 0)"),
+				ignore_requires: z
+					.boolean({ error: "ignore_requires must be a boolean" })
+					.optional()
+					.describe(
+						"Run despite an unmet requires agentic-forge version (never the contract); adds a warning",
+					),
 			},
 		},
 		async (input) => {
@@ -196,6 +202,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 				runtime: input.runtime,
 				slug: input.slug,
 				priority: input.priority,
+				ignoreRequires: input.ignore_requires,
 			});
 			const result = await withClient(ctx.clients, (client) => dispatchRun(client, payload));
 			return jsonResult({

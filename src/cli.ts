@@ -25,6 +25,7 @@ import {
 	cmdCancel,
 	cmdConfig,
 	cmdConfigure,
+	cmdDoctor,
 	cmdEvents,
 	cmdInit,
 	cmdInput,
@@ -67,6 +68,10 @@ program
 	.option("--runtime <runtime>", "override default runtime (claude or codex)")
 	.option("--slug <slug>", "custom slug used in the run ID (YYYY-MM-DD-<slug>)")
 	.option("--foreground", "follow the run until it ends (Ctrl+C detaches, the run continues)")
+	.option(
+		"--ignore-requires",
+		"run even if the workflow requires a newer agentic-forge (never overrides the contract)",
+	)
 	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
@@ -79,6 +84,7 @@ program
 			runtime: optString(opts.runtime),
 			slug: optString(opts.slug),
 			foreground: optBool(opts.foreground),
+			ignoreRequires: optBool(opts.ignoreRequires),
 		});
 	});
 
@@ -407,6 +413,15 @@ program
 		cmdWorkflows({
 			verbose: optBool(opts.verbose),
 		});
+	});
+
+// doctor command
+program
+	.command("doctor")
+	.description("Check runtimes, auth, the supervisor, the runs root and skill pack compatibility")
+	.option("--json", "print the report as JSON")
+	.action(async (opts: Record<string, unknown>) => {
+		await cmdDoctor({ json: optBool(opts.json) });
 	});
 
 // serve command

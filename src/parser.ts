@@ -3,6 +3,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
+import { RequiresError, parseRequires } from "./requires.js";
 import type {
 	AmendSettings,
 	HumanInputOption,
@@ -84,6 +85,13 @@ export class WorkflowParser {
 		const name = this.required(dict, "name") as string;
 		const version = (dict.version as string) ?? "1.0";
 		const description = (dict.description as string) ?? "";
+		let requires: WorkflowDefinition["requires"] = null;
+		try {
+			requires = parseRequires(dict.requires);
+		} catch (e: unknown) {
+			if (e instanceof RequiresError) throw new WorkflowParseError(e.message);
+			throw e;
+		}
 
 		const settings = this.parseSettings((dict.settings as Record<string, unknown>) ?? {});
 		const variables = ((dict.variables as unknown[]) ?? []).map((v) =>
@@ -102,7 +110,7 @@ export class WorkflowParser {
 			);
 		}
 
-		return { name, version, description, settings, variables, steps, outputs };
+		return { name, version, description, requires, settings, variables, steps, outputs };
 	}
 
 	private required(data: Record<string, unknown>, key: string): unknown {

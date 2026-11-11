@@ -6,9 +6,11 @@ import { fileURLToPath } from "node:url";
 import confirm from "@inquirer/confirm";
 import input from "@inquirer/input";
 
+import { loadConfig } from "../config.js";
 import { exitCodeForRun } from "../contract/index.js";
 import { getGlobalRoot } from "../paths.js";
 import { buildDispatchPayload } from "../runs/dispatch.js";
+import { findSkillPacks } from "../skill-packs.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,43 +38,80 @@ export function getProjectWorkflowsDir(cwd = process.cwd()): string {
 	return path.join(cwd, "agentic", "workflows");
 }
 
-/** Finds a workflow by name: project (`<cwd>/agentic/workflows`) > user-global > bundled. */
+/** Where a discovered workflow comes from, in search order. */
+export type WorkflowLocation = "project-local" | "user-global" | "skill-pack" | "bundled";
+
+export interface WorkflowSearchLocation {
+	dir: string;
+	location: WorkflowLocation;
+	/** Skill pack name, for `skill-pack` locations. */
+	pack?: string;
+}
+
+/**
+ * Workflow search order for the repository at `cwd`: project
+ * (`<cwd>/agentic/workflows`) > user-global > skill packs (`af-workflows/`,
+ * see `findSkillPacks()`) > bundled demos.
+ */
+export function getWorkflowSearchLocations(
+	cwd = process.cwd(),
+	config?: Record<string, unknown>,
+): WorkflowSearchLocation[] {
+	let resolved = config;
+	if (!resolved) {
+		try {
+			resolved = loadConfig(cwd);
+		} catch {
+			// A malformed config must not hide the other workflow sources.
+			resolved = {};
+		}
+	}
+	return [
+		{ dir: getProjectWorkflowsDir(cwd), location: "project-local" },
+		{ dir: getUserWorkflowsDir(), location: "user-global" },
+		...findSkillPacks(resolved, cwd).map(
+			(pack): WorkflowSearchLocation => ({
+				dir: pack.workflowsDir,
+				location: "skill-pack",
+				pack: pack.name,
+			}),
+		),
+		{ dir: getBundledWorkflowsDir(), location: "bundled" },
+	];
+}
+
+/** Finds a workflow by name, in `getWorkflowSearchLocations()` order. */
 export function discoverWorkflow(name: string, cwd = process.cwd()): [string | null, string] {
 	const fileName = name.endsWith(".yaml") ? name : `${name}.yaml`;
 
-	const searchLocations: [string, string][] = [
-		[getProjectWorkflowsDir(cwd), "project-local"],
-		[getUserWorkflowsDir(), "user-global"],
-		[getBundledWorkflowsDir(), "bundled"],
-	];
-
-	for (const [directory, locationType] of searchLocations) {
-		const workflowPath = path.join(directory, fileName);
+	for (const { dir, location } of getWorkflowSearchLocations(cwd)) {
+		const workflowPath = path.join(dir, fileName);
 		if (existsSync(workflowPath)) {
-			return [workflowPath, locationType];
+			return [workflowPath, location];
 		}
 	}
 
 	return [null, "not found"];
 }
 
-export function listAvailableWorkflows(cwd = process.cwd()): [string, string, string][] {
-	const workflows: [string, string, string][] = [];
+/**
+ * Every workflow file in `getWorkflowSearchLocations()` order, as
+ * `[name, path, location, pack]` (`pack` is set for skill pack workflows).
+ * A name found in several locations is listed in each; the first one wins.
+ */
+export function listAvailableWorkflows(
+	cwd = process.cwd(),
+): [string, string, WorkflowLocation, string | undefined][] {
+	const workflows: [string, string, WorkflowLocation, string | undefined][] = [];
 
-	const searchLocations: [string, string][] = [
-		[getProjectWorkflowsDir(cwd), "project-local"],
-		[getUserWorkflowsDir(), "user-global"],
-		[getBundledWorkflowsDir(), "bundled"],
-	];
-
-	for (const [directory, locationType] of searchLocations) {
-		if (existsSync(directory)) {
-			const files = readdirSync(directory)
+	for (const { dir, location, pack } of getWorkflowSearchLocations(cwd)) {
+		if (existsSync(dir)) {
+			const files = readdirSync(dir)
 				.filter((f) => f.endsWith(".yaml"))
 				.sort();
 			for (const file of files) {
 				const name = path.basename(file, ".yaml");
-				workflows.push([name, path.join(directory, file), locationType]);
+				workflows.push([name, path.join(dir, file), location, pack]);
 			}
 		}
 	}
@@ -139,43 +178,13 @@ export async function cmdRun(options: {
 	slug?: string;
 	/** Attach to the run until it ends (Ctrl+C detaches). */
 	foreground?: boolean;
+	/** Run despite an unmet `requires` agentic-forge version (never the contract). */
+	ignoreRequires?: boolean;
 }): Promise<void> {
 	// Handle --list flag
 	if (options.listWorkflows) {
-		process.stdout.write("Available workflows:\n\n");
-		const workflows = listAvailableWorkflows();
-
-		if (workflows.length === 0) {
-			process.stdout.write("No workflows found.\n");
-			process.stdout.write("\nSearched locations:\n");
-			process.stdout.write(`  - Project: ${getProjectWorkflowsDir()}\n`);
-			process.stdout.write(`  - User:    ${getUserWorkflowsDir()}\n`);
-			process.stdout.write(`  - Bundled: ${getBundledWorkflowsDir()}\n`);
-			return;
-		}
-
-		// Group by location
-		const byLocation: Record<string, [string, string][]> = {};
-		for (const [name, wfPath, location] of workflows) {
-			if (!byLocation[location]) {
-				byLocation[location] = [];
-			}
-			byLocation[location].push([name, wfPath]);
-		}
-
-		for (const location of ["project-local", "user-global", "bundled"]) {
-			if (byLocation[location]) {
-				const label = location.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-				process.stdout.write(`${label}:\n`);
-				for (const [name] of byLocation[location]) {
-					process.stdout.write(`  ${name}\n`);
-				}
-				process.stdout.write("\n");
-			}
-		}
-
-		process.stdout.write(`Total: ${workflows.length} workflow(s)\n`);
-		process.stdout.write("\nUsage: agentic-forge run <workflow> [key=value ...]\n");
+		const { cmdWorkflows } = await import("./workflows.js");
+		cmdWorkflows({});
 		return;
 	}
 
@@ -210,7 +219,7 @@ export async function cmdRun(options: {
 	}
 
 	// Show which workflow is being used
-	if (["project-local", "user-global", "bundled"].includes(locationType)) {
+	if (["project-local", "user-global", "skill-pack", "bundled"].includes(locationType)) {
 		process.stdout.write(`Using ${locationType} workflow: ${path.basename(workflowPath)}\n`);
 	}
 
@@ -290,6 +299,7 @@ export async function cmdRun(options: {
 		fromStep: options.fromStep,
 		slug: options.slug,
 		terminalOutput,
+		ignoreRequires: options.ignoreRequires,
 	});
 
 	const { ensureSupervisor } = await import("../supervisor/client.js");

@@ -47,13 +47,19 @@ export function getProjectRoot(cwd?: string): string | null {
 
 /**
  * Returns workflow search directories in priority order:
- * project-local > user-global > bundled
+ * project-local > user-global > skill packs (`packDirs`, their `af-workflows/`
+ * dirs from `findSkillPacks()`) > bundled
  */
-export function getWorkflowDirs(bundledDir: string, cwd?: string): string[] {
+export function getWorkflowDirs(
+	bundledDir: string,
+	cwd?: string,
+	packDirs: readonly string[] = [],
+): string[] {
 	const cWd = cwd ?? process.cwd();
 	return [
 		path.join(cWd, "agentic", "workflows"),
 		path.join(getGlobalRoot(), "workflows"),
+		...packDirs,
 		path.join(bundledDir, "workflows"),
 	];
 }

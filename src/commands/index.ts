@@ -4,6 +4,7 @@ export {
 	CliExitError,
 	cmdRun,
 	discoverWorkflow,
+	getWorkflowSearchLocations,
 	listAvailableWorkflows,
 	resolveWorkflowPath,
 	getBundledWorkflowsDir,
@@ -31,3 +32,4 @@ export { cmdWorkflows } from "./workflows.js";
 export { cmdInput } from "./shortcuts.js";
 export { cmdServe } from "./serve.js";
 export { cmdMcp } from "./mcp.js";
+export { cmdDoctor } from "./doctor.js";

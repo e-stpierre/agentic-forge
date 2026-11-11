@@ -1,5 +1,7 @@
 /** Core types for agentic-forge workflow engine. */
 
+import type { WorkflowRequires } from "./requires.js";
+
 // --- Step types ---
 
 export type StepType =
@@ -123,6 +125,8 @@ export interface WorkflowDefinition {
 	name: string;
 	version: string;
 	description: string;
+	/** `requires`: agentic-forge version range and contract version; null when unset. */
+	requires?: WorkflowRequires | null;
 	settings: WorkflowSettings;
 	variables: Variable[];
 	steps: StepDefinition[];

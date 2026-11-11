@@ -9,11 +9,23 @@ name: workflow-name # Required. Unique identifier (kebab-case)
 version: "1.0" # Required. Schema version (always "1.0")
 description: | # Optional. Human-readable description
   What this workflow does
+requires: { agentic-forge: ">=0.12", contract: 1 } # Optional. Harness requirements
 settings: {} # Optional. Workflow configuration
 variables: [] # Optional. Input parameters
 steps: [] # Required. Workflow steps (at least one)
 outputs: [] # Optional. Output artifacts
 ```
+
+## Requires
+
+Optional. What the workflow needs from the harness. af refuses an unmet workflow at dispatch, before any step runs, naming the required and installed versions.
+
+| Key             | Type   | Description                                                                                 |
+| --------------- | ------ | ------------------------------------------------------------------------------------------- |
+| `agentic-forge` | string | Version range: `>=0.12`, `^0.12.0`, `~0.12.1`, `0.12` (any 0.12.x), `>=0.12 <1`, `a \|\| b` |
+| `contract`      | int    | Harness contract version (currently `1`)                                                    |
+
+`agentic-forge run --ignore-requires` overrides only the `agentic-forge` range, with a warning; a contract mismatch is always refused. Skill pack workflows (`af-workflows/`) should always declare both.
 
 ## Settings
 
@@ -500,7 +512,7 @@ At the next step boundary, the supervisor runs the amend step with the amendment
 
 ```bash
 # Run a workflow (bare key=value args or --var flag)
-agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex]
+agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex] [--ignore-requires]
 
 # Resume a paused/failed workflow
 agentic-forge resume <workflow-id>
@@ -550,8 +562,11 @@ agentic-forge input <workflow-id> "response text"
 # List workflow executions
 agentic-forge list [--status running|completed|failed|paused]
 
-# List available workflows with descriptions
+# List available workflows (project, user, skill packs, bundled) with their origin
 agentic-forge workflows [-v]
+
+# Check runtimes, auth, the runs root and skill pack compatibility
+agentic-forge doctor [--json]
 
 # Copy bundled workflows to local project
 agentic-forge init [--force] [--list]
@@ -577,6 +592,8 @@ Use fully qualified `<plugin>:<skill>` names for plugin skills. For example, wit
   skill: esp-skills:esp-plan
   args: "{{ variables.task }}"
 ```
+
+A skill pack can also ship workflows in an `af-workflows/` directory at its plugin root. af discovers them (Claude Code installed plugins, or `skill_packs.paths` in the af config) after the project and user-global workflows and before the bundled ones, so `agentic-forge run <name>` finds them. Such workflows declare `requires` (see Requires).
 
 When the user has no skill pack, write the instructions in a prompt step instead (the bundled demos do this for git branches and commits).
 

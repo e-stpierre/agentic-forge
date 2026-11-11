@@ -18,6 +18,14 @@ description: |
   - Variable templating with Nunjucks
   - Output generation
 
+# Optional: What the workflow needs from the harness. af refuses an unmet
+# workflow before any step runs. `agentic-forge` is a version range
+# (--ignore-requires overrides it with a warning); `contract` is the harness
+# contract version and is never overridden.
+requires:
+  agentic-forge: ">=0.11"
+  contract: 1
+
 # Optional: Workflow-level settings
 settings:
   # Maximum retry attempts for failed steps (default: 3)

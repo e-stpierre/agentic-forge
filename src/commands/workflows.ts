@@ -1,10 +1,21 @@
 /** Workflows command handler. */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
 
-import { getBundledWorkflowsDir, getProjectWorkflowsDir, getUserWorkflowsDir } from "./run.js";
+import {
+	type WorkflowLocation,
+	getWorkflowSearchLocations,
+	listAvailableWorkflows,
+} from "./run.js";
+
+const LOCATION_LABELS: Record<WorkflowLocation, string> = {
+	"project-local": "Project",
+	"user-global": "User",
+	"skill-pack": "Skill pack",
+	bundled: "Bundled",
+};
 
 interface WorkflowMetadata {
 	name: string;
@@ -34,80 +45,56 @@ function getWorkflowMetadata(filePath: string): WorkflowMetadata {
 	}
 }
 
-function listAllWorkflows(): [string, string, string, WorkflowMetadata][] {
-	const workflows: [string, string, string, WorkflowMetadata][] = [];
-
-	const searchLocations: [string, string][] = [
-		[getProjectWorkflowsDir(), "project"],
-		[getUserWorkflowsDir(), "user"],
-		[getBundledWorkflowsDir(), "bundled"],
-	];
-
-	for (const [directory, locationType] of searchLocations) {
-		if (existsSync(directory)) {
-			const files = readdirSync(directory)
-				.filter((f) => f.endsWith(".yaml"))
-				.sort();
-			for (const file of files) {
-				const fullPath = path.join(directory, file);
-				const metadata = getWorkflowMetadata(fullPath);
-				workflows.push([path.basename(file, ".yaml"), fullPath, locationType, metadata]);
-			}
-		}
-	}
-
-	return workflows;
+function locationLabel(location: WorkflowLocation, pack: string | undefined): string {
+	return pack ? `${LOCATION_LABELS[location]}: ${pack}` : LOCATION_LABELS[location];
 }
 
-export function cmdWorkflows(options: { verbose?: boolean }): void {
-	const workflows = listAllWorkflows();
+/**
+ * Lists the workflows of every source in search order (project, user, skill
+ * packs, bundled), grouped by origin. A name found again in a later source is
+ * marked `[shadowed]`: `af run <name>` uses the first one.
+ */
+export function cmdWorkflows(options: { verbose?: boolean; cwd?: string }): void {
+	const cwd = options.cwd ?? process.cwd();
+	const locations = getWorkflowSearchLocations(cwd);
+	const workflows = listAvailableWorkflows(cwd);
 
 	if (workflows.length === 0) {
 		process.stdout.write("No workflows found.\n");
 		process.stdout.write("\nSearched locations:\n");
-		process.stdout.write(`  - Project: ${getProjectWorkflowsDir()}\n`);
-		process.stdout.write(`  - User:    ${getUserWorkflowsDir()}\n`);
-		process.stdout.write(`  - Bundled: ${getBundledWorkflowsDir()}\n`);
+		for (const { dir, location, pack } of locations) {
+			process.stdout.write(`  - ${locationLabel(location, pack)}: ${dir}\n`);
+		}
 		process.stdout.write("\nUse 'agentic-forge init' to copy bundled workflows locally.\n");
 		return;
 	}
 
 	const verbose = options.verbose ?? false;
 
-	// Group by location
-	const byLocation: Record<string, [string, string, WorkflowMetadata][]> = {};
-	for (const [name, wfPath, location, metadata] of workflows) {
-		if (!byLocation[location]) {
-			byLocation[location] = [];
-		}
-		byLocation[location].push([name, wfPath, metadata]);
-	}
-
-	process.stdout.write("Available Workflows\n");
+	process.stdout.write("Available Workflows (search order: project, user, skill packs, bundled)\n");
 	process.stdout.write(`${"=".repeat(50)}\n\n`);
 
-	const locationOrder = ["project", "user", "bundled"];
-	const locationLabels: Record<string, string> = {
-		project: "Project",
-		user: "User",
-		bundled: "Bundled",
-	};
+	const winner = new Map<string, string>();
+	for (const [name, wfPath] of workflows) {
+		if (!winner.has(name)) winner.set(name, wfPath);
+	}
 
-	for (const location of locationOrder) {
-		if (!byLocation[location]) {
-			continue;
-		}
+	for (const { dir, location, pack } of locations) {
+		const inDir = workflows.filter(([, wfPath]) => path.dirname(wfPath) === dir);
+		if (inDir.length === 0) continue;
 
-		process.stdout.write(`${locationLabels[location]}:\n`);
-		for (const [name, , metadata] of byLocation[location]) {
+		process.stdout.write(`${locationLabel(location, pack)} (${dir}):\n`);
+		for (const [name, wfPath] of inDir) {
+			const metadata = getWorkflowMetadata(wfPath);
+			const shadowed = winner.get(name) !== wfPath ? " [shadowed]" : "";
 			let desc = metadata.description;
 			if (desc) {
 				if (desc.length > 60 && !verbose) {
 					desc = `${desc.slice(0, 57)}...`;
 				}
-				process.stdout.write(`  ${name.padEnd(25)} ${desc}\n`);
+				process.stdout.write(`  ${name.padEnd(25)} ${desc}${shadowed}\n`);
 			} else {
-				process.stdout.write(`  ${name}\n`);
+				process.stdout.write(`  ${name}${shadowed}\n`);
 			}
 
 			if (verbose && metadata.variables.length > 0) {

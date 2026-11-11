@@ -14,6 +14,7 @@
 
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { getVersion } from "../commands/version.js";
 import { deepMerge, getDefaultConfig } from "../config.js";
 import {
 	type NeedsInput,
@@ -36,6 +37,7 @@ import {
 	saveProgress,
 } from "../progress.js";
 import { TemplateRenderer } from "../renderer.js";
+import { checkRequires } from "../requires.js";
 import type {
 	LiveSession,
 	SessionDecision,
@@ -267,6 +269,8 @@ export interface RunManagerOptions {
 	/** af global dir (defaults to `getGlobalRoot()`). */
 	root?: string;
 	log?: (message: string) => void;
+	/** agentic-forge version checked against a workflow's `requires` (defaults to the package version). */
+	version?: string;
 }
 
 export interface DispatchResult {
@@ -358,11 +362,14 @@ export class RunManager {
 	/** Identifies this supervisor process in `supervisor.restarted` events. */
 	private readonly startedAt = new Date().toISOString();
 	private supervisorVersion: string | null = null;
+	/** agentic-forge version checked against `requires`. */
+	private readonly version: string;
 
 	constructor(options: RunManagerOptions = {}) {
 		this.root = options.root ?? getGlobalRoot();
 		this.registry = new RunRegistry(this.root);
 		this.log = options.log ?? (() => {});
+		this.version = options.version ?? getVersion();
 	}
 
 	/** Runs that are executing or waiting in the queue. */
@@ -640,6 +647,12 @@ export class RunManager {
 		if (invalid) throw new RunError(`Invalid dispatch: ${invalid}`);
 		if (this.closed) throw new RunError("Supervisor is shutting down", 503);
 		const workflow = this.parseWorkflow(payload);
+		// Refused before the run exists, so no step ever runs.
+		const requires = checkRequires(workflow.name, workflow.requires, {
+			version: this.version,
+			ignoreRequires: payload.ignore_requires === true,
+		});
+		if (requires.errors.length > 0) throw new RunError(requires.errors.join("\n"));
 
 		const variables = { ...payload.variables };
 		for (const v of workflow.variables) {
@@ -657,7 +670,8 @@ export class RunManager {
 				variables,
 			);
 
-		const warnings: string[] = [];
+		const warnings: string[] = [...requires.warnings];
+		for (const warning of requires.warnings) this.log(`Warning: ${warning}`);
 		const runsRoot = resolveRunsRoot(payload.config, payload.repo_root);
 		if (runsRoot.deprecation) warnings.push(runsRoot.deprecation);
 
