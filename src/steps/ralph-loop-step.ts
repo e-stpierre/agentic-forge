@@ -22,6 +22,7 @@ import {
 	StepExecutor,
 	type StepResult,
 	buildTemplateContext,
+	driverOptions,
 	emitStepEvent,
 	resolveModel,
 	withOperatorMessages,
@@ -152,6 +153,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				sandbox: getSandboxMode(context.config),
 				env: context.env ?? null,
 				signal: context.signal ?? null,
+				...driverOptions(context, step.name),
 			});
 
 			// Stopped by the supervisor: the iteration reruns on resume

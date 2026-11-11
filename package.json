@@ -33,6 +33,7 @@
     "updates:fix": "node scripts/check-updates.js fix"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.322",
     "@inquirer/confirm": "^6.0.10",
     "@inquirer/input": "^5.0.10",
     "@modelcontextprotocol/sdk": "^1.32.2",

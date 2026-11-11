@@ -635,7 +635,7 @@ describe("af_answer", () => {
 		await waitForStatus(manager, id, "awaiting-human");
 
 		const status = await callTool(mcp, "af_status", { run: id });
-		const requestId = status.json.run["x-af-needs-input"].request.id as string;
+		const requestId = status.json.run["x-af-needs-input"][0].request.id as string;
 		expect(requestId).toBe("q1");
 
 		const wrong = await callTool(mcp, "af_answer", { run: id, request_id: "q9", answer: "a" });

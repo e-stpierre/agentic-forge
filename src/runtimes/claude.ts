@@ -4,6 +4,8 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { ClaudeSession } from "./claude-session.js";
+import type { RuntimeSession, SessionListener, SessionStartOptions } from "./session.js";
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -40,6 +42,34 @@ export class ClaudeAdapter implements RuntimeAdapter {
 		} catch {
 			return false;
 		}
+	}
+
+	/** Session driver on the Claude Agent SDK (`runtimes.claude.driver: session`). */
+	createSession(listener: SessionListener): RuntimeSession {
+		return new ClaudeSession(listener);
+	}
+
+	/** Same directories, model, permissions and system prompt as `buildCommand`. */
+	sessionOptions(options: RuntimeRunOptions): SessionStartOptions {
+		const directories: string[] = [];
+		if (existsSync(SKILLS_DIR)) directories.push(SKILLS_DIR);
+		if (options.outputDir && existsSync(options.outputDir)) directories.push(options.outputDir);
+		if (options.cwd && existsSync(options.cwd)) directories.push(options.cwd);
+		const env: NodeJS.ProcessEnv = { ...(options.env ?? process.env) };
+		if (options.workflowId) env.OTEL_RESOURCE_ATTRIBUTES = `session=${options.workflowId}`;
+		return {
+			prompt: options.prompt,
+			cwd: options.cwd ?? null,
+			model: options.model ?? this.defaultModel,
+			additionalDirectories: directories,
+			appendSystemPrompt:
+				options.appendSystemPrompt === false ? null : getAgenticSystemPrompt() || null,
+			allowedTools: options.allowedTools ?? null,
+			bypassPermissions: options.skipPermissions === true,
+			plugins: options.plugins ?? [],
+			env,
+			resume: options.resumeSessionId ?? null,
+		};
 	}
 
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {

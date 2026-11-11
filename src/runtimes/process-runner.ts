@@ -6,6 +6,7 @@ import path from "node:path";
 
 import type { ConsoleOutput } from "../console.js";
 import { killProcessTree, treeSpawnOptions } from "./kill-tree.js";
+import { runSession } from "./session-runner.js";
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions, StreamEvent } from "./types.js";
 import { resolveCmdScript } from "./utils.js";
 
@@ -33,11 +34,17 @@ function spawnDebug(outputDir: string | null | undefined, label: string, data: u
  * - Console output (streaming or silent)
  * - Timeout handling
  * - Result assembly via adapter
+ *
+ * With `options.driver: "session"` and a runtime that has a session driver,
+ * the step runs as a live session instead (see `session-runner.ts`).
  */
 export async function runRuntime(
 	adapter: RuntimeAdapter,
 	options: RuntimeRunOptions,
 ): Promise<RuntimeResult> {
+	if (options.driver === "session" && adapter.createSession) {
+		return runSession(adapter, options);
+	}
 	return new Promise((resolve) => {
 		const command = adapter.buildCommand(options);
 		if (options.signal?.aborted) {

@@ -32,6 +32,7 @@ import {
 } from "./progress.js";
 import { TemplateRenderer, buildTemplateContext, renderWorkflowOutput } from "./renderer.js";
 import { getAdapter, resolveRuntime } from "./runtimes/index.js";
+import type { SessionHost } from "./runtimes/session.js";
 import {
 	type StepContext,
 	type StepEventEmitter,
@@ -92,6 +93,8 @@ export interface ExecutorOptions {
 	signal?: AbortSignal | null;
 	/** Returns the `## Operator Messages` section for a step or iteration prompt. */
 	operatorMessages?: ((step: string) => Promise<string>) | null;
+	/** See `StepContext.sessionHost`. */
+	sessionHost?: ((step: string) => SessionHost) | null;
 	/** See `StepContext.recordResult`. */
 	recordResult?: ((step: string, block: ResultBlock) => Promise<ResultBlock | null>) | null;
 	/** See `StepContext.emitEvent` (ralph-loop iterations, prompt retries). */
@@ -218,6 +221,7 @@ export class WorkflowExecutor {
 				env: this.options.env ?? null,
 				signal: this.options.signal ?? null,
 				operatorMessages: this.options.operatorMessages ?? null,
+				sessionHost: this.options.sessionHost ?? null,
 				shouldStop: this.checkStop,
 				runtimeAdapter: childAdapter,
 			};
@@ -734,6 +738,7 @@ export class WorkflowExecutor {
 			env: this.options.env ?? null,
 			signal: this.options.signal ?? null,
 			operatorMessages: this.options.operatorMessages ?? null,
+			sessionHost: this.options.sessionHost ?? null,
 			recordResult: this.options.recordResult ?? null,
 			emitEvent: this.options.emitEvent ?? null,
 			shouldStop: this.checkStop,

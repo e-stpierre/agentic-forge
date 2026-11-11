@@ -24,9 +24,9 @@ import {
 	StepExecutor,
 	type StepResult,
 	buildTemplateContext,
+	driverOptions,
 	emitStepEvent,
 	resolveModel,
-	withOperatorMessages,
 } from "./base.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +40,20 @@ const STOP_STATUSES: Record<string, { stepStatus: string; workflowStatus: string
 	halted: { stepStatus: STEP_STATUS.HALTED, workflowStatus: WORKFLOW_STATUS.HALTED },
 	escalate: { stepStatus: STEP_STATUS.ESCALATED, workflowStatus: WORKFLOW_STATUS.BLOCKED },
 };
+
+/** Prompt of a resumed session: the operator messages come first. */
+const RESUME_INSTRUCTION =
+	"Continue the step with the operator messages above, then end with the result block as before.";
+
+/**
+ * Session id of the step's last record when it stopped awaiting-human on the
+ * session driver (resumed by `af answer`), else null.
+ */
+function stoppedSessionId(progress: WorkflowProgress, step: string): string | null {
+	const last = [...progress.completedSteps].reverse().find((s) => s.name === step);
+	if (!last || last.status !== STEP_STATUS.AWAITING_HUMAN) return null;
+	return last.sessionId ?? null;
+}
 
 export class PromptStepExecutor extends StepExecutor {
 	async execute(
@@ -71,7 +85,17 @@ export class PromptStepExecutor extends StepExecutor {
 		}
 
 		// Pending operator messages start the prompt (delivered once, reused by retries)
-		prompt = await withOperatorMessages(context, step.name, prompt);
+		const operatorSection = context.operatorMessages
+			? await context.operatorMessages(step.name)
+			: "";
+		const driver = driverOptions(context, step.name);
+		// A session step that stopped awaiting-human resumes its own session with the
+		// answer (operator messages) instead of starting over
+		const resumeSessionId =
+			driver.driver === "session" && operatorSection ? stoppedSessionId(progress, step.name) : null;
+		prompt = resumeSessionId
+			? `${operatorSection}${RESUME_INSTRUCTION}`
+			: `${operatorSection}${prompt}`;
 
 		const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
 		const defaults = context.config.defaults as Record<string, unknown> | undefined;
@@ -100,6 +124,8 @@ export class PromptStepExecutor extends StepExecutor {
 				sandbox: getSandboxMode(context.config),
 				env: context.env ?? null,
 				signal: context.signal ?? null,
+				...driver,
+				resumeSessionId,
 			});
 
 			// Stopped by the supervisor: no retry, the executor records the interruption
@@ -118,7 +144,15 @@ export class PromptStepExecutor extends StepExecutor {
 			if (STOP_STATUSES[status]) {
 				const { stepStatus, workflowStatus } = STOP_STATUSES[status];
 				const summary = block?.summary ?? `Step exited with status ${status}`;
-				updateStepStopped(progress, step.name, stepStatus, summary, status, status !== "halted");
+				updateStepStopped(
+					progress,
+					step.name,
+					stepStatus,
+					summary,
+					status,
+					status !== "halted",
+					driver.driver === "session" ? (result.sessionOutput?.sessionId ?? null) : null,
+				);
 				progress.status = workflowStatus;
 				console.info(`Step ${step.name} returned ${status}: ${summary}`);
 				logger.info(step.name, `Step returned ${status}: ${summary}`);

@@ -36,6 +36,12 @@ import {
 	saveProgress,
 } from "../progress.js";
 import { TemplateRenderer } from "../renderer.js";
+import type {
+	LiveSession,
+	SessionDecision,
+	SessionHost,
+	SessionRequest,
+} from "../runtimes/session.js";
 import type { Supervisor } from "../supervisor/server.js";
 import type {
 	StepDefinition,
@@ -124,6 +130,13 @@ export interface PendingInput {
 	asked_at: string;
 	/** When the recommended option is applied (non-blocking requests only), or null. */
 	deadline: string | null;
+	/**
+	 * Raised by a live session step that waits for the answer (session
+	 * driver). Without it, the step ended with an awaiting-human result block.
+	 */
+	live?: boolean;
+	/** Runtime session id of the live session that asked. */
+	session_id?: string | null;
 }
 
 /** Amendment waiting for the amend step (af extension `x-af-amendments`). */
@@ -147,7 +160,8 @@ export interface AnswerInput {
 export interface AnswerResult {
 	id: string;
 	request: string;
-	message: string;
+	/** Inbox message carrying the answer; null when it went straight to a live session. */
+	message: string | null;
 	status: RunStatus;
 }
 
@@ -295,6 +309,10 @@ export class RunManager {
 	private readonly stepStarts = new Map<string, number>();
 	/** needs_input deadlines (non-blocking requests). */
 	private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
+	/** Live session steps of executing runs (run id -> step -> handle), for `send --mode now`. */
+	private readonly liveSessions = new Map<string, Map<string, LiveSession>>();
+	/** Session requests waiting for `af answer` (run id -> request id -> resolver). */
+	private readonly liveRequests = new Map<string, Map<string, (d: SessionDecision) => void>>();
 	private scheduling = false;
 	private rescheduleRequested = false;
 	private closed = false;
@@ -312,7 +330,9 @@ export class RunManager {
 
 	/** Runs that are executing or waiting in the queue. */
 	activeCount(): number {
-		return this.registry.list().filter((r) => r.status === "running" || r.status === "queued")
+		return this.registry
+			.list()
+			.filter((r) => r.status === "running" || r.status === "queued" || this.executing.has(r.id))
 			.length;
 	}
 
@@ -641,7 +661,10 @@ export class RunManager {
 	 * `## Operator Messages` section at the start of the next step or
 	 * ralph-loop iteration prompt (of the named step when `step` is set).
 	 */
-	async send(id: string, input: NewMessage): Promise<{ id: string; message: InboxMessage }> {
+	async send(
+		id: string,
+		input: NewMessage,
+	): Promise<{ id: string; message: InboxMessage; steered: boolean }> {
 		const entry = this.requireEntry(id);
 		const text = typeof input.text === "string" ? input.text.trim() : "";
 		if (!text) throw new RunError("Message text is required");
@@ -666,8 +689,36 @@ export class RunManager {
 		const store = new RunStore(entry.dir);
 		const message = new Inbox(entry.dir).queue({ text, from, mode, step });
 		await store.appendEvent("message.queued", messageEventData(message));
-		if (mode === "now" && this.executing.has(id)) this.interruptFor(id, message.id);
-		return { id, message };
+		let steered = false;
+		if (mode === "now" && this.executing.has(id)) {
+			steered = await this.steerLive(id, store, message);
+			if (!steered) this.interruptFor(id, message.id);
+		}
+		return { id, message, steered };
+	}
+
+	/**
+	 * `send --mode now` to a step on the session driver: delivers the message
+	 * into the live session (it reaches the agent at the next tool call), with
+	 * no abort and no restart. Returns false when no live session takes it.
+	 */
+	private async steerLive(id: string, store: RunStore, message: InboxMessage): Promise<boolean> {
+		const sessions = this.liveSessions.get(id);
+		if (!sessions || sessions.size === 0) return false;
+		const target = message.step
+			? sessions.has(message.step)
+				? message.step
+				: null
+			: [...sessions.keys()][0];
+		const handle = target ? sessions.get(target) : undefined;
+		if (!target || !handle) return false;
+		const [delivered] = new Inbox(store.dir).markDelivered([message.id], target);
+		if (!delivered) return false;
+		handle.steer(formatOperatorMessages([delivered]));
+		await store.appendEvent("message.delivered", { id: delivered.id, step: target, live: true });
+		await store.appendDecision(messageDecision(delivered, target));
+		this.log(`Run ${id}: steered the live session of ${target} (send now)`);
+		return true;
 	}
 
 	/**
@@ -802,12 +853,21 @@ export class RunManager {
 			throw new RunError(`Cannot answer a run in '${entry.status}' status`, 409);
 		}
 		const store = new RunStore(entry.dir);
-		const pending = pendingInput(store.readRun());
-		if (!pending) throw new RunError("Run has no pending needs_input request", 409);
-		const request = pending.request;
-		if (input.request_id && input.request_id !== request.id) {
-			throw new RunError(`Unknown request '${input.request_id}'. Pending: ${request.id}`, 404);
+		const list = pendingInputs(store.readRun());
+		if (list.length === 0) throw new RunError("Run has no pending needs_input request", 409);
+		const ids = list.map((p) => p.request.id).join(", ");
+		let pending: PendingInput | undefined;
+		if (input.request_id) {
+			pending = list.find((p) => p.request.id === input.request_id);
+			if (!pending) {
+				throw new RunError(`Unknown request '${input.request_id}'. Pending: ${ids}`, 404);
+			}
+		} else if (list.length > 1) {
+			throw new RunError(`Several requests are pending (${ids}): give a request id`);
+		} else {
+			pending = list[0];
 		}
+		const request = pending.request;
 		const raw = typeof input.answer === "string" ? input.answer.trim() : "";
 		if (!raw) throw new RunError("Answer text is required");
 		const policy = input.from === "policy";
@@ -820,6 +880,16 @@ export class RunManager {
 			request.options.find((o) => o.label.toLowerCase() === raw.toLowerCase()) ??
 			null;
 		const answer = option ? `${option.id} (${option.label})` : raw;
+		const resolve = pending.live ? this.liveRequests.get(id)?.get(request.id) : undefined;
+		if (resolve) {
+			return this.answerLive(entry, store, pending, resolve, {
+				raw,
+				option: option?.id ?? null,
+				answer,
+				from: policy ? "policy" : from,
+			});
+		}
+		// A live request whose session is gone (supervisor restart) falls back to a rerun
 		const message = new Inbox(entry.dir).queue({
 			text: `Answer to ${request.id} ("${request.question}"): ${answer}`,
 			from,
@@ -852,6 +922,141 @@ export class RunManager {
 		});
 		await this.resume(id);
 		return { id, request: request.id, message: message.id, status: "queued" };
+	}
+
+	/**
+	 * Answers a request of a live session: the answer goes straight to the
+	 * waiting session (as the tool result), with the same `input.answered`
+	 * event and decision as a rerun answer. The run is `running` again once
+	 * no request is left.
+	 */
+	private async answerLive(
+		entry: RegistryEntry,
+		store: RunStore,
+		pending: PendingInput,
+		resolve: (d: SessionDecision) => void,
+		a: { raw: string; option: string | null; answer: string; from: string },
+	): Promise<AnswerResult> {
+		const request = pending.request;
+		this.liveRequests.get(entry.id)?.delete(request.id);
+		this.clearTimer(entry.id, request.id);
+		const run = await store.updateRunWith((current) => {
+			const remaining = pendingInputs(current).filter((p) => p.request.id !== request.id);
+			return {
+				"x-af-needs-input": remaining.length > 0 ? remaining : null,
+				...(remaining.length === 0 ? { status: "running" as RunStatus } : {}),
+			};
+		});
+		const resumed = run.status === "running";
+		if (resumed) await this.registry.update(entry.id, { status: "running" });
+		await store.appendEvent("input.answered", {
+			id: request.id,
+			step: pending.step,
+			answer: a.option ?? a.raw,
+			option: a.option,
+			from: a.from,
+			message: null,
+			live: true,
+		});
+		await store.appendDecision({
+			id: `d-${request.id}`,
+			at: new Date().toISOString(),
+			phase: pending.step,
+			source: a.from === "policy" ? "policy" : "operator",
+			risk: "low",
+			decision: `Answered ${request.id} (${request.question}): ${a.answer}`,
+			rationale:
+				a.from === "policy"
+					? "No answer within the needs_input timeout; applied the recommended option of a non-blocking request"
+					: `Answer from ${a.from}, delivered to the live session`,
+			alternatives: request.options.filter((o) => o.id !== a.option).map((o) => o.label),
+			refs: [request.id],
+		});
+		if (resumed) await store.appendEvent("run.resumed", { reason: "answered" });
+		resolve({ option: a.option, text: a.raw });
+		return {
+			id: entry.id,
+			request: request.id,
+			message: null,
+			status: resumed ? "running" : "awaiting-human",
+		};
+	}
+
+	/**
+	 * Supervisor side of a session step: requests become `needs_input` while
+	 * the session waits alive, and the live session is registered for
+	 * `send --mode now`.
+	 */
+	private sessionHost(
+		entry: RegistryEntry,
+		store: RunStore,
+		config: Record<string, unknown>,
+		step: string,
+	): SessionHost {
+		return {
+			requestInput: (request, sessionId) =>
+				this.requestLive(entry, store, config, step, request, sessionId),
+			onLive: (handle) => {
+				const sessions = this.liveSessions.get(entry.id) ?? new Map<string, LiveSession>();
+				sessions.set(step, handle);
+				this.liveSessions.set(entry.id, sessions);
+				return () => {
+					if (sessions.get(step) === handle) sessions.delete(step);
+				};
+			},
+		};
+	}
+
+	/**
+	 * Raises a `needs_input` for a live session request: appends it to
+	 * `x-af-needs-input`, sets the run `awaiting-human` (the step process
+	 * stays alive and keeps its worktree), emits `needs_input`, and resolves
+	 * with the answer from `af answer`.
+	 */
+	private async requestLive(
+		entry: RegistryEntry,
+		store: RunStore,
+		config: Record<string, unknown>,
+		step: string,
+		request: SessionRequest,
+		sessionId: string | null,
+	): Promise<SessionDecision> {
+		const needs: NeedsInput = {
+			id: request.id,
+			question: request.question,
+			options: request.options.map((o) =>
+				o.description
+					? { id: o.id, label: o.label, description: o.description }
+					: { id: o.id, label: o.label },
+			),
+			recommended: request.recommended,
+			context: request.context,
+			blocking: true,
+		};
+		const pending: PendingInput = {
+			...newPendingInput(step, needs, config),
+			live: true,
+			session_id: sessionId,
+		};
+		const requests =
+			this.liveRequests.get(entry.id) ?? new Map<string, (d: SessionDecision) => void>();
+		this.liveRequests.set(entry.id, requests);
+		const decision = new Promise<SessionDecision>((resolve) => requests.set(request.id, resolve));
+		await store.updateRunWith((current) => ({
+			status: "awaiting-human",
+			"x-af-needs-input": [...pendingInputs(current), pending],
+		}));
+		await this.registry.update(entry.id, { status: "awaiting-human" });
+		await store.appendEvent("needs_input", {
+			...needs,
+			step,
+			deadline: pending.deadline,
+			live: true,
+			tool: request.tool,
+		});
+		if (pending.deadline) this.armTimer(entry.id, pending);
+		this.log(`Run ${entry.id}: ${step} waits for ${request.id} (${request.tool})`);
+		return decision;
 	}
 
 	/**
@@ -1086,17 +1291,8 @@ export class RunManager {
 		const request =
 			last?.block.status === "awaiting-human" ? (last.block.needs_input ?? null) : null;
 		if (!last || !request) return null;
-		const minutes = needsInputTimeout(config);
-		const autoApply = request.blocking === false && request.recommended != null;
-		const now = Date.now();
-		const pending: PendingInput = {
-			step: last.step,
-			request,
-			asked_at: new Date(now).toISOString(),
-			deadline:
-				autoApply && minutes !== null ? new Date(now + minutes * 60_000).toISOString() : null,
-		};
-		await store.updateRun({ "x-af-needs-input": pending });
+		const pending = newPendingInput(last.step, request, config);
+		await store.updateRun({ "x-af-needs-input": [pending] });
 		await store.appendEvent("needs_input", {
 			...request,
 			step: last.step,
@@ -1110,8 +1306,9 @@ export class RunManager {
 		for (const entry of this.registry.list()) {
 			if (entry.status !== "awaiting-human") continue;
 			try {
-				const pending = pendingInput(new RunStore(entry.dir).readRun());
-				if (pending?.deadline) this.armTimer(entry.id, pending);
+				for (const pending of pendingInputs(new RunStore(entry.dir).readRun())) {
+					if (pending.deadline) this.armTimer(entry.id, pending);
+				}
 			} catch {
 				// Unreadable run.json: nothing to arm
 			}
@@ -1119,12 +1316,13 @@ export class RunManager {
 	}
 
 	private armTimer(id: string, pending: PendingInput): void {
-		this.clearTimer(id);
+		const key = stepKey(id, pending.request.id);
+		this.clearTimer(id, pending.request.id);
 		const recommended = pending.request.recommended;
 		if (!pending.deadline || recommended == null) return;
 		const delay = Math.max(0, Date.parse(pending.deadline) - Date.now());
 		const timer = setTimeout(() => {
-			this.timers.delete(id);
+			this.timers.delete(key);
 			this.answer(id, {
 				request_id: pending.request.id,
 				answer: recommended,
@@ -1134,25 +1332,32 @@ export class RunManager {
 			});
 		}, delay);
 		timer.unref?.();
-		this.timers.set(id, timer);
+		this.timers.set(key, timer);
 	}
 
-	private clearTimer(id: string): void {
-		const timer = this.timers.get(id);
-		if (timer) clearTimeout(timer);
-		this.timers.delete(id);
+	/** Clears the deadline timer of one request, or of every request of the run. */
+	private clearTimer(id: string, requestId?: string): void {
+		const prefix = stepKey(id, requestId ?? "");
+		for (const [key, timer] of [...this.timers]) {
+			if (requestId ? key !== prefix : !key.startsWith(prefix)) continue;
+			clearTimeout(timer);
+			this.timers.delete(key);
+		}
 	}
 
 	/** Re-queues a paused, waiting, blocked or failed run; it resumes from the last completed step. */
 	async resume(id: string): Promise<{ id: string; status: RunStatus }> {
 		const entry = this.requireEntry(id);
+		if (this.executing.has(id) && entry.status === "awaiting-human") {
+			throw new RunError("Run is still executing: a live session waits for af answer", 409);
+		}
 		if (!RESUMABLE_STATUSES.includes(entry.status)) {
 			throw new RunError(`Cannot resume run in '${entry.status}' status`, 409);
 		}
 		const store = new RunStore(entry.dir);
 		const patch: Partial<RunJson> = { status: "queued", ended_at: null };
 		// Resuming without an answer reruns the step, which asks again if needed
-		if (pendingInput(store.readRun())) patch["x-af-needs-input"] = null;
+		if (pendingInputs(store.readRun()).length > 0) patch["x-af-needs-input"] = null;
 		this.clearTimer(id);
 		await store.updateRun(patch);
 		await this.registry.update(id, { status: "queued" });
@@ -1190,7 +1395,8 @@ export class RunManager {
 				do {
 					this.rescheduleRequested = false;
 					const runs = this.registry.list();
-					const running = runs.filter((r) => r.status === "running");
+					// A run waiting on a live session (awaiting-human) still holds its checkout
+					const running = runs.filter((r) => r.status === "running" || this.executing.has(r.id));
 					const queued = runs.filter((r) => r.status === "queued" && !this.executing.has(r.id));
 					const picked = pickRunnable(queued, running, {
 						maxParallelRuns: readNumber(
@@ -1287,6 +1493,7 @@ export class RunManager {
 					return request.status === "canceled" ? WORKFLOW_STATUS.CANCELED : WORKFLOW_STATUS.PAUSED;
 				},
 				operatorMessages: (step) => this.deliverMessages(store, step),
+				sessionHost: (step) => this.sessionHost(entry, store, payload.config, step),
 				recordResult: (step, block) => this.recordResult(entry, store, step, block),
 				emitEvent: async (type, data) => {
 					await store.appendEvent(type, data);
@@ -1330,6 +1537,7 @@ export class RunManager {
 				payload.workflow.path,
 				resumeProgress,
 			);
+			await this.dropLiveRequests(entry.id, store);
 			const status = toRunStatus(progress);
 			const request = this.stopRequests.get(entry.id);
 			if (request?.shutdown) {
@@ -1374,10 +1582,23 @@ export class RunManager {
 			this.stopRequests.delete(entry.id);
 			this.controllers.delete(entry.id);
 			this.results.delete(entry.id);
+			this.liveSessions.delete(entry.id);
+			this.liveRequests.delete(entry.id);
 			for (const key of [...this.stepStarts.keys()]) {
 				if (key.startsWith(stepKey(entry.id, ""))) this.stepStarts.delete(key);
 			}
 		}
+	}
+
+	/** Removes the requests of live sessions that ended without an answer (canceled, paused). */
+	private async dropLiveRequests(id: string, store: RunStore): Promise<void> {
+		this.liveRequests.delete(id);
+		if (!pendingInputs(store.readRun()).some((p) => p.live)) return;
+		this.clearTimer(id);
+		await store.updateRunWith((current) => {
+			const kept = pendingInputs(current).filter((p) => !p.live);
+			return { "x-af-needs-input": kept.length > 0 ? kept : null };
+		});
 	}
 
 	/**
@@ -1547,10 +1768,39 @@ function stepKey(run: string, step: string): string {
 	return `${run}\u0000${step}`;
 }
 
-/** Pending needs_input request of a run (`x-af-needs-input` in run.json). */
-export function pendingInput(run: RunJson): PendingInput | null {
+/**
+ * Pending needs_input requests of a run (`x-af-needs-input` in run.json): a
+ * list keyed by request id (parallel session steps can each wait). The
+ * single-object form written before the list is still read.
+ */
+export function pendingInputs(run: RunJson): PendingInput[] {
 	const value = run["x-af-needs-input"];
-	return value && typeof value === "object" ? (value as PendingInput) : null;
+	if (Array.isArray(value)) {
+		return value.filter((p): p is PendingInput => !!p && typeof p === "object" && "request" in p);
+	}
+	return value && typeof value === "object" ? [value as PendingInput] : [];
+}
+
+/** First pending needs_input request of a run, or null. */
+export function pendingInput(run: RunJson): PendingInput | null {
+	return pendingInputs(run)[0] ?? null;
+}
+
+/** A pending request; non-blocking requests with a recommended option get the timeout deadline. */
+function newPendingInput(
+	step: string,
+	request: NeedsInput,
+	config: Record<string, unknown>,
+): PendingInput {
+	const minutes = needsInputTimeout(config);
+	const autoApply = request.blocking === false && request.recommended != null;
+	const now = Date.now();
+	return {
+		step,
+		request,
+		asked_at: new Date(now).toISOString(),
+		deadline: autoApply && minutes !== null ? new Date(now + minutes * 60_000).toISOString() : null,
+	};
 }
 
 /** Amendments waiting for the amend step (`x-af-amendments` in run.json). */

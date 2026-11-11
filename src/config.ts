@@ -45,6 +45,13 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		/** Minutes before a non-blocking needs_input request gets its recommended option (null: never). */
 		needs_input_timeout: null,
 	},
+	runtimes: {
+		// session: Claude Agent SDK session (live messages, questions, permissions).
+		// cli: one-shot `claude -p`.
+		claude: { driver: "session", plugins: [] },
+		// Codex has no session driver yet (codex app-server comes later).
+		codex: { driver: "cli" },
+	},
 };
 
 /**
@@ -252,4 +259,25 @@ export function getRuntimeModel(config: Record<string, unknown>, runtimeId: stri
 export function getSandboxMode(config: Record<string, unknown>): string | null {
 	const codexConfig = config.codex as Record<string, unknown> | undefined;
 	return (codexConfig?.sandbox as string) ?? null;
+}
+
+/**
+ * Driver of a runtime (`runtimes.<id>.driver`): `session` or `cli`. Unknown
+ * values fall back to the default (`session` for Claude, `cli` otherwise).
+ */
+export function getRuntimeDriver(
+	config: Record<string, unknown>,
+	runtimeId: string,
+): "session" | "cli" {
+	const runtimes = config.runtimes as Record<string, Record<string, unknown> | undefined> | undefined;
+	const value = runtimes?.[runtimeId]?.driver;
+	if (value === "session" || value === "cli") return value;
+	return runtimeId === "claude" ? "session" : "cli";
+}
+
+/** Local plugin directories loaded by the session driver (`runtimes.<id>.plugins`). */
+export function getRuntimePlugins(config: Record<string, unknown>, runtimeId: string): string[] {
+	const runtimes = config.runtimes as Record<string, Record<string, unknown> | undefined> | undefined;
+	const value = runtimes?.[runtimeId]?.plugins;
+	return Array.isArray(value) ? value.filter((p): p is string => typeof p === "string" && p !== "") : [];
 }

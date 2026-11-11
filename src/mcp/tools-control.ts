@@ -36,14 +36,14 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Send an operator message to a run",
 			description:
-				"Queues an operator message for a run that has not ended (queued, running, paused, blocked or awaiting-human) and returns { id, message } with the queued message. The message is injected as an ## Operator Messages section at the start of the next step prompt (`mode: next`, the default), or of the named `step` only. `mode: now` kills the running step and restarts it at once with the message (on a run that is not executing it waits for the next step). An unknown `step` is rejected with the list of step names; a finished run returns a 409. Use af_amend instead to change the plan, af_answer to reply to a needs_input question. Next: follow the run with af_events.",
+				"Queues an operator message for a run that has not ended (queued, running, paused, blocked or awaiting-human) and returns { id, message, steered } with the queued message. The message is injected as an ## Operator Messages section at the start of the next step prompt (`mode: next`, the default), or of the named `step` only. `mode: now` delivers the message into the live session of a step on the session driver (steered: true, it reaches the agent at its next tool call, no restart); on the cli driver it kills the running step and restarts it at once with the message (on a run that is not executing it waits for the next step). With `mode: next`, a live session step gets the message as its next turn. An unknown `step` is rejected with the list of step names; a finished run returns a 409. Use af_amend instead to change the plan, af_answer to reply to a needs_input question. Next: follow the run with af_events.",
 			inputSchema: {
 				run: runId("Run id"),
 				text: nonEmpty("text", "Message text"),
 				mode: z
 					.enum(["next", "now"], { error: "mode must be next or now" })
 					.optional()
-					.describe("next: at the next step (default); now: restart the running step with it"),
+					.describe("next: at the next step or session turn (default); now: steer the live session, or restart the running step with it"),
 				step: nonEmpty("step", "Only deliver the message to this step").optional(),
 				from: fromField(),
 			},
@@ -94,7 +94,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Answer a run's question",
 			description:
-				"Answers the pending needs_input question of a run in awaiting-human status and resumes it; returns { id, request, message, status: queued }. `request_id` is the question id from the needs_input event (af_events) or from run['x-af-needs-input'] in af_status; when given it must match the pending request. `answer` is an option id of the question (for example a) or free text. The asking step runs again with the answer in its ## Operator Messages section. A run that is not awaiting-human returns a 409. Next: follow the run with af_events.",
+				"Answers the pending needs_input question of a run in awaiting-human status and resumes it; returns { id, request, message, status }. `request_id` is the question id from the needs_input event (af_events) or from the run['x-af-needs-input'] list in af_status; it is required when several requests are pending (parallel steps). `answer` for a permission request (needs_input event with live: true and a tool) is allow or deny. `answer` is an option id of the question (for example a) or free text. A request raised by a live session (live: true) goes straight to the waiting session (message: null, status running once no request is left). Otherwise the asking step runs again with the answer in its ## Operator Messages section (status: queued), resuming its session when it ran on the session driver. A run that is not awaiting-human returns a 409. Next: follow the run with af_events.",
 			inputSchema: {
 				run: runId("Run id"),
 				answer: nonEmpty("answer", "Option id of the question, or free text"),

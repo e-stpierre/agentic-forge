@@ -189,6 +189,16 @@ export class RunStore {
 		});
 	}
 
+	/** Read-modify-write of run.json under the contract lock (concurrent list updates). */
+	async updateRunWith(fn: (run: RunJson) => Partial<RunJson>): Promise<RunJson> {
+		return withLock(this.runFile, async () => {
+			const current = this.readRun();
+			const next = { ...current, ...fn(current), updated_at: new Date().toISOString() };
+			this.writeValidated(next);
+			return next;
+		});
+	}
+
 	private async writeRun(run: RunJson): Promise<void> {
 		await withLock(this.runFile, async () => {
 			this.writeValidated({ ...run, updated_at: run.updated_at ?? new Date().toISOString() });

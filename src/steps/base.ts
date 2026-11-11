@@ -1,13 +1,14 @@
 /** Base class and types for step executors. */
 
-import { getRuntimeModel } from "../config.js";
+import { getRuntimeDriver, getRuntimeModel, getRuntimePlugins } from "../config.js";
 import type { ConsoleOutput } from "../console.js";
 import { latestPlan } from "../contract/plan.js";
 import type { ResultBlock } from "../contract/result.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import { STEP_STATUS, WORKFLOW_STATUS, updateStepStopped } from "../progress.js";
 import type { TemplateRenderer } from "../renderer.js";
-import type { RuntimeAdapter, RuntimeId } from "../runtimes/index.js";
+import type { RuntimeAdapter, RuntimeId, RuntimeRunOptions } from "../runtimes/index.js";
+import type { SessionHost } from "../runtimes/session.js";
 import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../types.js";
 
 // --- Step context ---
@@ -39,6 +40,11 @@ export interface StepContext {
 	 * delivered, so call it once per step attempt or ralph-loop iteration.
 	 */
 	operatorMessages?: ((step: string) => Promise<string>) | null;
+	/**
+	 * Supervisor side of a step on the session driver: raises `needs_input`
+	 * for session requests and registers the live session for steering.
+	 */
+	sessionHost?: ((step: string) => SessionHost) | null;
 	/** Checked at ralph-loop iteration boundaries; a workflow status stops the loop. */
 	shouldStop?: (() => string | null) | null;
 	/**
@@ -116,6 +122,30 @@ export function propagateChildStop(
 	);
 	console.info(summary);
 	return { success: false, outputSummary: summary, error: summary };
+}
+
+/**
+ * Driver options of a step: the session driver (`runtimes.<id>.driver:
+ * session`, when the runtime has one) with the supervisor's session host,
+ * where pending operator messages are sent as the next turn; else `cli`.
+ */
+export function driverOptions(
+	context: StepContext,
+	step: string,
+): Pick<RuntimeRunOptions, "driver" | "sessionHost" | "plugins"> {
+	const runtimeId = context.runtimeAdapter.id;
+	if (getRuntimeDriver(context.config, runtimeId) !== "session") return { driver: "cli" };
+	if (!context.runtimeAdapter.createSession) return { driver: "cli" };
+	const host = context.sessionHost?.(step) ?? {};
+	const messages = context.operatorMessages;
+	return {
+		driver: "session",
+		sessionHost: {
+			...host,
+			nextMessages: host.nextMessages ?? (messages ? () => messages(step) : undefined),
+		},
+		plugins: getRuntimePlugins(context.config, runtimeId),
+	};
 }
 
 /** Prepends pending operator messages to a prompt. */

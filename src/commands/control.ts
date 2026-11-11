@@ -37,7 +37,10 @@ export async function cmdSend(options: {
 	requireRun(options.runId);
 	const client = await supervisorClient();
 	try {
-		const res = await client.request<{ message: { id: string; target: string; step?: string } }>(
+		const res = await client.request<{
+			message: { id: string; target: string; step?: string };
+			steered?: boolean;
+		}>(
 			"POST",
 			`/v1/runs/${encodeURIComponent(options.runId)}/messages`,
 			{
@@ -48,7 +51,11 @@ export async function cmdSend(options: {
 			},
 		);
 		const target = res.message.step ? `step '${res.message.step}'` : "the next step";
-		if (options.mode === "now") {
+		if (options.mode === "now" && res.steered) {
+			process.stdout.write(
+				`Message sent: ${res.message.id} (delivered into the live session of ${options.runId})\n`,
+			);
+		} else if (options.mode === "now") {
 			process.stdout.write(
 				`Message sent: ${res.message.id} (a running step of ${options.runId} restarts with it now)\n`,
 			);
@@ -94,13 +101,15 @@ export async function cmdAnswer(options: {
 	requireRun(options.runId);
 	const client = await supervisorClient();
 	try {
-		await client.request<{ status: string; message: string }>(
+		const res = await client.request<{ status: string; message: string | null }>(
 			"POST",
 			`/v1/runs/${encodeURIComponent(options.runId)}/answer`,
 			{ request_id: options.requestId, answer: options.answer, from: options.from ?? "user" },
 		);
 		process.stdout.write(
-			`Answered ${options.requestId}: ${options.runId} resumes and the step runs again with the answer\n`,
+			res.message === null
+				? `Answered ${options.requestId}: the live session of ${options.runId} continues with the answer\n`
+				: `Answered ${options.requestId}: ${options.runId} resumes and the step runs again with the answer\n`,
 		);
 	} catch (err) {
 		throw new CliExitError(`Error: ${(err as Error).message}`);
