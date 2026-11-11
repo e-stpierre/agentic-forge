@@ -2,6 +2,7 @@
 
 import path from "node:path";
 
+import type { SessionEvent } from "./session.js";
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -116,6 +117,12 @@ export class CodexAdapter implements RuntimeAdapter {
 		};
 	}
 
+	/** Transcript events of a `codex exec --json` line (see `codexStreamEvents`). */
+	parseTranscriptLine(line: string): SessionEvent[] {
+		const data = parseCodexJsonLine(line);
+		return data ? codexStreamEvents(data) : [];
+	}
+
 	parseStreamLine(line: string): StreamEvent | null {
 		const data = parseCodexJsonLine(line);
 		if (!data) {
@@ -189,5 +196,76 @@ export class CodexAdapter implements RuntimeAdapter {
 			success: returncode === 0,
 			sessionOutput,
 		};
+	}
+}
+
+const FILE_CHANGES = new Set(["add", "update", "delete"]);
+
+/**
+ * Normalized events of one `codex exec --json` line: `thread.started` starts
+ * the session, `agent_message` items are messages, command and MCP tool items
+ * are tool calls (`item.started`) and results (`item.completed`), and
+ * `file_change` items give one diff per changed file.
+ */
+export function codexStreamEvents(data: Record<string, unknown>): SessionEvent[] {
+	const type = data.type;
+	if (type === "thread.started" && typeof data.thread_id === "string") {
+		return [{ type: "session.started", sessionId: data.thread_id, model: null, authSource: null }];
+	}
+	if (type === "turn.completed") {
+		return [{ type: "turn.completed", result: "", isError: false, messageIds: [] }];
+	}
+	if (type === "turn.failed" || type === "error") {
+		const error = data.error as { message?: unknown } | undefined;
+		const message = error?.message ?? data.message ?? "Unknown error";
+		return [{ type: "error", message: String(message) }];
+	}
+	if (type !== "item.started" && type !== "item.completed") return [];
+	const item = data.item as Record<string, unknown> | undefined;
+	if (!item || typeof item !== "object") return [];
+	const id = String(item.id ?? "");
+	const done = type === "item.completed";
+	switch (item.type) {
+		case "agent_message":
+			if (!done || typeof item.text !== "string") return [];
+			return [
+				{ type: "item", id, kind: "message", status: "completed", role: "assistant", text: item.text },
+			];
+		case "command_execution":
+		case "mcp_tool_call": {
+			const tool = item.type === "command_execution" ? "shell" : String(item.tool ?? "mcp");
+			const input =
+				item.type === "command_execution"
+					? { command: item.command }
+					: { server: item.server, ...((item.arguments as Record<string, unknown>) ?? {}) };
+			if (!done) return [{ type: "item", id, kind: "tool_call", status: "started", tool, input }];
+			const output = item.aggregated_output ?? item.result ?? "";
+			const failed =
+				item.status === "failed" || (typeof item.exit_code === "number" && item.exit_code !== 0);
+			return [
+				{
+					type: "item",
+					id,
+					kind: "tool_result",
+					status: "completed",
+					tool,
+					text: typeof output === "string" ? output : JSON.stringify(output),
+					isError: failed,
+				},
+			];
+		}
+		case "file_change": {
+			if (!done || !Array.isArray(item.changes)) return [];
+			return (item.changes as Record<string, unknown>[]).map((change, index) => ({
+				type: "diff" as const,
+				id: `${id}:${index}`,
+				path: String(change.path ?? ""),
+				change: FILE_CHANGES.has(String(change.kind))
+					? (String(change.kind) as "add" | "update" | "delete")
+					: "update",
+			}));
+		}
+		default:
+			return [];
 	}
 }

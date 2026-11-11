@@ -23,6 +23,7 @@ import type {
 	SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
 
+import { claudeMessageItems } from "./claude-stream.js";
 import {
 	AsyncQueue,
 	PERMISSION_OPTIONS,
@@ -284,47 +285,12 @@ export class ClaudeSession implements RuntimeSession {
 					});
 				}
 				return;
-			case "assistant": {
-				const content = message.message?.content ?? [];
-				content.forEach((block, index) => {
-					if (block.type === "text" && block.text) {
-						this.emit({
-							type: "item",
-							id: `${message.message.id ?? message.uuid}:${index}`,
-							kind: "message",
-							status: "completed",
-							role: "assistant",
-							text: block.text,
-						});
-					} else if (block.type === "tool_use") {
-						this.emit({
-							type: "item",
-							id: block.id,
-							kind: "tool_call",
-							status: "started",
-							tool: block.name,
-							input: (block.input ?? {}) as Record<string, unknown>,
-						});
-					}
-				});
-				return;
-			}
-			case "user": {
-				const content = message.message?.content;
-				if (!Array.isArray(content)) return;
-				for (const block of content) {
-					if (typeof block !== "object" || block === null || block.type !== "tool_result") continue;
-					this.emit({
-						type: "item",
-						id: block.tool_use_id,
-						kind: "tool_result",
-						status: "completed",
-						text: toolResultText(block.content),
-						isError: block.is_error === true,
-					});
+			case "assistant":
+			case "user":
+				for (const item of claudeMessageItems(message as unknown as Record<string, unknown>)) {
+					this.emit(item);
 				}
 				return;
-			}
 			case "result": {
 				const ids =
 					message.user_message_uuids ??
@@ -382,13 +348,4 @@ export function describeToolCall(tool: string, input: Record<string, unknown>): 
 	);
 	const value = key ? String(input[key]) : JSON.stringify(input);
 	return value.length > 200 ? `${value.slice(0, 200)}...` : value;
-}
-
-function toolResultText(content: unknown): string {
-	if (typeof content === "string") return content;
-	if (!Array.isArray(content)) return "";
-	return content
-		.map((c) => (c && typeof c === "object" && "text" in c ? String(c.text) : ""))
-		.filter(Boolean)
-		.join("\n");
 }

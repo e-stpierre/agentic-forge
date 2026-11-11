@@ -304,6 +304,7 @@ describe("Claude session driver", () => {
 		await run("EVENTS", { onEvent: (e) => events.push(e) }, { allowedTools: ["Read"] });
 		const types = events.map((e) => (e.type === "item" ? `item:${e.kind}` : e.type));
 		expect(types).toEqual([
+			"item:message",
 			"state",
 			"session.started",
 			"item:tool_call",
@@ -314,7 +315,13 @@ describe("Claude session driver", () => {
 			"state",
 		]);
 		expect(events.at(-1)).toEqual({ type: "state", state: "closed" });
-		expect(events[1]).toMatchObject({ authSource: "none", sessionId: "fake-session-1" });
+		expect(events[0]).toMatchObject({ role: "user", text: "EVENTS" });
+		expect(events[2]).toMatchObject({
+			authSource: "none",
+			sessionId: "fake-session-1",
+			runtime: "claude",
+			driver: "session",
+		});
 	});
 
 	it("streams assistant text to the console", async () => {

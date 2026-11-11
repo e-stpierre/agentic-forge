@@ -26,6 +26,7 @@ import {
 	cmdConfig,
 	cmdConfigure,
 	cmdEvents,
+	cmdLogs,
 	cmdInit,
 	cmdInput,
 	cmdList,
@@ -251,6 +252,29 @@ program
 			cursor: optString(opts.cursor),
 			cursorFile: optString(opts.cursorFile),
 			new: optBool(opts.new),
+			json: optBool(opts.json),
+			wait: optString(opts.wait),
+		});
+	});
+
+// logs command
+program
+	.command("logs")
+	.description("Print the live transcript of a run (all steps, or one) and optionally follow it")
+	.argument("<run>", "run ID")
+	.option("--step <step>", "only the transcript of this step")
+	.option("--follow", "keep streaming new entries until the step (or the run) ends")
+	.option("--cursor <cursor>", "start after this cursor (printed on stderr) instead of the tail")
+	.option("--limit <n>", "entries of the tail and of each page", "50")
+	.option("--json", "print entries as JSON lines")
+	.option("--wait <seconds>", "long-poll length per request with --follow", "30")
+	.action(async (runId: string, opts: Record<string, unknown>) => {
+		await cmdLogs({
+			runId,
+			step: optString(opts.step),
+			follow: optBool(opts.follow),
+			cursor: optString(opts.cursor),
+			limit: optString(opts.limit),
 			json: optBool(opts.json),
 			wait: optString(opts.wait),
 		});

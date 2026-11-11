@@ -5,7 +5,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ClaudeSession } from "./claude-session.js";
-import type { RuntimeSession, SessionListener, SessionStartOptions } from "./session.js";
+import { claudeStreamEvents } from "./claude-stream.js";
+import type {
+	RuntimeSession,
+	SessionEvent,
+	SessionListener,
+	SessionStartOptions,
+} from "./session.js";
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -139,6 +145,12 @@ export class ClaudeAdapter implements RuntimeAdapter {
 			env: Object.keys(env).length > 0 ? env : undefined,
 			stdinInput: options.prompt,
 		};
+	}
+
+	/** Transcript events of a stream-json line (same mapping as the session driver). */
+	parseTranscriptLine(line: string): SessionEvent[] {
+		const data = parseStreamJsonLine(line);
+		return data ? claudeStreamEvents(data) : [];
 	}
 
 	parseStreamLine(line: string): StreamEvent | null {

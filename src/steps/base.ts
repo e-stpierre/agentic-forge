@@ -134,9 +134,12 @@ export function driverOptions(
 	step: string,
 ): Pick<RuntimeRunOptions, "driver" | "sessionHost" | "plugins"> {
 	const runtimeId = context.runtimeAdapter.id;
-	if (getRuntimeDriver(context.config, runtimeId) !== "session") return { driver: "cli" };
-	if (!context.runtimeAdapter.createSession) return { driver: "cli" };
 	const host = context.sessionHost?.(step) ?? {};
+	const session =
+		getRuntimeDriver(context.config, runtimeId) === "session" &&
+		Boolean(context.runtimeAdapter.createSession);
+	// The `cli` driver only feeds the live transcript
+	if (!session) return host.onEvent ? { driver: "cli", sessionHost: { onEvent: host.onEvent } } : { driver: "cli" };
 	const messages = context.operatorMessages;
 	return {
 		driver: "session",

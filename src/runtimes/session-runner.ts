@@ -10,7 +10,7 @@
  * questions) go to `SessionHost.requestInput` while the session waits alive.
  */
 
-import type { RuntimeSession, SessionEvent } from "./session.js";
+import { type RuntimeSession, type SessionEvent, userMessageItem } from "./session.js";
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions } from "./types.js";
 
 export async function runSession(
@@ -46,6 +46,7 @@ export async function runSession(
 					console.streamText(next, "user");
 					console.streamComplete();
 				}
+				transcript(userMessageItem(next));
 				session.send(next);
 			} else {
 				session.close();
@@ -58,8 +59,19 @@ export async function runSession(
 		}
 	};
 
+	const transcript = (event: SessionEvent) => {
+		try {
+			host.onEvent?.(event);
+		} catch {
+			// A transcript error must not break the step
+		}
+	};
 	const onEvent = (event: SessionEvent) => {
-		host.onEvent?.(event);
+		transcript(
+			event.type === "session.started"
+				? { ...event, runtime: adapter.id, driver: "session" }
+				: event,
+		);
 		switch (event.type) {
 			case "session.started":
 				model = event.model ?? model;
@@ -105,7 +117,10 @@ export async function runSession(
 			return session?.sessionId ?? null;
 		},
 		steer: (text) => {
-			if (session && session.state !== "closed") session.steer(text);
+			if (session && session.state !== "closed") {
+				transcript(userMessageItem(text));
+				session.steer(text);
+			}
 		},
 		interrupt: async () => {
 			await session?.interrupt();
@@ -135,6 +150,7 @@ export async function runSession(
 		console.streamText(options.prompt, "user");
 		console.streamComplete();
 	}
+	transcript(userMessageItem(options.prompt));
 	const start = { ...adapter.sessionOptions(options), signal: stop.signal };
 	if (options.resumeSessionId) session.resume(options.resumeSessionId, start);
 	else session.start(start);
@@ -158,3 +174,4 @@ export async function runSession(
 	}
 	return adapter.buildFinalResult(returncode, stdout, stderr, options, session.sessionId);
 }
+

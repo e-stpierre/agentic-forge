@@ -216,7 +216,7 @@ afterEach(async () => {
 });
 
 describe("server", () => {
-	it("lists the twelve dispatch, read and steering tools, each with a title and a description", async () => {
+	it("lists the thirteen dispatch, read and steering tools, each with a title and a description", async () => {
 		const { mcp } = await setup();
 		const { tools } = await mcp.listTools();
 		expect(tools.map((t) => t.name).sort()).toEqual([
@@ -227,6 +227,7 @@ describe("server", () => {
 			"af_dispatch",
 			"af_events",
 			"af_list_runs",
+			"af_logs",
 			"af_pause",
 			"af_resume",
 			"af_retry_step",

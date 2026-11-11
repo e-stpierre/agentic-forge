@@ -1,6 +1,6 @@
 /**
  * MCP tools that dispatch and read runs: af_dispatch, af_status,
- * af_list_runs, af_events and af_artifacts (the steering tools are in
+ * af_list_runs, af_events, af_logs and af_artifacts (the steering tools are in
  * tools-control.ts). Each tool validates its input with a zod schema, then
  * makes one supervisor call (af_artifacts reads the run registry and the run
  * directory directly, like `af artifacts`).
@@ -14,12 +14,26 @@ import { z } from "zod";
 import { listAvailableWorkflows, resolveWorkflowPath } from "../commands/run.js";
 import type { RunStatus } from "../contract/index.js";
 import { ARTIFACT_KINDS, listArtifacts, readArtifact } from "../runs/artifacts.js";
-import { dispatchRun, fetchEvents } from "../runs/client.js";
+import { dispatchRun, fetchEvents, fetchLogs } from "../runs/client.js";
 import { buildDispatchPayload } from "../runs/dispatch.js";
 import { DEFAULT_EVENT_LIMIT } from "../runs/events.js";
 import type { RunDetails } from "../runs/manager.js";
 import { type RegistryEntry, RunRegistry } from "../runs/registry.js";
-import { type ClientCache, ToolInputError, jsonResult, toolError, withClient } from "./errors.js";
+import {
+	LOGS_MAX_LIMIT,
+	LOGS_MCP_DEFAULT_LIMIT,
+	LOGS_MCP_MAX_BYTES,
+	LOGS_MCP_MAX_CHARS,
+	TRANSCRIPT_TEXT_MAX,
+} from "../runs/transcript.js";
+import {
+	type ClientCache,
+	ToolInputError,
+	compactResult,
+	jsonResult,
+	toolError,
+	withClient,
+} from "./errors.js";
 
 /** Everything a tool handler needs besides its input. */
 export interface ToolContext {
@@ -331,6 +345,64 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 				READ,
 			);
 			return jsonResult(page);
+		},
+	);
+
+	register(
+		server,
+		"af_logs",
+		{
+			title: "Read a run's live transcript",
+			description: `Reads the live transcript of a run (all steps, or one \`step\`): messages, tool calls and results, diffs, permission requests and answers. Without a cursor returns the last entries (default ${LOGS_MCP_DEFAULT_LIMIT}); with \`cursor\` only newer ones. Returns compact JSON { entries, cursor, more, truncated, active, status }; texts are cut to ${LOGS_MCP_MAX_CHARS} characters and the page to about ${LOGS_MCP_MAX_BYTES / 1000} KB unless you pass max_chars (truncated: true says so). \`active\` is false once the step (or run) ended. \`wait_seconds\` long-polls for new entries while active. Next: call again with the cursor to follow, or af_status for the run's state.`,
+			inputSchema: {
+				run: runId("Run id"),
+				step: nonEmpty("step", "Only this step's transcript").optional(),
+				cursor: nonEmpty("cursor", "Cursor returned by a previous af_logs call").optional(),
+				limit: z
+					.number({ error: `limit must be an integer from 1 to ${LOGS_MAX_LIMIT}` })
+					.int({ error: `limit must be an integer from 1 to ${LOGS_MAX_LIMIT}` })
+					.min(1, { error: `limit must be an integer from 1 to ${LOGS_MAX_LIMIT}` })
+					.max(LOGS_MAX_LIMIT, { error: `limit must be an integer from 1 to ${LOGS_MAX_LIMIT}` })
+					.optional()
+					.describe(`Maximum number of entries (default ${LOGS_MCP_DEFAULT_LIMIT})`),
+				max_chars: z
+					.number({ error: `max_chars must be an integer from 1 to ${TRANSCRIPT_TEXT_MAX}` })
+					.int({ error: `max_chars must be an integer from 1 to ${TRANSCRIPT_TEXT_MAX}` })
+					.min(1, { error: `max_chars must be an integer from 1 to ${TRANSCRIPT_TEXT_MAX}` })
+					.max(TRANSCRIPT_TEXT_MAX, {
+						error: `max_chars must be an integer from 1 to ${TRANSCRIPT_TEXT_MAX}`,
+					})
+					.optional()
+					.describe(
+						`Cut each entry's text to this length (default ${LOGS_MCP_MAX_CHARS}; lifts the page size budget)`,
+					),
+				wait_seconds: z
+					.number({ error: `wait_seconds must be an integer from 0 to ${MAX_WAIT_SECONDS}` })
+					.int({ error: `wait_seconds must be an integer from 0 to ${MAX_WAIT_SECONDS}` })
+					.min(0, { error: `wait_seconds must be an integer from 0 to ${MAX_WAIT_SECONDS}` })
+					.max(MAX_WAIT_SECONDS, {
+						error: `wait_seconds must be an integer from 0 to ${MAX_WAIT_SECONDS}`,
+					})
+					.optional()
+					.describe("Seconds to wait for a new entry while the step is active; 0 returns at once"),
+			},
+		},
+		async (input) => {
+			const page = await withClient(
+				ctx.clients,
+				(client) =>
+					fetchLogs(client, {
+						run: input.run,
+						step: input.step ?? null,
+						cursor: input.cursor ?? null,
+						limit: input.limit ?? LOGS_MCP_DEFAULT_LIMIT,
+						maxChars: input.max_chars ?? LOGS_MCP_MAX_CHARS,
+						maxBytes: input.max_chars === undefined ? LOGS_MCP_MAX_BYTES : 0,
+						waitSeconds: input.wait_seconds ?? 0,
+					}),
+				READ,
+			);
+			return compactResult(page);
 		},
 	);
 

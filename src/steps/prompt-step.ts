@@ -45,14 +45,30 @@ const STOP_STATUSES: Record<string, { stepStatus: string; workflowStatus: string
 const RESUME_INSTRUCTION =
 	"Continue the step with the operator messages above, then end with the result block as before.";
 
+/** Prompt of a session resumed after a supervisor restart (operator messages, if any, come first). */
+const RECOVERY_INSTRUCTION =
+	"The harness restarted while this step was running. Continue the step where you left off, then end with the result block as before.";
+
 /**
- * Session id of the step's last record when it stopped awaiting-human on the
- * session driver (resumed by `af answer`), else null.
+ * Session the step resumes, from its last record: one that stopped
+ * awaiting-human on the session driver (resumed by `af answer`, so only
+ * with operator messages), or one that crash recovery recorded interrupted
+ * with its session id. Null otherwise.
  */
-function stoppedSessionId(progress: WorkflowProgress, step: string): string | null {
+function stoppedSession(
+	progress: WorkflowProgress,
+	step: string,
+	hasMessages: boolean,
+): { id: string; instruction: string } | null {
 	const last = [...progress.completedSteps].reverse().find((s) => s.name === step);
-	if (!last || last.status !== STEP_STATUS.AWAITING_HUMAN) return null;
-	return last.sessionId ?? null;
+	if (!last?.sessionId) return null;
+	if (last.status === STEP_STATUS.AWAITING_HUMAN && hasMessages) {
+		return { id: last.sessionId, instruction: RESUME_INSTRUCTION };
+	}
+	if (last.status === STEP_STATUS.INTERRUPTED) {
+		return { id: last.sessionId, instruction: RECOVERY_INSTRUCTION };
+	}
+	return null;
 }
 
 export class PromptStepExecutor extends StepExecutor {
@@ -89,13 +105,15 @@ export class PromptStepExecutor extends StepExecutor {
 			? await context.operatorMessages(step.name)
 			: "";
 		const driver = driverOptions(context, step.name);
-		// A session step that stopped awaiting-human resumes its own session with the
-		// answer (operator messages) instead of starting over
-		const resumeSessionId =
-			driver.driver === "session" && operatorSection ? stoppedSessionId(progress, step.name) : null;
-		prompt = resumeSessionId
-			? `${operatorSection}${RESUME_INSTRUCTION}`
-			: `${operatorSection}${prompt}`;
+		// A session step that stopped awaiting-human (or was interrupted by a supervisor
+		// restart) resumes its own session instead of starting over
+		const resumed =
+			driver.driver === "session"
+				? stoppedSession(progress, step.name, operatorSection.length > 0)
+				: null;
+		let resumeSessionId = resumed?.id ?? null;
+		const freshPrompt = `${operatorSection}${prompt}`;
+		prompt = resumed ? `${operatorSection}${resumed.instruction}` : freshPrompt;
 
 		const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
 		const defaults = context.config.defaults as Record<string, unknown> | undefined;
@@ -204,6 +222,12 @@ export class PromptStepExecutor extends StepExecutor {
 				});
 				if (progress.currentStep) {
 					progress.currentStep.retryCount = attempt + 1;
+				}
+				if (resumeSessionId) {
+					// The resumed session failed: the retry restarts the step from its boundary
+					logger.warning(step.name, `Resumed session ${resumeSessionId} failed, restarting`);
+					resumeSessionId = null;
+					prompt = freshPrompt;
 				}
 				await emitStepEvent(context, "step.retried", {
 					step: step.name,

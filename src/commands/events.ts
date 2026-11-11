@@ -1,6 +1,7 @@
 /**
  * `af events` (the event stream across runs, with cursors and long-poll
- * follow) and `af artifacts` (plan, summary, decisions and review files).
+ * follow), `af logs` (live step transcripts) and `af artifacts` (plan,
+ * summary, decisions and review files).
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -151,5 +152,81 @@ export function cmdArtifacts(options: ArtifactsOptions): void {
 				`  ${file}${file === list.latest && list.paths.length > 1 ? " (latest)" : ""}\n`,
 			);
 		}
+	}
+}
+
+export interface LogsOptions {
+	runId: string;
+	step?: string;
+	follow?: boolean;
+	cursor?: string;
+	/** Entries of the first page (the tail) and of each later page. */
+	limit?: string;
+	/** Print entries as JSON lines. */
+	json?: boolean;
+	/** Long-poll length per request in seconds (default 30). */
+	wait?: string;
+}
+
+/**
+ * `af logs <run>`: the live transcript of a run (all steps, or `--step`).
+ * Prints the tail, and with `--follow` streams new entries until the step
+ * (or the run) ends. The cursor goes to stderr.
+ */
+export async function cmdLogs(options: LogsOptions): Promise<void> {
+	if (!new RunRegistry().get(options.runId)) {
+		if (resolveLegacyOutputDir(options.runId)) {
+			throw new CliExitError(
+				`Error: ${options.runId} is a legacy run (pre-supervisor) and has no transcript.`,
+			);
+		}
+		throw new CliExitError(`Error: Run not found: ${options.runId}`);
+	}
+	const { LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT } = await import("../runs/transcript.js");
+	const limit = options.limit === undefined ? LOGS_DEFAULT_LIMIT : Number(options.limit);
+	if (!Number.isInteger(limit) || limit < 1 || limit > LOGS_MAX_LIMIT) {
+		throw new CliExitError(
+			`Error: --limit must be an integer from 1 to ${LOGS_MAX_LIMIT}, got '${options.limit}'`,
+		);
+	}
+	const wait = options.wait === undefined ? 30 : Number(options.wait);
+	if (!Number.isFinite(wait) || wait <= 0) {
+		throw new CliExitError(
+			`Error: --wait must be a positive number of seconds, got '${options.wait}'`,
+		);
+	}
+
+	const { ensureSupervisor } = await import("../supervisor/client.js");
+	const { getVersion } = await import("./version.js");
+	const { followLogs, formatTranscriptEntry } = await import("../runs/client.js");
+	const found = await ensureSupervisor({
+		version: getVersion(),
+		onWarn: (message) => process.stderr.write(`Warning: ${message}\n`),
+	});
+	const controller = new AbortController();
+	const onSigint = () => controller.abort();
+	process.once("SIGINT", onSigint);
+	try {
+		const { cursor } = await followLogs(found.client, {
+			run: options.runId,
+			step: options.step ?? null,
+			cursor: options.cursor ?? null,
+			limit,
+			follow: options.follow === true,
+			waitSeconds: wait,
+			signal: controller.signal,
+			onEntry: (entry) => {
+				process.stdout.write(
+					options.json
+						? `${JSON.stringify(entry)}\n`
+						: `${formatTranscriptEntry(entry, !options.step)}\n`,
+				);
+			},
+		});
+		if (cursor) process.stderr.write(`Cursor: ${cursor}\n`);
+	} catch (err) {
+		throw new CliExitError(`Error: ${(err as Error).message}`);
+	} finally {
+		process.removeListener("SIGINT", onSigint);
 	}
 }

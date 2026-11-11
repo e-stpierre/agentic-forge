@@ -74,6 +74,14 @@ import {
 	RunStore,
 } from "./run-store.js";
 import {
+	type TranscriptPage,
+	TranscriptCursorError,
+	TranscriptWriter,
+	readStepSession,
+	readTranscriptPage,
+	stepDirName,
+} from "./transcript.js";
+import {
 	DEFAULT_MAX_PARALLEL_RUNS,
 	DEFAULT_MAX_PARALLEL_TASKS,
 	pickRunnable,
@@ -225,6 +233,33 @@ function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
 		}
 		signal.addEventListener("abort", done, { once: true });
 	});
+}
+
+/** What recovery did with an interrupted step's runtime session (`run.recovered` `sessions`). */
+export interface SessionRecovery {
+	step: string;
+	action: "resume" | "restart";
+	session_id: string | null;
+	reason: string;
+}
+
+export interface LogsQuery {
+	step?: string | null;
+	cursor?: string | null;
+	limit?: number;
+	/** Cut each entry's text to this length (0: full entries). */
+	maxChars?: number;
+	/** Size budget of the page in bytes (0: none). */
+	maxBytes?: number;
+	waitSeconds?: number;
+}
+
+export interface LogsResponse extends TranscriptPage {
+	run: string;
+	step: string | null;
+	/** The run (or step) can still write entries: keep following. */
+	active: boolean;
+	status: RunStatus | null;
 }
 
 export interface RunManagerOptions {
@@ -387,6 +422,18 @@ export class RunManager {
 				};
 			})(),
 		);
+		supervisor.route("GET", "/v1/runs/:id/logs", ({ params, query }) =>
+			wrap(() =>
+				this.logs(params.id, {
+					step: query.get("step"),
+					cursor: query.get("cursor"),
+					limit: Number.parseInt(query.get("limit") ?? "", 10) || undefined,
+					maxChars: Number.parseInt(query.get("max_chars") ?? "", 10) || 0,
+					maxBytes: Number.parseInt(query.get("max_bytes") ?? "", 10) || 0,
+					waitSeconds: Number.parseFloat(query.get("wait") ?? "0") || 0,
+				}),
+			)(),
+		);
 		supervisor.route("POST", "/v1/runs/:id/cancel", ({ params }) =>
 			wrap(() => this.cancel(params.id))(),
 		);
@@ -501,6 +548,69 @@ export class RunManager {
 			steps: progress?.completedSteps ?? [],
 			current_step: progress?.currentStep?.name ?? null,
 		};
+	}
+
+	/**
+	 * A page of a run's live transcripts (all steps, or one), behind `af logs`
+	 * and `af_logs`. With `waitSeconds`, waits up to that long (max 120 s) for
+	 * a new entry while the run (or the step) is still active. `active` is
+	 * false once the step ended (or, without a step, the run stopped
+	 * executing): a follower stops when it is false and `more` is false.
+	 */
+	async logs(id: string, query: LogsQuery): Promise<LogsResponse> {
+		const entry = this.requireEntry(id);
+		const step = query.step || null;
+		const names = this.stepNames(entry);
+		if (step && names && !names.includes(step)) {
+			throw new RunError(`Unknown step '${step}'. Steps: ${names.join(", ")}`, 404);
+		}
+		const stepDir = step ? stepDirName(names ?? [], step) : null;
+		const waitMs = Math.min(Math.max(query.waitSeconds ?? 0, 0), MAX_EVENT_WAIT_SECONDS) * 1000;
+		const deadline = Date.now() + waitMs;
+		let cursor = query.cursor ?? null;
+		let page: TranscriptPage;
+		let active: boolean;
+		for (;;) {
+			try {
+				page = readTranscriptPage(entry.dir, { ...query, stepDir, cursor });
+			} catch (err) {
+				if (err instanceof TranscriptCursorError) throw new RunError(err.message);
+				throw err;
+			}
+			active = this.isActive(entry, step);
+			if (page.entries.length > 0 || !active || Date.now() >= deadline) break;
+			if (this.closing.signal.aborted) break;
+			// A tail read pins the position: wait for what comes after it
+			cursor = page.cursor;
+			await abortableDelay(EVENT_POLL_MS, this.closing.signal);
+		}
+		return {
+			run: id,
+			step,
+			...page,
+			active,
+			status: this.registry.get(id)?.status ?? entry.status,
+		};
+	}
+
+	/**
+	 * A run is active while it executes (a live session waiting for an answer
+	 * included). A step is active while the run is and the step has not
+	 * ended: not started yet, or started with no later step.completed or
+	 * step.failed.
+	 */
+	private isActive(entry: RegistryEntry, step: string | null): boolean {
+		if (!this.executing.has(entry.id)) return false;
+		if (!step) return true;
+		const events = new RunStore(entry.dir).readEvents();
+		let started = -1;
+		let ended = -1;
+		events.forEach((e, i) => {
+			if (e.data?.step !== step) return;
+			if (e.type === "step.started") started = i;
+			if (e.type === "step.completed" || e.type === "step.failed") ended = i;
+		});
+		return started === -1 || ended < started;
 	}
 
 	private requireEntry(id: string): RegistryEntry {
@@ -738,6 +848,11 @@ export class RunManager {
 	}
 
 	/** Every step name of a run's workflow, nested steps included (null if unreadable). */
+	/** `steps/<NN-step>/` of a step (result block, transcript, session). */
+	private stepDir(entry: RegistryEntry, step: string): string {
+		return path.join(entry.dir, "steps", stepDirName(this.stepNames(entry) ?? [], step));
+	}
+
 	private stepNames(entry: RegistryEntry): string[] | null {
 		try {
 			const workflow = this.parseWorkflow(
@@ -993,7 +1108,15 @@ export class RunManager {
 		config: Record<string, unknown>,
 		step: string,
 	): SessionHost {
+		const transcript = new TranscriptWriter(this.stepDir(entry, step), step);
 		return {
+			onEvent: (event) => {
+				try {
+					transcript.write(event);
+				} catch (err) {
+					this.log(`Run ${entry.id}: transcript write failed for ${step}: ${(err as Error).message}`);
+				}
+			},
 			requestInput: (request, sessionId) =>
 				this.requestLive(entry, store, config, step, request, sessionId),
 			onLive: (handle) => {
@@ -1244,10 +1367,7 @@ export class RunManager {
 		step: string,
 		block: ResultBlock,
 	): Promise<ResultBlock> {
-		const names = this.stepNames(entry) ?? [];
-		const index = Math.max(names.indexOf(step), 0) + 1;
-		const slug = sanitizeSlug(step) || "step";
-		const dir = path.join(store.dir, "steps", `${String(index).padStart(2, "0")}-${slug}`);
+		const dir = this.stepDir(entry, step);
 		const file = path.join(dir, "result.json");
 		const startedAt = this.stepStarts.get(stepKey(entry.id, step)) ?? Number.POSITIVE_INFINITY;
 		let own: unknown = null;
@@ -1537,14 +1657,15 @@ export class RunManager {
 				payload.workflow.path,
 				resumeProgress,
 			);
-			await this.dropLiveRequests(entry.id, store);
 			const status = toRunStatus(progress);
 			const request = this.stopRequests.get(entry.id);
 			if (request?.shutdown) {
-				// Left `running`: the next supervisor recovers the interrupted step.
+				// Left `running` (or `awaiting-human` with its live requests): the next
+				// supervisor recovers the interrupted step.
 				this.log(`Run ${entry.id}: interrupted by supervisor shutdown`);
 				return;
 			}
+			await this.dropLiveRequests(entry.id, store);
 			if (request?.restart && status === "paused") {
 				// send --mode now: rerun the interrupted step at once with the message
 				await store.updateRun({ status: "queued" });
@@ -1624,6 +1745,8 @@ export class RunManager {
 			if (run.status === "running" || entry.status === "running") {
 				await this.recoverRun(entry, store);
 				recovered.push(entry.id);
+			} else if (run.status === "awaiting-human" && pendingInputs(run).some((p) => p.live)) {
+				await this.recoverLiveWait(entry, store);
 			} else if (run.status === "queued" && (run["x-af-recoveries"] ?? 0) > 0) {
 				// Crash between re-queue and the run.recovered event
 				const n = run["x-af-recoveries"] ?? 0;
@@ -1641,13 +1764,15 @@ export class RunManager {
 	private async recoverRun(entry: RegistryEntry, store: RunStore): Promise<void> {
 		const progress = loadProgress(entry.id, entry.dir);
 		let topLevel: string[] = [];
+		let definitions: StepDefinition[] = [];
 		try {
-			topLevel = this.parseWorkflow(store.readJson<DispatchPayload>("dispatch.json")).steps.map(
-				(s) => s.name,
-			);
+			definitions = this.parseWorkflow(store.readJson<DispatchPayload>("dispatch.json")).steps;
+			topLevel = definitions.map((s) => s.name);
 		} catch {
 			topLevel = progress ? [...new Set(progress.completedSteps.map((s) => s.name))] : [];
 		}
+		const n = (store.readRun()["x-af-recoveries"] ?? 0) + 1;
+		let sessions: SessionRecovery[] = [];
 		await this.rebuildMessageEvents(store);
 		const interrupted: string[] = [];
 		if (progress) {
@@ -1678,10 +1803,11 @@ export class RunManager {
 			) {
 				interrupted.push(last.name);
 			}
+			sessions = this.recoverSessions(entry, progress, definitions, interrupted);
 			prepareForResume(progress);
 			saveProgress(progress, entry.dir);
 		}
-		const n = (store.readRun()["x-af-recoveries"] ?? 0) + 1;
+		await this.logSessionRecovery(store, n, sessions);
 		await store.updateRun({ status: "queued", "x-af-recoveries": n });
 		await this.registry.update(entry.id, { status: "queued" });
 		const resumeFrom =
@@ -1690,10 +1816,143 @@ export class RunManager {
 			) ?? null;
 		await store.appendEventOnce(
 			"run.recovered",
-			{ recovery: n, interrupted_steps: interrupted, resume_from: resumeFrom },
+			{ recovery: n, interrupted_steps: interrupted, resume_from: resumeFrom, sessions },
 			(e) => e.data?.recovery === n,
 		);
 		this.log(`Recovered run ${entry.id} (interrupted: ${interrupted.join(", ") || "none"})`);
+	}
+
+	/**
+	 * Recovery of a run that waited `awaiting-human` on a live session when
+	 * the supervisor stopped: the session process is gone, so its step is
+	 * recorded interrupted with the session id, and its requests are no
+	 * longer live. The run keeps waiting; `af answer` then resumes that
+	 * session with the answer (instead of a cold rerun). Runs once per
+	 * restart: afterwards no request is live.
+	 */
+	private async recoverLiveWait(entry: RegistryEntry, store: RunStore): Promise<void> {
+		const progress = loadProgress(entry.id, entry.dir);
+		if (!progress) return;
+		const running = new Set(progress.runningSteps);
+		if (progress.currentStep?.name) running.add(progress.currentStep.name);
+		let definitions: StepDefinition[] = [];
+		try {
+			definitions = this.parseWorkflow(store.readJson<DispatchPayload>("dispatch.json")).steps;
+		} catch {
+			return;
+		}
+		const live = pendingInputs(store.readRun()).filter((p) => p.live);
+		const liveSteps = new Set(live.map((p) => p.step));
+		const waiting = definitions
+			.map((d) => d.name)
+			.filter((name) => running.has(name) || liveSteps.has(name));
+		if (waiting.length === 0) return;
+		const now = new Date().toISOString();
+		for (const name of waiting) {
+			const last = [...progress.completedSteps].reverse().find((s) => s.name === name);
+			// A graceful shutdown already recorded the step interrupted
+			if (!running.has(name) && last?.status === STEP_INTERRUPTED) continue;
+			progress.completedSteps.push({
+				name,
+				status: STEP_INTERRUPTED,
+				startedAt: progress.currentStep?.name === name ? progress.currentStep.startedAt : null,
+				completedAt: now,
+				retryCount: 0,
+				outputSummary: "",
+				error: "Supervisor stopped while a live session waited for an answer",
+				humanInput: null,
+			});
+		}
+		const known = new Map(live.map((p) => [p.step, p.session_id ?? null]));
+		const sessions = this.recoverSessions(entry, progress, definitions, waiting, known);
+		prepareForResume(progress);
+		progress.status = WORKFLOW_STATUS.AWAITING_HUMAN;
+		saveProgress(progress, entry.dir);
+		const n = (store.readRun()["x-af-recoveries"] ?? 0) + 1;
+		await this.logSessionRecovery(store, n, sessions);
+		await store.updateRunWith((current) => ({
+			"x-af-recoveries": n,
+			"x-af-needs-input": pendingInputs(current).map((p) => (p.live ? { ...p, live: false } : p)),
+		}));
+		await store.appendEventOnce(
+			"run.recovered",
+			{ recovery: n, interrupted_steps: waiting, resume_from: null, sessions, waiting: true },
+			(e) => e.data?.recovery === n,
+		);
+		this.log(`Recovered run ${entry.id} waiting on ${waiting.join(", ")}`);
+	}
+
+	/**
+	 * Decides, per interrupted step, whether its runtime session resumes or
+	 * the step restarts from its boundary. A top-level prompt step whose last
+	 * session (`session.json`, written with the transcript) ran on the session
+	 * driver during this attempt resumes: its interrupted record gets the
+	 * session id, and the prompt step resumes it. Every other step restarts
+	 * (`cli` driver, ralph-loop and composite steps, no session recorded).
+	 */
+	private recoverSessions(
+		entry: RegistryEntry,
+		progress: WorkflowProgress,
+		definitions: StepDefinition[],
+		steps: string[],
+		known: Map<string, string | null> = new Map(),
+	): SessionRecovery[] {
+		return steps.map((step) => {
+			const record = [...progress.completedSteps]
+				.reverse()
+				.find((s) => s.name === step && s.status === STEP_INTERRUPTED);
+			const type = definitions.find((d) => d.name === step)?.type ?? null;
+			const saved = readStepSession(this.stepDir(entry, step));
+			const current = saved && (!record?.startedAt || saved.at >= record.startedAt) ? saved : null;
+			const sessionId = known.get(step) ?? current?.session_id ?? null;
+			let reason: string | null = null;
+			if (type !== "prompt") reason = `a ${type ?? "composite"} step restarts from its boundary`;
+			else if (!sessionId) reason = "no runtime session was recorded for this attempt";
+			else if (!known.get(step) && current?.driver !== "session") {
+				reason = `the step ran on the ${current?.driver ?? "cli"} driver`;
+			}
+			if (reason) return { step, action: "restart", session_id: sessionId, reason };
+			if (record) record.sessionId = sessionId;
+			return {
+				step,
+				action: "resume",
+				session_id: sessionId,
+				reason: "the session driver resumes the stored session id",
+			};
+		});
+	}
+
+	/**
+	 * Logs each recovery choice about a recorded session as a policy decision
+	 * (once per recovery and step). Steps without a session have no choice to
+	 * log; `run.recovered` `sessions` lists them all.
+	 */
+	private async logSessionRecovery(
+		store: RunStore,
+		n: number,
+		sessions: SessionRecovery[],
+	): Promise<void> {
+		const existing = new Set(store.readDecisions().map((d) => d.id));
+		for (const choice of sessions) {
+			if (!choice.session_id) continue;
+			const id = `d-recover-${n}-${sanitizeSlug(choice.step) || "step"}`;
+			if (existing.has(id)) continue;
+			const resume = choice.action === "resume";
+			await store.appendDecision({
+				id,
+				at: new Date().toISOString(),
+				phase: choice.step,
+				source: "policy",
+				risk: "low",
+				decision: resume
+					? `Resume session ${choice.session_id} of ${choice.step} after the supervisor restart`
+					: `Restart ${choice.step} from its boundary after the supervisor restart`,
+				rationale: choice.reason,
+				alternatives: [resume ? "Restart the step from its boundary" : "Resume the session"],
+				refs: choice.session_id ? [choice.session_id] : [],
+			});
+			this.log(`Run ${store.id}: ${choice.action} ${choice.step} (${choice.reason})`);
+		}
 	}
 
 	/**

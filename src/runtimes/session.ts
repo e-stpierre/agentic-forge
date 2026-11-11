@@ -9,6 +9,8 @@
  * overseer and later the UI never see vendor formats.
  */
 
+import { randomUUID } from "node:crypto";
+
 import type { RuntimeId } from "./types.js";
 
 /** `runtimes.<id>.driver`: a live session, or the one-shot CLI process. */
@@ -53,7 +55,15 @@ export interface SessionDecision {
 
 /** Normalized session events. Item ids are stable across updates of the same item. */
 export type SessionEvent =
-	| { type: "session.started"; sessionId: string; model: string | null; authSource: string | null }
+	| {
+			type: "session.started";
+			sessionId: string;
+			model: string | null;
+			authSource: string | null;
+			/** Set by the step runner (the driver does not know it). */
+			runtime?: RuntimeId;
+			driver?: RuntimeDriver;
+	  }
 	| { type: "state"; state: SessionState }
 	| {
 			type: "item";
@@ -66,6 +76,8 @@ export type SessionEvent =
 			input?: Record<string, unknown>;
 			isError?: boolean;
 	  }
+	/** A file change reported by the runtime (Codex `file_change`); Claude edits are tool calls. */
+	| { type: "diff"; id: string; path: string; change: "add" | "update" | "delete"; patch?: string }
 	| { type: "request"; request: SessionRequest }
 	| { type: "request.resolved"; id: string; decision: SessionDecision }
 	| { type: "turn.completed"; result: string; isError: boolean; messageIds: string[] }
@@ -143,7 +155,10 @@ export interface SessionHost {
 	 * the function that unregisters it.
 	 */
 	onLive?: (handle: LiveSession) => () => void;
-	/** Every normalized session event (live transcripts, ORC-036). */
+	/**
+	 * Every normalized event of the step (the live transcript). The `cli`
+	 * driver calls it too, with the events mapped from its stream lines.
+	 */
 	onEvent?: SessionListener;
 }
 
@@ -152,6 +167,18 @@ export interface LiveSession {
 	readonly sessionId: string | null;
 	steer(text: string): void;
 	interrupt(): Promise<void>;
+}
+
+/** Transcript item of a user message (step prompt, operator message). */
+export function userMessageItem(text: string): SessionEvent {
+	return {
+		type: "item",
+		id: `user-${randomUUID().slice(0, 8)}`,
+		kind: "message",
+		status: "completed",
+		role: "user",
+		text,
+	};
 }
 
 /** Options and labels of a permission request. */

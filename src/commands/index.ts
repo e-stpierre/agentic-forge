@@ -20,7 +20,7 @@ export {
 	cmdSend,
 } from "./control.js";
 export { cmdStatus, cmdCancel, cmdList } from "./status.js";
-export { cmdArtifacts, cmdEvents } from "./events.js";
+export { cmdArtifacts, cmdEvents, cmdLogs } from "./events.js";
 export { cmdInit, cmdConfigure } from "./init.js";
 export { cmdPaths } from "./paths.js";
 export { cmdConfig } from "./config-cmd.js";
