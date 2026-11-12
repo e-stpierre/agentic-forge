@@ -1548,8 +1548,11 @@ export class RunManager {
 		const patch: Partial<RunJson> = {};
 		const risk = effective.max_risk;
 		if (risk && RISK_RANK[risk] > RISK_RANK[run.max_risk ?? "none"]) patch.max_risk = risk;
+		const opened = Boolean(effective.pr) && effective.pr !== run.pr;
 		if (effective.pr) patch.pr = effective.pr;
 		if (Object.keys(patch).length > 0) await store.updateRun(patch);
+		// The first step that reports a pull request (or a new one) opened it for the run
+		if (opened) await store.appendEvent("pr.opened", { step, pr: effective.pr });
 		this.results.set(entry.id, { step, block: effective });
 		return effective;
 	}
@@ -1787,6 +1790,14 @@ export class RunManager {
 				emitEvent: async (type, data) => {
 					await store.appendEvent(type, data);
 				},
+				runPr: () => store.readRun().pr ?? null,
+				recordDecision: async (decision) => {
+					await store.appendDecision({
+						...decision,
+						at: new Date().toISOString(),
+						source: "policy",
+					});
+				},
 				takeAmendment: async () => pendingAmendments(store.readRun()).length > 0,
 				onAmendStepFinished: (step, status) => this.finishAmendments(store, step, status),
 				hooks: {
@@ -1812,6 +1823,11 @@ export class RunManager {
 					},
 					onWorktreeCreated: async (wt) => {
 						await store.updateRun({ worktree: wt.path, branch: wt.branch, base: wt.baseBranch });
+						await store.appendEvent("branch.created", {
+							branch: wt.branch,
+							base: wt.baseBranch,
+							worktree: wt.path,
+						});
 					},
 				},
 			});

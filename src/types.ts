@@ -11,7 +11,10 @@ export type StepType =
 	| "conditional"
 	| "ralph-loop"
 	| "skill"
-	| "human-input";
+	| "human-input"
+	| "wait-for-review"
+	| "wait-for-checks"
+	| "merge";
 
 export const VALID_STEP_TYPES: StepType[] = [
 	"prompt",
@@ -21,6 +24,27 @@ export const VALID_STEP_TYPES: StepType[] = [
 	"ralph-loop",
 	"skill",
 	"human-input",
+	"wait-for-review",
+	"wait-for-checks",
+	"merge",
+];
+
+/** Step types that run no agent session (the model is not resolved or shown). */
+export const NO_RUNTIME_STEP_TYPES: readonly StepType[] = [
+	"human-input",
+	"wait-for-review",
+	"wait-for-checks",
+];
+
+/**
+ * Step types that can stop the run `awaiting-human` from their own logic, so
+ * they are not allowed inside a parallel step (every branch would rerun).
+ */
+export const NOT_IN_PARALLEL_STEP_TYPES: readonly StepType[] = [
+	"human-input",
+	"wait-for-review",
+	"wait-for-checks",
+	"merge",
 ];
 
 /** Step types still accepted by the parser, mapped to their replacement. */
@@ -39,7 +63,7 @@ export interface Variable {
 }
 
 export type WorktreeLocation = "sibling" | "nested" | "absolute";
-export type WorktreeCleanup = "on-success" | "on-complete" | "manual";
+export type WorktreeCleanup = "on-success" | "on-complete" | "on-merge" | "manual";
 
 export interface WorktreeSettings {
 	enabled: boolean | string;
@@ -95,6 +119,22 @@ export interface StepDefinition {
 	blocking?: boolean;
 	/** `human-input`: background the answerer needs. */
 	context?: string | null;
+	/** `wait-for-review`, `wait-for-checks`, `merge`: pull request (number, `#n` or URL; template). */
+	pr?: string | null;
+	/** `wait-for-review`: reviewer names (`github.reviewers`) or logins; a string is comma-separated (template). */
+	reviewers?: string[] | string | null;
+	/** `wait-for-review`: post the reviewers' trigger comments (default `github.auto_trigger`). */
+	trigger?: boolean | null;
+	/** `wait-for-review`, `wait-for-checks`: first polling interval in seconds (doubles up to `github.max_poll_seconds`). */
+	pollSeconds?: number | null;
+	/** `wait-for-checks`: `required` (default; all checks when the base requires none) or `all`. */
+	checks?: "required" | "all" | null;
+	/** `wait-for-checks`: `fail` (default) fails the step on a failing check, `continue` completes it. */
+	onChecksFail?: "fail" | "continue" | null;
+	/** `merge`: `repo` (resolve) or an explicit method (default `github.merge.method`). */
+	method?: string | null;
+	/** `merge`: delete the remote head branch after the merge (default `github.merge.delete_branch`). */
+	deleteBranch?: boolean | null;
 	model?: string | null;
 	runtime?: string | null;
 	stepTimeoutMinutes?: number | null;

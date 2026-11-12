@@ -85,7 +85,76 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		// allowlist is the sandbox (`codex.sandbox`); bypass removes it.
 		codex: { driver: "cli", permissions: "allowlist" },
 	},
+	// GitHub step types (wait-for-review, wait-for-checks, merge). Waiting polls
+	// `gh` from the supervisor: no agent session runs while waiting.
+	github: {
+		// Reviewer names usable in `reviewers:`; `trigger` is the comment that
+		// asks for a review (posted only when the step or auto_trigger enables it).
+		reviewers: {
+			claude: { login: "claude[bot]", trigger: null },
+			codex: { login: "chatgpt-codex-connector[bot]", trigger: "@codex review" },
+		},
+		auto_trigger: false,
+		// Seconds a reviewer gets on a new head before its trigger is posted.
+		trigger_after_seconds: 120,
+		poll_seconds: 30,
+		max_poll_seconds: 300,
+		review_timeout_minutes: 30,
+		checks_timeout_minutes: 30,
+		merge: {
+			// repo: resolve from the repository settings and rulesets.
+			method: "repo",
+			preference: ["squash", "rebase", "merge"],
+			delete_branch: true,
+			lock_timeout_minutes: 30,
+		},
+	},
 };
+
+/** The `github` config section merged over its defaults. */
+export function getGithubConfig(config: Record<string, unknown>): GithubConfig {
+	const defaults = DEFAULT_CONFIG.github as Record<string, unknown>;
+	const raw = (config.github as Record<string, unknown> | undefined) ?? {};
+	const merged = deepMerge(deepCopy(defaults), raw) as Record<string, unknown>;
+	const merge = (merged.merge as Record<string, unknown>) ?? {};
+	const num = (value: unknown, fallback: number): number =>
+		typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+	const d = defaults as Record<string, number>;
+	const dm = defaults.merge as Record<string, unknown>;
+	return {
+		reviewers: (merged.reviewers as Record<string, unknown>) ?? {},
+		autoTrigger: merged.auto_trigger === true,
+		triggerAfterSeconds: num(merged.trigger_after_seconds, d.trigger_after_seconds),
+		pollSeconds: num(merged.poll_seconds, d.poll_seconds),
+		maxPollSeconds: num(merged.max_poll_seconds, d.max_poll_seconds),
+		reviewTimeoutMinutes: num(merged.review_timeout_minutes, d.review_timeout_minutes),
+		checksTimeoutMinutes: num(merged.checks_timeout_minutes, d.checks_timeout_minutes),
+		merge: {
+			method: typeof merge.method === "string" ? merge.method : (dm.method as string),
+			preference: Array.isArray(merge.preference)
+				? merge.preference.map(String)
+				: (dm.preference as string[]),
+			deleteBranch: merge.delete_branch !== false,
+			lockTimeoutMinutes: num(merge.lock_timeout_minutes, dm.lock_timeout_minutes as number),
+		},
+	};
+}
+
+export interface GithubConfig {
+	reviewers: Record<string, unknown>;
+	autoTrigger: boolean;
+	triggerAfterSeconds: number;
+	pollSeconds: number;
+	maxPollSeconds: number;
+	reviewTimeoutMinutes: number;
+	checksTimeoutMinutes: number;
+	merge: {
+		method: string;
+		preference: string[];
+		deleteBranch: boolean;
+		lockTimeoutMinutes: number;
+	};
+}
 
 /**
  * Returns the platform-native global config file path.

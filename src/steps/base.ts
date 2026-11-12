@@ -79,6 +79,21 @@ export interface StepContext {
 	 * of an attempt that `send --mode now` killed.
 	 */
 	lastSession?: ((step: string) => LastSession | null) | null;
+	/** The run's pull request (run.json `pr`), used by the GitHub steps when they name none. */
+	runPr?: (() => string | null) | null;
+	/** Logs a `policy` decision of a step to `decisions.jsonl` (the merge method). */
+	recordDecision?: ((decision: StepDecision) => Promise<void>) | null;
+}
+
+/** A decision a step made by policy (the harness adds `at` and `source: policy`). */
+export interface StepDecision {
+	id: string;
+	phase: string;
+	risk: "low" | "medium" | "high";
+	decision: string;
+	rationale: string;
+	alternatives?: string[];
+	refs?: string[];
 }
 
 /** A runtime session a step recorded. */
@@ -101,7 +116,14 @@ export interface InputAnswer {
 }
 
 /** Events a step emits itself; the run and step events are emitted by the executor hooks. */
-export type StepEventType = "iteration.started" | "iteration.completed" | "step.retried";
+export type StepEventType =
+	| "iteration.started"
+	| "iteration.completed"
+	| "step.retried"
+	| "review.received"
+	| "checks.completed"
+	| "merge.locked"
+	| "merge.completed";
 
 export type StepEventEmitter = (
 	type: StepEventType,

@@ -72,7 +72,13 @@ export type EventType =
 	| "needs_input"
 	| "input.answered"
 	| "supervisor.restarted"
-	| "run.recovered";
+	| "run.recovered"
+	| "branch.created"
+	| "pr.opened"
+	| "review.received"
+	| "checks.completed"
+	| "merge.locked"
+	| "merge.completed";
 
 export interface RunEvent {
 	seq: number;
