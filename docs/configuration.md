@@ -135,14 +135,15 @@ On native Windows, Codex also applies its Windows OS sandbox. When `codex.sandbo
 
 Per-runtime driver settings. See [Coding Agents](coding-agents.md#drivers).
 
-| Key                           | Type     | Default       | Description                                                                           |
-| ----------------------------- | -------- | ------------- | ------------------------------------------------------------------------------------- |
-| `runtimes.claude.driver`      | string   | `"session"`   | `"session"` (Claude Agent SDK session) or `"cli"` (one-shot `claude -p`)              |
-| `runtimes.claude.plugins`     | string[] | `[]`          | Local plugin directories the session driver loads (skills, agents, hooks)             |
-| `runtimes.claude.permissions` | string   | `"allowlist"` | `"allowlist"`: tools on `allow` run without asking. `"bypass"`: skip every check      |
-| `runtimes.claude.allow`       | string[] | see below     | Claude permission rules allowed on every step (`Read`, `Bash(git *)`, ...)            |
-| `runtimes.codex.driver`       | string   | `"cli"`       | Only `"cli"` (`codex exec`) for now; `"session"` falls back to `"cli"`                |
-| `runtimes.codex.permissions`  | string   | `"allowlist"` | `"allowlist"`: the `codex.sandbox` mode applies. `"bypass"`: no sandbox, no approvals |
+| Key                                | Type     | Default       | Description                                                                                                                |
+| ---------------------------------- | -------- | ------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `runtimes.claude.driver`           | string   | `"session"`   | `"session"` (Claude Agent SDK session) or `"cli"` (one-shot `claude -p`)                                                   |
+| `runtimes.claude.plugins`          | string[] | `[]`          | Local plugin directories the session driver loads (skills, agents, hooks)                                                  |
+| `runtimes.claude.permissions`      | string   | `"allowlist"` | `"allowlist"`: tools on `allow` run without asking. `"bypass"`: skip every check                                           |
+| `runtimes.claude.allow`            | string[] | see below     | Claude permission rules allowed on every step (`Read`, `Bash(git *)`, ...)                                                 |
+| `runtimes.codex.driver`            | string   | `"cli"`       | Only `"cli"` (`codex exec`) for now; `"session"` falls back to `"cli"`                                                     |
+| `runtimes.codex.permissions`       | string   | `"allowlist"` | `"allowlist"`: the `codex.sandbox` mode applies. `"bypass"`: no sandbox, no approvals                                      |
+| `runtimes.codex.inline_references` | boolean  | `false`       | `skill` steps on Codex also append the files `SKILL.md` links to (see [Skills on Codex](coding-agents.md#skills-on-codex)) |
 
 Installed Claude plugins and skills load on both Claude drivers through your Claude settings, as with `claude -p`; `plugins` adds directories that are not installed.
 

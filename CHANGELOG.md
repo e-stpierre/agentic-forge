@@ -80,6 +80,8 @@
 - Added the `on-merge` worktree cleanup policy: once a step reported `merged`, the run's worktree is removed, then its local branch
 - Added the `branch.created` (worktree branch created) and `pr.opened` (first pull request a step reports for the run) events
 - Added the `github` config section: `reviewers` (defaults `claude` = `claude[bot]`, `codex` = `chatgpt-codex-connector[bot]` with the `@codex review` trigger), `auto_trigger`, `trigger_after_seconds`, `poll_seconds`, `max_poll_seconds`, `review_timeout_minutes`, `checks_timeout_minutes` and `merge` (`method`, `preference`, `delete_branch`, `lock_timeout_minutes`)
+- Added `skill` steps on Codex: the step finds the skill where Claude Code would load it (`skill_packs.paths`, `runtimes.claude.plugins`, the installed Claude Code plugins, `.claude/skills/`, `~/.claude/skills/`) and sends its `SKILL.md` inline, with `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_SKILL_DIR}` and relative links made absolute and `$ARGUMENTS` filled; a skill that is not found fails the step with the plugins searched. Replaces the "not supported yet" failure
+- Added `runtimes.codex.inline_references` (default `false`): inlined skills also carry the files `SKILL.md` links to
 
 ## 0.11.0
 

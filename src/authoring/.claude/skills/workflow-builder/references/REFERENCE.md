@@ -56,7 +56,7 @@ All settings are optional with sensible defaults.
 
 **Per-runtime default models:** Each runtime resolves its own default model from config (`claude.model` or `codex.model`). Steps that use a non-default runtime do not need an explicit model: `settings.model` is deliberately **not** inherited across runtimes, so a codex step in a claude workflow falls back to `codex.model` or to no `--model` flag at all.
 
-**Note:** `skill` steps and slash-command prompts only work with `runtime: claude`. agentic-forge bundles no execution skills: they come from the user's installed plugins and `.claude/skills/` directories.
+**Note:** slash-command prompts only work with `runtime: claude`. `skill` steps run natively on Claude and inlined on Codex. agentic-forge bundles no execution skills: they come from the user's installed plugins and `.claude/skills/` directories.
 
 ### Worktree Settings
 
@@ -180,13 +180,13 @@ Execute a prompt in a coding agent session. The most common step type.
 
 ### skill
 
-Invoke a skill by namespace (`<plugin>:<skill>`, or a plain skill name) on the `claude` runtime. A skill step on Codex fails with "not supported yet" (Codex skill inlining comes later). It runs like a prompt step (drivers, retries, result block, steering) with the prompt:
+Invoke a skill by namespace (`<plugin>:<skill>`, or a plain skill name) on any runtime. On `claude` it runs like a prompt step (drivers, retries, result block, steering) with the prompt:
 
 ```text
 /<skill> <args> --run-dir <run dir> --config-snapshot <run dir>/skill-config/<pack>.json
 ```
 
-`<pack>` is the plugin of `<plugin>:<skill>` (or the skill name). The snapshot holds af config `skill_config.<pack>` (`{}` when unset). Pending operator messages follow the slash command instead of preceding it. The `outputs` object of the skill's result block becomes `{{ outputs.<step>.<key> }}` for later steps.
+`<pack>` is the plugin of `<plugin>:<skill>` (or the skill name). The snapshot holds af config `skill_config.<pack>` (`{}` when unset). On `codex`, the prompt is the skill's `SKILL.md` inline instead (found in `skill_packs.paths`, `runtimes.claude.plugins`, the installed Claude plugins, `.claude/skills/` or `~/.claude/skills/`; frontmatter dropped, `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_SKILL_DIR}` and relative links made absolute, `$ARGUMENTS` filled with the same arguments; `runtimes.codex.inline_references: true` appends the linked files). A skill that is not found fails the step. Pending operator messages follow the slash command (or the inlined skill) instead of preceding it. The `outputs` object of the skill's result block becomes `{{ outputs.<step>.<key> }}` for later steps.
 
 **Specific properties:**
 
@@ -641,7 +641,7 @@ agentic-forge configure
 
 ## Skills
 
-agentic-forge bundles no execution skills. Workflows call the skills the user installed (Claude Code plugins, `~/.claude/skills/`, the repo's `.claude/skills/`), with a `skill` step (`skill: <plugin>:<skill>`, preferred: it passes `--run-dir` and `--config-snapshot` and chains the result block `outputs`) or a slash command in a prompt step. Skills only work with `runtime: claude` (the default).
+agentic-forge bundles no execution skills. Workflows call the skills the user installed (Claude Code plugins, `~/.claude/skills/`, the repo's `.claude/skills/`), with a `skill` step (`skill: <plugin>:<skill>`, preferred: it passes `--run-dir` and `--config-snapshot` and chains the result block `outputs`) or a slash command in a prompt step. Slash commands only work with `runtime: claude` (the default); `skill` steps also run on `codex`, with the skill inlined.
 
 Use fully qualified `<plugin>:<skill>` names for plugin skills. For example, with the esp-skills plugin installed (`/plugin install esp-skills@esp`):
 

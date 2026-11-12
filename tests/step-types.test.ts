@@ -5,7 +5,15 @@
  * supervisor, fake runtime.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -340,18 +348,95 @@ steps:
 		expect(invocation).toContain("Use the short plan template");
 	});
 
-	it("fails a skill step on Codex with a clear message", async () => {
+	/** A fixture `esp-skills` plugin in the repo, found through skill_packs.paths. */
+	function codexConfig(): Record<string, unknown> {
+		const root = path.join(repo, "plugin");
+		const skillDir = path.join(root, "skills", "sdlc", "esp-plan");
+		mkdirSync(path.join(root, ".claude-plugin"), { recursive: true });
+		mkdirSync(skillDir, { recursive: true });
+		mkdirSync(path.join(root, "references"), { recursive: true });
+		writeFileSync(
+			path.join(root, ".claude-plugin", "plugin.json"),
+			JSON.stringify({ name: "esp-skills", skills: ["./skills/sdlc/esp-plan"] }),
+		);
+		writeFileSync(path.join(root, "references", "plan-format.md"), "# Plan format\n");
+		writeFileSync(
+			path.join(skillDir, "SKILL.md"),
+			[
+				"---",
+				"name: esp-plan",
+				"description: Plans",
+				"---",
+				"",
+				"# ESP Plan",
+				"",
+				"Arguments: $ARGUMENTS",
+				"",
+				"See [plan-format.md](../../../references/plan-format.md).",
+				"",
+				'Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/plan.mjs" init`.',
+				"",
+			].join("\n"),
+		);
+		const config = getDefaultConfig();
+		config.skill_packs = { paths: ["plugin"], auto_detect: false };
+		return config;
+	}
+
+	it("inlines the skill on Codex and chains its result block outputs", async () => {
 		const { manager, client } = await startSupervisor();
+		fakeRuntime.on("# Skill: esp-skills:esp-plan", (o) =>
+			reply(
+				o,
+				`Planned.\n${JSON.stringify({
+					status: "done",
+					summary: "Plan ready.",
+					outputs: { plan_path: "plan.md", milestones: 2 },
+				})}`,
+			),
+		);
 		const res = await dispatchRun(
 			client,
-			payload(SKILL_FLOW.replace("    type: skill\n", "    type: skill\n    runtime: codex\n")),
+			payload(
+				SKILL_FLOW.replace("    type: skill\n", "    type: skill\n    runtime: codex\n"),
+				codexConfig(),
+			),
+		);
+		await manager.idle();
+
+		const store = new RunStore(res.dir);
+		expect(store.readRun().status).toBe("done");
+		const [invocation] = prompts("# Skill: esp-skills:esp-plan");
+		const root = path.join(repo, "plugin").split(path.sep).join("/");
+		expect(invocation).not.toContain("name: esp-plan");
+		expect(invocation).toContain("Arguments: --depth deep --run-dir ");
+		expect(invocation).toContain(`[plan-format.md](${root}/references/plan-format.md)`);
+		expect(invocation).toContain(`node "${root}/scripts/plan.mjs" init`);
+		expect(invocation).toContain(path.join(res.dir, "skill-config", "esp-skills.json"));
+		expect(invocation.startsWith("# Skill: esp-skills:esp-plan\n")).toBe(true);
+		expect(prompts("BUILD")[0]).toBe("BUILD plan.md (2)");
+		expect(stepResult(res.dir, "plan")).toMatchObject({ status: "done", summary: "Plan ready." });
+	});
+
+	it("fails a skill step on Codex when the skill is not found", async () => {
+		const { manager, client } = await startSupervisor();
+		const config = codexConfig();
+		const res = await dispatchRun(
+			client,
+			payload(
+				SKILL_FLOW.replace("esp-skills:esp-plan", "esp-skills:esp-missing").replace(
+					"    type: skill\n",
+					"    type: skill\n    runtime: codex\n",
+				),
+				config,
+			),
 		);
 		await manager.idle();
 		const store = new RunStore(res.dir);
 		expect(store.readRun().status).toBe("failed");
 		const failed = store.readEvents().find((e) => e.type === "step.failed");
-		expect(String(failed?.data?.error)).toContain("not supported yet on the 'codex' runtime");
-		expect(prompts("/esp-skills")).toHaveLength(0);
+		expect(String(failed?.data?.error)).toContain("Skill 'esp-skills:esp-missing' was not found");
+		expect(fakeRuntime.calls).toHaveLength(0);
 	});
 });
 

@@ -83,7 +83,9 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		},
 		// Codex has no session driver yet (codex app-server comes later). Its
 		// allowlist is the sandbox (`codex.sandbox`); bypass removes it.
-		codex: { driver: "cli", permissions: "allowlist" },
+		// Skill steps send the skill's SKILL.md inline; inline_references also
+		// appends the files it links to (otherwise their absolute paths are enough).
+		codex: { driver: "cli", permissions: "allowlist", inline_references: false },
 	},
 	// GitHub step types (wait-for-review, wait-for-checks, merge). Waiting polls
 	// `gh` from the supervisor: no agent session runs while waiting.
@@ -388,6 +390,14 @@ export function getRuntimePlugins(config: Record<string, unknown>, runtimeId: st
 	return Array.isArray(value)
 		? value.filter((p): p is string => typeof p === "string" && p !== "")
 		: [];
+}
+
+/** Whether inlined skills also carry the files they link to (`runtimes.<id>.inline_references`). */
+export function getInlineReferences(config: Record<string, unknown>, runtimeId: string): boolean {
+	const runtimes = config.runtimes as
+		| Record<string, Record<string, unknown> | undefined>
+		| undefined;
+	return runtimes?.[runtimeId]?.inline_references === true;
 }
 
 /** Permission mode of a runtime (`runtimes.<id>.permissions`). */

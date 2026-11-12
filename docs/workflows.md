@@ -4,7 +4,7 @@ Agentic Forge ships 7 generic demo workflows. They use only generic steps (no sk
 
 Workflows support a `runtime` field on individual steps and in `settings`. See [Coding Agents](coding-agents.md) for the runtime resolution order and per-runtime capabilities.
 
-> **Note**: `skill` steps only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
+> **Note**: `skill` steps run natively on the `claude` runtime. On Codex, the step sends the skill's `SKILL.md` inline instead (see [Skills on Codex](coding-agents.md#skills-on-codex)).
 
 ## Tool Permissions Disclaimer
 
@@ -235,7 +235,7 @@ af run permission-test-codex use_worktree=true
 
 agentic-forge bundles no execution skills. Workflows call the skills you installed, through two step types:
 
-- **`skill`**: `skill: <plugin>:<skill>` (or a plain skill name) with optional `args`. The step sends `/<plugin>:<skill> <args> --run-dir <run dir> --config-snapshot <file>` to Claude, and the `outputs` of the skill's result block are available to later steps as `{{ outputs.<step>.<key> }}`.
+- **`skill`**: `skill: <plugin>:<skill>` (or a plain skill name) with optional `args`. The step sends `/<plugin>:<skill> <args> --run-dir <run dir> --config-snapshot <file>` to Claude, and the `outputs` of the skill's result block are available to later steps as `{{ outputs.<step>.<key> }}`. On Codex, the step sends the skill's `SKILL.md` inline instead (see [Skills on Codex](coding-agents.md#skills-on-codex)).
 - **`prompt`**: any prompt, including a slash command such as `/my-skill do this`. Use `agent:` to prepend an instructions file, resolved relative to the workflow file, then the repo root.
 
 A skill is found the way Claude Code finds it: an installed plugin, `~/.claude/skills/`, or the repo's `.claude/skills/`. Skills that follow the [harness contract](harness-contract.md) (result block, `--run-dir`, `## Operator Messages`) get the full feature set: outputs chaining, `needs_input` questions and steering.

@@ -70,7 +70,7 @@ claude --version
 
 Codex CLI is supported as an experimental runtime. Its integration is more limited compared to Claude Code:
 
-- Does not support `skill` steps yet — steps must use inline prompts
+- Runs `skill` steps by inlining the skill's `SKILL.md` (see [Skills on Codex](#skills-on-codex))
 - Does not support agent sub-configurations
 - May have permission and file access issues, particularly on Windows
 - OS-level sandboxing is not enforced on Windows
@@ -132,7 +132,7 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 
 | Capability                            | Claude (`claude`)  |   Codex (`codex`)   |
 | ------------------------------------- | :----------------: | :-----------------: |
-| `skill` steps (`<plugin>:<skill>`)    |        Yes         | No (fails, not yet) |
+| `skill` steps (`<plugin>:<skill>`)    |        Yes         |    Inlined skill    |
 | System prompt injection               |        Yes         | Prepended to prompt |
 | Agent sub-configurations              |        Yes         |         No          |
 | Streaming output                      |        Yes         |         Yes         |
@@ -146,7 +146,23 @@ Overrides the config default and workflow settings, but not per-step `runtime` f
 | OS-level sandbox (Linux/macOS)        |        N/A         |         Yes         |
 | OS-level sandbox (Windows)            |        N/A         |         No          |
 
-> **Note**: `skill` steps and slash-command prompts only work with the `claude` runtime. agentic-forge bundles no execution skills: they come from the plugins and `.claude/skills/` directories Claude Code loads. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
+> **Note**: slash-command prompts only work with the `claude` runtime. `skill` steps work on both: Claude loads the skill natively, Codex gets it inline. agentic-forge bundles no execution skills: they come from the plugins and `.claude/skills/` directories Claude Code loads.
+
+### Skills on Codex
+
+Codex on the `cli` driver does not load skills, so a `skill` step on Codex sends the skill itself as the prompt. agentic-forge finds the skill where Claude Code would load it:
+
+- `<plugin>:<skill>`: the plugin named `<plugin>` (its `.claude-plugin/plugin.json` name, else its directory name) in `skill_packs.paths`, then `runtimes.claude.plugins`, then the installed Claude Code plugins (with `skill_packs.auto_detect`). Inside the plugin, the skill comes from the `skills` paths of `plugin.json`, then `<plugin>/skills/`, matched by its frontmatter `name` or its directory
+- `<skill>`: the repo's `.claude/skills/<skill>/`, then `<claude config dir>/skills/<skill>/`, then any plugin above
+
+The prompt is a short header (the skill, its arguments, its directory and plugin root), then the body of `SKILL.md` without its frontmatter:
+
+- `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_SKILL_DIR}` become absolute paths
+- `$ARGUMENTS` and `$ARGUMENTS[N]` get the arguments (`<args> --run-dir <run dir> --config-snapshot <file>`); a skill without them gets an `ARGUMENTS:` line at the end
+- Markdown links relative to the skill directory become absolute paths, so Codex reads a reference when the skill tells it to
+- With `runtimes.codex.inline_references: true`, the files `SKILL.md` links to are appended too (up to 200 KB, larger files are only listed)
+
+A skill that is not found fails the step and names the plugins searched: add the plugin directory to `skill_packs.paths`. Operator messages follow the skill, and the result block, outputs chaining and resume work as on Claude. Shell preprocessing in a skill and Claude-only tools (subagents, `AskUserQuestion`) are not available: a skill should give an inline fallback for them, as the esp-skills skills do.
 
 ## Model Names
 

@@ -43,6 +43,7 @@ Runtime adapter layer for coding agent integrations:
 - `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
 - `process-runner.ts` — `runRuntime()` shared process spawning (`options.signal` kills the process tree)
 - `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
+- `skill-inline.ts` — `resolveSkill()` (plugin and skill directory lookup) and `inlineSkillPrompt()` (`SKILL.md` with absolute paths and arguments) for runtimes without skill loading
 - `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
 - `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
 
@@ -229,7 +230,7 @@ The workflow engine delegates all coding agent interactions to runtime adapters 
 
 Runtime resolution order: `step.runtime` > `--runtime` CLI flag > `workflow settings.runtime` > `config.defaults.runtime` > `"claude"`.
 
-**Skill steps only work with the `claude` runtime.** agentic-forge bundles no execution skills: a `skill` step calls a skill the user installed (a Claude Code plugin or a `.claude/skills/` directory). On any other runtime it fails with a "not supported yet" message. The prompt step `agent:` file resolves relative to the workflow file, then the repo root.
+**Skill steps load natively only on the `claude` runtime.** agentic-forge bundles no execution skills: a `skill` step calls a skill the user installed (a Claude Code plugin or a `.claude/skills/` directory). On any other runtime (Codex) the step finds the skill on disk and sends its `SKILL.md` inline (`src/runtimes/skill-inline.ts`: `resolveSkill()`, `inlineSkillPrompt()`; `NATIVE_SKILL_RUNTIMES` in `src/steps/skill-step.ts`). The prompt step `agent:` file resolves relative to the workflow file, then the repo root.
 
 To add a new runtime: create an adapter in `src/runtimes/`, register it in `src/runtimes/index.ts`, and add the `RuntimeId` to the union type in `src/runtimes/types.ts`.
 

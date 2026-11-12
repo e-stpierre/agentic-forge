@@ -59,7 +59,7 @@ settings:
 
   # Default coding agent runtime for all steps: claude, codex (default: claude)
   # Runtime resolution order: step.runtime > --runtime CLI flag > settings.runtime > config.defaults.runtime > "claude"
-  # Note: skill steps and slash-command prompts only work with runtime: claude
+  # Note: slash-command prompts only work with runtime: claude (skill steps are inlined on codex)
   runtime: claude
 
   # Tools Claude can use without prompting (default: [])
@@ -175,8 +175,9 @@ steps:
     # such as "gpt-5.3-codex". Omitted here on purpose.
 
   # ==================== SKILL STEP ====================
-  # Invoke a skill by namespace (claude runtime only; Codex fails with "not supported yet").
-  # The prompt is: /<skill> <args> --run-dir <run dir> --config-snapshot <file>
+  # Invoke a skill by namespace. On claude the prompt is:
+  #   /<skill> <args> --run-dir <run dir> --config-snapshot <file>
+  # On codex the skill's SKILL.md is sent inline (absolute paths, $ARGUMENTS filled).
   # The snapshot file holds af config skill_config.<plugin> ({} when unset).
   # The result block's `outputs` become {{ outputs.generate-plan.<key> }} for later steps.
   - name: generate-plan
