@@ -292,6 +292,31 @@ requires: { agentic-forge: ">=0.12", contract: 1 }
 
 `agentic-forge` is a version range (`>=0.12`, `^0.12.0`, `>=0.12 <1`) and `contract` the [harness contract](harness-contract.md) version. af refuses a workflow it cannot satisfy before any step runs, naming the required and installed versions. `af run --ignore-requires` (or `ignore_requires` on `af_dispatch`) overrides only the version check, with a warning. `af doctor` checks every discovered pack.
 
+## GitHub Steps
+
+Three step types wait on GitHub and merge without an agent session: the supervisor polls `gh`, so waiting on bots and checks costs no tokens.
+
+- **`wait-for-review`**: waits until every listed reviewer (`claude`, `codex`, or any login) has reviewed the pull request's current head, and can post the reviewer's trigger comment (`@codex review`). A push restarts the wait for the new head. On timeout the run stops `awaiting-human`: `af answer <run> <id> wait` or `continue`.
+- **`wait-for-checks`**: waits for the required checks (every check when the base requires none) and reports pass or fail. A failing check fails the step unless `on-fail: continue`.
+- **`merge`**: merges under a per-repository lock, so runs of one repository (from any worktree) never merge at once. Natively it resolves the method from the repository settings and runs `gh pr merge --repo` from outside the checkout; with `skill: esp-skills:esp-merge` it runs the skill with `AF_MERGE_LOCK` set. Branch protection is never bypassed: a refused merge stops the run `awaiting-human`.
+
+```yaml
+name: ship
+settings:
+  worktree: { enabled: true, cleanup: on-merge }
+steps:
+  - {
+      name: wait-review,
+      type: wait-for-review,
+      reviewers: [claude, codex],
+      trigger: true
+    }
+  - { name: wait-checks, type: wait-for-checks }
+  - { name: merge, type: merge }
+```
+
+`cleanup: on-merge` removes the worktree, then its branch, once the merge succeeded. The steps find the pull request through `pr:` (a template), the run's pull request from an earlier step's result block, or the current branch. Reviewers, intervals, timeouts and the merge preference are in the [`github` configuration](configuration.md#github).
+
 ## Custom Workflows
 
 You can create your own workflows using the workflow-builder authoring skill, or by writing YAML files directly. For the complete workflow schema and all supported properties (step types, settings, variables, outputs, git options, etc.), see:

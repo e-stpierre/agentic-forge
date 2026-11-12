@@ -48,7 +48,19 @@ Runtime adapter layer for coding agent integrations:
 
 #### `steps/`
 
-Workflow step handlers (prompt, skill, human-input, parallel, serial, conditional, ralph-loop).
+Workflow step handlers (prompt, skill, human-input, parallel, serial, conditional, ralph-loop, wait-for-review, wait-for-checks, merge). `github-base.ts` holds the shared pieces of the GitHub steps (pull request reference, abortable polling with `Backoff`, the timeout `needs_input` request).
+
+#### `github/`
+
+`gh` access for the GitHub step types, called from the supervisor (no agent session):
+
+- `gh.ts` — `runGh()` / `gh()` / `ghJson()` (async `execFile`; `AF_GH_CMD` replaces the executable, `ghRunner.run` is the test seam), `parsePaginated()`, `repoFromPrUrl()`
+- `pr.ts` — `viewPr()`, `listReviews()`, `listIssueComments()`, `commentOnPr()`, `listChecks()`, `repoMergeSettings()`, `branchRules()`, `mergePr()` (`--repo`, never `--delete-branch`), `deleteRemoteBranch()`
+- `reviews.ts` — `reviewOfHead()` (review on the head, Codex summary marker, later comment), `resolveReviewers()`, `DEFAULT_REVIEWERS`
+- `merge-method.ts` — `mergePolicy()`, `resolveMergeMethod()` (same rules as esp-merge)
+- `merge-lock.ts` — `gitCommonDir()`, `mergeLockPath()`, `acquireMergeLock()` (esp-merge `AF_MERGE_LOCK` format, heartbeat, stale takeover)
+
+GitHub step tests (`tests/github-steps.test.ts`) use `tests/helpers/fake-gh.mjs`: in-process through `ghRunner.run`, or as a process through `AF_GH_CMD`.
 
 #### `contract/`
 

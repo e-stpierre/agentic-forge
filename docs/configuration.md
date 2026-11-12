@@ -69,11 +69,11 @@ Controls workflow execution logging.
 
 Default worktree settings applied when a workflow enables worktree isolation. Individual workflows can override these via `settings.worktree`.
 
-| Key                  | Type   | Default        | Description                                                                        |
-| -------------------- | ------ | -------------- | ---------------------------------------------------------------------------------- |
-| `worktree.location`  | string | `"sibling"`    | Where to create worktrees: `"sibling"`, `"nested"`, or `"absolute"`                |
-| `worktree.directory` | string | `null`         | Base directory for `"absolute"` location mode (required when location is absolute) |
-| `worktree.cleanup`   | string | `"on-success"` | When to remove worktrees: `"on-success"`, `"on-complete"`, or `"manual"`           |
+| Key                  | Type   | Default        | Description                                                                            |
+| -------------------- | ------ | -------------- | -------------------------------------------------------------------------------------- |
+| `worktree.location`  | string | `"sibling"`    | Where to create worktrees: `"sibling"`, `"nested"`, or `"absolute"`                    |
+| `worktree.directory` | string | `null`         | Base directory for `"absolute"` location mode (required when location is absolute)     |
+| `worktree.cleanup`   | string | `"on-success"` | When to remove worktrees: `"on-success"`, `"on-complete"`, `"on-merge"`, or `"manual"` |
 
 **Location modes:**
 
@@ -85,11 +85,12 @@ Default worktree settings applied when a workflow enables worktree isolation. In
 
 **Cleanup policies:**
 
-| Value           | Behavior                                            |
-| --------------- | --------------------------------------------------- |
-| `"on-success"`  | Remove worktree on success; preserve on failure     |
-| `"on-complete"` | Always remove worktree after workflow finishes      |
-| `"manual"`      | Never remove automatically; log path for inspection |
+| Value           | Behavior                                                                          |
+| --------------- | --------------------------------------------------------------------------------- |
+| `"on-success"`  | Remove worktree on success; preserve on failure                                   |
+| `"on-complete"` | Always remove worktree after workflow finishes                                    |
+| `"on-merge"`    | Once a `merge` step reported `merged`: remove the worktree, then its local branch |
+| `"manual"`      | Never remove automatically; log path for inspection                               |
 
 ### defaults
 
@@ -193,6 +194,40 @@ Auto-detection reads Claude Code's installed plugin list (`CLAUDE_CONFIG_DIR`, e
 ```json
 { "skill_packs": { "paths": ["C:/src/my-pack"], "auto_detect": true } }
 ```
+
+### github
+
+Settings of the GitHub step types (`wait-for-review`, `wait-for-checks`, `merge`). The supervisor calls `gh` (it must be installed and logged in; `af doctor` checks it); no coding agent runs while these steps wait.
+
+| Key                                 | Type     | Default                         | Description                                                                                            |
+| ----------------------------------- | -------- | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `github.reviewers`                  | object   | `claude`, `codex` (see below)   | Reviewer names usable in `reviewers:`, each `{ login, trigger }`; entries add to the defaults          |
+| `github.auto_trigger`               | boolean  | `false`                         | Post the reviewers' trigger comments when a step does not set `trigger`                                |
+| `github.trigger_after_seconds`      | number   | `120`                           | Time a reviewer gets on a new head before its trigger comment is posted                                |
+| `github.poll_seconds`               | number   | `30`                            | First polling interval (a step's `poll-seconds` overrides it)                                          |
+| `github.max_poll_seconds`           | number   | `300`                           | The interval doubles up to this value                                                                  |
+| `github.review_timeout_minutes`     | number   | `30`                            | `wait-for-review` timeout, then `awaiting-human`                                                       |
+| `github.checks_timeout_minutes`     | number   | `30`                            | `wait-for-checks` timeout, then `awaiting-human`                                                       |
+| `github.merge.method`               | string   | `"repo"`                        | `repo` resolves the method from the repository settings and rulesets, else `squash`, `rebase`, `merge` |
+| `github.merge.preference`           | string[] | `["squash", "rebase", "merge"]` | Order used when the repository allows several methods                                                  |
+| `github.merge.delete_branch`        | boolean  | `true`                          | Delete the remote head branch after a native merge (never a fork branch)                               |
+| `github.merge.lock_timeout_minutes` | number   | `30`                            | Wait for a busy merge lock, then `awaiting-human`                                                      |
+
+Default reviewers, verified on real pull requests: `claude` is `claude[bot]` (the Claude Code GitHub Action, with no trigger: when it reviews depends on the repository's workflow, `pull_request` events or an `@claude` mention), and `codex` is `chatgpt-codex-connector[bot]` with the trigger `@codex review` (Codex reviews on its own when a pull request is opened or marked ready, and needs the trigger for a later head).
+
+```json
+{
+  "github": {
+    "reviewers": {
+      "bot": { "login": "my-review-bot[bot]", "trigger": "/review" }
+    },
+    "auto_trigger": true,
+    "merge": { "preference": ["rebase", "squash"] }
+  }
+}
+```
+
+The merge lock is `<global dir>/locks/merge-<hash>.lock`, keyed by the repository's git common dir, so the main checkout and all its worktrees share it.
 
 ### execution
 
