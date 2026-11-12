@@ -26,6 +26,13 @@ import {
 import { latestPlan } from "../contract/plan.js";
 import { WorkflowExecutor, shouldRemoveWorktree } from "../executor.js";
 import { type Worktree, pruneOrphaned, removeWorktree, safetyCommit } from "../git/worktree.js";
+import type { NotificationTransport } from "../notifications/channels.js";
+import {
+	Notifier,
+	NotifyError,
+	type NotifyInput,
+	type NotifyResult,
+} from "../notifications/notifier.js";
 import { WorkflowParseError, WorkflowParser } from "../parser.js";
 import { getGlobalRoot, resolveRunsRoot, runDatePrefix, sanitizeSlug } from "../paths.js";
 import {
@@ -271,6 +278,8 @@ export interface RunManagerOptions {
 	log?: (message: string) => void;
 	/** agentic-forge version checked against a workflow's `requires` (defaults to the package version). */
 	version?: string;
+	/** Notifier settings: the transport (test seam) and the poll interval. */
+	notifications?: { transport?: NotificationTransport; pollMs?: number };
 }
 
 export interface DispatchResult {
@@ -370,12 +379,22 @@ export class RunManager {
 	private supervisorVersion: string | null = null;
 	/** agentic-forge version checked against `requires`. */
 	private readonly version: string;
+	/** Sends notifications for the events of every run (and `af notify`). */
+	readonly notifier: Notifier;
 
 	constructor(options: RunManagerOptions = {}) {
 		this.root = options.root ?? getGlobalRoot();
 		this.registry = new RunRegistry(this.root);
 		this.log = options.log ?? (() => {});
 		this.version = options.version ?? getVersion();
+		this.notifier = new Notifier({
+			root: this.root,
+			registry: this.registry,
+			globalConfig: () => this.globalConfig(),
+			log: this.log,
+			transport: options.notifications?.transport,
+			pollMs: options.notifications?.pollMs,
+		});
 	}
 
 	/** Runs that are executing or waiting in the queue. */
@@ -476,13 +495,27 @@ export class RunManager {
 		supervisor.route("POST", "/v1/runs/:id/priority", ({ params, body }) =>
 			wrap(() => this.reprioritize(params.id, (body as { priority?: unknown })?.priority))(),
 		);
+		supervisor.route("POST", "/v1/notifications", ({ body }) =>
+			wrap(() => this.notify((body ?? {}) as NotifyInput))(),
+		);
 	}
 
 	/** Recovers interrupted runs, then starts the queue. Call once at startup. */
 	async start(): Promise<void> {
 		await this.recover();
 		this.armInputTimers();
+		this.notifier.start();
 		this.schedule();
+	}
+
+	/** `af notify` / `af_notify`: sends a message to the enabled channels (of the run's config, or the global one). */
+	async notify(input: NotifyInput): Promise<NotifyResult> {
+		try {
+			return await this.notifier.notify(input);
+		} catch (err) {
+			if (err instanceof NotifyError) throw new RunError(err.message, err.status);
+			throw err;
+		}
 	}
 
 	/** Stops scheduling new runs. Executing runs are not interrupted. */
@@ -490,6 +523,7 @@ export class RunManager {
 		this.closed = true;
 		this.closing.abort();
 		for (const id of [...this.timers.keys()]) this.clearTimer(id);
+		void this.notifier.stop();
 	}
 
 	/**

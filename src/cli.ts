@@ -32,6 +32,7 @@ import {
 	cmdList,
 	cmdLogs,
 	cmdMcp,
+	cmdNotify,
 	cmdPaths,
 	cmdPause,
 	cmdReleaseNotes,
@@ -202,6 +203,28 @@ program
 			step,
 			context: optString(opts.context),
 			from: optString(opts.from),
+		});
+	});
+
+// notify command
+program
+	.command("notify")
+	.description("Send a notification to the enabled notification channels")
+	.argument("<text>", "message text")
+	.option("--title <title>", "notification title")
+	.option("--level <level>", "info, warning or error", "info")
+	.option(
+		"--run <run>",
+		"run the notification is about (uses its config; records notification.sent)",
+	)
+	.option("--json", "print the delivery report as JSON")
+	.action(async (text: string, opts: Record<string, unknown>) => {
+		await cmdNotify({
+			text,
+			title: optString(opts.title),
+			level: optString(opts.level),
+			runId: optString(opts.run),
+			json: optBool(opts.json),
 		});
 	});
 

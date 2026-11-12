@@ -230,6 +230,51 @@ Default reviewers, verified on real pull requests: `claude` is `claude[bot]` (th
 
 The merge lock is `<global dir>/locks/merge-<hash>.lock`, keyed by the repository's git common dir, so the main checkout and all its worktrees share it.
 
+### notifications
+
+Notifications the supervisor sends when a run event matches a trigger, so a user who walked away learns that a run needs them. Every channel is off until enabled. Each run uses the `notifications` section of the config it was dispatched with (global, then project-local); `af notify` without a run uses the supervisor's global config.
+
+| Key                                    | Type    | Default                                                                   | Description                                                                                    |
+| -------------------------------------- | ------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `notifications.enabled`                | boolean | `true`                                                                    | Master switch                                                                                  |
+| `notifications.triggers`               | array   | `needs_input`, `run.halted`, `run.failed`, `run.completed` of overseers   | Event types (`run.*` prefixes work), or `{ "event": ..., "run_type": "overseer" }` entries     |
+| `notifications.templates.<event>`      | object  | `{}`                                                                      | `{ title, body }` with `{{placeholders}}` for one event type                                   |
+| `notifications.channels.desktop`       | object  | `{ enabled: false }`                                                      | Desktop toast (Windows toast through PowerShell, `osascript` on macOS, `notify-send` on Linux) |
+| `notifications.channels.ntfy`          | object  | `{ enabled: false, server: "https://ntfy.sh", topic: null, token: null }` | ntfy topic; `token` is sent as a bearer token                                                  |
+| `notifications.channels.slack`         | object  | `{ enabled: false, webhook_url: null }`                                   | Slack incoming webhook                                                                         |
+| `notifications.channels.discord`       | object  | `{ enabled: false, webhook_url: null }`                                   | Discord webhook                                                                                |
+| `notifications.channels.github`        | object  | `{ enabled: false }`                                                      | Comment on the run's pull request (outward-facing: opt-in; skipped for a run without a PR)     |
+| `notifications.channels.<id>.triggers` | array   | none                                                                      | Replaces `notifications.triggers` for one channel                                              |
+
+A `needs_input` message names the run, its workflow, repository and step, the question and its options (the recommended one marked), and both ways to answer: `af answer <run> <request> <option>` and `af_answer(run, request_id, answer)`. A failed or halted run's message says how to inspect and resume it. Each delivery appends `notification.sent` to the run (`event_seq`, `trigger`, `channels`, and `errors` for the channels that failed); a channel that fails never stops the others.
+
+Template placeholders: `run`, `workflow`, `repo`, `status`, `run_type`, `pr`, `event`, `step`, `reason` (error or reason of the event), `request_id`, `question`, `context`, `options`, `recommended`, `answer_cli`, `answer_mcp`. Empty lines are dropped and the body is cut at 1,800 characters.
+
+```json
+{
+  "notifications": {
+    "triggers": ["needs_input", "run.failed", "merge.completed"],
+    "channels": {
+      "desktop": { "enabled": true },
+      "ntfy": { "enabled": true, "topic": "my-af-runs" },
+      "slack": {
+        "enabled": true,
+        "webhook_url": "https://hooks.slack.com/services/...",
+        "triggers": ["needs_input"]
+      }
+    },
+    "templates": {
+      "needs_input": {
+        "title": "{{repo}} needs you",
+        "body": "{{question}}\n{{answer_cli}}"
+      }
+    }
+  }
+}
+```
+
+Webhook URLs and tokens are secrets: keep them in the global config, and note that each run stores its config snapshot in its run directory (`dispatch.json`). The supervisor reads new events every 2 seconds and keeps its read positions in `<global dir>/notifications/positions.json`, so a restarted supervisor sends nothing twice.
+
 ### execution
 
 Controls parallel execution behavior.

@@ -111,6 +111,28 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 			lock_timeout_minutes: 30,
 		},
 	},
+	// Notifications sent by the supervisor when a run event matches a trigger.
+	// Every channel is off until enabled. A trigger is an event type (a `run.*`
+	// prefix works) or { event, run_type } to match only one run type.
+	notifications: {
+		enabled: true,
+		triggers: [
+			"needs_input",
+			"run.halted",
+			"run.failed",
+			{ event: "run.completed", run_type: "overseer" },
+		],
+		// Per trigger event type: { title, body } with {{placeholders}}.
+		templates: {},
+		channels: {
+			desktop: { enabled: false },
+			ntfy: { enabled: false, server: "https://ntfy.sh", topic: null, token: null },
+			slack: { enabled: false, webhook_url: null },
+			discord: { enabled: false, webhook_url: null },
+			// Comment on the run's pull request (outward-facing: opt-in).
+			github: { enabled: false },
+		},
+	},
 };
 
 /** The `github` config section merged over its defaults. */

@@ -78,7 +78,8 @@ export type EventType =
 	| "review.received"
 	| "checks.completed"
 	| "merge.locked"
-	| "merge.completed";
+	| "merge.completed"
+	| "notification.sent";
 
 export interface RunEvent {
 	seq: number;

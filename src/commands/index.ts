@@ -15,6 +15,7 @@ export { cmdResume } from "./resume.js";
 export {
 	cmdAmend,
 	cmdAnswer,
+	cmdNotify,
 	cmdPause,
 	cmdReprioritize,
 	cmdRetryStep,

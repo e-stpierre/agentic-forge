@@ -16,6 +16,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `amend`         | Record a requirement change for a run                |
 | `retry-step`    | Rerun a step of a stopped run, with extra context    |
 | `reprioritize`  | Change the queue priority of a run                   |
+| `notify`        | Send a message to the notification channels          |
 | `list`          | List runs                                            |
 | `events`        | Print or follow run events                           |
 | `logs`          | Print or follow the live transcript of a run         |
@@ -301,6 +302,22 @@ af retry-step <run_id> <step> [--context <text>] [--from user|overseer]
 
 ```bash
 af retry-step 2026-11-10-dark-mode build --context "The flaky test is fixed on main; rebase first."
+```
+
+## notify
+
+Send a message to the enabled notification channels (see [notifications](./configuration.md#notifications)). With `--run`, the run's config picks the channels and the run gets a `notification.sent` event; without it, the supervisor's global config is used. The supervisor already notifies the configured triggers (by default `needs_input`, `run.failed`, `run.halted` and the completion of overseer runs) on its own.
+
+```bash
+af notify <text> [--title <title>] [--level info|warning|error] [--run <run_id>] [--json]
+```
+
+The command prints the channels that delivered it, a warning per failing channel, and exits `1` when every channel failed. When no channel is enabled, it says so and sends nothing.
+
+### Examples
+
+```bash
+af notify "Epic done: 4 PRs merged" --title "Overseer" --run 2026-11-11-epic
 ```
 
 ## reprioritize
@@ -709,6 +726,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 | `af_resume`     | `run`                                                                          | `POST /v1/runs/:id/resume`                  | `af resume`     |
 | `af_cancel`     | `run`                                                                          | `POST /v1/runs/:id/cancel`                  | `af cancel`     |
 | `af_retry_step` | `run`, `step`, `context?`, `from?`                                             | `POST /v1/runs/:id/retry`                   | `af retry-step` |
+| `af_notify`     | `text`, `level?` (`info`, `warning`, `error`), `run?`, `title?`                | `POST /v1/notifications`                    | `af notify`     |
 | `af_artifacts`  | `run`, `kind?` (`plan`, `summary`, `decisions`, `review`), `content?`          | none (reads the run registry and directory) | `af artifacts`  |
 
 - `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. Returns `{ run_id, status, dir, workflow, warnings }`
@@ -716,6 +734,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 - `af_events`: returns `{ events, cursor, more, status }`; pass `cursor` back to resume without duplicates. `wait_seconds` long-polls until a new event arrives or the wait ends. `types` takes exact types or prefixes such as `run.*`
 - `af_logs`: the live transcript of a run (see [logs](#logs)), as compact JSON `{ run, step, entries, cursor, more, truncated, active, status }`. Without `cursor`, the last `limit` entries (default 20); with it, only newer ones. Each entry's text is cut to 500 characters and the page to about 8 KB, with `truncated: true`; an explicit `max_chars` (up to 20,000) lifts the page budget. `active` is false once the step (or run) ended; `wait_seconds` long-polls for new entries while it is active
 - `af_artifacts`: `content: true` needs a `kind` and returns the latest file of that kind (cut at 20,000 characters)
+- `af_notify`: returns `{ sent, errors, event }` (`event` is the `seq` of `notification.sent` in the run, or null without a run); `hint` says when no channel is enabled
 - `from` (steering tools) is `user` or `overseer` (default `overseer`)
 
 The MCP SDK client's default request timeout is 60 seconds, below the `wait_seconds` cap of 120. Use shorter waits (for example 30) unless your client sets a longer timeout.

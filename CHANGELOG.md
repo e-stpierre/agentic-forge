@@ -82,6 +82,9 @@
 - Added the `github` config section: `reviewers` (defaults `claude` = `claude[bot]`, `codex` = `chatgpt-codex-connector[bot]` with the `@codex review` trigger), `auto_trigger`, `trigger_after_seconds`, `poll_seconds`, `max_poll_seconds`, `review_timeout_minutes`, `checks_timeout_minutes` and `merge` (`method`, `preference`, `delete_branch`, `lock_timeout_minutes`)
 - Added `skill` steps on Codex: the step finds the skill where Claude Code would load it (`skill_packs.paths`, `runtimes.claude.plugins`, the installed Claude Code plugins, `.claude/skills/`, `~/.claude/skills/`) and sends its `SKILL.md` inline, with `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_SKILL_DIR}` and relative links made absolute and `$ARGUMENTS` filled; a skill that is not found fails the step with the plugins searched. Replaces the "not supported yet" failure
 - Added `runtimes.codex.inline_references` (default `false`): inlined skills also carry the files `SKILL.md` links to
+- Added notifications: the supervisor tails every run's events and, for the configured triggers (default `needs_input`, `run.halted`, `run.failed`, and `run.completed` of overseer runs), sends a message to the enabled channels: desktop toast (Windows, macOS, Linux), ntfy topic, Slack and Discord webhooks, and an opt-in comment on the run's pull request. Messages name the run, the question and its options, and the `af answer` and `af_answer` commands; templates per event type. Each delivery appends `notification.sent` to the run, and a restarted supervisor sends nothing twice
+- Added the `notifications` config section (`enabled`, `triggers`, `templates`, `channels.<desktop|ntfy|slack|discord|github>` with optional per-channel `triggers`); every channel is off by default
+- Added `af notify <text> [--title] [--level] [--run]` (`POST /v1/notifications`) and the `af_notify` MCP tool
 
 ## 0.11.0
 

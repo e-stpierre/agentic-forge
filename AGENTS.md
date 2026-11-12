@@ -95,13 +95,24 @@ Runs owned by the supervisor:
 
 Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthropic-ai/claude-agent-sdk`; never mock `runRuntime` there). Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
 
+#### `notifications/`
+
+Notifications sent by the supervisor (`RunManager.notifier`):
+
+- `config.ts` — `getNotificationsConfig()` (the `notifications` section over its defaults), `parseTrigger()`, `matchesTrigger()`, `channelsFor()`
+- `message.ts` — `buildNotification()` (default templates per event type, `notifications.templates` overrides, answer commands), `manualNotification()`, `renderTemplate()`
+- `channels.ts` — `deliver()` to desktop, ntfy, Slack, Discord and GitHub through a `NotificationTransport` (`defaultTransport`; tests pass a mock), `desktopCommand()`
+- `notifier.ts` — `Notifier` (tails the events of active runs, read positions in `<global dir>/notifications/positions.json`, `notification.sent`, `notify()` behind `POST /v1/notifications`)
+
+Tests (`tests/notifications.test.ts`) build `RunManager` with `notifications: { transport, pollMs: 0 }` and call `manager.notifier.poll()`.
+
 #### `mcp/`
 
 The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
 - `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_logs`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
-- `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) over the `/v1/runs/:id/*` control endpoints
+- `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) and `af_notify` over the `/v1/runs/:id/*` control endpoints
 - `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)
 
