@@ -127,17 +127,33 @@ steps:
       - If there are already 3 or more facts, output the completion JSON immediately without adding more
       - If there are 0-1 facts, add ONE fact and then STOP (do not output completion JSON yet)
 
-  - name: git-branch
+  - name: create-branch
     type: prompt
     model: haiku
     runtime: claude
-    prompt: /af-git-branch demo random-facts
+    prompt: |
+      Create a git branch named `demo/random-facts` from the current branch and switch to it:
 
-  - name: git-commit
+      ```bash
+      git checkout -b demo/random-facts
+      ```
+
+      If the branch already exists, switch to it with `git checkout demo/random-facts` instead.
+      Run `git branch --show-current` and report the current branch.
+
+  - name: commit-files
     type: prompt
     model: haiku
     runtime: claude
-    prompt: /af-git-commit "[Demo] Add demo files with random facts"
+    prompt: |
+      Commit the demo files on the current branch:
+
+      1. Run `git status --short` to see the changes.
+      2. Stage only `demo-1.md` and `demo-2.md` with `git add demo-1.md demo-2.md`.
+      3. Commit them with `git commit -m "[Demo] Add demo files with random facts"`.
+      4. Run `git log -1 --oneline` and report the commit.
+
+      Do not stage or commit any other file.
 
   - name: completion
     type: prompt

@@ -1,14 +1,14 @@
 # Workflows
 
-Agentic Forge ships with 12 bundled workflows. You can run any of them immediately without initialization. Use `af workflows --verbose` to see all available workflows and their variables.
+Agentic Forge ships 7 generic demo workflows. They use only generic steps (no skill calls), and you can run any of them immediately without initialization. The SDLC and analysis workflows of earlier versions were removed: bring your own skills and workflows instead (see [Bring Your Own Skills](#bring-your-own-skills)). Use `af workflows --verbose` to see all available workflows and their variables.
 
 Workflows support a `runtime` field on individual steps and in `settings`. See [Coding Agents](coding-agents.md) for the runtime resolution order and per-runtime capabilities.
 
-> **Note**: Skill-based prompts (`/af-git-commit`, `/af-sdlc-plan`, etc.) only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
+> **Note**: `skill` steps only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
 
 ## Tool Permissions Disclaimer
 
-Most bundled workflows declare a `required-tools` list in their `settings` block:
+Most bundled demo workflows declare a `required-tools` list in their `settings` block:
 
 ```yaml
 settings:
@@ -21,7 +21,7 @@ settings:
     - Bash
 ```
 
-When present, these tools are passed as `--allowedTools` to the Claude Code runtime, **automatically granting the agent permission to use them without prompting**. In practice this means the agent can:
+When present, these tools are added to the runtime allowlist (`runtimes.claude.allow`, see [Configuration](configuration.md#runtimes)) for the workflow's steps, **automatically granting the agent permission to use them without prompting**, on both Claude drivers. In practice this means the agent can:
 
 - **Read** any file in your repository
 - **Edit** and **Write** files (create, modify, or overwrite)
@@ -34,97 +34,25 @@ Additionally, the agent always has access to any permissions already configured 
 
 ### Which workflows declare required-tools
 
-| Workflow                  | Required Tools                      |
-| ------------------------- | ----------------------------------- |
-| `plan-build-review`       | Read, Edit, Write, Glob, Grep, Bash |
-| `one-shot`                | Read, Edit, Write, Glob, Grep, Bash |
-| `ralph-loop`              | Read, Edit, Write, Glob, Grep, Bash |
-| `plan-loop`               | Read, Edit, Write, Glob, Grep, Bash |
-| `analyze-codebase`        | Read, Edit, Write, Glob, Grep, Bash |
-| `analyze-single`          | Read, Edit, Write, Glob, Grep, Bash |
-| `multi-plan-build-review` | Read, Edit, Write, Glob, Grep, Bash |
-| `claude-demo`             | Read, Edit, Write, Glob, Grep, Bash |
-| `multi-demo`              | Read, Edit, Write, Glob, Grep, Bash |
-| `permission-test-claude`  | Read, Edit, Write, Glob, Grep, Bash |
-| `codex-demo`              | None (Codex runtime)                |
-| `permission-test-codex`   | None (Codex runtime)                |
+| Workflow                 | Required Tools                      |
+| ------------------------ | ----------------------------------- |
+| `ralph-loop`             | Read, Edit, Write, Glob, Grep, Bash |
+| `plan-loop`              | Read, Edit, Write, Glob, Grep, Bash |
+| `claude-demo`            | Read, Edit, Write, Glob, Grep, Bash |
+| `multi-demo`             | Read, Edit, Write, Glob, Grep, Bash |
+| `permission-test-claude` | Read, Edit, Write, Glob, Grep, Bash |
+| `codex-demo`             | None (Codex runtime)                |
+| `permission-test-codex`  | None (Codex runtime)                |
 
 > **Note**: The `required-tools` setting only applies to the Claude Code runtime. Codex CLI manages its own permissions separately.
 
-Codex steps can opt into full-access execution with `bypass-permissions: true`. For Codex this maps to `--dangerously-bypass-approvals-and-sandbox`, so use it only for workflows where you explicitly accept `danger-full-access`. On native Windows, Agentic Forge first grants global output directories with `--add-dir` and `sandbox_workspace_write.writable_roots`; if Codex still cannot write `%APPDATA%\agentic-forge\outputs`, prefer `outputDirectory: "local"` before enabling bypass on the affected Codex step.
+No step bypasses permission checks unless you opt in with `runtimes.<id>.permissions: bypass` or `bypass-permissions: true`; each bypassed step logs a warning. Codex steps can opt into full-access execution with `bypass-permissions: true`. For Codex this maps to `--dangerously-bypass-approvals-and-sandbox`, so use it only for workflows where you explicitly accept `danger-full-access`. On native Windows, Agentic Forge first grants global output directories with `--add-dir` and `sandbox_workspace_write.writable_roots`; if Codex still cannot write `%APPDATA%\agentic-forge\outputs`, prefer `outputDirectory: "local"` before enabling bypass on the affected Codex step.
 
 ### Mitigations
 
-- **Worktree isolation**: Workflows like `plan-build-review` run in a disposable git worktree by default (`use_worktree=true`), so changes are made on a copy of your repo rather than directly in your working directory.
+- **Worktree isolation**: A workflow with `settings.worktree.enabled: true` (or `use_worktree=true` on the permission tests) runs in a disposable git worktree, so changes are made on a copy of your repo rather than directly in your working directory.
 - **Review before running**: Use `af workflows --verbose` or inspect the workflow YAML directly to see exactly what permissions and steps are configured.
-- **Custom workflows**: When creating your own workflows, you can omit `required-tools` entirely or list only the specific tools you want to allow. Without `required-tools`, the agent will only have access to the permissions configured at the repository level (`.claude/settings.json`, `.claude/settings.local.json`, etc.), and the workflow will fail if the agent is unable to complete a step due to insufficient permissions.
-
-## plan-build-review
-
-Full SDLC workflow: plan, implement iteratively, review, fix, and optionally create a PR. Runs the entire workflow in an isolated git worktree by default.
-
-**Use cases**: Feature development, bug fixes, and chores that benefit from upfront planning and automated review.
-
-**Flow**: Plan (opus) -> Create Branch -> Implement (iterative loop) -> Review -> Fix Issues -> Create PR
-
-### Variables
-
-| Variable         | Type    | Required | Default | Description                                                                                                                                                                                              |
-| ---------------- | ------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `task`           | string  | Yes      |         | Feature or task description. When `plan` is also set, use `task` to pass additional instructions about the supplied plan (e.g., "the plan is only half done, finish the missing milestones").            |
-| `type`           | string  | No       | `auto`  | Task type: `feature`, `bug`, `chore`, or `auto`                                                                                                                                                          |
-| `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                                                                                                                                                                            |
-| `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel)                                                                                                                                                          |
-| `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop                                                                                                                                                               |
-| `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation                                                                                                                                                                |
-| `create_pr`      | boolean | No       | `false` | Create a PR after completion                                                                                                                                                                             |
-| `use_worktree`   | boolean | No       | `true`  | Run the workflow in an isolated git worktree                                                                                                                                                             |
-| `plan`           | string  | No       | `""`    | Path to an existing plan file. When set, the plan step copies this file to the output directory instead of generating a new one, and applies any additional instructions from `task` to the copied plan. |
-
-### Examples
-
-```bash
-# Basic feature implementation
-af run plan-build-review --var "task=Add dark mode support"
-
-# Bug fix with PR creation
-af run plan-build-review --var "task=Fix login timeout" --var "type=bug" --var "create_pr=true"
-
-# Large feature with more iterations and explore agents
-af run plan-build-review --var "task=Implement payment system" --var "max_iterations=50" --var "explore_agents=4"
-
-# Reuse a plan you already iterated on, optionally tweaking it via task
-af run plan-build-review --var "plan=./my-plan.md" --var "task=Implement the attached plan"
-af run plan-build-review --var "plan=./my-plan.md" --var "task=The plan is only half done; fill in the remaining milestones before implementing"
-```
-
-## one-shot
-
-Single-task workflow: execute a task in one pass, review, and optionally create a PR.
-
-**Use cases**: Small, well-defined tasks that don't need iterative planning.
-
-**Flow**: Create Branch -> Execute Task -> Review -> Create PR
-
-### Variables
-
-| Variable    | Type    | Required | Default | Description                |
-| ----------- | ------- | -------- | ------- | -------------------------- |
-| `task`      | string  | Yes      |         | Task description or prompt |
-| `create_pr` | boolean | No       | `false` | Whether to create a PR     |
-
-### Examples
-
-```bash
-# Simple task
-af run one-shot --var "task=Add user authentication middleware"
-
-# Task with PR
-af run one-shot --var "task=Update API error responses" --var "create_pr=true"
-
-# Quick refactor
-af run one-shot --var "task=Extract database helpers into a shared module"
-```
+- **Custom workflows**: When creating your own workflows, you can omit `required-tools` entirely or list only the specific tools you want to allow. Without `required-tools`, the agent will only have the default allowlist (`runtimes.claude.allow`, which has no shell commands) and the permissions configured at the repository level (`.claude/settings.json`, `.claude/settings.local.json`, etc.), and the workflow will fail if the agent is unable to complete a step due to insufficient permissions.
 
 ## ralph-loop
 
@@ -185,66 +113,6 @@ af run plan-loop --var "input=Follow the alignment notes in C:\\path\\to\\alignm
 af run plan-loop --var "input=1. Add rate limiting\n2. Wire metrics\n3. Document the new headers"
 ```
 
-## analyze-codebase
-
-Run 5 parallel analysis types (bug, debt, doc, security, style) with optional autofix. Each analysis runs in an independent worktree.
-
-**Use cases**: Comprehensive codebase health check, pre-release audits, automated fixing of common issues.
-
-**Flow**: 5 Parallel Analyses (bug, debt, doc, security, style) -> Optional Autofix per type -> Optional PR per type
-
-### Variables
-
-| Variable             | Type    | Required | Default | Description                                                    |
-| -------------------- | ------- | -------- | ------- | -------------------------------------------------------------- |
-| `autofix`            | string  | No       | `none`  | Severity level for fixes: `none`, `minor`, `major`, `critical` |
-| `paths`              | string  | No       | `""`    | Space-separated paths to analyze                               |
-| `create_pr`          | boolean | No       | `false` | Create PR for each analysis branch                             |
-| `max_fix_iterations` | number  | No       | `25`    | Maximum iterations for fix loops                               |
-
-### Examples
-
-```bash
-# Analysis only, no fixes
-af run analyze-codebase
-
-# Analyze and fix major issues, create PRs
-af run analyze-codebase --var "autofix=major" --var "create_pr=true"
-
-# Analyze specific paths only
-af run analyze-codebase --var "paths=src/api src/models" --var "autofix=minor"
-```
-
-## analyze-single
-
-Run a single type of codebase analysis with optional autofix.
-
-**Use cases**: Targeted analysis of one concern (e.g., security audit only), or when you want to focus on a specific area.
-
-**Flow**: Run Analysis -> Optional Autofix (iterative loop)
-
-### Variables
-
-| Variable             | Type   | Required | Default | Description                                                 |
-| -------------------- | ------ | -------- | ------- | ----------------------------------------------------------- |
-| `analysis_type`      | string | Yes      |         | Type: `bug`, `debt`, `doc`, `security`, or `style`          |
-| `autofix`            | string | No       | `none`  | Severity level: `none`, `low`, `medium`, `high`, `critical` |
-| `paths`              | string | No       | `""`    | Space-separated paths to analyze                            |
-| `max_fix_iterations` | number | No       | `25`    | Maximum iterations for fixing                               |
-
-### Examples
-
-```bash
-# Security audit only
-af run analyze-single --var "analysis_type=security"
-
-# Fix style issues in a specific directory
-af run analyze-single --var "analysis_type=style" --var "autofix=low" --var "paths=src/api"
-
-# Bug analysis with aggressive fixing
-af run analyze-single --var "analysis_type=bug" --var "autofix=low" --var "max_fix_iterations=50"
-```
-
 ## claude-demo
 
 Validates that your agentic-forge installation and Claude Code configuration are working correctly.
@@ -253,7 +121,7 @@ Validates that your agentic-forge installation and Claude Code configuration are
 
 **Runtime**: Claude (default)
 
-**Flow**: Welcome -> Create Demo Files (parallel) -> Random Facts Loop (5 iterations) -> Git Branch -> Git Commit -> Validation
+**Flow**: Welcome -> Create Demo Files (parallel) -> Random Facts Loop (5 iterations) -> Create Branch -> Commit Files -> Validation
 
 ### Variables
 
@@ -275,7 +143,7 @@ Validates that your Codex CLI configuration is working correctly with agentic-fo
 
 **Runtime**: Codex (set at workflow level via `settings.runtime: codex`)
 
-**Flow**: Welcome -> Create Demo Files (parallel) -> Random Facts Loop (5 iterations) -> Git Branch -> Git Commit -> Validation
+**Flow**: Welcome -> Create Demo Files (parallel) -> Random Facts Loop (5 iterations) -> Create Branch -> Commit Files -> Validation
 
 ### Variables
 
@@ -287,7 +155,7 @@ None. This workflow has no configurable variables.
 af run codex-demo
 ```
 
-Requires Codex CLI installed and authenticated. Creates `codex-demo-1.md` and `codex-demo-2.md`, runs the same loop as `claude-demo` but using the Codex runtime. Note that Codex steps use inline instructions instead of skill invocations.
+Requires Codex CLI installed and authenticated. Creates `codex-demo-1.md` and `codex-demo-2.md`, runs the same loop as `claude-demo` but using the Codex runtime. Like every bundled workflow, it uses plain prompt instructions (git commands included) instead of skill invocations.
 
 ## multi-demo
 
@@ -310,44 +178,6 @@ af run multi-demo
 ```
 
 Requires both Claude Code and Codex CLI installed and authenticated. Creates `multi-demo-claude.md` (Claude runtime) and `multi-demo-codex.md` (Codex runtime) in parallel, then validates both files exist.
-
-## multi-plan-build-review
-
-Full SDLC workflow using mixed runtimes — Claude for planning and implementation, Codex for independent plan and code review.
-
-**Use cases**: Feature development where you want a second opinion from a different AI agent at review stages.
-
-**Runtime**: Mixed — Claude for planning/implementation/branch/PR, Codex for plan review and code review
-
-**Flow**: Plan (claude/opus) -> Plan Review (codex) -> Create Branch (claude/haiku) -> Implement (claude, loop) -> Parallel Review (claude + codex) -> Fix Issues (claude) -> Create PR (claude, conditional)
-
-### Variables
-
-| Variable         | Type    | Required | Default | Description                                                                                                                                                                                                                                               |
-| ---------------- | ------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `task`           | string  | Yes      |         | Feature or task description. When `plan` is also set, use `task` to pass additional instructions about the supplied plan (e.g., "the plan is only half done, finish the missing milestones").                                                             |
-| `type`           | string  | No       | `auto`  | Task type: `feature`, `bug`, `chore`, or `auto`                                                                                                                                                                                                           |
-| `fix_severity`   | string  | No       | `major` | Minimum severity for auto-fix                                                                                                                                                                                                                             |
-| `explore_agents` | integer | No       | `2`     | Number of explore agents (0=quick, 1+=parallel)                                                                                                                                                                                                           |
-| `max_iterations` | number  | No       | `25`    | Maximum iterations for implementation loop                                                                                                                                                                                                                |
-| `create_branch`  | boolean | No       | `true`  | Create a new branch before implementation                                                                                                                                                                                                                 |
-| `create_pr`      | boolean | No       | `false` | Create a PR after completion                                                                                                                                                                                                                              |
-| `plan`           | string  | No       | `""`    | Path to an existing plan file. When set, the plan step copies this file to the output directory instead of generating a new one, and applies any additional instructions from `task` to the copied plan. The Codex plan-review step still runs afterward. |
-
-### Examples
-
-```bash
-# Feature development with dual review
-af run multi-plan-build-review --var "task=Add dark mode support"
-
-# Bug fix with PR creation
-af run multi-plan-build-review --var "task=Fix login timeout" --var "type=bug" --var "create_pr=true"
-
-# Reuse an existing plan and let Codex still refine it
-af run multi-plan-build-review --var "plan=./my-plan.md" --var "task=Implement the attached plan"
-```
-
-Requires both Claude Code and Codex CLI installed and authenticated. The Codex runtime reviews the plan after Claude creates it, and independently reviews the code after implementation.
 
 ## permission-test-claude
 
@@ -400,6 +230,67 @@ af run permission-test-codex
 # Test with worktree
 af run permission-test-codex use_worktree=true
 ```
+
+## Bring Your Own Skills
+
+agentic-forge bundles no execution skills. Workflows call the skills you installed, through two step types:
+
+- **`skill`**: `skill: <plugin>:<skill>` (or a plain skill name) with optional `args`. The step sends `/<plugin>:<skill> <args> --run-dir <run dir> --config-snapshot <file>` to Claude, and the `outputs` of the skill's result block are available to later steps as `{{ outputs.<step>.<key> }}`.
+- **`prompt`**: any prompt, including a slash command such as `/my-skill do this`. Use `agent:` to prepend an instructions file, resolved relative to the workflow file, then the repo root.
+
+A skill is found the way Claude Code finds it: an installed plugin, `~/.claude/skills/`, or the repo's `.claude/skills/`. Skills that follow the [harness contract](harness-contract.md) (result block, `--run-dir`, `## Operator Messages`) get the full feature set: outputs chaining, `needs_input` questions and steering.
+
+### Example: esp-skills
+
+[esp-skills](https://github.com/e-stpierre/skills) is one skill pack built for the harness contract. Install it in Claude Code:
+
+```text
+/plugin marketplace add e-stpierre/skills
+/plugin install esp-skills@esp
+```
+
+Then call its skills from a workflow in your project (`agentic/workflows/plan-and-build.yaml`):
+
+```yaml
+name: plan-and-build
+settings:
+  required-tools: [Read, Edit, Write, Glob, Grep, Bash]
+variables:
+  - name: task
+    type: string
+    required: true
+steps:
+  - name: plan
+    type: skill
+    skill: esp-skills:esp-plan
+    args: "{{ variables.task }}"
+  - name: approve
+    type: human-input
+    message: "Review the plan in {{ output_dir }} and approve it."
+    options: [approve, reject]
+  - name: build
+    type: prompt
+    prompt: Implement the plan in {{ output_dir }}, one milestone at a time.
+```
+
+```bash
+af run plan-and-build --var "task=Add dark mode support"
+```
+
+Any other pack works the same way: replace the `skill:` names with your own.
+
+### Skill pack workflows
+
+A skill pack can ship ready-made workflows in an `af-workflows/` directory at its plugin root. af finds them automatically for Claude Code plugins (through Claude Code's installed plugin list), or through `skill_packs.paths` in the [configuration](configuration.md#skill_packs). `af workflows` lists them under `Skill pack: <name>`, and `af run <name>` runs them like any other workflow. Search order: project `agentic/workflows/` -> user-global -> skill packs -> bundled demos.
+
+A pack workflow declares what it needs from the harness:
+
+```yaml
+name: esp-go
+requires: { agentic-forge: ">=0.12", contract: 1 }
+```
+
+`agentic-forge` is a version range (`>=0.12`, `^0.12.0`, `>=0.12 <1`) and `contract` the [harness contract](harness-contract.md) version. af refuses a workflow it cannot satisfy before any step runs, naming the required and installed versions. `af run --ignore-requires` (or `ignore_requires` on `af_dispatch`) overrides only the version check, with a warning. `af doctor` checks every discovered pack.
 
 ## Custom Workflows
 

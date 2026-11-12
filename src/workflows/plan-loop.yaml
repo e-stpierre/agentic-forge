@@ -143,7 +143,7 @@ steps:
          - Praise, status, or progress narration
 
          If nothing meets the bar, leave "## Memory" untouched. Most iterations should add nothing. When you do add an entry, keep it to one or two sentences and prefix it with the task ID, e.g. `- [{{ variables.task_id_prefix }}-003] Upstream library already retries; removed the retry wrapper from the plan and from the call site.`
-      7. Use `/af-git-commit` to commit your changes. The commit title MUST start with the task ID in brackets, e.g. `[{{ variables.task_id_prefix }}-001] <short subject>`.
+      7. Commit your changes with `git add` and `git commit`, staging only the files you changed for this task. The commit title MUST start with the task ID in brackets, e.g. `[{{ variables.task_id_prefix }}-001] <short subject>`.
          - Note: the plan file at `{{ output_dir }}/plan.md` may live outside the repo (global user directory) or inside it but gitignored. Only commit the plan update if `plan.md` is actually tracked by git in this repo. If it is not tracked, just save the file with the Write tool and skip committing the plan itself — still commit any code changes you made.
       8. STOP. Do not start the next task.
 

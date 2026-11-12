@@ -14,6 +14,7 @@
 
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { getVersion } from "../commands/version.js";
 import { deepMerge, getDefaultConfig } from "../config.js";
 import {
 	type NeedsInput,
@@ -36,6 +37,14 @@ import {
 	saveProgress,
 } from "../progress.js";
 import { TemplateRenderer } from "../renderer.js";
+import { checkRequires } from "../requires.js";
+import type {
+	LiveSession,
+	SessionDecision,
+	SessionHost,
+	SessionRequest,
+} from "../runtimes/session.js";
+import type { InputAnswer } from "../steps/base.js";
 import type { Supervisor } from "../supervisor/server.js";
 import type {
 	StepDefinition,
@@ -72,6 +81,14 @@ import {
 	DEFAULT_MAX_PARALLEL_TASKS,
 	pickRunnable,
 } from "./scheduler.js";
+import {
+	TranscriptCursorError,
+	type TranscriptPage,
+	TranscriptWriter,
+	readStepSession,
+	readTranscriptPage,
+	stepDirName,
+} from "./transcript.js";
 
 /** Step status recorded for the step that was running when the supervisor died. */
 export const STEP_INTERRUPTED = STEP_STATUS.INTERRUPTED;
@@ -124,6 +141,13 @@ export interface PendingInput {
 	asked_at: string;
 	/** When the recommended option is applied (non-blocking requests only), or null. */
 	deadline: string | null;
+	/**
+	 * Raised by a live session step that waits for the answer (session
+	 * driver). Without it, the step ended with an awaiting-human result block.
+	 */
+	live?: boolean;
+	/** Runtime session id of the live session that asked. */
+	session_id?: string | null;
 }
 
 /** Amendment waiting for the amend step (af extension `x-af-amendments`). */
@@ -147,7 +171,8 @@ export interface AnswerInput {
 export interface AnswerResult {
 	id: string;
 	request: string;
-	message: string;
+	/** Inbox message carrying the answer; null when it went straight to a live session. */
+	message: string | null;
 	status: RunStatus;
 }
 
@@ -213,10 +238,39 @@ function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
 	});
 }
 
+/** What recovery did with an interrupted step's runtime session (`run.recovered` `sessions`). */
+export interface SessionRecovery {
+	step: string;
+	action: "resume" | "restart";
+	session_id: string | null;
+	reason: string;
+}
+
+export interface LogsQuery {
+	step?: string | null;
+	cursor?: string | null;
+	limit?: number;
+	/** Cut each entry's text to this length (0: full entries). */
+	maxChars?: number;
+	/** Size budget of the page in bytes (0: none). */
+	maxBytes?: number;
+	waitSeconds?: number;
+}
+
+export interface LogsResponse extends TranscriptPage {
+	run: string;
+	step: string | null;
+	/** The run (or step) can still write entries: keep following. */
+	active: boolean;
+	status: RunStatus | null;
+}
+
 export interface RunManagerOptions {
 	/** af global dir (defaults to `getGlobalRoot()`). */
 	root?: string;
 	log?: (message: string) => void;
+	/** agentic-forge version checked against a workflow's `requires` (defaults to the package version). */
+	version?: string;
 }
 
 export interface DispatchResult {
@@ -248,6 +302,7 @@ export function toRunStatus(progress: WorkflowProgress): RunStatus {
 		case WORKFLOW_STATUS.CANCELED:
 			return "canceled";
 		case WORKFLOW_STATUS.PAUSED:
+			// `wait-for-human` progress written before the human-input step (0.12)
 			return progress.currentStep?.type === "wait-for-human" ? "awaiting-human" : "paused";
 		case WORKFLOW_STATUS.RUNNING:
 			return "running";
@@ -295,6 +350,16 @@ export class RunManager {
 	private readonly stepStarts = new Map<string, number>();
 	/** needs_input deadlines (non-blocking requests). */
 	private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
+	/** Live session steps of executing runs (run id -> step -> handle), for `send --mode now`. */
+	private readonly liveSessions = new Map<string, Map<string, LiveSession>>();
+	/** Session requests waiting for `af answer` (run id -> request id -> resolver). */
+	private readonly liveRequests = new Map<string, Map<string, (d: SessionDecision) => void>>();
+	/**
+	 * Per-run chain that serializes the needs_input transitions of live
+	 * sessions (`run.json` then registry), so parallel sessions never leave
+	 * the registry status behind `run.json`.
+	 */
+	private readonly inputLocks = new Map<string, Promise<unknown>>();
 	private scheduling = false;
 	private rescheduleRequested = false;
 	private closed = false;
@@ -303,16 +368,21 @@ export class RunManager {
 	/** Identifies this supervisor process in `supervisor.restarted` events. */
 	private readonly startedAt = new Date().toISOString();
 	private supervisorVersion: string | null = null;
+	/** agentic-forge version checked against `requires`. */
+	private readonly version: string;
 
 	constructor(options: RunManagerOptions = {}) {
 		this.root = options.root ?? getGlobalRoot();
 		this.registry = new RunRegistry(this.root);
 		this.log = options.log ?? (() => {});
+		this.version = options.version ?? getVersion();
 	}
 
 	/** Runs that are executing or waiting in the queue. */
 	activeCount(): number {
-		return this.registry.list().filter((r) => r.status === "running" || r.status === "queued")
+		return this.registry
+			.list()
+			.filter((r) => r.status === "running" || r.status === "queued" || this.executing.has(r.id))
 			.length;
 	}
 
@@ -366,6 +436,18 @@ export class RunManager {
 					status: this.registry.get(params.id)?.status ?? entry.status,
 				};
 			})(),
+		);
+		supervisor.route("GET", "/v1/runs/:id/logs", ({ params, query }) =>
+			wrap(() =>
+				this.logs(params.id, {
+					step: query.get("step"),
+					cursor: query.get("cursor"),
+					limit: Number.parseInt(query.get("limit") ?? "", 10) || undefined,
+					maxChars: Number.parseInt(query.get("max_chars") ?? "", 10) || 0,
+					maxBytes: Number.parseInt(query.get("max_bytes") ?? "", 10) || 0,
+					waitSeconds: Number.parseFloat(query.get("wait") ?? "0") || 0,
+				}),
+			)(),
 		);
 		supervisor.route("POST", "/v1/runs/:id/cancel", ({ params }) =>
 			wrap(() => this.cancel(params.id))(),
@@ -483,6 +565,71 @@ export class RunManager {
 		};
 	}
 
+	/**
+	 * A page of a run's live transcripts (all steps, or one), behind `af logs`
+	 * and `af_logs`. With `waitSeconds`, waits up to that long (max 120 s) for
+	 * a new entry while the run (or the step) is still active. `active` is
+	 * false once the step ended (or, without a step, the run stopped
+	 * executing): a follower stops when it is false and `more` is false.
+	 */
+	async logs(id: string, query: LogsQuery): Promise<LogsResponse> {
+		const entry = this.requireEntry(id);
+		const step = query.step || null;
+		const names = this.stepNames(entry);
+		if (step && names && !names.includes(step)) {
+			throw new RunError(`Unknown step '${step}'. Steps: ${names.join(", ")}`, 404);
+		}
+		const stepDir = step ? stepDirName(names ?? [], step) : null;
+		const waitMs = Math.min(Math.max(query.waitSeconds ?? 0, 0), MAX_EVENT_WAIT_SECONDS) * 1000;
+		const deadline = Date.now() + waitMs;
+		let cursor = query.cursor ?? null;
+		let page: TranscriptPage;
+		let active: boolean;
+		for (;;) {
+			try {
+				page = readTranscriptPage(entry.dir, { ...query, stepDir, cursor });
+			} catch (err) {
+				if (err instanceof TranscriptCursorError) throw new RunError(err.message);
+				throw err;
+			}
+			active = this.isActive(entry, step);
+			if (page.entries.length > 0 || !active || Date.now() >= deadline) break;
+			if (this.closing.signal.aborted) break;
+			// A tail read pins the position: wait for what comes after it
+			cursor = page.cursor;
+			await abortableDelay(EVENT_POLL_MS, this.closing.signal);
+		}
+		return {
+			run: id,
+			step,
+			...page,
+			active,
+			status: this.registry.get(id)?.status ?? entry.status,
+		};
+	}
+
+	/**
+	 * A run is active while it executes (a live session waiting for an answer
+	 * included). A step is active while the run is and the step has not
+	 * ended: not started yet, or started with no later step.completed or
+	 * step.failed.
+	 */
+	private isActive(entry: RegistryEntry, step: string | null): boolean {
+		if (!this.executing.has(entry.id)) return false;
+		if (!step) return true;
+		// Only top-level steps emit step events: a nested step follows its top-level ancestor
+		const top = this.topLevelStep(entry, step) ?? step;
+		const events = new RunStore(entry.dir).readEvents();
+		let started = -1;
+		let ended = -1;
+		events.forEach((e, i) => {
+			if (e.data?.step !== top) return;
+			if (e.type === "step.started") started = i;
+			if (e.type === "step.completed" || e.type === "step.failed") ended = i;
+		});
+		return started === -1 || ended < started;
+	}
+
 	private requireEntry(id: string): RegistryEntry {
 		const entry = this.registry.get(id);
 		if (!entry) throw new RunError(`Run not found: ${id}`, 404);
@@ -508,6 +655,12 @@ export class RunManager {
 		if (invalid) throw new RunError(`Invalid dispatch: ${invalid}`);
 		if (this.closed) throw new RunError("Supervisor is shutting down", 503);
 		const workflow = this.parseWorkflow(payload);
+		// Refused before the run exists, so no step ever runs.
+		const requires = checkRequires(workflow.name, workflow.requires, {
+			version: this.version,
+			ignoreRequires: payload.ignore_requires === true,
+		});
+		if (requires.errors.length > 0) throw new RunError(requires.errors.join("\n"));
 
 		const variables = { ...payload.variables };
 		for (const v of workflow.variables) {
@@ -525,7 +678,8 @@ export class RunManager {
 				variables,
 			);
 
-		const warnings: string[] = [];
+		const warnings: string[] = [...requires.warnings];
+		for (const warning of requires.warnings) this.log(`Warning: ${warning}`);
 		const runsRoot = resolveRunsRoot(payload.config, payload.repo_root);
 		if (runsRoot.deprecation) warnings.push(runsRoot.deprecation);
 
@@ -641,7 +795,10 @@ export class RunManager {
 	 * `## Operator Messages` section at the start of the next step or
 	 * ralph-loop iteration prompt (of the named step when `step` is set).
 	 */
-	async send(id: string, input: NewMessage): Promise<{ id: string; message: InboxMessage }> {
+	async send(
+		id: string,
+		input: NewMessage,
+	): Promise<{ id: string; message: InboxMessage; steered: boolean }> {
 		const entry = this.requireEntry(id);
 		const text = typeof input.text === "string" ? input.text.trim() : "";
 		if (!text) throw new RunError("Message text is required");
@@ -666,8 +823,40 @@ export class RunManager {
 		const store = new RunStore(entry.dir);
 		const message = new Inbox(entry.dir).queue({ text, from, mode, step });
 		await store.appendEvent("message.queued", messageEventData(message));
-		if (mode === "now" && this.executing.has(id)) this.interruptFor(id, message.id);
-		return { id, message };
+		let steered = false;
+		if (mode === "now" && this.executing.has(id)) {
+			steered = await this.steerLive(id, store, message);
+			if (!steered) this.interruptFor(id, message.id);
+		}
+		return { id, message, steered };
+	}
+
+	/**
+	 * `send --mode now` to a step on the session driver: delivers the message
+	 * into the live session (it reaches the agent at the next tool call), with
+	 * no abort and no restart. Returns false when no live session takes it.
+	 */
+	private async steerLive(id: string, store: RunStore, message: InboxMessage): Promise<boolean> {
+		const sessions = this.liveSessions.get(id);
+		if (!sessions || sessions.size === 0) return false;
+		const target = message.step
+			? sessions.has(message.step)
+				? message.step
+				: null
+			: [...sessions.keys()][0];
+		const handle = target ? sessions.get(target) : undefined;
+		if (!target || !handle) return false;
+		const inbox = new Inbox(store.dir);
+		if (!inbox.pending(target).some((m) => m.id === message.id)) return false;
+		// Marked delivered only once the session took it (a closing session refuses it)
+		if (!handle.steer(formatOperatorMessages([message]))) return false;
+		const [delivered] = inbox.markDelivered([message.id], target);
+		// Already delivered by a concurrent turn boundary: the session has it either way
+		if (!delivered) return true;
+		await store.appendEvent("message.delivered", { id: delivered.id, step: target, live: true });
+		await store.appendDecision(messageDecision(delivered, target));
+		this.log(`Run ${id}: steered the live session of ${target} (send now)`);
+		return true;
 	}
 
 	/**
@@ -686,26 +875,64 @@ export class RunManager {
 		this.controllers.get(id)?.abort();
 	}
 
+	/** `steps/<NN-step>/` of a step (result block, transcript, session). */
+	private stepDir(entry: RegistryEntry, step: string): string {
+		return path.join(entry.dir, "steps", stepDirName(this.stepNames(entry) ?? [], step));
+	}
+
 	/** Every step name of a run's workflow, nested steps included (null if unreadable). */
 	private stepNames(entry: RegistryEntry): string[] | null {
+		const tree = this.stepTree(entry);
+		return tree ? tree.map((s) => s.name) : null;
+	}
+
+	/** Top-level step that contains `step` (itself when top-level; null if unknown). */
+	private topLevelStep(entry: RegistryEntry, step: string): string | null {
+		return this.stepTree(entry)?.find((s) => s.name === step)?.top ?? null;
+	}
+
+	/** Every step of a run's workflow with its top-level ancestor (null if unreadable). */
+	private stepTree(entry: RegistryEntry): { name: string; top: string }[] | null {
 		try {
 			const workflow = this.parseWorkflow(
 				new RunStore(entry.dir).readJson<DispatchPayload>("dispatch.json"),
 			);
-			const names: string[] = [];
-			const walk = (steps: StepDefinition[] | undefined) => {
-				for (const s of steps ?? []) {
-					names.push(s.name);
-					walk(s.steps);
-					walk(s.thenSteps);
-					walk(s.elseSteps);
+			const steps: { name: string; top: string }[] = [];
+			const walk = (list: StepDefinition[] | undefined, top: string | null) => {
+				for (const s of list ?? []) {
+					const root = top ?? s.name;
+					steps.push({ name: s.name, top: root });
+					walk(s.steps, root);
+					walk(s.thenSteps, root);
+					walk(s.elseSteps, root);
 				}
 			};
-			walk(workflow.steps);
-			return names;
+			walk(workflow.steps, null);
+			return steps;
 		} catch {
 			return null;
 		}
+	}
+
+	/**
+	 * `safetyCommit` of the run's worktree before an interrupted step restarts
+	 * (`send --mode now`), so the work of the killed attempt survives even when
+	 * the session cannot resume. Never commits in the user's own checkout.
+	 */
+	private checkpointWorktree(store: RunStore, step: string | null): void {
+		const worktree = store.readRun().worktree;
+		if (!worktree || !existsSync(path.join(worktree, ".git"))) return;
+		const commit = safetyCommit(
+			worktree,
+			undefined,
+			`chore: auto-save work of ${step ?? "the step"} before it restarts`,
+		);
+		if (commit.committed)
+			this.log(
+				`Run ${store.id}: safety commit in ${worktree} before restarting ${step ?? "the step"}`,
+			);
+		if (commit.failed)
+			this.log(`Run ${store.id}: safety commit failed in ${worktree}: ${commit.error}`);
 	}
 
 	/**
@@ -773,10 +1000,17 @@ export class RunManager {
 		}
 	}
 
-	/** Delivers the pending messages of `step`: files first, then events and decisions. */
-	private async deliverMessages(store: RunStore, step: string): Promise<string> {
+	/**
+	 * Delivers the pending messages of `step` (only the `only` ids when given):
+	 * files first, then events and decisions.
+	 */
+	private async deliverMessages(
+		store: RunStore,
+		step: string,
+		only: string[] | null = null,
+	): Promise<string> {
 		const inbox = new Inbox(store.dir);
-		const pending = inbox.pending(step);
+		const pending = inbox.pending(step).filter((m) => only === null || only.includes(m.id));
 		if (pending.length === 0) return "";
 		const delivered = inbox.markDelivered(
 			pending.map((m) => m.id),
@@ -802,12 +1036,21 @@ export class RunManager {
 			throw new RunError(`Cannot answer a run in '${entry.status}' status`, 409);
 		}
 		const store = new RunStore(entry.dir);
-		const pending = pendingInput(store.readRun());
-		if (!pending) throw new RunError("Run has no pending needs_input request", 409);
-		const request = pending.request;
-		if (input.request_id && input.request_id !== request.id) {
-			throw new RunError(`Unknown request '${input.request_id}'. Pending: ${request.id}`, 404);
+		const list = pendingInputs(store.readRun());
+		if (list.length === 0) throw new RunError("Run has no pending needs_input request", 409);
+		const ids = list.map((p) => p.request.id).join(", ");
+		let pending: PendingInput | undefined;
+		if (input.request_id) {
+			pending = list.find((p) => p.request.id === input.request_id);
+			if (!pending) {
+				throw new RunError(`Unknown request '${input.request_id}'. Pending: ${ids}`, 404);
+			}
+		} else if (list.length > 1) {
+			throw new RunError(`Several requests are pending (${ids}): give a request id`);
+		} else {
+			pending = list[0];
 		}
+		const request = pending.request;
 		const raw = typeof input.answer === "string" ? input.answer.trim() : "";
 		if (!raw) throw new RunError("Answer text is required");
 		const policy = input.from === "policy";
@@ -820,14 +1063,32 @@ export class RunManager {
 			request.options.find((o) => o.label.toLowerCase() === raw.toLowerCase()) ??
 			null;
 		const answer = option ? `${option.id} (${option.label})` : raw;
+		const resolve = pending.live ? this.liveRequests.get(id)?.get(request.id) : undefined;
+		if (resolve) {
+			return this.answerLive(entry, store, pending, resolve, {
+				raw,
+				option: option?.id ?? null,
+				answer,
+				from: policy ? "policy" : from,
+			});
+		}
+		// A live request whose session is gone (supervisor restart) falls back to a rerun
 		const message = new Inbox(entry.dir).queue({
 			text: `Answer to ${request.id} ("${request.question}"): ${answer}`,
 			from,
 			mode: "next",
 			step: pending.step,
 		});
-		await store.updateRun({ "x-af-needs-input": null });
-		this.clearTimer(id);
+		// Only the answered request is removed: the run keeps waiting until every
+		// other recovered request has its answer too
+		const left = await this.withInputLock(id, async () => {
+			const run = await store.updateRunWith((current) => {
+				const remaining = pendingInputs(current).filter((p) => p.request.id !== request.id);
+				return { "x-af-needs-input": remaining.length > 0 ? remaining : null };
+			});
+			return pendingInputs(run).length;
+		});
+		this.clearTimer(id, request.id);
 		await store.appendEvent("message.queued", messageEventData(message));
 		await store.appendEvent("input.answered", {
 			id: request.id,
@@ -850,8 +1111,234 @@ export class RunManager {
 			alternatives: request.options.filter((o) => o.id !== option?.id).map((o) => o.label),
 			refs: [request.id, message.id],
 		});
+		if (left > 0) {
+			return { id, request: request.id, message: message.id, status: "awaiting-human" };
+		}
 		await this.resume(id);
 		return { id, request: request.id, message: message.id, status: "queued" };
+	}
+
+	/**
+	 * Answers a request of a live session: the answer goes straight to the
+	 * waiting session (as the tool result), with the same `input.answered`
+	 * event and decision as a rerun answer. The run is `running` again once
+	 * no request is left.
+	 */
+	private async answerLive(
+		entry: RegistryEntry,
+		store: RunStore,
+		pending: PendingInput,
+		resolve: (d: SessionDecision) => void,
+		a: { raw: string; option: string | null; answer: string; from: string },
+	): Promise<AnswerResult> {
+		const request = pending.request;
+		this.liveRequests.get(entry.id)?.delete(request.id);
+		this.clearTimer(entry.id, request.id);
+		const resumed = await this.withInputLock(entry.id, async () => {
+			const run = await store.updateRunWith((current) => {
+				const remaining = pendingInputs(current).filter((p) => p.request.id !== request.id);
+				return {
+					"x-af-needs-input": remaining.length > 0 ? remaining : null,
+					...(remaining.length === 0 ? { status: "running" as RunStatus } : {}),
+				};
+			});
+			await this.registry.update(entry.id, { status: run.status });
+			return run.status === "running";
+		});
+		await store.appendEvent("input.answered", {
+			id: request.id,
+			step: pending.step,
+			answer: a.option ?? a.raw,
+			option: a.option,
+			from: a.from,
+			message: null,
+			live: true,
+		});
+		await store.appendDecision({
+			id: `d-${request.id}`,
+			at: new Date().toISOString(),
+			phase: pending.step,
+			source: a.from === "policy" ? "policy" : "operator",
+			risk: "low",
+			decision: `Answered ${request.id} (${request.question}): ${a.answer}`,
+			rationale:
+				a.from === "policy"
+					? "No answer within the needs_input timeout; applied the recommended option of a non-blocking request"
+					: `Answer from ${a.from}, delivered to the live session`,
+			alternatives: request.options.filter((o) => o.id !== a.option).map((o) => o.label),
+			refs: [request.id],
+		});
+		if (resumed) await store.appendEvent("run.resumed", { reason: "answered" });
+		resolve({ option: a.option, text: a.raw });
+		return {
+			id: entry.id,
+			request: request.id,
+			message: null,
+			status: resumed ? "running" : "awaiting-human",
+		};
+	}
+
+	/**
+	 * Supervisor side of a session step: requests become `needs_input` while
+	 * the session waits alive, and the live session is registered for
+	 * `send --mode now`.
+	 */
+	private sessionHost(
+		entry: RegistryEntry,
+		store: RunStore,
+		config: Record<string, unknown>,
+		step: string,
+	): SessionHost {
+		const transcript = new TranscriptWriter(this.stepDir(entry, step), step);
+		return {
+			onEvent: (event) => {
+				// A request resolved by the session itself (aborted tool call), not by af answer
+				if (event.type === "request.resolved" && this.liveRequests.get(entry.id)?.has(event.id)) {
+					void this.endLiveRequests(entry, store, step, [event.id]);
+				}
+				try {
+					transcript.write(event);
+				} catch (err) {
+					this.log(
+						`Run ${entry.id}: transcript write failed for ${step}: ${(err as Error).message}`,
+					);
+				}
+			},
+			requestInput: (request, sessionId) =>
+				this.requestLive(entry, store, config, step, request, sessionId),
+			onLive: (handle) => {
+				const sessions = this.liveSessions.get(entry.id) ?? new Map<string, LiveSession>();
+				sessions.set(step, handle);
+				this.liveSessions.set(entry.id, sessions);
+				return () => {
+					if (sessions.get(step) === handle) sessions.delete(step);
+					// The session ended: requests it left unanswered are gone with it
+					void this.endLiveRequests(entry, store, step, null);
+				};
+			},
+		};
+	}
+
+	/** Runs `fn` after the previous needs_input transition of the run settled. */
+	private withInputLock<T>(id: string, fn: () => Promise<T>): Promise<T> {
+		const previous = this.inputLocks.get(id) ?? Promise.resolve();
+		const next = previous.then(fn, fn);
+		const settled = next.catch(() => undefined);
+		this.inputLocks.set(id, settled);
+		void settled.then(() => {
+			if (this.inputLocks.get(id) === settled) this.inputLocks.delete(id);
+		});
+		return next;
+	}
+
+	/**
+	 * Removes the live requests of `step` that its session resolved itself
+	 * (`ids`: an aborted tool call) or left behind when it ended (`ids`
+	 * null). The run is `running` again once no request is left. Skipped
+	 * while a pause, cancel, restart or shutdown stops the run: the end of
+	 * `execute()` (or the next supervisor) handles those requests.
+	 */
+	private async endLiveRequests(
+		entry: RegistryEntry,
+		store: RunStore,
+		step: string,
+		ids: string[] | null,
+	): Promise<void> {
+		if (this.stopRequests.has(entry.id) || !this.executing.has(entry.id)) return;
+		try {
+			await this.withInputLock(entry.id, async () => {
+				if (this.stopRequests.has(entry.id)) return;
+				const gone = (p: PendingInput) =>
+					p.live === true && p.step === step && (ids === null || ids.includes(p.request.id));
+				const current = pendingInputs(store.readRun());
+				const dropped = current.filter(gone);
+				if (dropped.length === 0) return;
+				for (const p of dropped) {
+					this.liveRequests.get(entry.id)?.delete(p.request.id);
+					this.clearTimer(entry.id, p.request.id);
+				}
+				let resumed = false;
+				const run = await store.updateRunWith((now) => {
+					const remaining = pendingInputs(now).filter((p) => !gone(p));
+					resumed = remaining.length === 0 && now.status === "awaiting-human";
+					return {
+						"x-af-needs-input": remaining.length > 0 ? remaining : null,
+						...(resumed ? { status: "running" as RunStatus } : {}),
+					};
+				});
+				await this.registry.update(entry.id, { status: run.status });
+				const reason = ids === null ? "session ended" : "request withdrawn by the session";
+				if (resumed) {
+					await store.appendEvent("run.resumed", {
+						reason: "requests withdrawn",
+						step,
+						requests: dropped.map((p) => p.request.id),
+						detail: reason,
+					});
+				}
+				this.log(
+					`Run ${entry.id}: dropped ${dropped.length} unanswered request(s) of ${step} (${reason})`,
+				);
+			});
+		} catch (err) {
+			this.log(
+				`Run ${entry.id}: could not drop the requests of ${step}: ${(err as Error).message}`,
+			);
+		}
+	}
+
+	/**
+	 * Raises a `needs_input` for a live session request: appends it to
+	 * `x-af-needs-input`, sets the run `awaiting-human` (the step process
+	 * stays alive and keeps its worktree), emits `needs_input`, and resolves
+	 * with the answer from `af answer`.
+	 */
+	private async requestLive(
+		entry: RegistryEntry,
+		store: RunStore,
+		config: Record<string, unknown>,
+		step: string,
+		request: SessionRequest,
+		sessionId: string | null,
+	): Promise<SessionDecision> {
+		const needs: NeedsInput = {
+			id: request.id,
+			question: request.question,
+			options: request.options.map((o) =>
+				o.description
+					? { id: o.id, label: o.label, description: o.description }
+					: { id: o.id, label: o.label },
+			),
+			recommended: request.recommended,
+			context: request.context,
+			blocking: true,
+		};
+		const pending: PendingInput = {
+			...newPendingInput(step, needs, config),
+			live: true,
+			session_id: sessionId,
+		};
+		const requests =
+			this.liveRequests.get(entry.id) ?? new Map<string, (d: SessionDecision) => void>();
+		this.liveRequests.set(entry.id, requests);
+		const decision = new Promise<SessionDecision>((resolve) => requests.set(request.id, resolve));
+		await this.withInputLock(entry.id, async () => {
+			const run = await store.updateRunWith((current) => ({
+				status: "awaiting-human",
+				"x-af-needs-input": [...pendingInputs(current), pending],
+			}));
+			await this.registry.update(entry.id, { status: run.status });
+		});
+		await store.appendEvent("needs_input", {
+			...needs,
+			step,
+			deadline: pending.deadline,
+			live: true,
+			tool: request.tool,
+		});
+		if (pending.deadline) this.armTimer(entry.id, pending);
+		this.log(`Run ${entry.id}: ${step} waits for ${request.id} (${request.tool})`);
+		return decision;
 	}
 
 	/**
@@ -1039,10 +1526,7 @@ export class RunManager {
 		step: string,
 		block: ResultBlock,
 	): Promise<ResultBlock> {
-		const names = this.stepNames(entry) ?? [];
-		const index = Math.max(names.indexOf(step), 0) + 1;
-		const slug = sanitizeSlug(step) || "step";
-		const dir = path.join(store.dir, "steps", `${String(index).padStart(2, "0")}-${slug}`);
+		const dir = this.stepDir(entry, step);
 		const file = path.join(dir, "result.json");
 		const startedAt = this.stepStarts.get(stepKey(entry.id, step)) ?? Number.POSITIVE_INFINITY;
 		let own: unknown = null;
@@ -1086,17 +1570,8 @@ export class RunManager {
 		const request =
 			last?.block.status === "awaiting-human" ? (last.block.needs_input ?? null) : null;
 		if (!last || !request) return null;
-		const minutes = needsInputTimeout(config);
-		const autoApply = request.blocking === false && request.recommended != null;
-		const now = Date.now();
-		const pending: PendingInput = {
-			step: last.step,
-			request,
-			asked_at: new Date(now).toISOString(),
-			deadline:
-				autoApply && minutes !== null ? new Date(now + minutes * 60_000).toISOString() : null,
-		};
-		await store.updateRun({ "x-af-needs-input": pending });
+		const pending = newPendingInput(last.step, request, config);
+		await store.updateRun({ "x-af-needs-input": [pending] });
 		await store.appendEvent("needs_input", {
 			...request,
 			step: last.step,
@@ -1110,8 +1585,9 @@ export class RunManager {
 		for (const entry of this.registry.list()) {
 			if (entry.status !== "awaiting-human") continue;
 			try {
-				const pending = pendingInput(new RunStore(entry.dir).readRun());
-				if (pending?.deadline) this.armTimer(entry.id, pending);
+				for (const pending of pendingInputs(new RunStore(entry.dir).readRun())) {
+					if (pending.deadline) this.armTimer(entry.id, pending);
+				}
 			} catch {
 				// Unreadable run.json: nothing to arm
 			}
@@ -1119,12 +1595,13 @@ export class RunManager {
 	}
 
 	private armTimer(id: string, pending: PendingInput): void {
-		this.clearTimer(id);
+		const key = stepKey(id, pending.request.id);
+		this.clearTimer(id, pending.request.id);
 		const recommended = pending.request.recommended;
 		if (!pending.deadline || recommended == null) return;
 		const delay = Math.max(0, Date.parse(pending.deadline) - Date.now());
 		const timer = setTimeout(() => {
-			this.timers.delete(id);
+			this.timers.delete(key);
 			this.answer(id, {
 				request_id: pending.request.id,
 				answer: recommended,
@@ -1134,25 +1611,32 @@ export class RunManager {
 			});
 		}, delay);
 		timer.unref?.();
-		this.timers.set(id, timer);
+		this.timers.set(key, timer);
 	}
 
-	private clearTimer(id: string): void {
-		const timer = this.timers.get(id);
-		if (timer) clearTimeout(timer);
-		this.timers.delete(id);
+	/** Clears the deadline timer of one request, or of every request of the run. */
+	private clearTimer(id: string, requestId?: string): void {
+		const prefix = stepKey(id, requestId ?? "");
+		for (const [key, timer] of [...this.timers]) {
+			if (requestId ? key !== prefix : !key.startsWith(prefix)) continue;
+			clearTimeout(timer);
+			this.timers.delete(key);
+		}
 	}
 
 	/** Re-queues a paused, waiting, blocked or failed run; it resumes from the last completed step. */
 	async resume(id: string): Promise<{ id: string; status: RunStatus }> {
 		const entry = this.requireEntry(id);
+		if (this.executing.has(id) && entry.status === "awaiting-human") {
+			throw new RunError("Run is still executing: a live session waits for af answer", 409);
+		}
 		if (!RESUMABLE_STATUSES.includes(entry.status)) {
 			throw new RunError(`Cannot resume run in '${entry.status}' status`, 409);
 		}
 		const store = new RunStore(entry.dir);
 		const patch: Partial<RunJson> = { status: "queued", ended_at: null };
 		// Resuming without an answer reruns the step, which asks again if needed
-		if (pendingInput(store.readRun())) patch["x-af-needs-input"] = null;
+		if (pendingInputs(store.readRun()).length > 0) patch["x-af-needs-input"] = null;
 		this.clearTimer(id);
 		await store.updateRun(patch);
 		await this.registry.update(id, { status: "queued" });
@@ -1190,7 +1674,8 @@ export class RunManager {
 				do {
 					this.rescheduleRequested = false;
 					const runs = this.registry.list();
-					const running = runs.filter((r) => r.status === "running");
+					// A run waiting on a live session (awaiting-human) still holds its checkout
+					const running = runs.filter((r) => r.status === "running" || this.executing.has(r.id));
 					const queued = runs.filter((r) => r.status === "queued" && !this.executing.has(r.id));
 					const picked = pickRunnable(queued, running, {
 						maxParallelRuns: readNumber(
@@ -1287,7 +1772,18 @@ export class RunManager {
 					return request.status === "canceled" ? WORKFLOW_STATUS.CANCELED : WORKFLOW_STATUS.PAUSED;
 				},
 				operatorMessages: (step) => this.deliverMessages(store, step),
+				sessionHost: (step) => this.sessionHost(entry, store, payload.config, step),
 				recordResult: (step, block) => this.recordResult(entry, store, step, block),
+				inputAnswer: async (step, requestId) => {
+					const answer = answerOf(store, requestId);
+					// The answer's own operator message is consumed; other pending messages stay
+					if (answer?.message) await this.deliverMessages(store, step, [answer.message]);
+					return answer;
+				},
+				lastSession: (step) => {
+					const saved = readStepSession(this.stepDir(entry, step));
+					return saved ? { sessionId: saved.session_id, driver: saved.driver, at: saved.at } : null;
+				},
 				emitEvent: async (type, data) => {
 					await store.appendEvent(type, data);
 				},
@@ -1333,12 +1829,16 @@ export class RunManager {
 			const status = toRunStatus(progress);
 			const request = this.stopRequests.get(entry.id);
 			if (request?.shutdown) {
-				// Left `running`: the next supervisor recovers the interrupted step.
+				// Left `running` (or `awaiting-human` with its live requests): the next
+				// supervisor recovers the interrupted step.
 				this.log(`Run ${entry.id}: interrupted by supervisor shutdown`);
 				return;
 			}
+			await this.dropLiveRequests(entry.id, store);
 			if (request?.restart && status === "paused") {
-				// send --mode now: rerun the interrupted step at once with the message
+				// send --mode now: rerun the interrupted step at once with the message. Its
+				// session resumes; the worktree's work is committed first in case it cannot
+				this.checkpointWorktree(store, interruptedStep);
 				await store.updateRun({ status: "queued" });
 				await this.registry.update(entry.id, { status: "queued" });
 				await store.appendEvent("step.retried", {
@@ -1374,10 +1874,25 @@ export class RunManager {
 			this.stopRequests.delete(entry.id);
 			this.controllers.delete(entry.id);
 			this.results.delete(entry.id);
+			this.liveSessions.delete(entry.id);
+			this.liveRequests.delete(entry.id);
 			for (const key of [...this.stepStarts.keys()]) {
 				if (key.startsWith(stepKey(entry.id, ""))) this.stepStarts.delete(key);
 			}
 		}
+	}
+
+	/** Removes the requests of live sessions that ended without an answer (canceled, paused). */
+	private async dropLiveRequests(id: string, store: RunStore): Promise<void> {
+		this.liveRequests.delete(id);
+		await this.withInputLock(id, async () => {
+			if (!pendingInputs(store.readRun()).some((p) => p.live)) return;
+			this.clearTimer(id);
+			await store.updateRunWith((current) => {
+				const kept = pendingInputs(current).filter((p) => !p.live);
+				return { "x-af-needs-input": kept.length > 0 ? kept : null };
+			});
+		});
 	}
 
 	/**
@@ -1403,6 +1918,8 @@ export class RunManager {
 			if (run.status === "running" || entry.status === "running") {
 				await this.recoverRun(entry, store);
 				recovered.push(entry.id);
+			} else if (run.status === "awaiting-human" && pendingInputs(run).some((p) => p.live)) {
+				await this.recoverLiveWait(entry, store);
 			} else if (run.status === "queued" && (run["x-af-recoveries"] ?? 0) > 0) {
 				// Crash between re-queue and the run.recovered event
 				const n = run["x-af-recoveries"] ?? 0;
@@ -1420,13 +1937,15 @@ export class RunManager {
 	private async recoverRun(entry: RegistryEntry, store: RunStore): Promise<void> {
 		const progress = loadProgress(entry.id, entry.dir);
 		let topLevel: string[] = [];
+		let definitions: StepDefinition[] = [];
 		try {
-			topLevel = this.parseWorkflow(store.readJson<DispatchPayload>("dispatch.json")).steps.map(
-				(s) => s.name,
-			);
+			definitions = this.parseWorkflow(store.readJson<DispatchPayload>("dispatch.json")).steps;
+			topLevel = definitions.map((s) => s.name);
 		} catch {
 			topLevel = progress ? [...new Set(progress.completedSteps.map((s) => s.name))] : [];
 		}
+		const n = (store.readRun()["x-af-recoveries"] ?? 0) + 1;
+		let sessions: SessionRecovery[] = [];
 		await this.rebuildMessageEvents(store);
 		const interrupted: string[] = [];
 		if (progress) {
@@ -1457,10 +1976,11 @@ export class RunManager {
 			) {
 				interrupted.push(last.name);
 			}
+			sessions = this.recoverSessions(entry, progress, definitions, interrupted);
 			prepareForResume(progress);
 			saveProgress(progress, entry.dir);
 		}
-		const n = (store.readRun()["x-af-recoveries"] ?? 0) + 1;
+		await this.logSessionRecovery(store, n, sessions);
 		await store.updateRun({ status: "queued", "x-af-recoveries": n });
 		await this.registry.update(entry.id, { status: "queued" });
 		const resumeFrom =
@@ -1469,10 +1989,144 @@ export class RunManager {
 			) ?? null;
 		await store.appendEventOnce(
 			"run.recovered",
-			{ recovery: n, interrupted_steps: interrupted, resume_from: resumeFrom },
+			{ recovery: n, interrupted_steps: interrupted, resume_from: resumeFrom, sessions },
 			(e) => e.data?.recovery === n,
 		);
 		this.log(`Recovered run ${entry.id} (interrupted: ${interrupted.join(", ") || "none"})`);
+	}
+
+	/**
+	 * Recovery of a run that waited `awaiting-human` on a live session when
+	 * the supervisor stopped: the session process is gone, so its step is
+	 * recorded interrupted with the session id, and its requests are no
+	 * longer live. The run keeps waiting; `af answer` then resumes that
+	 * session with the answer (instead of a cold rerun). Runs once per
+	 * restart: afterwards no request is live.
+	 */
+	private async recoverLiveWait(entry: RegistryEntry, store: RunStore): Promise<void> {
+		const progress = loadProgress(entry.id, entry.dir);
+		if (!progress) return;
+		const running = new Set(progress.runningSteps);
+		if (progress.currentStep?.name) running.add(progress.currentStep.name);
+		let definitions: StepDefinition[] = [];
+		try {
+			definitions = this.parseWorkflow(store.readJson<DispatchPayload>("dispatch.json")).steps;
+		} catch {
+			return;
+		}
+		const live = pendingInputs(store.readRun()).filter((p) => p.live);
+		const liveSteps = new Set(live.map((p) => p.step));
+		const waiting = definitions
+			.map((d) => d.name)
+			.filter((name) => running.has(name) || liveSteps.has(name));
+		if (waiting.length === 0) return;
+		const now = new Date().toISOString();
+		for (const name of waiting) {
+			const last = [...progress.completedSteps].reverse().find((s) => s.name === name);
+			// A graceful shutdown already recorded the step interrupted
+			if (!running.has(name) && last?.status === STEP_INTERRUPTED) continue;
+			progress.completedSteps.push({
+				name,
+				status: STEP_INTERRUPTED,
+				startedAt: progress.currentStep?.name === name ? progress.currentStep.startedAt : null,
+				completedAt: now,
+				retryCount: 0,
+				outputSummary: "",
+				error: "Supervisor stopped while a live session waited for an answer",
+				humanInput: null,
+			});
+		}
+		const known = new Map(live.map((p) => [p.step, p.session_id ?? null]));
+		const sessions = this.recoverSessions(entry, progress, definitions, waiting, known);
+		prepareForResume(progress);
+		progress.status = WORKFLOW_STATUS.AWAITING_HUMAN;
+		saveProgress(progress, entry.dir);
+		const n = (store.readRun()["x-af-recoveries"] ?? 0) + 1;
+		await this.logSessionRecovery(store, n, sessions);
+		await store.updateRunWith((current) => ({
+			"x-af-recoveries": n,
+			"x-af-needs-input": pendingInputs(current).map((p) => (p.live ? { ...p, live: false } : p)),
+		}));
+		await store.appendEventOnce(
+			"run.recovered",
+			{ recovery: n, interrupted_steps: waiting, resume_from: null, sessions, waiting: true },
+			(e) => e.data?.recovery === n,
+		);
+		this.log(`Recovered run ${entry.id} waiting on ${waiting.join(", ")}`);
+	}
+
+	/**
+	 * Decides, per interrupted step, whether its runtime session resumes or
+	 * the step restarts from its boundary. A top-level prompt step whose last
+	 * session (`session.json`, written with the transcript) was recorded during
+	 * this attempt resumes, on either driver (Agent SDK resume, `claude
+	 * --resume`, `codex exec resume`): its interrupted record gets the session
+	 * id, and the prompt step resumes it (or restarts cold when the resume
+	 * fails). Every other step restarts (ralph-loop and composite steps, no
+	 * session recorded).
+	 */
+	private recoverSessions(
+		entry: RegistryEntry,
+		progress: WorkflowProgress,
+		definitions: StepDefinition[],
+		steps: string[],
+		known: Map<string, string | null> = new Map(),
+	): SessionRecovery[] {
+		return steps.map((step) => {
+			const record = [...progress.completedSteps]
+				.reverse()
+				.find((s) => s.name === step && s.status === STEP_INTERRUPTED);
+			const type = definitions.find((d) => d.name === step)?.type ?? null;
+			const saved = readStepSession(this.stepDir(entry, step));
+			const current = saved && (!record?.startedAt || saved.at >= record.startedAt) ? saved : null;
+			const sessionId = known.get(step) ?? current?.session_id ?? null;
+			let reason: string | null = null;
+			if (type !== "prompt" && type !== "skill") {
+				reason = `a ${type ?? "composite"} step restarts from its boundary`;
+			} else if (!sessionId) reason = "no runtime session was recorded for this attempt";
+
+			if (reason) return { step, action: "restart", session_id: sessionId, reason };
+			if (record) record.sessionId = sessionId;
+			return {
+				step,
+				action: "resume",
+				session_id: sessionId,
+				reason: `the ${current?.driver ?? "session"} driver resumes the stored session id`,
+			};
+		});
+	}
+
+	/**
+	 * Logs each recovery choice about a recorded session as a policy decision
+	 * (once per recovery and step). Steps without a session have no choice to
+	 * log; `run.recovered` `sessions` lists them all.
+	 */
+	private async logSessionRecovery(
+		store: RunStore,
+		n: number,
+		sessions: SessionRecovery[],
+	): Promise<void> {
+		const existing = new Set(store.readDecisions().map((d) => d.id));
+		for (const choice of sessions) {
+			if (!choice.session_id) continue;
+			const id = `d-recover-${n}-${sanitizeSlug(choice.step) || "step"}`;
+			if (existing.has(id)) continue;
+			const resume = choice.action === "resume";
+			await store.appendDecision({
+				id,
+				at: new Date().toISOString(),
+				phase: choice.step,
+				source: "policy",
+				risk: "low",
+				decision: resume
+					? `Resume session ${choice.session_id} of ${choice.step} after the supervisor restart`
+					: `Restart ${choice.step} from its boundary after the supervisor restart`,
+				rationale: choice.reason,
+				alternatives: [resume ? "Restart the step from its boundary" : "Resume the session"],
+				refs: choice.session_id ? [choice.session_id] : [],
+			});
+			this.log(`Run ${store.id}: ${choice.action} ${choice.step} (${choice.reason})`);
+		}
 	}
 
 	/**
@@ -1547,10 +2201,61 @@ function stepKey(run: string, step: string): string {
 	return `${run}\u0000${step}`;
 }
 
-/** Pending needs_input request of a run (`x-af-needs-input` in run.json). */
-export function pendingInput(run: RunJson): PendingInput | null {
+/**
+ * Pending needs_input requests of a run (`x-af-needs-input` in run.json): a
+ * list keyed by request id (parallel session steps can each wait). The
+ * single-object form written before the list is still read.
+ */
+export function pendingInputs(run: RunJson): PendingInput[] {
 	const value = run["x-af-needs-input"];
-	return value && typeof value === "object" ? (value as PendingInput) : null;
+	if (Array.isArray(value)) {
+		return value.filter((p): p is PendingInput => !!p && typeof p === "object" && "request" in p);
+	}
+	return value && typeof value === "object" ? [value as PendingInput] : [];
+}
+
+/** First pending needs_input request of a run, or null. */
+export function pendingInput(run: RunJson): PendingInput | null {
+	return pendingInputs(run)[0] ?? null;
+}
+
+/** The latest `input.answered` event of a request, as a step reads it. */
+function answerOf(store: RunStore, requestId: string): InputAnswer | null {
+	const event = store
+		.readEvents()
+		.filter((e) => e.type === "input.answered" && e.data?.id === requestId)
+		.at(-1);
+	if (!event?.data) return null;
+	const option = event.data.option;
+	return {
+		answer: String(event.data.answer ?? ""),
+		option: typeof option === "string" ? option : null,
+		from: String(event.data.from ?? "user"),
+		message: typeof event.data.message === "string" ? event.data.message : null,
+	};
+}
+
+/**
+ * A pending request; non-blocking requests with a recommended option get the
+ * timeout deadline: the request's `x-af-timeout-minutes` (human-input
+ * `timeout-minutes`), else `supervisor.needs_input_timeout`.
+ */
+function newPendingInput(
+	step: string,
+	request: NeedsInput,
+	config: Record<string, unknown>,
+): PendingInput {
+	const own = request["x-af-timeout-minutes"];
+	const minutes =
+		typeof own === "number" && Number.isFinite(own) && own >= 0 ? own : needsInputTimeout(config);
+	const autoApply = request.blocking === false && request.recommended != null;
+	const now = Date.now();
+	return {
+		step,
+		request,
+		asked_at: new Date(now).toISOString(),
+		deadline: autoApply && minutes !== null ? new Date(now + minutes * 60_000).toISOString() : null,
+	};
 }
 
 /** Amendments waiting for the amend step (`x-af-amendments` in run.json). */

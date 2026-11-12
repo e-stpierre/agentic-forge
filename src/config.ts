@@ -4,6 +4,25 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
+/**
+ * Claude tools a step may use without asking (`runtimes.claude.allow`), in
+ * Claude Code permission rule syntax: reading, editing, todos, skills and
+ * subagents. Shell commands are not on it: a workflow's `required-tools`
+ * (for example `Bash` or `Bash(git *)`) adds to it, and any other call asks.
+ */
+export const DEFAULT_CLAUDE_ALLOW: readonly string[] = [
+	"Read",
+	"Glob",
+	"Grep",
+	"Edit",
+	"MultiEdit",
+	"Write",
+	"NotebookEdit",
+	"TodoWrite",
+	"Skill",
+	"Task",
+];
+
 const DEFAULT_CONFIG: Record<string, unknown> = {
 	outputDirectory: "global",
 	logging: {
@@ -38,12 +57,33 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		// null: <global dir>/runs/. Replaces outputDirectory.
 		root: null,
 	},
+	// Plugin directories with an af-workflows/ dir. auto_detect also reads the
+	// Claude Code installed plugin list (installed_plugins.json).
+	skill_packs: {
+		paths: [],
+		auto_detect: true,
+	},
 	supervisor: {
 		max_parallel_runs: 4,
 		max_parallel_tasks: 2,
 		env_passthrough: [],
 		/** Minutes before a non-blocking needs_input request gets its recommended option (null: never). */
 		needs_input_timeout: null,
+	},
+	runtimes: {
+		// session: Claude Agent SDK session (live messages, questions, permissions).
+		// cli: one-shot `claude -p`.
+		// permissions: allowlist (default) auto-approves `allow`; bypass skips every
+		// permission check, with a warning on every step.
+		claude: {
+			driver: "session",
+			plugins: [],
+			permissions: "allowlist",
+			allow: [...DEFAULT_CLAUDE_ALLOW],
+		},
+		// Codex has no session driver yet (codex app-server comes later). Its
+		// allowlist is the sandbox (`codex.sandbox`); bypass removes it.
+		codex: { driver: "cli", permissions: "allowlist" },
 	},
 };
 
@@ -252,4 +292,64 @@ export function getRuntimeModel(config: Record<string, unknown>, runtimeId: stri
 export function getSandboxMode(config: Record<string, unknown>): string | null {
 	const codexConfig = config.codex as Record<string, unknown> | undefined;
 	return (codexConfig?.sandbox as string) ?? null;
+}
+
+/**
+ * Driver of a runtime (`runtimes.<id>.driver`): `session` or `cli`. Unknown
+ * values fall back to the default (`session` for Claude, `cli` otherwise).
+ */
+export function getRuntimeDriver(
+	config: Record<string, unknown>,
+	runtimeId: string,
+): "session" | "cli" {
+	const runtimes = config.runtimes as
+		| Record<string, Record<string, unknown> | undefined>
+		| undefined;
+	const value = runtimes?.[runtimeId]?.driver;
+	if (value === "session" || value === "cli") return value;
+	return runtimeId === "claude" ? "session" : "cli";
+}
+
+/** Local plugin directories loaded by the session driver (`runtimes.<id>.plugins`). */
+export function getRuntimePlugins(config: Record<string, unknown>, runtimeId: string): string[] {
+	const runtimes = config.runtimes as
+		| Record<string, Record<string, unknown> | undefined>
+		| undefined;
+	const value = runtimes?.[runtimeId]?.plugins;
+	return Array.isArray(value)
+		? value.filter((p): p is string => typeof p === "string" && p !== "")
+		: [];
+}
+
+/** Permission mode of a runtime (`runtimes.<id>.permissions`). */
+export type PermissionMode = "allowlist" | "bypass";
+
+/** Permissions of a runtime: its mode and its allowlist (`runtimes.<id>.allow`). */
+export interface RuntimePermissions {
+	mode: PermissionMode;
+	allow: string[];
+}
+
+/**
+ * Permissions of a runtime: `runtimes.<id>.permissions` (`allowlist` unless
+ * set to `bypass`) and `runtimes.<id>.allow` (when unset, Claude gets
+ * `DEFAULT_CLAUDE_ALLOW` and other runtimes an empty list).
+ */
+export function getRuntimePermissions(
+	config: Record<string, unknown>,
+	runtimeId: string,
+): RuntimePermissions {
+	const runtimes = config.runtimes as
+		| Record<string, Record<string, unknown> | undefined>
+		| undefined;
+	const entry = runtimes?.[runtimeId];
+	const mode: PermissionMode = entry?.permissions === "bypass" ? "bypass" : "allowlist";
+	const value = entry?.allow;
+	let allow: string[];
+	if (Array.isArray(value)) {
+		allow = value.filter((t): t is string => typeof t === "string" && t !== "");
+	} else {
+		allow = runtimeId === "claude" ? [...DEFAULT_CLAUDE_ALLOW] : [];
+	}
+	return { mode, allow };
 }

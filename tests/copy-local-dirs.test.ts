@@ -30,7 +30,7 @@ describe("copyLocalDirs", () => {
 		mkdirSync(path.join(repoRoot, ".claude"), { recursive: true });
 		writeFileSync(path.join(repoRoot, ".claude", "settings.local.json"), '{"key":"val"}');
 		mkdirSync(path.join(repoRoot, ".agents"), { recursive: true });
-		writeFileSync(path.join(repoRoot, ".agents", "explorer.md"), "# Explorer");
+		writeFileSync(path.join(repoRoot, ".agents", "helper.md"), "# Helper");
 
 		copyLocalDirs(repoRoot, worktree);
 
@@ -38,8 +38,8 @@ describe("copyLocalDirs", () => {
 		expect(readFileSync(path.join(worktree, ".claude", "settings.local.json"), "utf-8")).toBe(
 			'{"key":"val"}',
 		);
-		expect(existsSync(path.join(worktree, ".agents", "explorer.md"))).toBe(true);
-		expect(readFileSync(path.join(worktree, ".agents", "explorer.md"), "utf-8")).toBe("# Explorer");
+		expect(existsSync(path.join(worktree, ".agents", "helper.md"))).toBe(true);
+		expect(readFileSync(path.join(worktree, ".agents", "helper.md"), "utf-8")).toBe("# Helper");
 	});
 
 	it("skips directories that don't exist in repo root", () => {

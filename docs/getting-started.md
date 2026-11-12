@@ -22,6 +22,8 @@ npm install -g .
 
 After installation, two CLI aliases are available: `agentic-forge` and `af`.
 
+Run `af doctor` to check the setup: it reports each runtime and how it is authenticated (Claude plan login or API key, Codex login), the GitHub CLI, the runs root and any installed skill packs, with a fix for every failed check.
+
 ## Quick Tour
 
 Agentic Forge is a YAML-based workflow engine for coding agents. You define multi-step workflows in YAML, and the engine orchestrates Claude Code (or Codex CLI) sessions to execute them autonomously. The default runtime is Claude; Codex is opt-in via config or the `--runtime` flag.
@@ -91,7 +93,7 @@ The local directory lives at `<project>/agentic/` and is optional. When present,
 ### Priority order
 
 - **Config**: built-in defaults -> global config -> local config (local wins)
-- **Workflows**: project-local -> user-global -> bundled (first match wins)
+- **Workflows**: project-local -> user-global -> skill packs (`af-workflows/` of installed plugins) -> bundled (first match wins)
 - **Outputs**: global by default, or local when `outputDirectory: "local"` is set
 
 Use `af paths` to see all resolved paths and their existence status.
@@ -143,7 +145,7 @@ Then use the `/af-workflow-builder` slash command to create a new workflow:
 /af-workflow-builder create a workflow that analyzes test coverage and reports gaps
 ```
 
-The skill understands the full workflow schema, all step types, and bundled skills. It can also validate, explain, update, and debug existing workflows:
+The skill understands the full workflow schema and all step types, including `skill` steps that call your own skills (see [Bring your own skills](workflows.md#bring-your-own-skills)). It can also validate, explain, update, and debug existing workflows:
 
 ```text
 /af-workflow-builder validate agentic/workflows/my-workflow.yaml
@@ -160,5 +162,6 @@ af run my-workflow --var "key=value"
 
 - [CLI Reference](cli.md) for the complete list of commands and options
 - [Workflows](workflows.md) for details on all bundled workflows
+- [Bring your own skills](workflows.md#bring-your-own-skills) to call your skills (for example esp-skills) from a workflow
 - [Configuration](configuration.md) for all available settings
 - [Coding Agents](coding-agents.md) for multi-runtime support (Claude + Codex)

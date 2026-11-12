@@ -18,16 +18,17 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `reprioritize`  | Change the queue priority of a run                   |
 | `list`          | List runs                                            |
 | `events`        | Print or follow run events                           |
+| `logs`          | Print or follow the live transcript of a run         |
 | `artifacts`     | Show the plan, summary, decisions and review files   |
-| `input`         | Provide input to a paused workflow                   |
+| `input`         | Answer the single pending request of a run           |
 | `init`          | Initialize directory structure                       |
 | `config`        | Get or set configuration values                      |
 | `configure`     | Display current configuration                        |
 | `workflows`     | List available workflows with descriptions           |
+| `doctor`        | Check runtimes, auth, runs root and skill packs      |
 | `paths`         | Show resolved directory and config paths             |
 | `serve`         | Run, start, inspect or stop the supervisor           |
 | `mcp`           | Run a stdio MCP server to dispatch and steer runs    |
-| `skills-dir`    | Print path to bundled workflow skills directory      |
 | `authoring-dir` | Print path to interactive authoring skills directory |
 | `release-notes` | Show release notes and changelog                     |
 | `version`       | Show current version                                 |
@@ -39,6 +40,10 @@ Dispatch a workflow to the supervisor with optional key=value variables, and pri
 The client resolves everything the run needs: the workflow file (path and contents), the config of the current directory (defaults, global, local), and an allowlisted set of environment variables (`PATH`, system variables, `CLAUDE_*`, `CODEX_*`, `GH_*`, `ANTHROPIC_*`, `OPENAI_*`, plus `supervisor.env_passthrough`). The supervisor stores them in the run directory and never uses its own working directory, so a run dispatched from one repository uses that repository's config even when the supervisor was started elsewhere. The supervisor is started on demand when none is running.
 
 The run goes through the supervisor's queue (see `supervisor.max_parallel_runs` and `supervisor.max_parallel_tasks` in [configuration](configuration.md)). Two runs never share one checkout: a run on a repository that is not using its own worktree waits until the other non-worktree run on that repository ends.
+
+A workflow name is looked up in this order: project `agentic/workflows/`, user-global workflows, installed skill packs (their `af-workflows/` directory, see `skill_packs` in [configuration](configuration.md#skill_packs)), then the bundled demos. The first match wins.
+
+A workflow can declare `requires: { agentic-forge: ">=0.12", contract: 1 }`. The supervisor refuses a workflow whose requirements this install does not meet before any step runs, and the error names the required and installed versions. `--ignore-requires` runs it anyway when only the agentic-forge version is unmet; a contract mismatch is always refused.
 
 Each run writes a contract run directory, `<runs.root>/YYYY-MM-DD-<slug>/` (default `<global dir>/runs/`), with `run.json`, `events.jsonl`, `dispatch.json` and the engine state `progress.json`. See [harness-contract.md](harness-contract.md).
 
@@ -64,31 +69,32 @@ af run <workflow> [vars...] [options]
 | `--runtime <runtime>`      | Runtime to use for this invocation (`claude`, `codex`). Overrides config default and workflow settings, but not per-step `runtime` values.                                                                             |
 | `--no-interactive`         | Disable interactive prompts for missing variables                                                                                                                                                                      |
 | `--terminal-output <mode>` | Terminal output granularity: `base` or `all`                                                                                                                                                                           |
-| `--list`                   | List all available workflows                                                                                                                                                                                           |
+| `--ignore-requires`        | Run a workflow whose `requires` asks for a newer agentic-forge, with a warning. Never overrides the `contract` requirement.                                                                                            |
+| `--list`                   | List all available workflows (same output as `af workflows`)                                                                                                                                                           |
 
 ### Examples
 
 ```bash
 # Run with a variable
-af run one-shot --var "task=Add dark mode support"
+af run ralph-loop --var "task=Add dark mode support"
 
 # Run with multiple variables
-af run plan-build-review --var "task=Add auth" --var "create_pr=true"
+af run ralph-loop --var "task=Add auth" --var "max_iterations=40"
 
 # Run with positional variables
-af run one-shot task="Add dark mode support"
+af run ralph-loop task="Add dark mode support"
 
 # Run with a custom slug (run ID 2026-11-10-dark-mode)
-af run plan-build-review --slug "dark-mode" --var "task=Add dark mode"
+af run plan-loop --slug "dark-mode" --var "input=Add dark mode"
 
 # Dispatch and follow the run until it ends
-af run one-shot --foreground --var "task=Add dark mode"
+af run ralph-loop --foreground --var "task=Add dark mode"
 
 # Resume from a specific step
-af run one-shot --from-step review --var "task=Add dark mode"
+af run plan-loop --from-step execute-plan --var "input=Add dark mode"
 
 # Non-interactive mode (fails if required variables are missing)
-af run one-shot --no-interactive --var "task=Add dark mode"
+af run ralph-loop --no-interactive --var "task=Add dark mode"
 
 # Run a workflow from a YAML file path
 af run ./agentic/workflows/my-workflow.yaml --var "key=value"
@@ -183,11 +189,11 @@ af send <run_id> <text> [options]
 
 ### Options
 
-| Option            | Description                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------------ |
-| `--step <name>`   | Deliver to this step only (default: the next step of the run)                                                |
-| `--from <sender>` | Sender recorded in the message: `user` (default) or `overseer`                                               |
-| `--mode <mode>`   | `next` (default): deliver at the next boundary. `now`: kill the current step and restart it with the message |
+| Option            | Description                                                                                                                             |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `--step <name>`   | Deliver to this step only (default: the next step of the run)                                                                           |
+| `--from <sender>` | Sender recorded in the message: `user` (default) or `overseer`                                                                          |
+| `--mode <mode>`   | `next` (default): deliver at the next boundary. `now`: steer the live session, or kill the step and resume its session with the message |
 
 ### Examples
 
@@ -202,7 +208,7 @@ af send 2026-11-10-dark-mode "Check the contrast ratios too." --step review
 af send 2026-11-10-dark-mode "Stop: use pnpm, not npm." --mode now
 ```
 
-With `--mode now`, the supervisor kills the running step's process tree (as `pause --now` does) and runs the step again from its start, with the message in its `## Operator Messages` section. The event log shows `step.retried` with `reason: message`, and no `run.paused`. A run that is not executing a step delivers the message at its next start, as with `next`.
+With `--mode now`, a running step on the Claude session driver (the default, see [Coding Agents](coding-agents.md#drivers)) gets the message in its live session: it reaches the agent at its next tool call, with no restart, and the output says `delivered into the live session`. With `--mode next`, a live session step gets the message as its next turn when the current turn ends. On the `cli` driver, `--mode now` kills the running step's process tree (as `pause --now` does), runs `safetyCommit` in the run's worktree, and runs the step again by resuming its recorded session (`claude --resume`, `codex exec resume`) with the message in its `## Operator Messages` section. When the session cannot resume, the step starts over with its prompt and the message (see [Coding Agents](coding-agents.md#interrupt-and-resume-on-the-cli-driver)). The event log shows `step.retried` with `reason: message`, and no `run.paused`. A run that is not executing a step delivers the message at its next start, as with `next`.
 
 ## pause
 
@@ -234,9 +240,9 @@ af resume 2026-11-10-dark-mode
 
 ## answer
 
-Answer the pending `needs_input` request of an `awaiting-human` run. A step asks by ending with a result block whose `status` is `awaiting-human` and whose `needs_input` holds the question (see [harness contract](harness-contract.md#needs_input-protocol)). The supervisor stores the request in `run.json` (`x-af-needs-input`) and emits a `needs_input` event with the request in `data`.
+Answer the pending `needs_input` request of an `awaiting-human` run. A step asks by ending with a result block whose `status` is `awaiting-human` and whose `needs_input` holds the question (see [harness contract](harness-contract.md#needs_input-protocol)). A step on the Claude session driver also asks while it runs: a tool call outside its allowlist (options `allow` and `deny`) or an `AskUserQuestion` question. The supervisor stores each pending request in the `run.json` list `x-af-needs-input` (keyed by request id, so parallel steps can each wait) and emits a `needs_input` event with the request in `data` (`live: true` and `tool` for a request of a live session).
 
-`af answer` records an `input.answered` event and an `operator` decision, queues the answer as an operator message for the asking step, and resumes the run. The step runs again from its start with `Answer to <id> ("<question>"): <answer>` in its `## Operator Messages` section.
+`af answer` records an `input.answered` event and an `operator` decision. For a request of a live session, the answer goes straight to the waiting session and the run is `running` again once no request is left. Otherwise it queues the answer as an operator message for the asking step and resumes the run: the step runs again with `Answer to <id> ("<question>"): <answer>` in its `## Operator Messages` section, resuming its own session when it ran on the session driver. With several pending requests, `<request_id>` picks the one to answer.
 
 ```bash
 af answer <run_id> <request_id> <answer> [--from user|overseer]
@@ -370,7 +376,7 @@ With `--follow`, the command long-polls the supervisor (`--wait` seconds per req
 | Steering | `message.queued`, `message.delivered`, `amendment.applied`, `needs_input`, `input.answered`                           |
 | Harness  | `supervisor.restarted`, `run.recovered`                                                                               |
 
-`run.queued` is also emitted when a stopped run is queued again (`data.reason: resumed`, from `af resume`, `af answer` or `af retry-step`). `step.retried` carries `data.reason`: `retry` (automatic retry after a failed attempt), `operator` (`af retry-step`) or `message` (`af send --mode now`). `iteration.completed` carries `data.outcome`: `continue`, `complete`, `failed`, `error` or `max_iterations`. A supervisor that takes over runs left `running` or `queued` by a previous one emits `supervisor.restarted` once in each of them.
+`run.queued` is also emitted when a stopped run is queued again (`data.reason: resumed`, from `af resume`, `af answer` or `af retry-step`). `step.retried` carries `data.reason`: `retry` (automatic retry after a failed attempt), `operator` (`af retry-step`), `message` (`af send --mode now`) or `resume-failed` (a resumed session failed and the step restarts from its start; `data.session_id` names it). `iteration.completed` carries `data.outcome`: `continue`, `complete`, `failed`, `error` or `max_iterations`. A supervisor that takes over runs left `running` or `queued` by a previous one emits `supervisor.restarted` once in each of them.
 
 ### Examples
 
@@ -383,6 +389,57 @@ af events --run 2026-11-10-dark-mode --follow
 
 # Background monitor: wake on questions and run status changes, resumable
 af events --follow --types needs_input,run.*,step.failed --cursor-file ~/.af-monitor-cursor
+```
+
+## logs
+
+Print the live transcript of a run: every step (or one with `--step`), oldest first, merged across steps by time. Goes through the supervisor, which is started on demand.
+
+```bash
+af logs <run_id> [options]
+```
+
+Each step writes `steps/<NN-step>/transcript.jsonl` while it runs, on both drivers (see [Coding Agents](coding-agents.md#transcripts)): the prompt and operator messages, assistant messages, tool calls and their results, file diffs, permission requests and their answers, and the end of each turn. The transcript is separate from `events.jsonl`, which only records state changes, and has its own cursor.
+
+Without `--cursor`, the command prints the last `--limit` entries. With `--follow`, it then long-polls the supervisor (`--wait` seconds per request) and prints new entries until the step ends (with `--step`) or the run stops executing (without it), then exits. A step that has not started yet is waited for. Ctrl+C stops earlier. When the command ends, it prints the cursor on stderr (`Cursor: ...`); `--cursor` continues after it.
+
+### Options
+
+| Option              | Description                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| `--step <step>`     | Only the transcript of this step                                   |
+| `--follow`          | Keep streaming new entries until the step (or the run) ends        |
+| `--cursor <cursor>` | Start after this cursor instead of the tail                        |
+| `--limit <n>`       | Entries of the tail and of each page (default 50, max 500)         |
+| `--json`            | Print entries as JSON lines instead of one readable line per entry |
+| `--wait <seconds>`  | Long-poll length per request with `--follow` (default 30, max 120) |
+
+### Transcript entries
+
+Every line of `transcript.jsonl` is one JSON object with `seq` (position in the step's transcript), `at`, `step` and `type`:
+
+| Type          | Fields                                                                   |
+| ------------- | ------------------------------------------------------------------------ |
+| `session`     | `session_id`, `runtime`, `driver`, `model`, `auth`                       |
+| `message`     | `id`, `role` (`user` or `assistant`), `text`                             |
+| `tool_call`   | `id`, `tool`, `input`                                                    |
+| `tool_result` | `id` (the tool call's), `text`, `is_error`                               |
+| `diff`        | `id`, `path`, `change` (`add`, `update`, `delete`), `patch` (when known) |
+| `request`     | `id` (the `needs_input` request id), `kind`, `tool`, `question`          |
+| `answer`      | `id`, `option`, `text`                                                   |
+| `turn`        | `text` (the turn's final message), `is_error`                            |
+| `error`       | `text`                                                                   |
+
+Long texts are cut when written (20,000 characters per text, 2,000 per tool input value, 8,000 per patch), with `truncated: true`. Transcripts are private to agentic-forge (not part of the harness contract).
+
+### Examples
+
+```bash
+# The last 50 entries of a run
+af logs 2026-11-10-dark-mode
+
+# Watch one step until it ends
+af logs 2026-11-10-dark-mode --step build --follow
 ```
 
 ## artifacts
@@ -413,23 +470,23 @@ af artifacts 2026-11-10-dark-mode --kind plan --content
 
 ## input
 
-Provide a text response to a paused workflow that is waiting for human input.
+Answer the single pending `needs_input` request of an `awaiting-human` run, such as the question of a `human-input` step. A shortcut for [`af answer`](#answer) without a request id: it fails when several requests are pending.
 
 ```bash
-af input <workflow_id> <response>
+af input <run_id> <response>
 ```
 
 ### Arguments
 
-| Argument        | Required | Description              |
-| --------------- | -------- | ------------------------ |
-| `<workflow_id>` | Yes      | Workflow run ID          |
-| `<response>`    | Yes      | Response text to provide |
+| Argument     | Required | Description                                  |
+| ------------ | -------- | -------------------------------------------- |
+| `<run_id>`   | Yes      | Run ID                                       |
+| `<response>` | Yes      | Option ID, option label, or free-form answer |
 
 ### Examples
 
 ```bash
-af input abc123 "yes, proceed with the refactor"
+af input 2026-11-10-release yes
 ```
 
 ## init
@@ -462,7 +519,7 @@ af init
 af init --local
 
 # Copy only one specific workflow locally
-af init --local --workflow plan-build-review
+af init --local --workflow plan-loop
 
 # List available bundled workflows
 af init --list
@@ -532,7 +589,7 @@ af configure
 
 ## workflows
 
-List available workflows with descriptions, grouped by location (project, user, bundled).
+List available workflows with descriptions, grouped by origin in search order: project, user, each skill pack (by plugin name), bundled. A name that an earlier origin already provides is marked `[shadowed]`: `af run <name>` uses the first one.
 
 ```bash
 af workflows [options]
@@ -553,6 +610,28 @@ af workflows
 # List with variable details
 af workflows --verbose
 ```
+
+## doctor
+
+Check that agentic-forge can run workflows from the current directory. Each check prints as `PASS`, `WARN` or `FAIL`, and every warning or failure comes with a `fix:` line.
+
+```bash
+af doctor [--json]
+```
+
+| Check                                   | What it reports                                                                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `node`, `config`, `git`                 | Node.js 22+, the merged config loads, git is on `PATH`                                                                          |
+| `claude`, `claude auth`                 | Claude Code is installed, and its auth method (`Claude plan login (<plan>)`, or the API key)                                    |
+| `ANTHROPIC_API_KEY`                     | Warns when it is set: Claude steps then bill the API key instead of the Claude plan                                             |
+| `codex`, `codex auth`                   | Codex CLI (optional: a missing or logged-out codex is a warning) and its login method (ChatGPT login or API key)                |
+| `gh`, `gh auth`                         | GitHub CLI (optional: a missing or logged-out gh is a warning) and whether it is logged in                                      |
+| `supervisor`                            | Running or not (started on demand); warns when it runs another version than the CLI                                             |
+| `runs root`                             | Where run directories go (also printed at the top, for example to add to esp-skills `recap.roots`)                              |
+| `plugin detection`, `skill_packs.paths` | Claude plugin auto-detection and configured pack paths without `af-workflows/`                                                  |
+| `skill pack <name>`                     | Each discovered pack: fails when a workflow needs another contract or does not parse, warns when it needs a newer agentic-forge |
+
+The command exits with `1` when a check fails. `--json` prints the report (version, contract version, runs root, checks and discovered skill packs) as JSON.
 
 ## paths
 
@@ -586,7 +665,7 @@ af serve [options]
 
 Only one supervisor runs per user. Starting a second one prints the running instance and exits. The supervisor listens on `127.0.0.1` with a random port and accepts only requests that carry the per-user token from `supervisor.json` in the global directory (readable by the user only). A detached supervisor writes its output to `supervisor.log` in the same directory.
 
-On start, the supervisor recovers the runs a previous supervisor left `running`: it marks the interrupted step `interrupted`, re-queues the run so it resumes from that step (reusing its recorded worktree), and emits `run.recovered`. The run registry is `runs/index.json` in the global directory.
+On start, the supervisor recovers the runs a previous supervisor left `running`: it marks the interrupted step `interrupted`, re-queues the run so it resumes from that step (reusing its recorded worktree), and emits `run.recovered`. A prompt or skill step resumes its own session from the session id stored in `steps/<NN-step>/session.json` (the Agent SDK on the session driver, `claude --resume` or `codex exec resume` on the `cli` driver), with a prompt that tells the agent the harness restarted; every other step (ralph-loop and composite steps, or no recorded session) restarts from its boundary. `run.recovered` lists the choice per step in `data.sessions` (`{ step, action: resume | restart, session_id, reason }`), and each choice about a recorded session is a `policy` entry in `decisions.jsonl` (`d-recover-<n>-<step>`). A resumed session that fails restarts the step from its start (`step.retried` with `reason: resume-failed`). A run that was `awaiting-human` on a live session keeps waiting: its request is no longer live, and `af answer` resumes the stored session with the answer. The run registry is `runs/index.json` in the global directory.
 
 When a client's version differs from the running supervisor's (for example after `npm i -g agentic-forge`), the client restarts the supervisor if no run is active, and otherwise warns and keeps it.
 
@@ -621,6 +700,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 | `af_status`     | `run?` (without it: the active runs)                                           | `GET /v1/runs/:id`, `GET /v1/runs`          | `af status`     |
 | `af_list_runs`  | `status?` (one or a list), `repo?`, `since?`, `parent?`, `limit?`              | `GET /v1/runs`                              | `af list`       |
 | `af_events`     | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_now?` | `GET /v1/events`                            | `af events`     |
+| `af_logs`       | `run`, `step?`, `cursor?`, `limit?`, `max_chars?`, `wait_seconds?` (0 to 120)  | `GET /v1/runs/:id/logs`                     | `af logs`       |
 | `af_send`       | `run`, `text`, `mode?` (`next` or `now`), `step?`, `from?`                     | `POST /v1/runs/:id/messages`                | `af send`       |
 | `af_amend`      | `run`, `text`, `affects?`, `from?`                                             | `POST /v1/runs/:id/amend`                   | `af amend`      |
 | `af_answer`     | `run`, `answer`, `request_id?`, `from?`                                        | `POST /v1/runs/:id/answer`                  | `af answer`     |
@@ -633,6 +713,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 - `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. Returns `{ run_id, status, dir, workflow, warnings }`
 - `af_list_runs`: newest first, cut to `limit` (default 50); returns `{ runs, total }`
 - `af_events`: returns `{ events, cursor, more, status }`; pass `cursor` back to resume without duplicates. `wait_seconds` long-polls until a new event arrives or the wait ends. `types` takes exact types or prefixes such as `run.*`
+- `af_logs`: the live transcript of a run (see [logs](#logs)), as compact JSON `{ run, step, entries, cursor, more, truncated, active, status }`. Without `cursor`, the last `limit` entries (default 20); with it, only newer ones. Each entry's text is cut to 500 characters and the page to about 8 KB, with `truncated: true`; an explicit `max_chars` (up to 20,000) lifts the page budget. `active` is false once the step (or run) ended; `wait_seconds` long-polls for new entries while it is active
 - `af_artifacts`: `content: true` needs a `kind` and returns the latest file of that kind (cut at 20,000 characters)
 - `from` (steering tools) is `user` or `overseer` (default `overseer`)
 
@@ -649,7 +730,7 @@ Missing required variable: task (HTTP 400). Pass it in vars (for example vars: {
 The af supervisor is not reachable: <reason>. Start it with af serve --detach, then call af_list_runs again.
 ```
 
-When the supervisor becomes unreachable (for example after a restart on a new port), the server finds or starts it again on the next call. The read tools (`af_status`, `af_list_runs`, `af_events`) retry the call once; the other tools return the error without resending, since the supervisor may already have handled the request (check with `af_status` or `af_list_runs` before calling them again).
+When the supervisor becomes unreachable (for example after a restart on a new port), the server finds or starts it again on the next call. The read tools (`af_status`, `af_list_runs`, `af_events`, `af_logs`) retry the call once; the other tools return the error without resending, since the supervisor may already have handled the request (check with `af_status` or `af_list_runs` before calling them again).
 
 ### Setup
 
@@ -673,14 +754,6 @@ Project `.mcp.json` (Claude Code) or `claude_desktop_config.json` (Claude Deskto
 ```
 
 `af_dispatch` uses the server's working directory as the default `repo`. Claude Desktop starts servers outside any project, so pass `repo` explicitly there.
-
-## skills-dir
-
-Print the absolute path to the bundled workflow skills directory. Used internally by the workflow engine.
-
-```bash
-af skills-dir
-```
 
 ## authoring-dir
 

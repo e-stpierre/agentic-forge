@@ -1,6 +1,6 @@
 /**
  * Tests for the af MCP server (ORC-010): the dispatch and read tools
- * (af_dispatch, af_status, af_list_runs, af_events, af_artifacts) and the
+ * (af_dispatch, af_status, af_list_runs, af_events, af_logs, af_artifacts) and the
  * steering tools (af_send, af_amend, af_answer, af_pause, af_resume,
  * af_cancel, af_retry_step) over an in-memory MCP transport, against an
  * in-process supervisor with the fake runtime.
@@ -216,7 +216,7 @@ afterEach(async () => {
 });
 
 describe("server", () => {
-	it("lists the twelve dispatch, read and steering tools, each with a title and a description", async () => {
+	it("lists the thirteen dispatch, read and steering tools, each with a title and a description", async () => {
 		const { mcp } = await setup();
 		const { tools } = await mcp.listTools();
 		expect(tools.map((t) => t.name).sort()).toEqual([
@@ -227,6 +227,7 @@ describe("server", () => {
 			"af_dispatch",
 			"af_events",
 			"af_list_runs",
+			"af_logs",
 			"af_pause",
 			"af_resume",
 			"af_retry_step",
@@ -326,7 +327,7 @@ describe("af_dispatch", () => {
 		expect(unknown.isError).toBe(true);
 		expect(unknown.text).toContain("Workflow not found: no-such-flow");
 		expect(unknown.text).toContain("two-steps");
-		expect(unknown.text).toContain("one-shot");
+		expect(unknown.text).toContain("ralph-loop");
 		const noRepo = await callTool(mcp, "af_dispatch", {
 			workflow: "two-steps",
 			repo: path.join(repo, "missing"),
@@ -488,6 +489,51 @@ describe("af_events", () => {
 	});
 });
 
+describe("af_logs", () => {
+	it("returns a compact, capped tail of the transcript with a cursor", async () => {
+		fakeRuntime.on("PLAN", (o) => {
+			for (let i = 0; i < 30; i++) {
+				o.sessionHost?.onEvent?.({
+					type: "item",
+					id: `m${i}`,
+					kind: "message",
+					status: "completed",
+					role: "assistant",
+					text: `${i} ${"x".repeat(1000)}`,
+				});
+			}
+			return reply(o, "ok");
+		});
+		const { manager, mcp } = await setup();
+		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
+		const id = res.json.run_id as string;
+		await waitForStatus(manager, id, "done");
+
+		const tail = await callTool(mcp, "af_logs", { run: id, step: "plan" });
+		expect(tail.isError, tail.text).toBe(false);
+		expect(tail.text).not.toContain("\n");
+		expect(tail.text.length).toBeLessThan(8_500);
+		expect(tail.json).toMatchObject({ run: id, step: "plan", active: false, truncated: true });
+		const texts = tail.json.entries.map((e: { text: string }) => e.text);
+		expect(texts.at(-1)).toMatch(/^29 x+\.\.\.$/);
+		expect(texts.every((t: string) => t.length <= 503)).toBe(true);
+
+		const next = await callTool(mcp, "af_logs", { run: id, cursor: tail.json.cursor });
+		expect(next.json.entries).toEqual([]);
+		const full = await callTool(mcp, "af_logs", {
+			run: id,
+			step: "plan",
+			limit: 1,
+			max_chars: 5000,
+		});
+		expect(full.json.entries[0].text).toHaveLength(1003);
+
+		const unknown = await callTool(mcp, "af_logs", { run: id, step: "nope" });
+		expect(unknown.isError).toBe(true);
+		expect(unknown.text).toMatch(/Unknown step/);
+	});
+});
+
 describe("af_artifacts", () => {
 	it("lists artifacts by kind and returns the latest content", async () => {
 		const { manager, mcp } = await setup();
@@ -635,7 +681,7 @@ describe("af_answer", () => {
 		await waitForStatus(manager, id, "awaiting-human");
 
 		const status = await callTool(mcp, "af_status", { run: id });
-		const requestId = status.json.run["x-af-needs-input"].request.id as string;
+		const requestId = status.json.run["x-af-needs-input"][0].request.id as string;
 		expect(requestId).toBe("q1");
 
 		const wrong = await callTool(mcp, "af_answer", { run: id, request_id: "q9", answer: "a" });

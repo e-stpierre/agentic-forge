@@ -1,11 +1,12 @@
 /** Shortcut command handlers (input). */
 
-import { processHumanInput } from "../orchestrator.js";
+import { cmdAnswer } from "./control.js";
 
-export function cmdInput(workflowId: string, response: string): void {
-	if (processHumanInput(workflowId, response)) {
-		process.stdout.write(`Input recorded for workflow: ${workflowId}\n`);
-	} else {
-		process.exit(1);
-	}
+/**
+ * `af input <run> <response>`: answers the single pending `needs_input`
+ * request of an awaiting-human run (a `human-input` step), like `af answer`
+ * without a request id.
+ */
+export async function cmdInput(runId: string, response: string): Promise<void> {
+	await cmdAnswer({ runId, answer: response });
 }

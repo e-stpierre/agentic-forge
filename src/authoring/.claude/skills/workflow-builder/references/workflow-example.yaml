@@ -11,12 +11,20 @@ version: "1.0"
 # Optional: Human-readable description
 description: |
   Comprehensive example workflow demonstrating all available features:
-  - All step types (prompt, serial, parallel, conditional, ralph-loop, wait-for-human)
+  - All step types (prompt, skill, serial, parallel, conditional, ralph-loop, human-input)
   - Worktree isolation (workflow-level and step-level)
   - Error handling and retries
   - Checkpoints and progress tracking
   - Variable templating with Nunjucks
   - Output generation
+
+# Optional: What the workflow needs from the harness. af refuses an unmet
+# workflow before any step runs. `agentic-forge` is a version range
+# (--ignore-requires overrides it with a warning); `contract` is the harness
+# contract version and is never overridden.
+requires:
+  agentic-forge: ">=0.11"
+  contract: 1
 
 # Optional: Workflow-level settings
 settings:
@@ -50,7 +58,7 @@ settings:
 
   # Default coding agent runtime for all steps: claude, codex (default: claude)
   # Runtime resolution order: step.runtime > --runtime CLI flag > settings.runtime > config.defaults.runtime > "claude"
-  # Note: skill invocations (/sdlc-plan, /git-commit, etc.) only work with runtime: claude
+  # Note: skill steps and slash-command prompts only work with runtime: claude
   runtime: claude
 
   # Tools Claude can use without prompting (default: [])
@@ -164,14 +172,17 @@ steps:
     # For codex, omit it (Codex CLI picks its own default) or pin an ID
     # such as "gpt-5.3-codex". Omitted here on purpose.
 
-  # ==================== SKILL INVOCATION ====================
-  # Invoke a Claude slash command skill
-  # IMPORTANT: Always use fully qualified skill names in workflows (e.g., /sdlc-plan)
-  # to avoid conflicts with skills from other plugins or built-in commands.
+  # ==================== SKILL STEP ====================
+  # Invoke a skill by namespace (claude runtime only; Codex fails with "not supported yet").
+  # The prompt is: /<skill> <args> --run-dir <run dir> --config-snapshot <file>
+  # The snapshot file holds af config skill_config.<plugin> ({} when unset).
+  # The result block's `outputs` become {{ outputs.generate-plan.<key> }} for later steps.
   - name: generate-plan
-    type: prompt
-    prompt: /sdlc-plan --type {{ variables.plan_type }} --output_dir "{{ output_dir }}" {{ variables.task }}
-    checkpoint: true
+    type: skill
+    # Required: <plugin>:<skill> or <skill> (template, no leading slash)
+    skill: esp-skills:esp-plan
+    # Optional: arguments after the skill name (template)
+    args: "--type {{ variables.plan_type }} {{ variables.task }}"
     timeout-minutes: 20
 
   # ==================== SERIAL STEP ====================
@@ -207,22 +218,27 @@ steps:
     steps:
       - name: security-scan
         type: prompt
-        prompt: /analyze security
+        prompt: Review the code for security issues and list them in {{ output_dir }}/security.md
         on-error: skip # Don't fail workflow if security scan fails
 
       - name: style-check
         type: prompt
-        prompt: /analyze style
+        prompt: Review the code for style issues and list them in {{ output_dir }}/style.md
         on-error: skip
 
       - name: bug-detection
-        type: prompt
-        prompt: /analyze bug
+        type: skill
+        # Any installed skill works here; esp-skills is one example pack
+        skill: esp-skills:esp-analyze
+        args: "--type bug"
         on-error: skip
 
       - name: debt-analysis
         type: prompt
-        prompt: /analyze debt
+        # agent: prepends an instructions file, resolved relative to this
+        # workflow file, then the repo root (agentic-forge bundles no agents)
+        agent: agents/debt-finder.md
+        prompt: Find technical debt and list it in {{ output_dir }}/debt.md
         on-error: skip
 
   # ==================== RALPH LOOP STEP ====================
@@ -272,8 +288,9 @@ steps:
 
   # ==================== REVIEW STEP ====================
   - name: review-implementation
-    type: prompt
-    prompt: /sdlc-review "{{ output_dir }}/plan.md" minor
+    type: skill
+    skill: esp-skills:esp-review
+    args: "--plan {{ output_dir }}/plan.md"
     checkpoint: true
 
   # ==================== CONDITIONAL STEP ====================
@@ -300,8 +317,8 @@ steps:
         timeout-minutes: 30
 
       - name: re-review
-        type: prompt
-        prompt: /sdlc-review "" {{ variables.fix_severity }}
+        type: skill
+        skill: esp-skills:esp-review
 
     # Steps to execute if condition is false
     else:
@@ -309,41 +326,48 @@ steps:
         type: prompt
         prompt: "Validation passed! No issues found at severity {{ variables.fix_severity }} or higher."
 
-  # ==================== WAIT FOR HUMAN STEP ====================
-  # Pause workflow and wait for human input
+  # ==================== HUMAN INPUT STEP ====================
+  # Ask a question through needs_input and wait for `af answer` (or `af input`).
+  # No coding agent runs. The run is awaiting-human until the answer arrives;
+  # the step then completes with outputs: answer, option, from, request_id.
+  # (`wait-for-human` from before 0.12 still parses as an alias.)
   - name: request-approval
-    type: wait-for-human
+    type: human-input
 
-    # Message shown to human
-    message: |
-      Please review the implementation and validation results.
+    # Required: the question (template)
+    message: "Create a PR for {{ variables.task }}?"
 
-      Review the following:
-      - Implementation plan: {{ output_dir }}/plan.md
-      - Review results: outputs.review_implementation
+    # Optional: background for the answerer (template)
+    context: |
+      Plan: {{ plan_path }}
+      Review results: {{ outputs.review_implementation | tojson }}
 
-      Respond with:
-      - "approved" to continue and create PR
-      - "rejected" to stop without PR
-      - Provide feedback for additional changes
+    # Optional: strings (id = label with dashes) or { id, label, description }.
+    # Empty or omitted: free-form answer.
+    options:
+      - approved
+      - { id: rejected, label: Rejected, description: Stop without a PR }
 
-    # Polling interval in seconds (default: 15)
-    polling-interval: 30
+    # Optional: id of the recommended option
+    recommended: approved
 
-    # Action on timeout: abort (stop workflow), continue (proceed anyway)
-    on-timeout: abort
+    # Optional (default: true): false lets the harness apply `recommended`
+    # after timeout-minutes (or supervisor.needs_input_timeout)
+    blocking: false
 
-    # Timeout in minutes (default: 1440 = 24 hours)
+    # Optional: only with blocking: false and recommended
     timeout-minutes: 120
 
   # ==================== CONDITIONAL STEP (CREATE PR) ====================
   - name: create-pull-request
     type: conditional
-    condition: "{{ variables.create_pr and outputs.request_approval.response == 'approved' }}"
+    condition: "{{ variables.create_pr and outputs['request-approval'].answer == 'approved' }}"
     then:
       - name: open-pr
         type: prompt
-        prompt: /git-pr --title "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}"
+        prompt: |
+          Push the branch and open a pull request titled
+          "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}" with `gh pr create`.
 
   # ==================== FINAL SUMMARY ====================
   - name: generate-summary
@@ -363,7 +387,8 @@ steps:
 outputs:
   # Generated when workflow completes successfully
   - name: implementation-report
-    # Nunjucks template file (resolved from workflow dir, agentic/templates/, or bundled templates)
+    # Nunjucks template file (resolved from workflow dir, agentic/templates/, or bundled templates;
+    # the only bundled template is ralph-report.md.j2, so provide this one yourself)
     template: implementation-report.md.j2
     # Output file path (relative to workflow directory)
     path: "{{ output_dir }}/report.md"
@@ -411,31 +436,15 @@ outputs:
 # Check workflow status:
 #   agentic-forge status <workflow-id>
 #
-# ==================== AVAILABLE SKILLS ====================
+# ==================== SKILLS ====================
 #
-# IMPORTANT: Always use fully qualified skill names in workflows to avoid conflicts
-# with skills from other plugins or built-in commands.
-#
-# Skills you can invoke via prompt steps:
-#
-# Planning & Review:
-#   - /sdlc-plan - Generate implementation plan
-#   - /sdlc-review - Review implementation quality
-#
-# Analysis:
-#   - /analyze bug - Find bugs and logic errors
-#   - /analyze debt - Identify technical debt
-#   - /analyze doc - Check documentation
-#   - /analyze security - Security scan
-#   - /analyze style - Code style check
-#
-# Git Operations:
-#   - /git-branch - Create git branch
-#   - /git-commit - Create commit
-#   - /git-pr - Create pull request
-#
-# Workflow Support:
-#   - /orchestrate - Workflow state evaluation
+# agentic-forge bundles no execution skills. Call the skills you installed
+# (Claude Code plugins, ~/.claude/skills/, the repo's .claude/skills/) with a
+# `skill` step, using fully qualified <plugin>:<skill> names to avoid conflicts
+# with skills from other plugins or built-in commands. The esp-skills steps in
+# this example (esp-skills:esp-plan, esp-skills:esp-review,
+# esp-skills:esp-analyze) need that plugin: /plugin install esp-skills@esp
+# Without a skill pack, write the instructions in a prompt step instead.
 #
 # ==================== BUILT-IN VARIABLES ====================
 #

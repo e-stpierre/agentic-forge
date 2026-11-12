@@ -9,11 +9,23 @@ name: workflow-name # Required. Unique identifier (kebab-case)
 version: "1.0" # Required. Schema version (always "1.0")
 description: | # Optional. Human-readable description
   What this workflow does
+requires: { agentic-forge: ">=0.12", contract: 1 } # Optional. Harness requirements
 settings: {} # Optional. Workflow configuration
 variables: [] # Optional. Input parameters
 steps: [] # Required. Workflow steps (at least one)
 outputs: [] # Optional. Output artifacts
 ```
+
+## Requires
+
+Optional. What the workflow needs from the harness. af refuses an unmet workflow at dispatch, before any step runs, naming the required and installed versions.
+
+| Key             | Type   | Description                                                                                 |
+| --------------- | ------ | ------------------------------------------------------------------------------------------- |
+| `agentic-forge` | string | Version range: `>=0.12`, `^0.12.0`, `~0.12.1`, `0.12` (any 0.12.x), `>=0.12 <1`, `a \|\| b` |
+| `contract`      | int    | Harness contract version (currently `1`)                                                    |
+
+`agentic-forge run --ignore-requires` overrides only the `agentic-forge` range, with a warning; a contract mismatch is always refused. Skill pack workflows (`af-workflows/`) should always declare both.
 
 ## Settings
 
@@ -21,19 +33,19 @@ All settings are optional with sensible defaults.
 
 ### Global Settings
 
-| Key                  | Type   | Default    | Valid Values                 | Description                                      |
-| -------------------- | ------ | ---------- | ---------------------------- | ------------------------------------------------ |
-| `max-retry`          | int    | `3`        | 0+                           | Max retry attempts for failed steps              |
-| `timeout-minutes`    | int    | `60`       | 1+                           | Max time for entire workflow (minutes)           |
-| `track-progress`     | bool   | `true`     | true/false                   | Track progress in progress.json                  |
-| `autofix`            | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                          |
-| `terminal-output`    | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream) |
-| `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts                   |
-| `strict-mode`        | bool   | `false`    | true/false                   | Fail on undefined template variables             |
-| `model`              | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                      |
-| `runtime`            | string | `null`     | claude, codex                | Default coding agent runtime for all steps       |
-| `required-tools`     | list   | `[]`       | Tool names                   | Tools Claude can use without prompting           |
-| `amend.step`         | string | none       | A top-level step name        | Step `af amend` runs before the next step        |
+| Key                  | Type   | Default    | Valid Values                 | Description                                                         |
+| -------------------- | ------ | ---------- | ---------------------------- | ------------------------------------------------------------------- |
+| `max-retry`          | int    | `null`     | 0+                           | Max retry attempts for failed steps (unset: `defaults.maxRetry`, 3) |
+| `timeout-minutes`    | int    | `60`       | 1+                           | Max time for entire workflow (minutes)                              |
+| `track-progress`     | bool   | `true`     | true/false                   | Track progress in progress.json                                     |
+| `autofix`            | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                                             |
+| `terminal-output`    | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream)                    |
+| `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts (warns per step)                     |
+| `strict-mode`        | bool   | `false`    | true/false                   | Fail on undefined template variables                                |
+| `model`              | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                                         |
+| `runtime`            | string | `null`     | claude, codex                | Default coding agent runtime for all steps                          |
+| `required-tools`     | list   | `[]`       | Tool names                   | Added to `runtimes.claude.allow` (no prompting)                     |
+| `amend.step`         | string | none       | A top-level step name        | Step `af amend` runs before the next step                           |
 
 **Runtime resolution order:** `step.runtime` > `--runtime` CLI flag > `settings.runtime` > `config.defaults.runtime` > `"claude"`
 
@@ -44,7 +56,7 @@ All settings are optional with sensible defaults.
 
 **Per-runtime default models:** Each runtime resolves its own default model from config (`claude.model` or `codex.model`). Steps that use a non-default runtime do not need an explicit model: `settings.model` is deliberately **not** inherited across runtimes, so a codex step in a claude workflow falls back to `codex.model` or to no `--model` flag at all.
 
-**Note:** Skill invocations (`/sdlc-plan`, `/git-commit`, etc.) only work with `runtime: claude`. Codex does not support bundled skill injection.
+**Note:** `skill` steps and slash-command prompts only work with `runtime: claude`. agentic-forge bundles no execution skills: they come from the user's installed plugins and `.claude/skills/` directories.
 
 ### Worktree Settings
 
@@ -129,18 +141,18 @@ Reference in templates: `{{ variables.task }}`, `{{ variables.max_iterations }}`
 
 These properties apply to all step types:
 
-| Key                  | Type   | Default      | Valid Values                                                      | Description                                                   |
-| -------------------- | ------ | ------------ | ----------------------------------------------------------------- | ------------------------------------------------------------- |
-| `name`               | string | **required** | kebab-case                                                        | Unique step identifier                                        |
-| `type`               | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type                                                     |
-| `model`              | string | null         | Runtime-dependent (see Model Names)                               | Override model for this step                                  |
-| `runtime`            | string | null         | claude, codex                                                     | Override runtime for this step (never overridden by CLI flag) |
-| `timeout-minutes`    | int    | null         | 1+                                                                | Override workflow timeout                                     |
-| `max-retry`          | int    | null         | 0+                                                                | Override workflow max-retry                                   |
-| `on-error`           | string | `"retry"`    | retry, skip, fail                                                 | Error handling strategy                                       |
-| `checkpoint`         | bool   | `false`      | true/false                                                        | Create checkpoint after step                                  |
-| `depends-on`         | string | null         | step name                                                         | Step dependency                                               |
-| `bypass-permissions` | bool   | null         | true/false                                                        | Override workflow-level permission bypass for this step       |
+| Key                  | Type   | Default      | Valid Values                                                          | Description                                                   |
+| -------------------- | ------ | ------------ | --------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `name`               | string | **required** | kebab-case                                                            | Unique step identifier                                        |
+| `type`               | string | **required** | prompt, skill, serial, parallel, conditional, ralph-loop, human-input | Step type                                                     |
+| `model`              | string | null         | Runtime-dependent (see Model Names)                                   | Override model for this step                                  |
+| `runtime`            | string | null         | claude, codex                                                         | Override runtime for this step (never overridden by CLI flag) |
+| `timeout-minutes`    | int    | null         | 1+                                                                    | Override workflow timeout                                     |
+| `max-retry`          | int    | null         | 0+                                                                    | Override workflow max-retry                                   |
+| `on-error`           | string | `"retry"`    | retry, skip, fail                                                     | Error handling strategy                                       |
+| `checkpoint`         | bool   | `false`      | true/false                                                            | Create checkpoint after step                                  |
+| `depends-on`         | string | null         | step name                                                             | Step dependency                                               |
+| `bypass-permissions` | bool   | null         | true/false                                                            | Override workflow-level permission bypass for this step       |
 
 ### prompt
 
@@ -148,10 +160,10 @@ Execute a prompt in a coding agent session. The most common step type.
 
 **Specific properties:**
 
-| Key      | Type   | Required | Description                                     |
-| -------- | ------ | -------- | ----------------------------------------------- |
-| `prompt` | string | Yes      | The prompt text, skill invocation, or template  |
-| `agent`  | string | No       | Path to an agent file to load before the prompt |
+| Key      | Type   | Required | Description                                                                                                                        |
+| -------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `prompt` | string | Yes      | The prompt text, skill invocation, or template                                                                                     |
+| `agent`  | string | No       | Path to an agent file prepended to the prompt, relative to the workflow file, then the repo root (agentic-forge bundles no agents) |
 
 ```yaml
 # Simple prompt
@@ -163,11 +175,35 @@ Execute a prompt in a coding agent session. The most common step type.
   timeout-minutes: 30
   on-error: retry
   checkpoint: true
+```
 
-# Skill invocation (always use fully qualified names; claude runtime only)
-- name: generate-plan
+### skill
+
+Invoke a skill by namespace (`<plugin>:<skill>`, or a plain skill name) on the `claude` runtime. A skill step on Codex fails with "not supported yet" (Codex skill inlining comes later). It runs like a prompt step (drivers, retries, result block, steering) with the prompt:
+
+```text
+/<skill> <args> --run-dir <run dir> --config-snapshot <run dir>/skill-config/<pack>.json
+```
+
+`<pack>` is the plugin of `<plugin>:<skill>` (or the skill name). The snapshot holds af config `skill_config.<pack>` (`{}` when unset). Pending operator messages follow the slash command instead of preceding it. The `outputs` object of the skill's result block becomes `{{ outputs.<step>.<key> }}` for later steps.
+
+**Specific properties:**
+
+| Key     | Type   | Required | Description                                        |
+| ------- | ------ | -------- | -------------------------------------------------- |
+| `skill` | string | Yes      | `<plugin>:<skill>` or `<skill>` (template, no `/`) |
+| `args`  | string | No       | Arguments after the skill name (template)          |
+
+```yaml
+- name: plan
+  type: skill
+  skill: esp-skills:esp-plan
+  args: "{{ variables.task }}"
+  model: opus
+
+- name: build
   type: prompt
-  prompt: /sdlc-plan --type {{ variables.plan_type }} {{ variables.task }}
+  prompt: "Implement {{ outputs.plan.plan_path }}"
 ```
 
 ### serial
@@ -207,6 +243,7 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
 **Constraints:**
 
 - Nested parallel steps are NOT allowed (parallel inside parallel)
+- `human-input` steps are NOT allowed anywhere under a parallel step (a parallel step cannot stop the run `awaiting-human`)
 - `worktree: true` on a parallel step is not supported when workflow-level `settings.worktree.enabled` is true
 - When `worktree: true`, each branch stays independent after completion
 
@@ -217,11 +254,11 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
   steps:
     - name: security-scan
       type: prompt
-      prompt: /analyze security
+      prompt: Review the code for security issues and write them to {{ output_dir }}/security.md.
       on-error: skip
     - name: style-check
       type: prompt
-      prompt: /analyze style
+      prompt: Review the code for style issues and write them to {{ output_dir }}/style.md.
       on-error: skip
 ```
 
@@ -253,7 +290,7 @@ Branch execution based on a Nunjucks condition expression.
   then:
     - name: open-pr
       type: prompt
-      prompt: /git-pr
+      prompt: Push the branch and open a pull request with `gh pr create --fill`.
   else:
     - name: skip-pr
       type: prompt
@@ -313,30 +350,38 @@ The `completion-promise` setting must match the `promise` value in the agent's J
   timeout-minutes: 120
 ````
 
-### wait-for-human
+### human-input
 
-Pause workflow execution and wait for human input via CLI.
+Ask a question through the harness contract `needs_input` protocol and wait for the answer. No coding agent runs. The run stops `awaiting-human` with the request in `run.json` (`x-af-needs-input`) and a `needs_input` event; `af answer` (or `af input` when it is the only pending request) answers it, and the step reruns, finds the answer and completes. `wait-for-human` (before 0.12) is parsed as an alias: `on-timeout: continue` becomes a non-blocking request whose only option, `continue`, is recommended and applied after `timeout-minutes` (stop the run with `af cancel`), any other value waits for an answer; `polling-interval` is ignored.
 
 **Specific properties:**
 
-| Key                | Type   | Default      | Description                                     |
-| ------------------ | ------ | ------------ | ----------------------------------------------- |
-| `message`          | string | **required** | Message displayed to the human                  |
-| `polling-interval` | int    | `15`         | Seconds between input checks                    |
-| `on-timeout`       | string | `"abort"`    | "abort" (stop workflow) or "continue" (proceed) |
-| `timeout-minutes`  | int    | `5`          | Minutes to wait before timeout action           |
+| Key               | Type   | Default      | Description                                                                                                                |
+| ----------------- | ------ | ------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `message`         | string | **required** | The question (template)                                                                                                    |
+| `context`         | string | null         | Background the answerer needs (template)                                                                                   |
+| `options`         | list   | `[]`         | Strings (the id is the label with spaces as dashes) or `{ id, label, description }`; empty = free text                     |
+| `recommended`     | string | null         | Id of the recommended option                                                                                               |
+| `blocking`        | bool   | `true`       | `false` lets the harness apply `recommended` after the timeout                                                             |
+| `timeout-minutes` | number | null         | Minutes before `recommended` is applied (needs `blocking: false` and `recommended`); else `supervisor.needs_input_timeout` |
 
-Human provides input via: `agentic-forge input <workflow-id> "response"`
+Request ids are `input-<step>-<n>` (`n` counts the questions the step asked). Outputs: `{{ outputs.<step>.answer }}` (option id, or the free text), `option` (null for free text), `from` (`user`, `overseer` or `policy`), `request_id`.
 
 ```yaml
-- name: get-approval
-  type: wait-for-human
-  message: |
-    Review the implementation at {{ output_dir }}/plan.md.
-    Respond with "approved" to continue or provide feedback.
-  polling-interval: 30
-  on-timeout: abort
-  timeout-minutes: 120
+- name: approve-plan
+  type: human-input
+  message: "Ship the plan at {{ plan_path }}?"
+  options:
+    [yes, { id: revise, label: Revise it, description: Send feedback first }]
+  recommended: "yes"
+  blocking: false
+  timeout-minutes: 60
+
+- name: apply
+  type: conditional
+  condition: "{{ outputs['approve-plan'].answer == 'yes' }}"
+  then:
+    - { name: build, type: prompt, prompt: "Build the plan." }
 ```
 
 ## Templating
@@ -436,7 +481,7 @@ Under the supervisor, `af send` queues messages in the run's `inbox/`. Before ea
 
 Prompts need no placeholder for it. Write prompts so that an instruction in this section takes precedence over the step's defaults.
 
-`af send --mode now` kills the running step and runs it again at once with the message. `af answer` and `af retry-step --context` also reach the step through this section.
+On the Claude session driver (default), `af send --mode now` delivers the message into the running session, and `--mode next` sends it as the session's next turn. On the `cli` driver, `--mode now` kills the running step, safety-commits the worktree, and resumes the step's session (`claude --resume`, `codex exec resume`) with the message; when that fails, the step starts over. `af answer` and `af retry-step --context` also reach the step through this section.
 
 ## Step Results
 
@@ -468,7 +513,7 @@ At the next step boundary, the supervisor runs the amend step with the amendment
 
 ```bash
 # Run a workflow (bare key=value args or --var flag)
-agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex]
+agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex] [--ignore-requires]
 
 # Resume a paused/failed workflow
 agentic-forge resume <workflow-id>
@@ -485,7 +530,7 @@ agentic-forge send <workflow-id> "text" [--step <name>]
 # Pause at the next step or iteration boundary (--now stops the current step)
 agentic-forge pause <workflow-id> [--now]
 
-# Interrupt the current step and restart it with a message
+# Interrupt the current step and resume it with a message
 agentic-forge send <workflow-id> "text" --mode now
 
 # Answer a needs_input request (option id, label or free text) and resume
@@ -512,20 +557,20 @@ agentic-forge artifacts <workflow-id> [--kind plan|summary|decisions|review] [--
 # Run a stdio MCP server that dispatches and steers runs (claude mcp add agentic-forge -- af mcp)
 agentic-forge mcp
 
-# Provide human input (for wait-for-human steps)
+# Answer the single pending request of an awaiting-human run (human-input steps)
 agentic-forge input <workflow-id> "response text"
 
 # List workflow executions
 agentic-forge list [--status running|completed|failed|paused]
 
-# List available workflows with descriptions
+# List available workflows (project, user, skill packs, bundled) with their origin
 agentic-forge workflows [-v]
+
+# Check runtimes, auth, the runs root and skill pack compatibility
+agentic-forge doctor [--json]
 
 # Copy bundled workflows to local project
 agentic-forge init [--force] [--list]
-
-# Print path to bundled workflow skills directory
-agentic-forge skills-dir
 
 # Print path to interactive authoring skills directory
 agentic-forge authoring-dir
@@ -536,43 +581,36 @@ agentic-forge config set <key> <value>
 agentic-forge configure
 ```
 
-## Available Skills for Prompt Steps
+## Skills
 
-Skills only work with `runtime: claude` (the default). The Codex runtime does not support bundled skill injection.
+agentic-forge bundles no execution skills. Workflows call the skills the user installed (Claude Code plugins, `~/.claude/skills/`, the repo's `.claude/skills/`), with a `skill` step (`skill: <plugin>:<skill>`, preferred: it passes `--run-dir` and `--config-snapshot` and chains the result block `outputs`) or a slash command in a prompt step. Skills only work with `runtime: claude` (the default).
 
-Always use fully qualified names in workflows:
+Use fully qualified `<plugin>:<skill>` names for plugin skills. For example, with the esp-skills plugin installed (`/plugin install esp-skills@esp`):
 
-| Skill               | Description                   |
-| ------------------- | ----------------------------- |
-| `/sdlc-plan`        | Generate implementation plan  |
-| `/sdlc-review`      | Review implementation quality |
-| `/analyze bug`      | Find bugs and logic errors    |
-| `/analyze debt`     | Identify technical debt       |
-| `/analyze doc`      | Check documentation           |
-| `/analyze security` | Security scan                 |
-| `/analyze style`    | Code style check              |
-| `/git-branch`       | Create git branch             |
-| `/git-commit`       | Create commit                 |
-| `/git-pr`           | Create pull request           |
-| `/orchestrate`      | Workflow state evaluation     |
+```yaml
+- name: plan
+  type: skill
+  skill: esp-skills:esp-plan
+  args: "{{ variables.task }}"
+```
+
+A skill pack can also ship workflows in an `af-workflows/` directory at its plugin root. af discovers them (Claude Code installed plugins, or `skill_packs.paths` in the af config) after the project and user-global workflows and before the bundled ones, so `agentic-forge run <name>` finds them. Such workflows declare `requires` (see Requires).
+
+When the user has no skill pack, write the instructions in a prompt step instead (the bundled demos do this for git branches and commits).
 
 ## Bundled Workflows
 
-Available via `agentic-forge init` or `agentic-forge run <name>`:
+Generic demos only (no skill calls), available via `agentic-forge init` or `agentic-forge run <name>`:
 
-| Workflow                  | Description                                                             |
-| ------------------------- | ----------------------------------------------------------------------- |
-| `claude-demo`             | Validation workflow for installation testing (Claude runtime)           |
-| `codex-demo`              | Validation workflow for installation testing (Codex runtime)            |
-| `multi-demo`              | Demonstrates mixed-runtime execution at step level                      |
-| `one-shot`                | Complete a single task with optional PR                                 |
-| `plan-build-review`       | Full SDLC: plan -> implement -> review -> fix -> PR                     |
-| `multi-plan-build-review` | Full SDLC with mixed Claude/Codex runtimes per phase                    |
-| `ralph-loop`              | Generic iterative loop for any task                                     |
-| `analyze-codebase`        | Parallel analysis (5 types) with optional autofix, independent branches |
-| `analyze-single`          | Single analysis type with optional autofix                              |
-| `permission-test-claude`  | Test Claude file permissions with and without worktree                  |
-| `permission-test-codex`   | Test Codex file permissions with and without worktree                   |
+| Workflow                 | Description                                                   |
+| ------------------------ | ------------------------------------------------------------- |
+| `claude-demo`            | Validation workflow for installation testing (Claude runtime) |
+| `codex-demo`             | Validation workflow for installation testing (Codex runtime)  |
+| `multi-demo`             | Demonstrates mixed-runtime execution at step level            |
+| `ralph-loop`             | Generic iterative loop for any task                           |
+| `plan-loop`              | Build a checkbox plan, then complete one task per iteration   |
+| `permission-test-claude` | Test Claude file permissions with and without worktree        |
+| `permission-test-codex`  | Test Codex file permissions with and without worktree         |
 
 ## Validation Checklist
 
@@ -582,13 +620,15 @@ When validating a workflow, check for these issues:
 
 - Missing `name` field
 - Missing `steps` field or empty steps list
-- Invalid step type (not one of: prompt, serial, parallel, conditional, ralph-loop, wait-for-human)
+- Invalid step type (not one of: prompt, skill, serial, parallel, conditional, ralph-loop, human-input; `wait-for-human` is an alias of human-input)
 - `settings.amend.step` naming a step that is not a top-level step
 - Nested parallel steps (parallel inside parallel)
+- A `human-input` step under a parallel step
 - Prompt step without `prompt` field
 - Conditional step without `condition` field
 - Ralph-loop step without `prompt` field
-- Wait-for-human step without `message` field
+- Skill step without `skill` field, or a skill name that is not `<plugin>:<skill>` or `<skill>`
+- Human-input step without `message` field, a `recommended` that is not an option id, duplicate option ids, or `timeout-minutes` without `blocking: false` and `recommended`
 - Required variable without default and not provided at runtime
 - `settings.worktree.location: "absolute"` without `settings.worktree.directory` set
 - `worktree: true` on a parallel step when `settings.worktree.enabled` is true
@@ -599,7 +639,8 @@ When validating a workflow, check for these issues:
 - `completion-promise` missing on ralph-loop (loop will only stop at max-iterations)
 - No `timeout-minutes` on long-running steps
 - `on-error: fail` without `max-retry` (any failure stops the workflow)
-- Non-qualified skill names in prompt steps (e.g., `/sdlc-plan` instead of `/sdlc-plan`)
+- Non-qualified plugin skill names (e.g., `skill: esp-plan` instead of `skill: esp-skills:esp-plan`)
+- `agent:` file that does not exist next to the workflow file or in the repo root (it is silently ignored)
 - Step name not in kebab-case
 - Variable name not in snake_case
 - Skill invocation used with `runtime: codex` (skills not supported by Codex)

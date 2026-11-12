@@ -2,6 +2,14 @@
 
 import type { ConsoleOutput } from "../console.js";
 import { type ResultBlock, parseResultBlock } from "../contract/result.js";
+import type {
+	RuntimeDriver,
+	RuntimeSession,
+	SessionEvent,
+	SessionHost,
+	SessionListener,
+	SessionStartOptions,
+} from "./session.js";
 
 /** Supported runtime identifiers. */
 export type RuntimeId = "claude" | "codex";
@@ -31,6 +39,17 @@ export interface RuntimeRunOptions {
 	 * `cancel`). The run resolves as a failure.
 	 */
 	signal?: AbortSignal | null;
+	/**
+	 * `session` runs the step on the runtime's session driver when it has one
+	 * (`runtimes.<id>.driver`); `cli` (default) spawns the one-shot process.
+	 */
+	driver?: RuntimeDriver;
+	/** Supervisor callbacks for the session driver (requests, messages, steering). */
+	sessionHost?: SessionHost | null;
+	/** Session driver: resume this session id instead of starting a new one. */
+	resumeSessionId?: string | null;
+	/** Session driver: local plugin directories to load (`runtimes.<id>.plugins`). */
+	plugins?: string[];
 }
 
 /** Result from runtime execution. */
@@ -92,6 +111,16 @@ export interface RuntimeAdapter {
 		options: RuntimeRunOptions,
 		sessionId?: string | null,
 	): RuntimeResult;
+	/**
+	 * Normalized transcript events of one stream line of the `cli` driver
+	 * (messages, tool calls and results, file changes). Optional: without it
+	 * the `cli` transcript only has the prompt.
+	 */
+	parseTranscriptLine?(line: string): SessionEvent[];
+	/** Creates a session driver instance (runtimes with a session driver only). */
+	createSession?(listener: SessionListener): RuntimeSession;
+	/** Maps step options to session start options (runtimes with a session driver only). */
+	sessionOptions?(options: RuntimeRunOptions): SessionStartOptions;
 }
 
 /**

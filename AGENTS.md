@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for coding agents (Claude Code, Codex CLI, and others). It bundles skills, agents, and prompts as package data, enabling autonomous multi-step task execution.
+Agentic Forge is a TypeScript/Node.js package that provides YAML-based workflow orchestration for coding agents (Claude Code, Codex CLI, and others). It ships an engine, generic demo workflows and prompts, but no opinionated skills: workflows call the user's own skills (for example the esp-skills plugin) through `skill` steps.
 
 ## Purpose
 
@@ -18,21 +18,13 @@ The agentic-forge repository aims to:
 
 TypeScript source code for the CLI and workflow orchestration engine.
 
-#### `agents/`
-
-Bundled sub-agent configurations for specialized, autonomous task execution (`explorer.md`, `reviewer.md`). Agents should be self-contained and focused on a specific domain or task.
-
 #### `authoring/.claude/skills/`
 
 Interactive authoring skills for users to create and manage workflows (e.g., `workflow-builder`). Exposed via the `authoring-dir` CLI command. These are not used by the workflow engine.
 
-#### `claude/.claude/skills/`
-
-Bundled workflow execution skills loaded via `--add-dir`. Skills are reusable Claude Code slash commands. Each skill is a directory in kebab-case containing a `SKILL.md` file. These are used by the workflow engine during execution with the `claude` runtime only.
-
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `skills-dir`, `authoring-dir`, `workflows`, `mcp`, etc.).
+CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, etc.). `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`).
 
 #### `prompts/`
 
@@ -43,7 +35,11 @@ System prompt templates used by the workflow runner.
 Runtime adapter layer for coding agent integrations:
 
 - `types.ts` — `RuntimeId`, `RuntimeAdapter`, `RuntimeCommand`, `StreamEvent`, `RuntimeRunOptions`, `RuntimeResult`
-- `claude.ts` — `ClaudeAdapter` (extracted from `runner.ts`)
+- `claude.ts` — `ClaudeAdapter` (extracted from `runner.ts`; `createSession()` and `sessionOptions()` for the session driver)
+- `session.ts` — `RuntimeSession` interface, normalized `SessionEvent` model, `SessionHost` (supervisor callbacks: `requestInput`, `nextMessages`, `onLive`, `onEvent` for transcripts on both drivers), `AsyncQueue`
+- `claude-stream.ts` — Claude stream message to `SessionEvent` items, shared by the session driver and `ClaudeAdapter.parseTranscriptLine()` (`cli`); Codex maps its JSONL in `codexStreamEvents()`
+- `claude-session.ts` — `ClaudeSession`, the Claude Agent SDK session driver (streaming input, `canUseTool` permission and `AskUserQuestion` requests); SDK pinned in `CLAUDE_AGENT_SDK_VERSION`
+- `session-runner.ts` — `runSession()`: one step on a session (`runRuntime` delegates to it with `driver: session`)
 - `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
 - `process-runner.ts` — `runRuntime()` shared process spawning (`options.signal` kills the process tree)
 - `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
@@ -52,7 +48,7 @@ Runtime adapter layer for coding agent integrations:
 
 #### `steps/`
 
-Workflow step handlers (prompt, parallel, serial, conditional, ralph-loop).
+Workflow step handlers (prompt, skill, human-input, parallel, serial, conditional, ralph-loop).
 
 #### `contract/`
 
@@ -73,24 +69,25 @@ Tests that start a supervisor or write locks use `tests/helpers/temp-home.ts` (`
 
 Runs owned by the supervisor:
 
-- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines)
+- `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines; live transcripts through the session host and `logs()` behind `GET /v1/runs/:id/logs`; session resume or restart in recovery, `run.recovered` `sessions`)
 - `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
 - `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
 - `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
 - `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
+- `transcript.ts` — per-step live transcripts (`steps/<NN-step>/transcript.jsonl`, `TranscriptWriter`, `transcriptEntries()`, `readTranscriptPage()` with its own cursor and caps) and `session.json` (`readStepSession()`, read by crash recovery to resume a session); `stepDirName()`
 - `scheduler.ts` — `pickRunnable()` (global and per-repo limits, one run per checkout)
 - `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment), `buildDispatchPayload()` (shared by `af run` and `af_dispatch`)
-- `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`
+- `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`; `fetchLogs()`, `followLogs()` used by `af logs` and `af_logs`
 
-Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
+Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthropic-ai/claude-agent-sdk`; never mock `runRuntime` there). Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
 
 #### `mcp/`
 
 The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
-- `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
+- `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_logs`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
 - `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) over the `/v1/runs/:id/*` control endpoints
 - `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)
@@ -99,7 +96,7 @@ MCP tests (`tests/mcp-server.test.ts`) connect an SDK `Client` to `createMcpServ
 
 #### `workflows/`
 
-Bundled YAML workflow definitions (12 workflows: `plan-build-review`, `one-shot`, `ralph-loop`, `plan-loop`, `analyze-codebase`, `analyze-single`, `claude-demo`, `codex-demo`, `multi-demo`, `multi-plan-build-review`, `permission-test-claude`, `permission-test-codex`).
+Bundled generic demo workflows (7 workflows: `claude-demo`, `codex-demo`, `multi-demo`, `ralph-loop`, `plan-loop`, `permission-test-claude`, `permission-test-codex`). They use only generic steps (no skill calls); `tests/bundled-workflows.test.ts` checks it.
 
 ### `schemas/`
 
@@ -116,10 +113,11 @@ Central path resolver module. Single source of truth for all directory resolutio
 - `getGlobalRoot()` — platform-native global directory (`%APPDATA%`, `~/Library/Application Support`, `$XDG_CONFIG_HOME`)
 - `getOutputRoot(config, cwd)` — resolves output base dir (global default, local override)
 - `getOutputDir(workflowId, config, cwd)` — full output path for a workflow run
-- `getWorkflowDirs(bundledDir)` — ordered workflow search path (project-local > user-global > bundled)
+- `getWorkflowDirs(bundledDir, cwd, packDirs)` — ordered workflow search path (project-local > user-global > skill packs > bundled)
 - `getConfigPaths()` — global and local config file paths
 - `ensureGlobalDir()` — lazy-initializes global directory on first use
 - `sanitizeSlug(input)` — cleans user-provided slugs for safe directory names
+- `getClaudeConfigDir()` — Claude Code config directory (`CLAUDE_CONFIG_DIR`, else `~/.claude`), used by skill pack detection and `af doctor`
 
 ### `docs/`
 
@@ -144,9 +142,8 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 ### Naming Conventions
 
-- **Agents**: Use descriptive names with domain prefix (e.g., `explorer.md`, `reviewer.md`)
-- **Skills**: Directory name in kebab-case with `SKILL.md` inside (e.g., `analyze/SKILL.md`, `git-commit/SKILL.md`)
-- **Workflows**: Descriptive kebab-case YAML files (e.g., `plan-build-review.yaml`)
+- **Skills**: Directory name in kebab-case with `SKILL.md` inside (e.g., `workflow-builder/SKILL.md`)
+- **Workflows**: Descriptive kebab-case YAML files (e.g., `claude-demo.yaml`)
 
 ### Documentation Guidelines
 
@@ -155,8 +152,7 @@ Use US English spelling in all code, comments, documentation, and UI strings whe
 
 ### File Formats
 
-- **Agents**: Markdown (`.md`) files in `src/agents/`
-- **Skills**: `SKILL.md` files in skill directories: `src/claude/.claude/skills/<skill-name>/SKILL.md`
+- **Authoring skills**: `SKILL.md` files in skill directories: `src/authoring/.claude/skills/<skill-name>/SKILL.md`
 - **Workflows**: YAML files in `src/workflows/`
 - **TypeScript Source**: TypeScript modules in `src/` with root `package.json`
 
@@ -203,7 +199,8 @@ pnpm test           # Vitest tests
 All directory resolution flows through `src/paths.ts`. The system uses a 3-tier model:
 
 - **Config**: built-in defaults -> global (`getGlobalRoot()/config.json`) -> local (`agentic/config.json`)
-- **Workflows**: project-local (`agentic/workflows/`) -> user-global (`getGlobalRoot()/workflows/`) -> bundled
+- **Workflows**: project-local (`agentic/workflows/`) -> user-global (`getGlobalRoot()/workflows/`) -> skill packs (`<plugin>/af-workflows/`, from `src/skill-packs.ts`: config `skill_packs.paths`, then Claude Code's `installed_plugins.json` when `skill_packs.auto_detect`) -> bundled
+- **Requires**: `src/requires.ts` parses a workflow's `requires` (agentic-forge version range, contract version) and `checkRequires()` runs in `RunManager.dispatch()`; `ignore_requires` in the dispatch payload overrides only the version
 - **Outputs**: global by default (`getGlobalRoot()/outputs/<project-slug>/`), or local (`agentic/outputs/`) when `outputDirectory: "local"`
 
 The global directory is lazy-initialized by `ensureGlobalDir()` on first use. No `init` is required to run workflows.
@@ -220,7 +217,7 @@ The workflow engine delegates all coding agent interactions to runtime adapters 
 
 Runtime resolution order: `step.runtime` > `--runtime` CLI flag > `workflow settings.runtime` > `config.defaults.runtime` > `"claude"`.
 
-**Skills only work with the `claude` runtime.** The `codex` runtime does not support `--add-dir` skill injection. Workflows that use `/af-*` skill invocations must run with `runtime: claude` (or the default).
+**Skill steps only work with the `claude` runtime.** agentic-forge bundles no execution skills: a `skill` step calls a skill the user installed (a Claude Code plugin or a `.claude/skills/` directory). On any other runtime it fails with a "not supported yet" message. The prompt step `agent:` file resolves relative to the workflow file, then the repo root.
 
 To add a new runtime: create an adapter in `src/runtimes/`, register it in `src/runtimes/index.ts`, and add the `RuntimeId` to the union type in `src/runtimes/types.ts`.
 

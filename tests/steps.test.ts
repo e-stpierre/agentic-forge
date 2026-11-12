@@ -56,8 +56,6 @@ function makeStepDef(
 		thenSteps: [],
 		elseSteps: [],
 		maxIterations: 5,
-		pollingInterval: 30,
-		onTimeout: "fail",
 		onError: "fail",
 		checkpoint: false,
 		...overrides,
@@ -515,6 +513,43 @@ describe("StepExecutor retry", () => {
 		const executor = new PromptStepExecutor();
 		await executor.execute(step, progress, context, mockLogger, consoleOut);
 
+		expect(mockRunRuntime).toHaveBeenCalledTimes(2);
+	});
+
+	it("uses settings.max-retry before defaults.maxRetry", async () => {
+		const failure = {
+			success: false,
+			returncode: 1,
+			stdout: "",
+			stderr: "Error",
+			sessionOutput: { isSuccess: false, context: "Failed" },
+		};
+		const step = makeStepDef({ name: "test-prompt", type: "prompt", prompt: "Test" });
+		const consoleOut = new ConsoleOutput(createMockStream());
+
+		mockRunRuntime.mockResolvedValue(failure);
+		const settings = { ...defaultSettings(), maxRetry: 0 };
+		await new PromptStepExecutor().execute(
+			step,
+			createWorkflowProgress(),
+			createStepContext({ workflowSettings: settings }),
+			mockLogger,
+			consoleOut,
+		);
+		expect(mockRunRuntime).toHaveBeenCalledTimes(1);
+
+		mockRunRuntime.mockClear();
+		const unset = { ...defaultSettings(), maxRetry: null };
+		await new PromptStepExecutor().execute(
+			step,
+			createWorkflowProgress(),
+			createStepContext({
+				workflowSettings: unset,
+				config: { claude: { model: "sonnet" }, defaults: { maxRetry: 1 } },
+			}),
+			mockLogger,
+			consoleOut,
+		);
 		expect(mockRunRuntime).toHaveBeenCalledTimes(2);
 	});
 });

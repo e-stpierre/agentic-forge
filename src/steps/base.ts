@@ -1,19 +1,27 @@
 /** Base class and types for step executors. */
 
-import { getRuntimeModel } from "../config.js";
+import {
+	getRuntimeDriver,
+	getRuntimeModel,
+	getRuntimePermissions,
+	getRuntimePlugins,
+} from "../config.js";
 import type { ConsoleOutput } from "../console.js";
 import { latestPlan } from "../contract/plan.js";
 import type { ResultBlock } from "../contract/result.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import { STEP_STATUS, WORKFLOW_STATUS, updateStepStopped } from "../progress.js";
 import type { TemplateRenderer } from "../renderer.js";
-import type { RuntimeAdapter, RuntimeId } from "../runtimes/index.js";
+import type { RuntimeAdapter, RuntimeId, RuntimeRunOptions } from "../runtimes/index.js";
+import type { SessionHost } from "../runtimes/session.js";
 import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../types.js";
 
 // --- Step context ---
 
 export interface StepContext {
 	repoRoot: string;
+	/** Directory of the workflow file, used to resolve `agent:` paths. Null when unknown. */
+	workflowDir?: string | null;
 	config: Record<string, unknown>;
 	renderer: TemplateRenderer;
 	runtimeAdapter: RuntimeAdapter;
@@ -39,6 +47,11 @@ export interface StepContext {
 	 * delivered, so call it once per step attempt or ralph-loop iteration.
 	 */
 	operatorMessages?: ((step: string) => Promise<string>) | null;
+	/**
+	 * Supervisor side of a step on the session driver: raises `needs_input`
+	 * for session requests and registers the live session for steering.
+	 */
+	sessionHost?: ((step: string) => SessionHost) | null;
 	/** Checked at ralph-loop iteration boundaries; a workflow status stops the loop. */
 	shouldStop?: (() => string | null) | null;
 	/**
@@ -53,6 +66,38 @@ export interface StepContext {
 	 * matching state is saved (event rule).
 	 */
 	emitEvent?: StepEventEmitter | null;
+	/**
+	 * The answer `af answer` gave to a `needs_input` request of this run (the
+	 * `input.answered` event), or null while it is unanswered. Read by the
+	 * `human-input` step when it runs again after asking. Marks the answer's
+	 * own operator message delivered (other pending messages are kept).
+	 */
+	inputAnswer?: ((step: string, requestId: string) => Promise<InputAnswer | null>) | null;
+	/**
+	 * The last runtime session a step recorded (`steps/<NN-step>/session.json`,
+	 * on both drivers), or null. Read by the prompt step to resume the session
+	 * of an attempt that `send --mode now` killed.
+	 */
+	lastSession?: ((step: string) => LastSession | null) | null;
+}
+
+/** A runtime session a step recorded. */
+export interface LastSession {
+	sessionId: string;
+	driver: string | null;
+	/** ISO time the session started. */
+	at: string;
+}
+
+/** An answer to a `needs_input` request. */
+export interface InputAnswer {
+	/** Option id when the answer matched an option, else the free-form text. */
+	answer: string;
+	option: string | null;
+	/** `user`, `overseer` or `policy` (the needs_input timeout). */
+	from: string;
+	/** Inbox message that carried the answer (null for an answer to a live session). */
+	message: string | null;
 }
 
 /** Events a step emits itself; the run and step events are emitted by the executor hooks. */
@@ -116,6 +161,73 @@ export function propagateChildStop(
 	);
 	console.info(summary);
 	return { success: false, outputSummary: summary, error: summary };
+}
+
+/**
+ * Driver options of a step: the session driver (`runtimes.<id>.driver:
+ * session`, when the runtime has one) with the supervisor's session host,
+ * where pending operator messages are sent as the next turn; else `cli`.
+ */
+export function driverOptions(
+	context: StepContext,
+	step: string,
+): Pick<RuntimeRunOptions, "driver" | "sessionHost" | "plugins"> {
+	const runtimeId = context.runtimeAdapter.id;
+	const host = context.sessionHost?.(step) ?? {};
+	const session =
+		getRuntimeDriver(context.config, runtimeId) === "session" &&
+		Boolean(context.runtimeAdapter.createSession);
+	// The `cli` driver only feeds the live transcript
+	if (!session)
+		return host.onEvent
+			? { driver: "cli", sessionHost: { onEvent: host.onEvent } }
+			: { driver: "cli" };
+	const messages = context.operatorMessages;
+	return {
+		driver: "session",
+		sessionHost: {
+			...host,
+			nextMessages: host.nextMessages ?? (messages ? () => messages(step) : undefined),
+		},
+		plugins: getRuntimePlugins(context.config, runtimeId),
+	};
+}
+
+/** Warning logged on every step that runs with permission checks bypassed. */
+export function bypassWarning(runtimeId: string, source: string): string {
+	return `Permission checks are bypassed for this step on ${runtimeId} (${source})`;
+}
+
+/**
+ * Permission options of a step, from `runtimes.<id>` (same allowlist on both
+ * Claude drivers): the runtime allowlist plus the workflow's `required-tools`
+ * as `allowedTools`, and `skipPermissions` only when bypass is opted into
+ * (`runtimes.<id>.permissions: bypass`, or `bypass-permissions: true` on the
+ * step or workflow). A bypass logs a warning on every step.
+ */
+export function permissionOptions(
+	context: StepContext,
+	step: StepDefinition,
+	logger: Pick<WorkflowLogger, "warning">,
+	console: Pick<ConsoleOutput, "warning">,
+): Pick<RuntimeRunOptions, "skipPermissions" | "allowedTools"> {
+	const runtimeId = context.runtimeAdapter.id;
+	const permissions = getRuntimePermissions(context.config, runtimeId);
+	const flag = step.bypassPermissions ?? context.workflowSettings?.bypassPermissions ?? false;
+	const source =
+		permissions.mode === "bypass"
+			? `runtimes.${runtimeId}.permissions: bypass`
+			: flag
+				? "bypass-permissions: true"
+				: null;
+	if (source) {
+		const message = bypassWarning(runtimeId, source);
+		logger.warning(step.name, message);
+		console.warning(message);
+	}
+	const allow = new Set(permissions.allow);
+	for (const tool of context.workflowSettings?.requiredTools ?? []) allow.add(tool);
+	return { skipPermissions: source !== null, allowedTools: allow.size > 0 ? [...allow] : null };
 }
 
 /** Prepends pending operator messages to a prompt. */

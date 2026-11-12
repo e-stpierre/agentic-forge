@@ -63,11 +63,35 @@ describe("ClaudeAdapter.buildCommand", () => {
 		expect(cmd.args).not.toContain("stream-json");
 	});
 
-	it("adds --allowedTools for each allowed tool", () => {
-		const cmd = adapter.buildCommand({ prompt: "p", allowedTools: ["Read", "Write"] });
-		const toolFlags = cmd.args.filter((_, i) => cmd.args[i - 1] === "--allowedTools");
-		expect(toolFlags).toContain("Read");
-		expect(toolFlags).toContain("Write");
+	it("passes the allowlist as --settings permission rules", () => {
+		const cmd = adapter.buildCommand({ prompt: "p", allowedTools: ["Read", "Bash(git *)"] });
+		const idx = cmd.args.indexOf("--settings");
+		expect(idx).toBeGreaterThan(-1);
+		expect(JSON.parse(cmd.args[idx + 1])).toEqual({
+			permissions: { allow: ["Read", "Bash(git *)"] },
+		});
+		expect(cmd.args).not.toContain("--allowedTools");
+	});
+
+	it("passes no --settings without an allowlist", () => {
+		expect(adapter.buildCommand({ prompt: "p" }).args).not.toContain("--settings");
+		expect(adapter.buildCommand({ prompt: "p", allowedTools: [] }).args).not.toContain(
+			"--settings",
+		);
+	});
+
+	it("resumes the recorded session with --resume", () => {
+		const cmd = adapter.buildCommand({ prompt: "msg", resumeSessionId: "sess-1" });
+		const idx = cmd.args.indexOf("--resume");
+		expect(cmd.args[idx + 1]).toBe("sess-1");
+		expect(cmd.stdinInput).toBe("msg");
+		expect(adapter.buildCommand({ prompt: "p" }).args).not.toContain("--resume");
+	});
+
+	it("gives the session driver the same allowlist", () => {
+		const options = adapter.sessionOptions({ prompt: "p", allowedTools: ["Read", "Bash(git *)"] });
+		expect(options.allowedTools).toEqual(["Read", "Bash(git *)"]);
+		expect(options.bypassPermissions).toBe(false);
 	});
 
 	it("sets OTEL_RESOURCE_ATTRIBUTES env when workflowId provided", () => {

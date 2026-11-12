@@ -17,6 +17,11 @@ export function jsonResult(value: unknown): CallToolResult {
 	return { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] };
 }
 
+/** A tool result with compact JSON text (Token Budget Rule 1). */
+export function compactResult(value: unknown): CallToolResult {
+	return { content: [{ type: "text", text: JSON.stringify(value) }] };
+}
+
 /** An `isError` tool result with a plain text message. */
 export function errorResult(text: string): CallToolResult {
 	return { content: [{ type: "text", text }], isError: true };

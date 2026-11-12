@@ -130,6 +130,70 @@ On native Windows, Codex also applies its Windows OS sandbox. When `codex.sandbo
 >
 > **Upgrading:** if an earlier release wrote `codex.model` into your `config.json`, that value still applies and overrides the new CLI-selected default. Delete the `codex.model` key from your global or local `config.json` to let Codex CLI choose its own model.
 
+### runtimes
+
+Per-runtime driver settings. See [Coding Agents](coding-agents.md#drivers).
+
+| Key                           | Type     | Default       | Description                                                                           |
+| ----------------------------- | -------- | ------------- | ------------------------------------------------------------------------------------- |
+| `runtimes.claude.driver`      | string   | `"session"`   | `"session"` (Claude Agent SDK session) or `"cli"` (one-shot `claude -p`)              |
+| `runtimes.claude.plugins`     | string[] | `[]`          | Local plugin directories the session driver loads (skills, agents, hooks)             |
+| `runtimes.claude.permissions` | string   | `"allowlist"` | `"allowlist"`: tools on `allow` run without asking. `"bypass"`: skip every check      |
+| `runtimes.claude.allow`       | string[] | see below     | Claude permission rules allowed on every step (`Read`, `Bash(git *)`, ...)            |
+| `runtimes.codex.driver`       | string   | `"cli"`       | Only `"cli"` (`codex exec`) for now; `"session"` falls back to `"cli"`                |
+| `runtimes.codex.permissions`  | string   | `"allowlist"` | `"allowlist"`: the `codex.sandbox` mode applies. `"bypass"`: no sandbox, no approvals |
+
+Installed Claude plugins and skills load on both Claude drivers through your Claude settings, as with `claude -p`; `plugins` adds directories that are not installed.
+
+The default `runtimes.claude.allow` is `Read`, `Glob`, `Grep`, `Edit`, `MultiEdit`, `Write`, `NotebookEdit`, `TodoWrite`, `Skill` and `Task`: shell commands are not on it. A workflow's `required-tools` adds to the list for its steps (the bundled workflows add `Bash`). Setting `allow` replaces the default list. The same list drives both Claude drivers: the `cli` driver passes it as `--settings '{"permissions":{"allow":[...]}}'`, and the session driver auto-approves it. A call outside the list (and outside your own Claude settings) becomes a permission `needs_input` on the session driver, and is denied on the `cli` driver.
+
+`"bypass"` passes `--dangerously-skip-permissions` (Claude) or `--dangerously-bypass-approvals-and-sandbox` (Codex), and every step that runs with it logs a warning. A workflow or step `bypass-permissions: true` does the same for that workflow or step.
+
+```json
+{
+  "runtimes": {
+    "claude": {
+      "allow": [
+        "Read",
+        "Edit",
+        "Write",
+        "Glob",
+        "Grep",
+        "Bash(git *)",
+        "Bash(pnpm *)"
+      ]
+    }
+  }
+}
+```
+
+### skill_config
+
+Configuration snapshots for skill packs, keyed by pack (the plugin of `<plugin>:<skill>`, or the skill name). A `skill` step writes `skill_config.<pack>` to `<run dir>/skill-config/<pack>.json` and passes it as `--config-snapshot` (see [harness contract](harness-contract.md#invocation)). The format belongs to the skill pack; its values win over the pack's own config files. Unset packs get `{}`.
+
+| Key                   | Type   | Default | Description                          |
+| --------------------- | ------ | ------- | ------------------------------------ |
+| `skill_config.<pack>` | object | unset   | Snapshot passed to the pack's skills |
+
+```json
+{ "skill_config": { "esp-skills": { "plan": { "depth": "deep" } } } }
+```
+
+### skill_packs
+
+Where af finds skill packs: plugin directories that ship agentic-forge workflows in an `af-workflows/` directory. Their workflows come after the project and user-global workflows and before the bundled demos (see `af workflows`). A directory without `af-workflows/` is skipped.
+
+| Key                       | Type     | Default | Description                                                                                     |
+| ------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `skill_packs.paths`       | string[] | `[]`    | Plugin root directories (absolute, or relative to the repository), searched first               |
+| `skill_packs.auto_detect` | boolean  | `true`  | Also use the Claude Code plugins listed in `<claude config dir>/plugins/installed_plugins.json` |
+
+Auto-detection reads Claude Code's installed plugin list (`CLAUDE_CONFIG_DIR`, else `~/.claude`), not the plugin cache directory, so only the installed version of each plugin is used. It includes user-scope installs, and project or local installs whose project is the dispatching repository. A plugin disabled in Claude Code (`enabledPlugins` set to `false` in the user `settings.json`, or the repository's `.claude/settings.json` or `.claude/settings.local.json`, the later overriding the earlier) is skipped. When Claude Code moves that file, `af doctor` warns, and `skill_packs.paths` still works. A plain array (`"skill_packs": ["../my-pack"]`) is read as `paths` with auto-detection on.
+
+```json
+{ "skill_packs": { "paths": ["C:/src/my-pack"], "auto_detect": true } }
+```
+
 ### execution
 
 Controls parallel execution behavior.

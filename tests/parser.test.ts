@@ -205,7 +205,7 @@ describe("WorkflowParser settings", () => {
 		const parser = new WorkflowParser();
 		const workflow = parser.parseString("name: test\nsteps: []");
 
-		expect(workflow.settings.maxRetry).toBe(3);
+		expect(workflow.settings.maxRetry).toBeNull();
 		expect(workflow.settings.timeoutMinutes).toBe(60);
 		expect(workflow.settings.trackProgress).toBe(true);
 	});

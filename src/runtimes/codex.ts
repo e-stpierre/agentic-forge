@@ -2,6 +2,7 @@
 
 import path from "node:path";
 
+import type { SessionEvent } from "./session.js";
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -62,10 +63,15 @@ export class CodexAdapter implements RuntimeAdapter {
 		const { model, skipPermissions = false, cwd, outputDir } = options;
 		const sandbox = options.sandbox ?? "workspace-write";
 
+		const resume = options.resumeSessionId ?? null;
+
 		const args: string[] = ["exec", "--sandbox", sandbox];
+		// On resume, the `exec` options (sandbox, working dir, write roots) stay
+		// before the `resume` subcommand, which takes the session flags
+		const sessionArgs: string[] = resume ? [] : args;
 
 		if (options.printOutput) {
-			args.push("--json");
+			sessionArgs.push("--json");
 		}
 
 		if (cwd) {
@@ -73,11 +79,11 @@ export class CodexAdapter implements RuntimeAdapter {
 		}
 
 		if (skipPermissions) {
-			args.push("--dangerously-bypass-approvals-and-sandbox");
+			sessionArgs.push("--dangerously-bypass-approvals-and-sandbox");
 		}
 
 		if (model) {
-			args.push("--model", model);
+			sessionArgs.push("--model", model);
 		}
 
 		// Grant explicit write roots for Codex workspace-write runs. The workflow
@@ -101,9 +107,16 @@ export class CodexAdapter implements RuntimeAdapter {
 			env.OTEL_RESOURCE_ATTRIBUTES = `session=${options.workflowId}`;
 		}
 
-		// System prompt is prepended to the user prompt (Codex has no --append-system-prompt flag)
-		const systemPrompt = options.appendSystemPrompt ? getAgenticSystemPrompt() : null;
+		// System prompt is prepended to the user prompt (Codex has no --append-system-prompt
+		// flag); a resumed session already has it
+		const systemPrompt = options.appendSystemPrompt && !resume ? getAgenticSystemPrompt() : null;
 		const prompt = systemPrompt ? `${systemPrompt}\n\n${options.prompt}` : options.prompt;
+
+		// Interrupt and resume: `codex exec resume <thread id> <prompt>` continues the
+		// killed session; when it fails (unknown thread), the prompt step restarts cold
+		if (resume) {
+			args.push("resume", ...sessionArgs, resume);
+		}
 
 		// Codex exec takes the prompt as a positional argument, not via stdin
 		args.push(prompt);
@@ -114,6 +127,12 @@ export class CodexAdapter implements RuntimeAdapter {
 			env: Object.keys(env).length > 0 ? env : undefined,
 			stdinInput: "",
 		};
+	}
+
+	/** Transcript events of a `codex exec --json` line (see `codexStreamEvents`). */
+	parseTranscriptLine(line: string): SessionEvent[] {
+		const data = parseCodexJsonLine(line);
+		return data ? codexStreamEvents(data) : [];
 	}
 
 	parseStreamLine(line: string): StreamEvent | null {
@@ -189,5 +208,83 @@ export class CodexAdapter implements RuntimeAdapter {
 			success: returncode === 0,
 			sessionOutput,
 		};
+	}
+}
+
+const FILE_CHANGES = new Set(["add", "update", "delete"]);
+
+/**
+ * Normalized events of one `codex exec --json` line: `thread.started` starts
+ * the session, `agent_message` items are messages, command and MCP tool items
+ * are tool calls (`item.started`) and results (`item.completed`), and
+ * `file_change` items give one diff per changed file.
+ */
+export function codexStreamEvents(data: Record<string, unknown>): SessionEvent[] {
+	const type = data.type;
+	if (type === "thread.started" && typeof data.thread_id === "string") {
+		return [{ type: "session.started", sessionId: data.thread_id, model: null, authSource: null }];
+	}
+	if (type === "turn.completed") {
+		return [{ type: "turn.completed", result: "", isError: false, messageIds: [] }];
+	}
+	if (type === "turn.failed" || type === "error") {
+		const error = data.error as { message?: unknown } | undefined;
+		const message = error?.message ?? data.message ?? "Unknown error";
+		return [{ type: "error", message: String(message) }];
+	}
+	if (type !== "item.started" && type !== "item.completed") return [];
+	const item = data.item as Record<string, unknown> | undefined;
+	if (!item || typeof item !== "object") return [];
+	const id = String(item.id ?? "");
+	const done = type === "item.completed";
+	switch (item.type) {
+		case "agent_message":
+			if (!done || typeof item.text !== "string") return [];
+			return [
+				{
+					type: "item",
+					id,
+					kind: "message",
+					status: "completed",
+					role: "assistant",
+					text: item.text,
+				},
+			];
+		case "command_execution":
+		case "mcp_tool_call": {
+			const tool = item.type === "command_execution" ? "shell" : String(item.tool ?? "mcp");
+			const input =
+				item.type === "command_execution"
+					? { command: item.command }
+					: { server: item.server, ...((item.arguments as Record<string, unknown>) ?? {}) };
+			if (!done) return [{ type: "item", id, kind: "tool_call", status: "started", tool, input }];
+			const output = item.aggregated_output ?? item.result ?? "";
+			const failed =
+				item.status === "failed" || (typeof item.exit_code === "number" && item.exit_code !== 0);
+			return [
+				{
+					type: "item",
+					id,
+					kind: "tool_result",
+					status: "completed",
+					tool,
+					text: typeof output === "string" ? output : JSON.stringify(output),
+					isError: failed,
+				},
+			];
+		}
+		case "file_change": {
+			if (!done || !Array.isArray(item.changes)) return [];
+			return (item.changes as Record<string, unknown>[]).map((change, index) => ({
+				type: "diff" as const,
+				id: `${id}:${index}`,
+				path: String(change.path ?? ""),
+				change: FILE_CHANGES.has(String(change.kind))
+					? (String(change.kind) as "add" | "update" | "delete")
+					: "update",
+			}));
+		}
+		default:
+			return [];
 	}
 }
