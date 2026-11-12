@@ -196,7 +196,36 @@ describe("parsing", () => {
 			blocking: false,
 			stepTimeoutMinutes: 2,
 		});
-		expect(proceed.options?.map((o) => o.id)).toEqual(["continue", "abort"]);
+		expect(proceed.options?.map((o) => o.id)).toEqual(["continue"]);
+	});
+
+	it("rejects human-input steps anywhere under a parallel step", () => {
+		expect(() =>
+			parse(
+				`  - name: p
+    type: parallel
+    steps:
+      - { name: a, type: human-input, message: Q }`,
+			),
+		).toThrow(/not allowed inside a parallel step/);
+		expect(() =>
+			parse(
+				`  - name: p
+    type: parallel
+    steps:
+      - name: s
+        type: serial
+        steps:
+          - { name: a, type: human-input, message: Q }`,
+			),
+		).toThrow(/not allowed inside a parallel step/);
+		const serial = parse(
+			`  - name: s
+    type: serial
+    steps:
+      - { name: a, type: human-input, message: Q }`,
+		);
+		expect(serial.steps[0].steps[0].type).toBe("human-input");
 	});
 
 	it("rejects the removed orchestrator step type", () => {
@@ -379,6 +408,26 @@ steps:
 			const full = path.join(res.dir, file);
 			if (existsSync(full)) expect(validateContractFile(full).errors).toEqual([]);
 		}
+	});
+
+	it("keeps a run-wide message sent during the wait for the next step", async () => {
+		const { manager, client } = await startSupervisor();
+		const res = await dispatchRun(client, payload(APPROVAL));
+		await manager.idle();
+		await client.request("POST", `/v1/runs/${res.run.id}/messages`, {
+			text: "Keep the changelog short",
+			mode: "next",
+		});
+		await client.request("POST", `/v1/runs/${res.run.id}/answer`, { answer: "yes" });
+		await waitForStatus(manager, res.run.id, "done");
+		const [next] = prompts("NEXT");
+		expect(next).toContain("NEXT yes from user");
+		expect(next).toContain("Keep the changelog short");
+		const delivered = new RunStore(res.dir)
+			.readEvents()
+			.filter((e) => e.type === "message.delivered")
+			.map((e) => e.data?.step);
+		expect(delivered).toEqual(["approve", "next"]);
 	});
 
 	it("asks again when the run is resumed without an answer", async () => {

@@ -34,13 +34,24 @@ export async function runSession(
 	let lastError: string | null = null;
 	let timedOut = false;
 	let deciding = false;
+	let closing = false;
 	let session: RuntimeSession | null = null;
+	let unregister: (() => void) | undefined;
+
+	// Unregisters the live handle first, so `send --mode now` no longer steers a closing session
+	const closeSession = () => {
+		closing = true;
+		unregister?.();
+		unregister = undefined;
+		session?.close();
+	};
 
 	const onIdle = async () => {
 		if (deciding || !session) return;
 		deciding = true;
 		try {
-			const next = stop.signal.aborted ? "" : ((await host.nextMessages?.()) ?? "");
+			const open = !stop.signal.aborted && session.state !== "closed";
+			const next = open ? ((await host.nextMessages?.()) ?? "") : "";
 			if (next && session.state !== "closed") {
 				if (console) {
 					console.streamText(next, "user");
@@ -49,11 +60,11 @@ export async function runSession(
 				transcript(userMessageItem(next));
 				session.send(next);
 			} else {
-				session.close();
+				closeSession();
 			}
 		} catch (err) {
 			lastError = (err as Error).message;
-			session.close();
+			closeSession();
 		} finally {
 			deciding = false;
 		}
@@ -112,15 +123,15 @@ export async function runSession(
 	};
 
 	session = adapter.createSession(onEvent);
-	const unregister = host.onLive?.({
+	unregister = host.onLive?.({
 		get sessionId() {
 			return session?.sessionId ?? null;
 		},
 		steer: (text) => {
-			if (session && session.state !== "closed") {
-				transcript(userMessageItem(text));
-				session.steer(text);
-			}
+			if (!session || closing || session.state === "closed") return false;
+			transcript(userMessageItem(text));
+			session.steer(text);
+			return true;
 		},
 		interrupt: async () => {
 			await session?.interrupt();
@@ -159,6 +170,7 @@ export async function runSession(
 	pauseTimer();
 	options.signal?.removeEventListener("abort", onAbort);
 	unregister?.();
+	unregister = undefined;
 
 	const final = last as { text: string; isError: boolean } | null;
 	const stdout = final?.text ?? "";

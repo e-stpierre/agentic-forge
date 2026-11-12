@@ -59,10 +59,10 @@ describe("parseRequires", () => {
 			agenticForge: ">=0.12",
 			contract: 1,
 		});
-		expect(parseRequires({ "agentic-forge": 0.12 })).toEqual({
-			agenticForge: "0.12",
-			contract: null,
-		});
+	});
+
+	it("refuses an unquoted number range (YAML drops trailing zeros)", () => {
+		expect(() => parseRequires({ "agentic-forge": 0.1 })).toThrow(/must be a quoted string/);
 	});
 
 	it("rejects invalid blocks", () => {

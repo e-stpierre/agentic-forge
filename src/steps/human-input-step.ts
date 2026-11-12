@@ -43,8 +43,6 @@ export class HumanInputStepExecutor extends StepExecutor {
 			const requestId = humanInputRequestId(step.name, asked);
 			const answer = await context.inputAnswer(step.name, requestId);
 			if (answer) {
-				// Consume the answer message queued for this step (marks it delivered)
-				if (context.operatorMessages) await context.operatorMessages(step.name);
 				const outputs = {
 					answer: answer.answer,
 					option: answer.option,

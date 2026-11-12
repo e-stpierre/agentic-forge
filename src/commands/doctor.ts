@@ -177,7 +177,8 @@ function checkCodexAuth(probe: Probe): DoctorCheck {
 	}
 	return {
 		name: "codex auth",
-		status: "fail",
+		// Codex is an optional runtime: a logged-out CLI is a warning, like a missing one
+		status: "warn",
 		detail: text || "not logged in",
 		hint: "Run 'codex login'",
 	};
@@ -189,7 +190,8 @@ function checkGhAuth(probe: Probe): DoctorCheck {
 		? { name: "gh auth", status: "pass", detail: "logged in" }
 		: {
 				name: "gh auth",
-				status: "fail",
+				// gh is optional (GitHub steps): a warning, like a missing gh
+				status: "warn",
 				detail: "not logged in",
 				hint: "Run 'gh auth login'",
 			};

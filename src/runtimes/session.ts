@@ -165,7 +165,8 @@ export interface SessionHost {
 /** Handle the supervisor uses to steer a live session step. */
 export interface LiveSession {
 	readonly sessionId: string | null;
-	steer(text: string): void;
+	/** Delivers a message into the running session. False when the session no longer takes input. */
+	steer(text: string): boolean;
 	interrupt(): Promise<void>;
 }
 

@@ -69,7 +69,8 @@ export interface StepContext {
 	/**
 	 * The answer `af answer` gave to a `needs_input` request of this run (the
 	 * `input.answered` event), or null while it is unanswered. Read by the
-	 * `human-input` step when it runs again after asking.
+	 * `human-input` step when it runs again after asking. Marks the answer's
+	 * own operator message delivered (other pending messages are kept).
 	 */
 	inputAnswer?: ((step: string, requestId: string) => Promise<InputAnswer | null>) | null;
 	/**
@@ -95,6 +96,8 @@ export interface InputAnswer {
 	option: string | null;
 	/** `user`, `overseer` or `policy` (the needs_input timeout). */
 	from: string;
+	/** Inbox message that carried the answer (null for an answer to a live session). */
+	message: string | null;
 }
 
 /** Events a step emits itself; the run and step events are emitted by the executor hooks. */

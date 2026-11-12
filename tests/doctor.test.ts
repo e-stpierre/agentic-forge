@@ -128,6 +128,19 @@ describe("af doctor", () => {
 		expect(text).toContain("fix: Run 'claude auth login'");
 	});
 
+	it("only warns when the optional codex and gh are installed but logged out", async () => {
+		const report = await doctor({
+			...allGood,
+			"codex login status": { code: 1, stdout: "Not logged in", stderr: "" },
+			"gh auth status": { code: 1, stdout: "", stderr: "not logged in" },
+		});
+		expect(check(report.checks, "codex auth")).toMatchObject({ status: "warn" });
+		expect(check(report.checks, "codex auth")?.hint).toContain("codex login");
+		expect(check(report.checks, "gh auth")).toMatchObject({ status: "warn" });
+		expect(check(report.checks, "gh auth")?.hint).toContain("gh auth login");
+		expect(report.checks.filter((c) => c.status === "fail")).toEqual([]);
+	});
+
 	it("fails a missing claude and skips its auth check", async () => {
 		const report = await doctor({ "git --version": ok("git version 2.50.0") });
 		expect(check(report.checks, "claude")).toMatchObject({ status: "fail" });

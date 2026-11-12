@@ -28,7 +28,7 @@ A step on the `session` driver stays alive while it works and while it waits:
 - **Result**: the final message of the last turn holds the result block, read the same way as on the `cli` driver.
 - **Resume**: when a session step ends with an `awaiting-human` result block, `af answer` resumes the same session by its id with the answer, instead of running the step again from its start.
 
-- **Supervisor restart**: the session id is stored in `steps/<NN-step>/session.json`. When the supervisor stops while a prompt step runs (or waits for an answer), the next supervisor resumes that session with a prompt saying the harness restarted, instead of running the step from its start. The choice is in `run.recovered` and `decisions.jsonl` (see [`af serve`](cli.md#serve)).
+- **Supervisor restart**: the session id is stored in `steps/<NN-step>/session.json`. When the supervisor stops while a prompt or skill step runs (or waits for an answer), the next supervisor resumes that session with a prompt saying the harness restarted, instead of running the step from its start. The choice is in `run.recovered` and `decisions.jsonl` (see [`af serve`](cli.md#serve)).
 
 Parallel steps each run their own session and can each wait on a request; answer them by request id.
 

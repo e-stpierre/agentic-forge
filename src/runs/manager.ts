@@ -354,6 +354,12 @@ export class RunManager {
 	private readonly liveSessions = new Map<string, Map<string, LiveSession>>();
 	/** Session requests waiting for `af answer` (run id -> request id -> resolver). */
 	private readonly liveRequests = new Map<string, Map<string, (d: SessionDecision) => void>>();
+	/**
+	 * Per-run chain that serializes the needs_input transitions of live
+	 * sessions (`run.json` then registry), so parallel sessions never leave
+	 * the registry status behind `run.json`.
+	 */
+	private readonly inputLocks = new Map<string, Promise<unknown>>();
 	private scheduling = false;
 	private rescheduleRequested = false;
 	private closed = false;
@@ -611,11 +617,13 @@ export class RunManager {
 	private isActive(entry: RegistryEntry, step: string | null): boolean {
 		if (!this.executing.has(entry.id)) return false;
 		if (!step) return true;
+		// Only top-level steps emit step events: a nested step follows its top-level ancestor
+		const top = this.topLevelStep(entry, step) ?? step;
 		const events = new RunStore(entry.dir).readEvents();
 		let started = -1;
 		let ended = -1;
 		events.forEach((e, i) => {
-			if (e.data?.step !== step) return;
+			if (e.data?.step !== top) return;
 			if (e.type === "step.started") started = i;
 			if (e.type === "step.completed" || e.type === "step.failed") ended = i;
 		});
@@ -838,9 +846,13 @@ export class RunManager {
 			: [...sessions.keys()][0];
 		const handle = target ? sessions.get(target) : undefined;
 		if (!target || !handle) return false;
-		const [delivered] = new Inbox(store.dir).markDelivered([message.id], target);
-		if (!delivered) return false;
-		handle.steer(formatOperatorMessages([delivered]));
+		const inbox = new Inbox(store.dir);
+		if (!inbox.pending(target).some((m) => m.id === message.id)) return false;
+		// Marked delivered only once the session took it (a closing session refuses it)
+		if (!handle.steer(formatOperatorMessages([message]))) return false;
+		const [delivered] = inbox.markDelivered([message.id], target);
+		// Already delivered by a concurrent turn boundary: the session has it either way
+		if (!delivered) return true;
 		await store.appendEvent("message.delivered", { id: delivered.id, step: target, live: true });
 		await store.appendDecision(messageDecision(delivered, target));
 		this.log(`Run ${id}: steered the live session of ${target} (send now)`);
@@ -863,28 +875,40 @@ export class RunManager {
 		this.controllers.get(id)?.abort();
 	}
 
-	/** Every step name of a run's workflow, nested steps included (null if unreadable). */
 	/** `steps/<NN-step>/` of a step (result block, transcript, session). */
 	private stepDir(entry: RegistryEntry, step: string): string {
 		return path.join(entry.dir, "steps", stepDirName(this.stepNames(entry) ?? [], step));
 	}
 
+	/** Every step name of a run's workflow, nested steps included (null if unreadable). */
 	private stepNames(entry: RegistryEntry): string[] | null {
+		const tree = this.stepTree(entry);
+		return tree ? tree.map((s) => s.name) : null;
+	}
+
+	/** Top-level step that contains `step` (itself when top-level; null if unknown). */
+	private topLevelStep(entry: RegistryEntry, step: string): string | null {
+		return this.stepTree(entry)?.find((s) => s.name === step)?.top ?? null;
+	}
+
+	/** Every step of a run's workflow with its top-level ancestor (null if unreadable). */
+	private stepTree(entry: RegistryEntry): { name: string; top: string }[] | null {
 		try {
 			const workflow = this.parseWorkflow(
 				new RunStore(entry.dir).readJson<DispatchPayload>("dispatch.json"),
 			);
-			const names: string[] = [];
-			const walk = (steps: StepDefinition[] | undefined) => {
-				for (const s of steps ?? []) {
-					names.push(s.name);
-					walk(s.steps);
-					walk(s.thenSteps);
-					walk(s.elseSteps);
+			const steps: { name: string; top: string }[] = [];
+			const walk = (list: StepDefinition[] | undefined, top: string | null) => {
+				for (const s of list ?? []) {
+					const root = top ?? s.name;
+					steps.push({ name: s.name, top: root });
+					walk(s.steps, root);
+					walk(s.thenSteps, root);
+					walk(s.elseSteps, root);
 				}
 			};
-			walk(workflow.steps);
-			return names;
+			walk(workflow.steps, null);
+			return steps;
 		} catch {
 			return null;
 		}
@@ -976,10 +1000,17 @@ export class RunManager {
 		}
 	}
 
-	/** Delivers the pending messages of `step`: files first, then events and decisions. */
-	private async deliverMessages(store: RunStore, step: string): Promise<string> {
+	/**
+	 * Delivers the pending messages of `step` (only the `only` ids when given):
+	 * files first, then events and decisions.
+	 */
+	private async deliverMessages(
+		store: RunStore,
+		step: string,
+		only: string[] | null = null,
+	): Promise<string> {
 		const inbox = new Inbox(store.dir);
-		const pending = inbox.pending(step);
+		const pending = inbox.pending(step).filter((m) => only === null || only.includes(m.id));
 		if (pending.length === 0) return "";
 		const delivered = inbox.markDelivered(
 			pending.map((m) => m.id),
@@ -1092,15 +1123,17 @@ export class RunManager {
 		const request = pending.request;
 		this.liveRequests.get(entry.id)?.delete(request.id);
 		this.clearTimer(entry.id, request.id);
-		const run = await store.updateRunWith((current) => {
-			const remaining = pendingInputs(current).filter((p) => p.request.id !== request.id);
-			return {
-				"x-af-needs-input": remaining.length > 0 ? remaining : null,
-				...(remaining.length === 0 ? { status: "running" as RunStatus } : {}),
-			};
+		const resumed = await this.withInputLock(entry.id, async () => {
+			const run = await store.updateRunWith((current) => {
+				const remaining = pendingInputs(current).filter((p) => p.request.id !== request.id);
+				return {
+					"x-af-needs-input": remaining.length > 0 ? remaining : null,
+					...(remaining.length === 0 ? { status: "running" as RunStatus } : {}),
+				};
+			});
+			await this.registry.update(entry.id, { status: run.status });
+			return run.status === "running";
 		});
-		const resumed = run.status === "running";
-		if (resumed) await this.registry.update(entry.id, { status: "running" });
 		await store.appendEvent("input.answered", {
 			id: request.id,
 			step: pending.step,
@@ -1148,6 +1181,10 @@ export class RunManager {
 		const transcript = new TranscriptWriter(this.stepDir(entry, step), step);
 		return {
 			onEvent: (event) => {
+				// A request resolved by the session itself (aborted tool call), not by af answer
+				if (event.type === "request.resolved" && this.liveRequests.get(entry.id)?.has(event.id)) {
+					void this.endLiveRequests(entry, store, step, [event.id]);
+				}
 				try {
 					transcript.write(event);
 				} catch (err) {
@@ -1164,9 +1201,79 @@ export class RunManager {
 				this.liveSessions.set(entry.id, sessions);
 				return () => {
 					if (sessions.get(step) === handle) sessions.delete(step);
+					// The session ended: requests it left unanswered are gone with it
+					void this.endLiveRequests(entry, store, step, null);
 				};
 			},
 		};
+	}
+
+	/** Runs `fn` after the previous needs_input transition of the run settled. */
+	private withInputLock<T>(id: string, fn: () => Promise<T>): Promise<T> {
+		const previous = this.inputLocks.get(id) ?? Promise.resolve();
+		const next = previous.then(fn, fn);
+		const settled = next.catch(() => undefined);
+		this.inputLocks.set(id, settled);
+		void settled.then(() => {
+			if (this.inputLocks.get(id) === settled) this.inputLocks.delete(id);
+		});
+		return next;
+	}
+
+	/**
+	 * Removes the live requests of `step` that its session resolved itself
+	 * (`ids`: an aborted tool call) or left behind when it ended (`ids`
+	 * null). The run is `running` again once no request is left. Skipped
+	 * while a pause, cancel, restart or shutdown stops the run: the end of
+	 * `execute()` (or the next supervisor) handles those requests.
+	 */
+	private async endLiveRequests(
+		entry: RegistryEntry,
+		store: RunStore,
+		step: string,
+		ids: string[] | null,
+	): Promise<void> {
+		if (this.stopRequests.has(entry.id) || !this.executing.has(entry.id)) return;
+		try {
+			await this.withInputLock(entry.id, async () => {
+				if (this.stopRequests.has(entry.id)) return;
+				const gone = (p: PendingInput) =>
+					p.live === true && p.step === step && (ids === null || ids.includes(p.request.id));
+				const current = pendingInputs(store.readRun());
+				const dropped = current.filter(gone);
+				if (dropped.length === 0) return;
+				for (const p of dropped) {
+					this.liveRequests.get(entry.id)?.delete(p.request.id);
+					this.clearTimer(entry.id, p.request.id);
+				}
+				let resumed = false;
+				const run = await store.updateRunWith((now) => {
+					const remaining = pendingInputs(now).filter((p) => !gone(p));
+					resumed = remaining.length === 0 && now.status === "awaiting-human";
+					return {
+						"x-af-needs-input": remaining.length > 0 ? remaining : null,
+						...(resumed ? { status: "running" as RunStatus } : {}),
+					};
+				});
+				await this.registry.update(entry.id, { status: run.status });
+				const reason = ids === null ? "session ended" : "request withdrawn by the session";
+				if (resumed) {
+					await store.appendEvent("run.resumed", {
+						reason: "requests withdrawn",
+						step,
+						requests: dropped.map((p) => p.request.id),
+						detail: reason,
+					});
+				}
+				this.log(
+					`Run ${entry.id}: dropped ${dropped.length} unanswered request(s) of ${step} (${reason})`,
+				);
+			});
+		} catch (err) {
+			this.log(
+				`Run ${entry.id}: could not drop the requests of ${step}: ${(err as Error).message}`,
+			);
+		}
 	}
 
 	/**
@@ -1204,11 +1311,13 @@ export class RunManager {
 			this.liveRequests.get(entry.id) ?? new Map<string, (d: SessionDecision) => void>();
 		this.liveRequests.set(entry.id, requests);
 		const decision = new Promise<SessionDecision>((resolve) => requests.set(request.id, resolve));
-		await store.updateRunWith((current) => ({
-			status: "awaiting-human",
-			"x-af-needs-input": [...pendingInputs(current), pending],
-		}));
-		await this.registry.update(entry.id, { status: "awaiting-human" });
+		await this.withInputLock(entry.id, async () => {
+			const run = await store.updateRunWith((current) => ({
+				status: "awaiting-human",
+				"x-af-needs-input": [...pendingInputs(current), pending],
+			}));
+			await this.registry.update(entry.id, { status: run.status });
+		});
 		await store.appendEvent("needs_input", {
 			...needs,
 			step,
@@ -1654,7 +1763,12 @@ export class RunManager {
 				operatorMessages: (step) => this.deliverMessages(store, step),
 				sessionHost: (step) => this.sessionHost(entry, store, payload.config, step),
 				recordResult: (step, block) => this.recordResult(entry, store, step, block),
-				inputAnswer: async (_step, requestId) => answerOf(store, requestId),
+				inputAnswer: async (step, requestId) => {
+					const answer = answerOf(store, requestId);
+					// The answer's own operator message is consumed; other pending messages stay
+					if (answer?.message) await this.deliverMessages(store, step, [answer.message]);
+					return answer;
+				},
 				lastSession: (step) => {
 					const saved = readStepSession(this.stepDir(entry, step));
 					return saved ? { sessionId: saved.session_id, driver: saved.driver, at: saved.at } : null;
@@ -1760,11 +1874,13 @@ export class RunManager {
 	/** Removes the requests of live sessions that ended without an answer (canceled, paused). */
 	private async dropLiveRequests(id: string, store: RunStore): Promise<void> {
 		this.liveRequests.delete(id);
-		if (!pendingInputs(store.readRun()).some((p) => p.live)) return;
-		this.clearTimer(id);
-		await store.updateRunWith((current) => {
-			const kept = pendingInputs(current).filter((p) => !p.live);
-			return { "x-af-needs-input": kept.length > 0 ? kept : null };
+		await this.withInputLock(id, async () => {
+			if (!pendingInputs(store.readRun()).some((p) => p.live)) return;
+			this.clearTimer(id);
+			await store.updateRunWith((current) => {
+				const kept = pendingInputs(current).filter((p) => !p.live);
+				return { "x-af-needs-input": kept.length > 0 ? kept : null };
+			});
 		});
 	}
 
@@ -1954,8 +2070,9 @@ export class RunManager {
 			const current = saved && (!record?.startedAt || saved.at >= record.startedAt) ? saved : null;
 			const sessionId = known.get(step) ?? current?.session_id ?? null;
 			let reason: string | null = null;
-			if (type !== "prompt") reason = `a ${type ?? "composite"} step restarts from its boundary`;
-			else if (!sessionId) reason = "no runtime session was recorded for this attempt";
+			if (type !== "prompt" && type !== "skill") {
+				reason = `a ${type ?? "composite"} step restarts from its boundary`;
+			} else if (!sessionId) reason = "no runtime session was recorded for this attempt";
 
 			if (reason) return { step, action: "restart", session_id: sessionId, reason };
 			if (record) record.sessionId = sessionId;
@@ -2103,6 +2220,7 @@ function answerOf(store: RunStore, requestId: string): InputAnswer | null {
 		answer: String(event.data.answer ?? ""),
 		option: typeof option === "string" ? option : null,
 		from: String(event.data.from ?? "user"),
+		message: typeof event.data.message === "string" ? event.data.message : null,
 	};
 }
 

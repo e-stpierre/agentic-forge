@@ -428,6 +428,60 @@ describe("session driver transcript", () => {
 		expect(last?.active).toBe(false);
 		await waitForStatus(manager, res.run.id, "done");
 	});
+	it("stops following a parallel branch when that branch ends", async () => {
+		let release!: () => void;
+		const held = new Promise<void>((r) => {
+			release = r;
+		});
+		fakeSdk.on("LEFT", async (s, first) => {
+			s.init();
+			s.result(
+				`left
+${resultBlock()}`,
+				[first],
+			);
+			await s.nextUser();
+		});
+		fakeSdk.on("RIGHT", async (s, first) => {
+			s.init();
+			await held;
+			s.result(
+				`right
+${resultBlock()}`,
+				[first],
+			);
+			await s.nextUser();
+		});
+		const contents = `
+name: par
+version: "1.0"
+settings:
+  max-retry: 0
+steps:
+  - name: par
+    type: parallel
+    steps:
+      - { name: left, type: prompt, prompt: "LEFT" }
+      - { name: right, type: prompt, prompt: "RIGHT" }
+  - { name: after, type: prompt, prompt: "AFTER" }
+`;
+		const { manager, client } = await startSupervisor();
+		const res = await dispatchRun(client, payload(contents));
+		await fakeSdk.waitFor("RIGHT");
+		// The branch follows its top-level step: still active while its sibling runs
+		const page = await manager.logs(res.run.id, { step: "left" });
+		expect(page.active).toBe(true);
+		release();
+		await waitForStatus(manager, res.run.id, "done");
+		const { last } = await followLogs(client, {
+			run: res.run.id,
+			step: "left",
+			follow: true,
+			waitSeconds: 1,
+			onEntry: () => {},
+		});
+		expect(last?.active).toBe(false);
+	});
 });
 
 describe("session recovery", () => {
@@ -474,6 +528,33 @@ describe("session recovery", () => {
 			transcript(res.dir, "01-build").map((_, i) => i + 1),
 		);
 		expect(validateContractFile(store.decisionsFile).valid).toBe(true);
+	});
+
+	it("resumes a skill step's session after a supervisor restart", async () => {
+		fakeSdk.on("/esp:go", async (s) => {
+			s.init();
+			s.text("halfway");
+			await new Promise(() => {});
+		});
+		const contents = TWO_STEPS.replace(
+			'type: prompt\n    prompt: "BUILD"',
+			"type: skill\n    skill: esp:go",
+		);
+		const first = await startSupervisor();
+		const res = await dispatchRun(first.client, payload(contents));
+		await waitFor(
+			() => existsSync(path.join(res.dir, "steps", "01-build", SESSION_FILE)),
+			"session.json",
+		);
+		await stopSupervisor(first);
+
+		const second = await startSupervisor();
+		await waitForStatus(second.manager, res.run.id, "done");
+		expect(fakeSdk.sessions[1].options.resume).toBe("fake-session-1");
+		const recovered = new RunStore(res.dir).readEvents().find((e) => e.type === "run.recovered");
+		expect(recovered?.data?.sessions).toEqual([
+			expect.objectContaining({ step: "build", action: "resume", session_id: "fake-session-1" }),
+		]);
 	});
 
 	it("restarts the step from its boundary when no session was recorded", async () => {

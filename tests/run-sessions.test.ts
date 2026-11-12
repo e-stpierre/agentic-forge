@@ -387,6 +387,40 @@ describe("session steps", () => {
 		expect(pendingInputs(new RunStore(res.dir).readRun())).toEqual([]);
 	});
 
+	it("drops the request of a session that ends while it waits, and runs again", async () => {
+		let attempts = 0;
+		let release!: () => void;
+		const held = new Promise<void>((r) => {
+			release = r;
+		});
+		fakeSdk.on("BUILD", async (s, first) => {
+			attempts += 1;
+			s.init();
+			if (attempts === 1) {
+				// The session dies with its permission request still pending
+				void s.tool("Bash", { command: "npm publish" });
+				await new Promise((r) => setTimeout(r, 50));
+				return;
+			}
+			await held;
+			s.result(resultBlock(), [first]);
+			await s.nextUser();
+		});
+		const { manager, client } = await startSupervisor();
+		const contents = TWO_STEPS.replace("max-retry: 0", "max-retry: 1");
+		const res = await dispatchRun(client, payload(contents));
+		const store = new RunStore(res.dir);
+		await waitFor(() => attempts === 2, "the retry");
+		await waitFor(() => pendingInputs(store.readRun()).length === 0, "no pending request");
+		expect(store.readRun().status).toBe("running");
+		expect(manager.registry.get(res.run.id)?.status).toBe("running");
+		const resumed = eventsOf(store, "run.resumed").at(-1);
+		expect(resumed?.data).toMatchObject({ reason: "requests withdrawn", step: "build" });
+		release();
+		await waitForStatus(manager, res.run.id, "done");
+		expectValidRunDir(res.dir);
+	});
+
 	it("still reads the single-object x-af-needs-input form", () => {
 		const request = { id: "q1", question: "?", options: [], recommended: null, blocking: true };
 		const single = { step: "s", request, asked_at: "x", deadline: null };

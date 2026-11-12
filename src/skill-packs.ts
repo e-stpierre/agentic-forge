@@ -8,7 +8,8 @@
  *   listed in `<claude config dir>/plugins/installed_plugins.json`: every
  *   user-scope install, and project or local installs of this repo. Only the
  *   installed version's `installPath` is used, never older copies left in the
- *   plugin cache.
+ *   plugin cache. A plugin disabled in Claude Code (`enabledPlugins` set to
+ *   false in the user, project or local `settings.json`) is skipped.
  *
  * A directory without `af-workflows/` is not a skill pack and is skipped.
  */
@@ -78,12 +79,48 @@ function samePath(a: string, b: string): boolean {
 	return process.platform === "win32" ? ra.toLowerCase() === rb.toLowerCase() : ra === rb;
 }
 
+function readEnabledMap(file: string): Record<string, unknown> {
+	if (!existsSync(file)) return {};
+	try {
+		const data = JSON.parse(readFileSync(file, "utf-8")) as { enabledPlugins?: unknown } | null;
+		const map = data?.enabledPlugins;
+		return map && typeof map === "object" && !Array.isArray(map)
+			? (map as Record<string, unknown>)
+			: {};
+	} catch {
+		return {};
+	}
+}
+
+/**
+ * Install keys (`<plugin>@<marketplace>`) Claude Code has disabled for
+ * `repoRoot`: `enabledPlugins` of the user `settings.json`, then the
+ * project `.claude/settings.json`, then `.claude/settings.local.json`
+ * (each overrides the previous one).
+ */
+export function disabledClaudePlugins(
+	repoRoot: string,
+	claudeDir = getClaudeConfigDir(),
+): Set<string> {
+	const merged: Record<string, unknown> = {
+		...readEnabledMap(path.join(claudeDir, "settings.json")),
+		...readEnabledMap(path.join(repoRoot, ".claude", "settings.json")),
+		...readEnabledMap(path.join(repoRoot, ".claude", "settings.local.json")),
+	};
+	return new Set(
+		Object.entries(merged)
+			.filter(([, enabled]) => enabled === false)
+			.map(([key]) => key),
+	);
+}
+
 /**
  * Installed Claude Code plugins that apply to `repoRoot`, from
  * `installed_plugins.json` (format version 2: `plugins` maps
  * `<plugin>@<marketplace>` to install entries with `scope`, `installPath`,
- * `version` and, for project or local scope, `projectPath`). Returns an empty
- * list when the file is missing or unreadable.
+ * `version` and, for project or local scope, `projectPath`). Plugins disabled
+ * in Claude Code are left out (see `disabledClaudePlugins()`). Returns an
+ * empty list when the file is missing or unreadable.
  */
 export function detectClaudePlugins(
 	repoRoot: string,
@@ -99,8 +136,10 @@ export function detectClaudePlugins(
 	}
 	const plugins = (data as { plugins?: unknown } | null)?.plugins;
 	if (!plugins || typeof plugins !== "object") return [];
+	const disabled = disabledClaudePlugins(repoRoot, claudeDir);
 	const found: InstalledPlugin[] = [];
 	for (const [key, entries] of Object.entries(plugins as Record<string, unknown>)) {
+		if (disabled.has(key)) continue;
 		const list = Array.isArray(entries) ? entries : [entries];
 		for (const entry of list) {
 			if (!entry || typeof entry !== "object") continue;

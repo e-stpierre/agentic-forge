@@ -99,6 +99,27 @@ describe("detectClaudePlugins", () => {
 		expect(found[0]).toMatchObject({ root: "/cache/esp/esp-skills/0.7.0", version: "0.7.0" });
 	});
 
+	it("skips plugins disabled in Claude Code settings, local overriding project and user", () => {
+		installed({
+			"off@m": [{ scope: "user", installPath: "/cache/m/off/1" }],
+			"back@m": [{ scope: "user", installPath: "/cache/m/back/1" }],
+			"on@m": [{ scope: "user", installPath: "/cache/m/on/1" }],
+		});
+		write(
+			path.join(claudeDir, "settings.json"),
+			JSON.stringify({ enabledPlugins: { "off@m": false, "back@m": false } }),
+		);
+		write(
+			path.join(repo, ".claude", "settings.json"),
+			JSON.stringify({ enabledPlugins: { "back@m": true } }),
+		);
+		write(
+			path.join(repo, ".claude", "settings.local.json"),
+			JSON.stringify({ enabledPlugins: { "on@m": true } }),
+		);
+		expect(detectClaudePlugins(repo).map((p) => p.name)).toEqual(["back", "on"]);
+	});
+
 	it("returns nothing without an installed plugin list, or with a corrupt one", () => {
 		expect(detectClaudePlugins(repo)).toEqual([]);
 		write(path.join(claudeDir, "plugins", "installed_plugins.json"), "{not json");

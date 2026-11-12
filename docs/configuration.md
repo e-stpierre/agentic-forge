@@ -188,7 +188,7 @@ Where af finds skill packs: plugin directories that ship agentic-forge workflows
 | `skill_packs.paths`       | string[] | `[]`    | Plugin root directories (absolute, or relative to the repository), searched first               |
 | `skill_packs.auto_detect` | boolean  | `true`  | Also use the Claude Code plugins listed in `<claude config dir>/plugins/installed_plugins.json` |
 
-Auto-detection reads Claude Code's installed plugin list (`CLAUDE_CONFIG_DIR`, else `~/.claude`), not the plugin cache directory, so only the installed version of each plugin is used. It includes user-scope installs, and project or local installs whose project is the dispatching repository. When Claude Code moves that file, `af doctor` warns, and `skill_packs.paths` still works. A plain array (`"skill_packs": ["../my-pack"]`) is read as `paths` with auto-detection on.
+Auto-detection reads Claude Code's installed plugin list (`CLAUDE_CONFIG_DIR`, else `~/.claude`), not the plugin cache directory, so only the installed version of each plugin is used. It includes user-scope installs, and project or local installs whose project is the dispatching repository. A plugin disabled in Claude Code (`enabledPlugins` set to `false` in the user `settings.json`, or the repository's `.claude/settings.json` or `.claude/settings.local.json`, the later overriding the earlier) is skipped. When Claude Code moves that file, `af doctor` warns, and `skill_packs.paths` still works. A plain array (`"skill_packs": ["../my-pack"]`) is read as `paths` with auto-detection on.
 
 ```json
 { "skill_packs": { "paths": ["C:/src/my-pack"], "auto_detect": true } }

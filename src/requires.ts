@@ -131,9 +131,10 @@ export function satisfies(version: string, range: string): boolean {
 }
 
 /**
- * Parses a workflow's `requires` block. Accepts `agentic-forge` (a version
- * range string; a number such as `0.12` is read as `"0.12"`) and `contract`
- * (a positive integer). Returns null when the block is absent.
+ * Parses a workflow's `requires` block. Accepts `agentic-forge` (a quoted
+ * version range string: YAML reads an unquoted `0.10` as the number 0.1,
+ * so numbers are refused) and `contract` (a positive integer). Returns null
+ * when the block is absent.
  */
 export function parseRequires(raw: unknown): WorkflowRequires | null {
 	if (raw === undefined || raw === null) return null;
@@ -152,7 +153,12 @@ export function parseRequires(raw: unknown): WorkflowRequires | null {
 	let agenticForge: string | null = null;
 	const range = data["agentic-forge"];
 	if (range !== undefined && range !== null) {
-		if (typeof range !== "string" && typeof range !== "number") {
+		if (typeof range === "number") {
+			throw new RequiresError(
+				`requires.agentic-forge must be a quoted string, e.g. ">=0.12" (YAML reads an unquoted ${range} as a number and drops trailing zeros: 0.10 becomes 0.1)`,
+			);
+		}
+		if (typeof range !== "string") {
 			throw new RequiresError("requires.agentic-forge must be a version range string");
 		}
 		agenticForge = String(range).trim();

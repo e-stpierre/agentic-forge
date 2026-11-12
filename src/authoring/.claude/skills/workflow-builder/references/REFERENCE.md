@@ -243,6 +243,7 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
 **Constraints:**
 
 - Nested parallel steps are NOT allowed (parallel inside parallel)
+- `human-input` steps are NOT allowed anywhere under a parallel step (a parallel step cannot stop the run `awaiting-human`)
 - `worktree: true` on a parallel step is not supported when workflow-level `settings.worktree.enabled` is true
 - When `worktree: true`, each branch stays independent after completion
 
@@ -351,7 +352,7 @@ The `completion-promise` setting must match the `promise` value in the agent's J
 
 ### human-input
 
-Ask a question through the harness contract `needs_input` protocol and wait for the answer. No coding agent runs. The run stops `awaiting-human` with the request in `run.json` (`x-af-needs-input`) and a `needs_input` event; `af answer` (or `af input` when it is the only pending request) answers it, and the step reruns, finds the answer and completes. `wait-for-human` (before 0.12) is parsed as an alias: `on-timeout: continue` becomes a non-blocking request with a recommended `continue` option applied after `timeout-minutes`, any other value waits for an answer; `polling-interval` is ignored.
+Ask a question through the harness contract `needs_input` protocol and wait for the answer. No coding agent runs. The run stops `awaiting-human` with the request in `run.json` (`x-af-needs-input`) and a `needs_input` event; `af answer` (or `af input` when it is the only pending request) answers it, and the step reruns, finds the answer and completes. `wait-for-human` (before 0.12) is parsed as an alias: `on-timeout: continue` becomes a non-blocking request whose only option, `continue`, is recommended and applied after `timeout-minutes` (stop the run with `af cancel`), any other value waits for an answer; `polling-interval` is ignored.
 
 **Specific properties:**
 
@@ -622,6 +623,7 @@ When validating a workflow, check for these issues:
 - Invalid step type (not one of: prompt, skill, serial, parallel, conditional, ralph-loop, human-input; `wait-for-human` is an alias of human-input)
 - `settings.amend.step` naming a step that is not a top-level step
 - Nested parallel steps (parallel inside parallel)
+- A `human-input` step under a parallel step
 - Prompt step without `prompt` field
 - Conditional step without `condition` field
 - Ralph-loop step without `prompt` field

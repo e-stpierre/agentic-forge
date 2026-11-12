@@ -201,7 +201,15 @@ export class WorkflowParser {
 		};
 	}
 
-	private parseStep(data: Record<string, unknown>, parentIsParallel = false): StepDefinition {
+	/**
+	 * `parentIsParallel`: the direct parent is a parallel step. `inParallel`:
+	 * any ancestor is (a serial or conditional branch of a parallel step).
+	 */
+	private parseStep(
+		data: Record<string, unknown>,
+		parentIsParallel = false,
+		inParallel = parentIsParallel,
+	): StepDefinition {
 		const name = this.required(data, "name") as string;
 		const declaredType = this.required(data, "type") as string;
 		const typeStr = STEP_TYPE_ALIASES[declaredType] ?? declaredType;
@@ -217,6 +225,13 @@ export class WorkflowParser {
 		if (parentIsParallel && stepType === "parallel") {
 			throw new WorkflowParseError(
 				`Nested parallel steps are not allowed: '${name}' is a parallel step inside another parallel step`,
+			);
+		}
+
+		// A parallel step cannot stop the run awaiting-human: its branches would all rerun
+		if (inParallel && stepType === "human-input") {
+			throw new WorkflowParseError(
+				`Human-input steps are not allowed inside a parallel step: '${name}' is under a parallel step`,
 			);
 		}
 
@@ -264,15 +279,15 @@ export class WorkflowParser {
 			step.onFailure = onFailureRaw;
 		} else if (stepType === "serial") {
 			step.steps = ((data.steps as unknown[]) ?? []).map((s) =>
-				this.parseStep(s as Record<string, unknown>),
+				this.parseStep(s as Record<string, unknown>, false, inParallel),
 			);
 		} else if (stepType === "conditional") {
 			step.condition = (data.condition as string) ?? null;
 			step.thenSteps = ((data.then as unknown[]) ?? []).map((s) =>
-				this.parseStep(s as Record<string, unknown>),
+				this.parseStep(s as Record<string, unknown>, false, inParallel),
 			);
 			step.elseSteps = ((data.else as unknown[]) ?? []).map((s) =>
-				this.parseStep(s as Record<string, unknown>),
+				this.parseStep(s as Record<string, unknown>, false, inParallel),
 			);
 		} else if (stepType === "ralph-loop") {
 			step.prompt = (data.prompt as string) ?? null;
@@ -313,9 +328,9 @@ export class WorkflowParser {
 
 	/**
 	 * `human-input` fields. `wait-for-human` (before 0.12) is an alias:
-	 * `on-timeout: continue` becomes a non-blocking request whose recommended
-	 * `continue` option is applied after `timeout-minutes`; any other value
-	 * waits for an answer.
+	 * `on-timeout: continue` becomes a non-blocking request with a single
+	 * `continue` option, applied after `timeout-minutes` (stop the run with
+	 * `af cancel`); any other value waits for an answer.
 	 */
 	private parseHumanInput(
 		step: StepDefinition,
@@ -331,12 +346,7 @@ export class WorkflowParser {
 		if (legacy) {
 			const timeout = data["timeout-minutes"];
 			const proceed = data["on-timeout"] === "continue";
-			step.options = proceed
-				? [
-						{ id: "continue", label: "Continue" },
-						{ id: "abort", label: "Abort" },
-					]
-				: [];
+			step.options = proceed ? [{ id: "continue", label: "Continue" }] : [];
 			step.recommended = proceed ? "continue" : null;
 			step.blocking = !proceed;
 			step.stepTimeoutMinutes = proceed ? ((timeout as number) ?? 5) : null;
