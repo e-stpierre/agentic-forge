@@ -270,3 +270,9 @@ export function getRunIndexPath(root: string = getGlobalRoot()): string {
 export function runDatePrefix(date = new Date()): string {
 	return date.toISOString().slice(0, 10);
 }
+
+/** Claude Code config directory: `CLAUDE_CONFIG_DIR`, else `~/.claude`. */
+export function getClaudeConfigDir(): string {
+	const override = process.env.CLAUDE_CONFIG_DIR;
+	return override ? path.resolve(override) : path.join(homedir(), ".claude");
+}

@@ -117,6 +117,7 @@ Central path resolver module. Single source of truth for all directory resolutio
 - `getConfigPaths()` — global and local config file paths
 - `ensureGlobalDir()` — lazy-initializes global directory on first use
 - `sanitizeSlug(input)` — cleans user-provided slugs for safe directory names
+- `getClaudeConfigDir()` — Claude Code config directory (`CLAUDE_CONFIG_DIR`, else `~/.claude`), used by skill pack detection and `af doctor`
 
 ### `docs/`
 

@@ -12,13 +12,12 @@ import path from "node:path";
 import { loadConfig } from "../config.js";
 import { CONTRACT_VERSION } from "../contract/index.js";
 import { WorkflowParser } from "../parser.js";
-import { resolveRunsRoot } from "../paths.js";
+import { getClaudeConfigDir, resolveRunsRoot } from "../paths.js";
 import { checkRequires } from "../requires.js";
 import {
 	type SkillPack,
 	detectClaudePlugins,
 	findSkillPacks,
-	getClaudeConfigDir,
 	getInstalledPluginsPath,
 	getSkillPackConfig,
 } from "../skill-packs.js";

@@ -1079,8 +1079,16 @@ export class RunManager {
 			mode: "next",
 			step: pending.step,
 		});
-		await store.updateRun({ "x-af-needs-input": null });
-		this.clearTimer(id);
+		// Only the answered request is removed: the run keeps waiting until every
+		// other recovered request has its answer too
+		const left = await this.withInputLock(id, async () => {
+			const run = await store.updateRunWith((current) => {
+				const remaining = pendingInputs(current).filter((p) => p.request.id !== request.id);
+				return { "x-af-needs-input": remaining.length > 0 ? remaining : null };
+			});
+			return pendingInputs(run).length;
+		});
+		this.clearTimer(id, request.id);
 		await store.appendEvent("message.queued", messageEventData(message));
 		await store.appendEvent("input.answered", {
 			id: request.id,
@@ -1103,6 +1111,9 @@ export class RunManager {
 			alternatives: request.options.filter((o) => o.id !== option?.id).map((o) => o.label),
 			refs: [request.id, message.id],
 		});
+		if (left > 0) {
+			return { id, request: request.id, message: message.id, status: "awaiting-human" };
+		}
 		await this.resume(id);
 		return { id, request: request.id, message: message.id, status: "queued" };
 	}

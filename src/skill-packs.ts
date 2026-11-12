@@ -15,8 +15,8 @@
  */
 
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import path from "node:path";
+import { getClaudeConfigDir } from "./paths.js";
 
 /** Directory inside a plugin that holds its agentic-forge workflows. */
 export const PACK_WORKFLOWS_DIR = "af-workflows";
@@ -53,12 +53,6 @@ export function getSkillPackConfig(config: Record<string, unknown>): SkillPackCo
 		? obj.paths.filter((p): p is string => typeof p === "string" && p.length > 0)
 		: [];
 	return { paths, autoDetect: obj.auto_detect !== false };
-}
-
-/** Claude Code config directory: `CLAUDE_CONFIG_DIR`, else `~/.claude`. */
-export function getClaudeConfigDir(): string {
-	const override = process.env.CLAUDE_CONFIG_DIR;
-	return override ? path.resolve(override) : path.join(homedir(), ".claude");
 }
 
 /** Path of Claude Code's installed plugin list. */

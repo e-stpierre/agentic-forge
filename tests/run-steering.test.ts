@@ -16,7 +16,7 @@ import { exitCodeForRun, parseResultBlock, resultStatusFromExit } from "../src/c
 import { WorkflowParseError, WorkflowParser } from "../src/parser.js";
 import { dispatchRun } from "../src/runs/client.js";
 import type { DispatchPayload } from "../src/runs/dispatch.js";
-import { RunManager, pendingInput } from "../src/runs/manager.js";
+import { RunManager, pendingInput, pendingInputs } from "../src/runs/manager.js";
 import { RunStore } from "../src/runs/run-store.js";
 import type { RuntimeResult, RuntimeRunOptions } from "../src/runtimes/types.js";
 import { SessionOutput } from "../src/runtimes/types.js";
@@ -324,6 +324,49 @@ describe("needs_input and af answer", () => {
 			status: 409,
 		});
 		expectValidRunDir(res.dir);
+	});
+
+	it("keeps the other requests pending and waits until every one is answered", async () => {
+		const { manager, client } = await startSupervisor();
+		let asks = 0;
+		fakeRuntime.on("BUILD", (o) => {
+			asks++;
+			return asks === 1
+				? reply(
+						o,
+						block({ status: "awaiting-human", summary: "Need a choice.", needs_input: QUESTION }),
+					)
+				: reply(o, block({ status: "done", summary: "Built." }));
+		});
+		const res = await dispatchRun(client, payload());
+		await manager.idle();
+		const store = new RunStore(res.dir);
+		// A second request, as recovered from parallel live sessions after a restart
+		const first = pendingInput(store.readRun());
+		const second = { ...first, request: { ...QUESTION, id: "q2", question: "Which cache?" } };
+		await store.updateRun({ "x-af-needs-input": [first, second] });
+
+		const route = `/v1/runs/${res.run.id}/answer`;
+		const one = await client.request<{ status: string }>("POST", route, {
+			request_id: "q1",
+			answer: "a",
+		});
+		expect(one.status).toBe("awaiting-human");
+		await manager.idle();
+		expect(store.readRun().status).toBe("awaiting-human");
+		expect(pendingInputs(store.readRun()).map((p) => p.request.id)).toEqual(["q2"]);
+		expect(prompts("BUILD")).toHaveLength(1);
+
+		const two = await client.request<{ status: string }>("POST", route, {
+			request_id: "q2",
+			answer: "b",
+		});
+		expect(two.status).toBe("queued");
+		await manager.idle();
+		expect(store.readRun().status).toBe("done");
+		const rerun = prompts("BUILD")[1];
+		expect(rerun).toContain("Answer to q1");
+		expect(rerun).toContain("Answer to q2");
 	});
 
 	it("applies the recommended option of a non-blocking request after the timeout", async () => {
