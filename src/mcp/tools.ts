@@ -188,6 +188,9 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 					.describe(
 						"Run despite an unmet requires agentic-forge version (never the contract); adds a warning",
 					),
+				parent: runId(
+					"Parent run id, such as your overseer run (af_list_runs parent lists its children)",
+				).optional(),
 			},
 		},
 		async (input) => {
@@ -203,6 +206,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 				slug: input.slug,
 				priority: input.priority,
 				ignoreRequires: input.ignore_requires,
+				parent: input.parent,
 			});
 			const result = await withClient(ctx.clients, (client) => dispatchRun(client, payload));
 			return jsonResult({

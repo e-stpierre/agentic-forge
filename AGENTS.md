@@ -24,7 +24,7 @@ Interactive authoring skills for users to create and manage workflows (e.g., `wo
 
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, etc.). `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`).
+CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, `overseer`, etc.). `overseer.ts` holds `cmdOverseer()` (opens the overseer run, writes `<run dir>/overseer/mcp.json`, starts `claude` through the injectable `launch`), `buildOverseerCommand()`, `overseerPrompt()` and `getOverseerPluginDir()`. `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`).
 
 #### `prompts/`
 
@@ -84,7 +84,8 @@ Runs owned by the supervisor:
 
 - `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines; live transcripts through the session host and `logs()` behind `GET /v1/runs/:id/logs`; session resume or restart in recovery, `run.recovered` `sessions`)
 - `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
-- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
+- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`, entries carry `type: overseer` for overseer runs), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
+- `overseer.ts` — overseer runs (`openOverseer()`: create, reuse or resume; `writeOverseerSummary()`; `isOverseerEntry()`; `overseer.json`, `epic.md`), behind `RunManager.openOverseer()` / `finishOverseer()` and `POST /v1/overseer`. The supervisor never executes them: scheduling, crash recovery and `activeCount()` skip them, and `requireWorkflowRun()` refuses the control operations
 - `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
 - `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
@@ -117,6 +118,10 @@ The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)
 
 MCP tests (`tests/mcp-server.test.ts`) connect an SDK `Client` to `createMcpServer()` through `InMemoryTransport.createLinkedPair()`, with an in-process `Supervisor` and `RunManager` and `fakeRuntime`. `tests/mcp-stdio.test.ts` runs the built `dist/cli.js mcp` over real stdio (skipped without a build).
+
+#### `overseer/`
+
+The bundled `af-overseer` Claude Code plugin (`.claude-plugin/plugin.json`, version kept equal to `package.json`, and `skills/overseer/SKILL.md`), copied to `dist/overseer` and loaded by `af overseer` with `--plugin-dir`. Tests: `tests/overseer.test.ts`.
 
 #### `workflows/`
 

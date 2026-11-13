@@ -142,6 +142,16 @@ claude mcp add agentic-forge -- af mcp
 
 See the [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md#mcp) for the tools and other clients.
 
+### Overseer
+
+`af overseer` starts an interactive Claude Code session that oversees your runs: it dispatches workflows, wakes on their events, relays your corrections and questions, and reports when they finish. It comes with its own skill and the af MCP server, so nothing needs to be installed first:
+
+```bash
+af overseer --epic docs/epics/search.md
+```
+
+The runs keep going when the session closes; `af overseer --resume <run>` reopens it and the overseer rebuilds its picture from the harness. See the [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md#overseer).
+
 ## Documentation
 
 | Document                                                                                           | Description                                                                     |

@@ -70,6 +70,15 @@ import {
 } from "./events.js";
 import { Inbox, type InboxMessage, type NewMessage, formatOperatorMessages } from "./inbox.js";
 import {
+	OverseerError,
+	type OverseerFinishInput,
+	type OverseerOpenResult,
+	type OverseerPayload,
+	isOverseerEntry,
+	openOverseer,
+	writeOverseerSummary,
+} from "./overseer.js";
+import {
 	type RegistryEntry,
 	type RunListFilter,
 	RunRegistry,
@@ -397,12 +406,15 @@ export class RunManager {
 		});
 	}
 
-	/** Runs that are executing or waiting in the queue. */
+	/** Runs that are executing or waiting in the queue (an open overseer run executes nothing). */
 	activeCount(): number {
 		return this.registry
 			.list()
-			.filter((r) => r.status === "running" || r.status === "queued" || this.executing.has(r.id))
-			.length;
+			.filter(
+				(r) =>
+					!isOverseerEntry(r) &&
+					(r.status === "running" || r.status === "queued" || this.executing.has(r.id)),
+			).length;
 	}
 
 	/** Registers the `/v1/runs` routes, the active-run count and the shutdown hook on a supervisor. */
@@ -498,6 +510,52 @@ export class RunManager {
 		supervisor.route("POST", "/v1/notifications", ({ body }) =>
 			wrap(() => this.notify((body ?? {}) as NotifyInput))(),
 		);
+		supervisor.route("POST", "/v1/overseer", ({ body }) =>
+			wrap(() => this.openOverseer((body ?? {}) as OverseerPayload), 201)(),
+		);
+		supervisor.route("POST", "/v1/overseer/:id/finish", ({ params, body }) =>
+			wrap(() => this.finishOverseer(params.id, (body ?? {}) as OverseerFinishInput))(),
+		);
+	}
+
+	/**
+	 * `af overseer`: creates an overseer run, reuses the open one of the
+	 * repository, or reopens one (`resume`). The supervisor records it and
+	 * never executes it.
+	 */
+	async openOverseer(payload: OverseerPayload): Promise<OverseerOpenResult> {
+		if (this.closed) throw new RunError("Supervisor is shutting down", 503);
+		try {
+			return await openOverseer(
+				{
+					registry: this.registry,
+					log: this.log,
+					allocateRunDir: (root, slug) => this.allocateRunDir(root, slug),
+				},
+				payload,
+			);
+		} catch (err) {
+			if (err instanceof OverseerError) throw new RunError(err.message, err.status);
+			throw err;
+		}
+	}
+
+	/** `af overseer --finish`: writes summary.md and ends the overseer run (`run.completed` for done). */
+	async finishOverseer(
+		id: string,
+		input: OverseerFinishInput,
+	): Promise<{ id: string; status: RunStatus; summary: string }> {
+		const entry = this.requireEntry(id);
+		let result: { status: RunStatus; summary: string };
+		try {
+			result = writeOverseerSummary(entry, input);
+		} catch (err) {
+			if (err instanceof OverseerError) throw new RunError(err.message, err.status);
+			throw err;
+		}
+		await this.setStatus(entry, result.status, { type: "overseer", summary: "summary.md" });
+		this.log(`Overseer run finished: ${id} (${result.status})`);
+		return { id, status: result.status, summary: result.summary };
 	}
 
 	/** Recovers interrupted runs, then starts the queue. Call once at startup. */
@@ -670,6 +728,18 @@ export class RunManager {
 		return entry;
 	}
 
+	/** requireEntry() for the control operations an overseer run does not take (it is never executed). */
+	private requireWorkflowRun(id: string, action: string): RegistryEntry {
+		const entry = this.requireEntry(id);
+		if (isOverseerEntry(entry)) {
+			throw new RunError(
+				`Cannot ${action} an overseer run: talk to the overseer in its session (af overseer --resume ${id}), or end it with af overseer --finish ${id}`,
+				409,
+			);
+		}
+		return entry;
+	}
+
 	private parseWorkflow(payload: DispatchPayload): WorkflowDefinition {
 		try {
 			return new WorkflowParser(path.dirname(payload.workflow.path)).parseString(
@@ -688,6 +758,10 @@ export class RunManager {
 		const invalid = validateDispatch(payload);
 		if (invalid) throw new RunError(`Invalid dispatch: ${invalid}`);
 		if (this.closed) throw new RunError("Supervisor is shutting down", 503);
+		const parent = payload.parent ?? null;
+		if (parent && !this.registry.get(parent)) {
+			throw new RunError(`Parent run not found: ${parent}`);
+		}
 		const workflow = this.parseWorkflow(payload);
 		// Refused before the run exists, so no step ever runs.
 		const requires = checkRequires(workflow.name, workflow.requires, {
@@ -727,7 +801,7 @@ export class RunManager {
 			type: "workflow",
 			title: workflow.name,
 			workflow: workflow.name,
-			parent: null,
+			parent,
 			repo: payload.repo_root,
 			base: null,
 			branch: null,
@@ -756,6 +830,7 @@ export class RunManager {
 			workflow: workflow.name,
 			repo: payload.repo_root,
 			workflow_path: payload.workflow.path,
+			...(parent ? { parent } : {}),
 		});
 		this.log(`Run queued: ${store.id} (${workflow.name}, ${payload.repo_root})`);
 		this.schedule();
@@ -808,7 +883,7 @@ export class RunManager {
 		id: string,
 		options: { now?: boolean } = {},
 	): Promise<{ id: string; status: RunStatus | "pausing" }> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "pause");
 		if (!PAUSABLE_STATUSES.includes(entry.status)) {
 			throw new RunError(`Cannot pause run in '${entry.status}' status`, 409);
 		}
@@ -833,7 +908,7 @@ export class RunManager {
 		id: string,
 		input: NewMessage,
 	): Promise<{ id: string; message: InboxMessage; steered: boolean }> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "send a message to");
 		const text = typeof input.text === "string" ? input.text.trim() : "";
 		if (!text) throw new RunError("Message text is required");
 		const mode = input.mode ?? "next";
@@ -1065,7 +1140,7 @@ export class RunManager {
 	 * runs again with the answer in its `## Operator Messages` section.
 	 */
 	async answer(id: string, input: AnswerInput): Promise<AnswerResult> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "answer");
 		if (entry.status !== "awaiting-human") {
 			throw new RunError(`Cannot answer a run in '${entry.status}' status`, 409);
 		}
@@ -1384,7 +1459,7 @@ export class RunManager {
 	 * delivered as an `Amendment:` operator message at the next boundary.
 	 */
 	async amend(id: string, input: AmendInput): Promise<AmendResult> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "amend");
 		const text = typeof input.text === "string" ? input.text.trim() : "";
 		if (!text) throw new RunError("Amendment text is required");
 		const from = input.from ?? "user";
@@ -1502,7 +1577,7 @@ export class RunManager {
 	 * completed. Optional extra context is queued as an operator message for it.
 	 */
 	async retryStep(id: string, input: RetryInput): Promise<RetryResult> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "retry a step of");
 		if (!RESUMABLE_STATUSES.includes(entry.status)) {
 			throw new RunError(`Cannot retry a step of a run in '${entry.status}' status`, 409);
 		}
@@ -1540,7 +1615,7 @@ export class RunManager {
 		if (typeof priority !== "number" || !Number.isInteger(priority)) {
 			throw new RunError("priority must be an integer");
 		}
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "reprioritize");
 		if (isTerminal(entry.status)) {
 			throw new RunError(`Cannot reprioritize a run in '${entry.status}' status`, 409);
 		}
@@ -1663,7 +1738,7 @@ export class RunManager {
 
 	/** Re-queues a paused, waiting, blocked or failed run; it resumes from the last completed step. */
 	async resume(id: string): Promise<{ id: string; status: RunStatus }> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "resume");
 		if (this.executing.has(id) && entry.status === "awaiting-human") {
 			throw new RunError("Run is still executing: a live session waits for af answer", 409);
 		}
@@ -1712,8 +1787,13 @@ export class RunManager {
 					this.rescheduleRequested = false;
 					const runs = this.registry.list();
 					// A run waiting on a live session (awaiting-human) still holds its checkout
-					const running = runs.filter((r) => r.status === "running" || this.executing.has(r.id));
-					const queued = runs.filter((r) => r.status === "queued" && !this.executing.has(r.id));
+					// An open overseer run holds no checkout and is never executed
+					const running = runs.filter(
+						(r) => !isOverseerEntry(r) && (r.status === "running" || this.executing.has(r.id)),
+					);
+					const queued = runs.filter(
+						(r) => !isOverseerEntry(r) && r.status === "queued" && !this.executing.has(r.id),
+					);
 					const picked = pickRunnable(queued, running, {
 						maxParallelRuns: readNumber(
 							this.globalConfig(),
@@ -1954,6 +2034,8 @@ export class RunManager {
 		const recovered: string[] = [];
 		for (const entry of this.registry.list()) {
 			if (this.executing.has(entry.id)) continue;
+			// An overseer run stays open across supervisor restarts: its session is not ours
+			if (isOverseerEntry(entry)) continue;
 			const store = new RunStore(entry.dir);
 			if (!store.exists()) continue;
 			const run = store.readRun();

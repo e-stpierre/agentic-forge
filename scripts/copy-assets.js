@@ -7,7 +7,7 @@ const root = join(__dirname, "..");
 const src = join(root, "src");
 const dist = join(root, "dist");
 
-const assets = ["authoring", "prompts", "templates", "workflows"];
+const assets = ["authoring", "overseer", "prompts", "templates", "workflows"];
 
 for (const asset of assets) {
 	const srcPath = join(src, asset);

@@ -571,7 +571,7 @@ At the next step boundary, the supervisor runs the amend step with the amendment
 
 ```bash
 # Run a workflow (bare key=value args or --var flag)
-agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex] [--ignore-requires]
+agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex] [--ignore-requires] [--parent <run>]
 
 # Resume a paused/failed workflow
 agentic-forge resume <workflow-id>
@@ -614,6 +614,10 @@ agentic-forge artifacts <workflow-id> [--kind plan|summary|decisions|review] [--
 
 # Run a stdio MCP server that dispatches and steers runs (claude mcp add agentic-forge -- af mcp)
 agentic-forge mcp
+
+# Start an interactive Claude overseer session (dispatches with itself as --parent), or end one
+agentic-forge overseer [--epic <file|text>] [--resume <run>] [--new]
+agentic-forge overseer --finish <run> [--status done|halted|failed] [--summary "text"]
 
 # Answer the single pending request of an awaiting-human run (human-input steps)
 agentic-forge input <workflow-id> "response text"

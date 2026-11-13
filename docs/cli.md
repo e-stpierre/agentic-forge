@@ -30,6 +30,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `paths`         | Show resolved directory and config paths             |
 | `serve`         | Run, start, inspect or stop the supervisor           |
 | `mcp`           | Run a stdio MCP server to dispatch and steer runs    |
+| `overseer`      | Start an interactive Claude overseer session         |
 | `authoring-dir` | Print path to interactive authoring skills directory |
 | `release-notes` | Show release notes and changelog                     |
 | `version`       | Show current version                                 |
@@ -71,6 +72,7 @@ af run <workflow> [vars...] [options]
 | `--no-interactive`         | Disable interactive prompts for missing variables                                                                                                                                                                      |
 | `--terminal-output <mode>` | Terminal output granularity: `base` or `all`                                                                                                                                                                           |
 | `--ignore-requires`        | Run a workflow whose `requires` asks for a newer agentic-forge, with a warning. Never overrides the `contract` requirement.                                                                                            |
+| `--parent <run>`           | Parent run ID recorded in `run.json` `parent` (for example an overseer run). `af list --parent` lists the children. An unknown run is refused.                                                                         |
 | `--list`                   | List all available workflows (same output as `af workflows`)                                                                                                                                                           |
 
 ### Examples
@@ -714,7 +716,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 
 | Tool            | Inputs                                                                         | Supervisor endpoint                         | CLI equivalent  |
 | --------------- | ------------------------------------------------------------------------------ | ------------------------------------------- | --------------- |
-| `af_dispatch`   | `workflow`, `repo?`, `vars?`, `runtime?`, `slug?`, `priority?`                 | `POST /v1/runs`                             | `af run`        |
+| `af_dispatch`   | `workflow`, `repo?`, `vars?`, `runtime?`, `slug?`, `priority?`, `parent?`      | `POST /v1/runs`                             | `af run`        |
 | `af_status`     | `run?` (without it: the active runs)                                           | `GET /v1/runs/:id`, `GET /v1/runs`          | `af status`     |
 | `af_list_runs`  | `status?` (one or a list), `repo?`, `since?`, `parent?`, `limit?`              | `GET /v1/runs`                              | `af list`       |
 | `af_events`     | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_now?` | `GET /v1/events`                            | `af events`     |
@@ -729,7 +731,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 | `af_notify`     | `text`, `level?` (`info`, `warning`, `error`), `run?`, `title?`                | `POST /v1/notifications`                    | `af notify`     |
 | `af_artifacts`  | `run`, `kind?` (`plan`, `summary`, `decisions`, `review`), `content?`          | none (reads the run registry and directory) | `af artifacts`  |
 
-- `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. Returns `{ run_id, status, dir, workflow, warnings }`
+- `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. `parent` records the run that dispatched it (an overseer passes its own run). Returns `{ run_id, status, dir, workflow, warnings }`
 - `af_list_runs`: newest first, cut to `limit` (default 50); returns `{ runs, total }`
 - `af_events`: returns `{ events, cursor, more, status }`; pass `cursor` back to resume without duplicates. `wait_seconds` long-polls until a new event arrives or the wait ends. `types` takes exact types or prefixes such as `run.*`
 - `af_logs`: the live transcript of a run (see [logs](#logs)), as compact JSON `{ run, step, entries, cursor, more, truncated, active, status }`. Without `cursor`, the last `limit` entries (default 20); with it, only newer ones. Each entry's text is cut to 500 characters and the page to about 8 KB, with `truncated: true`; an explicit `max_chars` (up to 20,000) lifts the page budget. `active` is false once the step (or run) ended; `wait_seconds` long-polls for new entries while it is active
@@ -774,6 +776,72 @@ Project `.mcp.json` (Claude Code) or `claude_desktop_config.json` (Claude Deskto
 ```
 
 `af_dispatch` uses the server's working directory as the default `repo`. Claude Desktop starts servers outside any project, so pass `repo` explicitly there.
+
+## overseer
+
+Start an interactive Claude Code session that oversees runs: it dispatches workflows, follows their events, relays your corrections and questions, and reports completion. The session uses the bundled `af-overseer` plugin (the `overseer` skill) and the af MCP server, and works in an overseer run (`run.json` `type: overseer`) that the supervisor records but never executes.
+
+```bash
+af overseer [options] [-- <claude args>]
+```
+
+`af overseer` creates an overseer run, or reuses the open overseer run of the current repository, then starts `claude` in the repository with:
+
+- the first prompt `/af-overseer:overseer --run <id> --run-dir <dir> --af <command> --session <n> [--epic <file>] [--rehydrate]`
+- `--plugin-dir` of the bundled `af-overseer` plugin (`dist/overseer`)
+- `--mcp-config <run dir>/overseer/mcp.json`: the af MCP server as `agentic-forge` (node with this af CLI, so `af` does not need to be on PATH)
+- `--add-dir <run dir>` and `--allowedTools mcp__agentic-forge` (the af tools run without a permission prompt)
+
+When the session ends, the overseer run stays open: reopen it later with `--resume`, or end it with `--finish`.
+
+### Options
+
+| Option              | Description                                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `--epic <file       | text>`                                                                                               | The epic to work on: an existing file is read, anything else is taken as the text. Always starts a new overseer run |
+| `--resume <run>`    | Reopen this overseer run in a new session. The overseer rehydrates from the harness (`--rehydrate`)  |
+| `--new`             | Create a new overseer run even when one is open for this repository                                  |
+| `--model <model>`   | Model of the claude session                                                                          |
+| `--print-command`   | Open the run, print the claude command and exit (start it yourself, for example in another terminal) |
+| `--finish <run>`    | End an overseer run: writes `summary.md` and emits `run.completed` (or `run.halted`, `run.failed`)   |
+| `--status <status>` | With `--finish`: `done` (default), `halted` or `failed`                                              |
+| `--summary <text>`  | With `--finish`: the summary text                                                                    |
+
+Arguments after `--` go to `claude` unchanged.
+
+### Overseer runs
+
+- **Files**: `run.json`, `events.jsonl`, `overseer.json` (repository, config snapshot, one entry per session), `epic.md` (the epic, when given), `overseer/` (MCP config and the event monitor cursor), and `summary.md` once finished
+- **Status**: `running` while open, across sessions and supervisor restarts. It holds no checkout, does not count as an active run, and crash recovery leaves it alone. `pause`, `resume`, `send`, `amend` and `retry-step` are refused (talk to the overseer in its session); `af cancel` ends it as `canceled`
+- **Events**: `run.started` (`type: overseer`, `session: 1`), `run.resumed` for each later session, and the end event of `--finish`. The default notification triggers include `run.completed` of overseer runs
+- **Children**: the overseer passes its run as `parent` to `af_dispatch`, so `af list --parent <run>` and `af_list_runs` with `parent` list what it dispatched
+- **Epics** (v1): a file or a text. To work from a GitHub issue or milestone, pass its URL as the text; the overseer reads it with `gh`
+
+### Event monitor
+
+The overseer skill starts this as a background Monitor, so the session wakes on the events that need it:
+
+```bash
+af events --follow --new --cursor-file "<run dir>/overseer/events.cursor" --types "needs_input,run.*,step.failed,merge.completed"
+```
+
+The cursor file keeps the position across sessions: after `--resume`, the monitor continues after the last event the previous session saw.
+
+### Examples
+
+```bash
+# Start (or reuse) the overseer of this repository
+af overseer
+
+# Start an overseer on an epic file
+af overseer --epic docs/epics/search.md
+
+# Reopen it after closing the session
+af overseer --resume 2026-11-11-overseer
+
+# End it with a summary
+af overseer --finish 2026-11-11-overseer --summary "T01 and T02 merged, T03 left"
+```
 
 ## authoring-dir
 

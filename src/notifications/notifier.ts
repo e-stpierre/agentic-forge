@@ -15,6 +15,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { TERMINAL_RUN_STATUSES } from "../contract/index.js";
 import type { DispatchPayload } from "../runs/dispatch.js";
+import { OVERSEER_FILE } from "../runs/overseer.js";
 import type { RegistryEntry, RunRegistry } from "../runs/registry.js";
 import { type RunEvent, RunStore } from "../runs/run-store.js";
 import {
@@ -254,7 +255,9 @@ export class Notifier {
 		if (cached) return cached;
 		let snapshot: Record<string, unknown> = {};
 		try {
-			snapshot = new RunStore(entry.dir).readJson<DispatchPayload>("dispatch.json").config ?? {};
+			// Overseer runs keep their config snapshot in overseer.json
+			const file = entry.type === "overseer" ? OVERSEER_FILE : "dispatch.json";
+			snapshot = new RunStore(entry.dir).readJson<DispatchPayload>(file).config ?? {};
 		} catch {
 			// No snapshot: defaults (every channel off)
 		}

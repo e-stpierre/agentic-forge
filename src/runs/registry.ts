@@ -16,6 +16,8 @@ export interface RegistryEntry {
 	/** Repository root the run was dispatched from. */
 	repo: string;
 	workflow: string;
+	/** `overseer` for an overseer run (never executed by the supervisor); absent for workflow runs. */
+	type?: "overseer";
 	status: RunStatus;
 	/** True when the run works in its own worktree (does not hold the checkout). */
 	worktree: boolean;
