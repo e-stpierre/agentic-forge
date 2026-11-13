@@ -7,8 +7,8 @@
 import { type OverseerConfig, getOverseerConfig } from "../config.js";
 import type { RunStatus } from "../contract/index.js";
 import {
-	type BacklogFile,
 	BacklogError,
+	type BacklogFile,
 	type BacklogItem,
 	type BacklogView,
 	type NewItemInput,
@@ -94,7 +94,8 @@ export class BacklogService {
 		return ms / 60_000;
 	}
 
-	private runStatus = (run: string): RunStatus | null => this.deps.registry.get(run)?.status ?? null;
+	private runStatus = (run: string): RunStatus | null =>
+		this.deps.registry.get(run)?.status ?? null;
 
 	/** Items whose run ended take its outcome; `budgets_used` follows. Call under the backlog lock. */
 	private reconcile(backlog: BacklogFile): void {
@@ -135,7 +136,9 @@ export class BacklogService {
 		await this.recordBudgets(entry, backlog);
 		const view = this.view(entry, backlog);
 		const items =
-			statuses.length > 0 ? backlog.items.filter((i) => statuses.includes(i.status)) : backlog.items;
+			statuses.length > 0
+				? backlog.items.filter((i) => statuses.includes(i.status))
+				: backlog.items;
 		return { run: id, items, ...view };
 	}
 
@@ -162,7 +165,8 @@ export class BacklogService {
 	): Promise<{ run: string; item: BacklogItem; runnable: string[] }> {
 		const entry = this.openOverseer(id);
 		if (typeof itemId !== "string" || !itemId) throw new BacklogError("item id is required");
-		if (typeof fields !== "object" || fields === null) throw new BacklogError("fields must be an object");
+		if (typeof fields !== "object" || fields === null)
+			throw new BacklogError("fields must be an object");
 		const config = this.config(entry);
 		const { item, backlog } = await updateBacklog(entry.dir, id, (b) => {
 			this.reconcile(b);
@@ -189,7 +193,8 @@ export class BacklogService {
 		const { result, backlog } = await updateBacklog(entry.dir, overseer, async (b) => {
 			this.reconcile(b);
 			const refusal = dispatchRefusal(b, itemId, this.view(entry, b));
-			if (refusal) throw new BacklogError(refusal, b.items.some((i) => i.id === itemId) ? 409 : 404);
+			if (refusal)
+				throw new BacklogError(refusal, b.items.some((i) => i.id === itemId) ? 409 : 404);
 			const created = await create();
 			startItem(b, itemId, created.run.id);
 			return { result: created, backlog: b };

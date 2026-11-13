@@ -226,7 +226,9 @@ function oneOf<T extends string>(list: readonly T[], value: unknown, field: stri
 function checkFields(fields: Record<string, unknown>, allowed: readonly string[]): void {
 	const unknown = Object.keys(fields).filter((k) => !allowed.includes(k));
 	if (unknown.length > 0) {
-		throw new BacklogError(`Unknown item field(s): ${unknown.join(", ")}. Fields: ${allowed.join(", ")}`);
+		throw new BacklogError(
+			`Unknown item field(s): ${unknown.join(", ")}. Fields: ${allowed.join(", ")}`,
+		);
 	}
 }
 
@@ -308,7 +310,8 @@ export function addItems(
 	const added: BacklogItem[] = [];
 	let next = backlog.next;
 	for (const input of inputs) {
-		if (typeof input !== "object" || input === null) throw new BacklogError("Each item must be an object");
+		if (typeof input !== "object" || input === null)
+			throw new BacklogError("Each item must be an object");
 		const { discovered, ...fields } = input;
 		checkFields(fields, ITEM_FIELDS);
 		const status =
@@ -386,7 +389,10 @@ export function updateItem(
 	if (typeof fields !== "object" || fields === null || Object.keys(fields).length === 0) {
 		throw new BacklogError("fields must name at least one item field");
 	}
-	checkFields(fields, ITEM_FIELDS.filter((f) => f !== "source"));
+	checkFields(
+		fields,
+		ITEM_FIELDS.filter((f) => f !== "source"),
+	);
 	const next: BacklogItem = { ...item };
 	if ("title" in fields) next.title = str(fields.title, "title", { nullable: false }) as string;
 	if ("description" in fields) next.description = str(fields.description, "description");
@@ -407,7 +413,10 @@ export function updateItem(
 	if ("depends_on" in fields) next.depends_on = strList(fields.depends_on, "depends_on");
 	if ("conflict_zones" in fields) {
 		if (item.status === "running") {
-			throw new BacklogError(`${id} is running: its conflict zones cannot change until its run ends`, 409);
+			throw new BacklogError(
+				`${id} is running: its conflict zones cannot change until its run ends`,
+				409,
+			);
 		}
 		next.conflict_zones = strList(fields.conflict_zones, "conflict_zones");
 	}
@@ -422,7 +431,9 @@ export function updateItem(
 			const allowed = MANUAL_TRANSITIONS[item.status];
 			throw new BacklogError(
 				`${id} cannot go from ${item.status} to ${status}${
-					allowed.length ? ` (allowed: ${allowed.join(", ")})` : " (the harness sets it from the run)"
+					allowed.length
+						? ` (allowed: ${allowed.join(", ")})`
+						: " (the harness sets it from the run)"
 				}`,
 				409,
 			);
@@ -465,7 +476,14 @@ export interface ScheduleInput {
 	runMinutes: number;
 }
 
-const OPEN_FINDING_STATUSES: readonly ItemStatus[] = ["proposed", "ready", "running", "logged", "failed", "halted"];
+const OPEN_FINDING_STATUSES: readonly ItemStatus[] = [
+	"proposed",
+	"ready",
+	"running",
+	"logged",
+	"failed",
+	"halted",
+];
 
 /** Why the epic halts per `halt_epic_on`, or null. */
 export function epicHalt(items: readonly BacklogItem[], input: ScheduleInput): string | null {
@@ -479,7 +497,9 @@ export function epicHalt(items: readonly BacklogItem[], input: ScheduleInput): s
 	}
 	if (on.has("critical")) {
 		const critical = items
-			.filter((i) => i.discovered?.severity === "critical" && OPEN_FINDING_STATUSES.includes(i.status))
+			.filter(
+				(i) => i.discovered?.severity === "critical" && OPEN_FINDING_STATUSES.includes(i.status),
+			)
 			.map((i) => i.id);
 		if (critical.length > 0) {
 			return `critical finding ${critical.join(", ")} is open: ask the user (fix it first, or drop it)`;
@@ -526,14 +546,16 @@ export function scheduleBacklog(backlog: BacklogFile, input: ScheduleInput): Bac
 			continue;
 		}
 		if (item.runs.length > config.budgets.maxRetries) {
-			waiting[item.id] = `retries exhausted (${item.runs.length} runs, budgets.max_retries ${config.budgets.maxRetries})`;
+			waiting[item.id] =
+				`retries exhausted (${item.runs.length} runs, budgets.max_retries ${config.budgets.maxRetries})`;
 			continue;
 		}
 		const conflict = occupied
 			.map((o) => ({ o, zone: itemsConflict(item, o) }))
 			.find((c) => c.zone !== null);
 		if (conflict) {
-			waiting[item.id] = `conflicts with ${conflict.o.id} (${conflict.o.status === "running" ? "running" : "starts first"}): ${conflict.zone}`;
+			waiting[item.id] =
+				`conflicts with ${conflict.o.id} (${conflict.o.status === "running" ? "running" : "starts first"}): ${conflict.zone}`;
 			continue;
 		}
 		if (occupied.length >= config.maxParallel) {
@@ -611,7 +633,12 @@ export function reconcileItems(
 }
 
 /** Marks an item running for a new dispatch (after `scheduleBacklog()` allowed it). */
-export function startItem(backlog: BacklogFile, id: string, run: string, now = new Date().toISOString()): BacklogItem {
+export function startItem(
+	backlog: BacklogFile,
+	id: string,
+	run: string,
+	now = new Date().toISOString(),
+): BacklogItem {
 	const item = backlog.items.find((i) => i.id === id);
 	if (!item) throw new BacklogError(`Unknown backlog item ${id}`, 404);
 	item.status = "running";
@@ -622,7 +649,11 @@ export function startItem(backlog: BacklogFile, id: string, run: string, now = n
 }
 
 /** Why an item cannot be dispatched now, or null when the scheduler allows it. */
-export function dispatchRefusal(backlog: BacklogFile, id: string, view: BacklogView): string | null {
+export function dispatchRefusal(
+	backlog: BacklogFile,
+	id: string,
+	view: BacklogView,
+): string | null {
 	const item = backlog.items.find((i) => i.id === id);
 	if (!item) {
 		const ids = backlog.items.map((i) => i.id).join(", ") || "none";
@@ -637,7 +668,10 @@ export function dispatchRefusal(backlog: BacklogFile, id: string, view: BacklogV
 
 /** Dedupe key of a discovered item. */
 export function discoveredKey(run: string, step: string, type: string, title: string): string {
-	return createHash("sha256").update(`${run}\n${step}\n${type}\n${title}`).digest("hex").slice(0, 16);
+	return createHash("sha256")
+		.update(`${run}\n${step}\n${type}\n${title}`)
+		.digest("hex")
+		.slice(0, 16);
 }
 
 export interface DiscoveredOutcome {
@@ -677,7 +711,9 @@ export function acceptDiscovered(
 			status = "logged";
 			reason = `${reason}, logged: task budget spent (budgets.max_tasks ${config.budgets.maxTasks})`;
 		}
-		const files = Array.isArray(raw.files) ? raw.files.filter((f): f is string => typeof f === "string") : [];
+		const files = Array.isArray(raw.files)
+			? raw.files.filter((f): f is string => typeof f === "string")
+			: [];
 		const item: BacklogItem = {
 			id: itemId(backlog.next++),
 			title,

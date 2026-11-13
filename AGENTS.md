@@ -87,6 +87,8 @@ Runs owned by the supervisor:
 - `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`, entries carry `type: overseer` for overseer runs), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
 - `overseer.ts` — overseer runs (`openOverseer()`: create, reuse or resume; `writeOverseerSummary()`; `isOverseerEntry()`; `overseer.json`, `epic.md`), behind `RunManager.openOverseer()` / `finishOverseer()` and `POST /v1/overseer`. The supervisor never executes them: scheduling, crash recovery and `activeCount()` skip them, and `requireWorkflowRun()` refuses the control operations
 - `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
+- `backlog.ts` — the overseer backlog model (`backlog.json` in the overseer run, harness is the single writer): `addItems()`, `updateItem()` (triage, transitions, dependency cycles, `budgets.max_tasks`), `scheduleBacklog()` (dependencies, conflict zones, `max_parallel`, `epicHalt()`), `acceptDiscovered()` (`accept_discovered_items`), `evaluateAnswerPolicy()`, `updateBacklog()` under the contract lock
+- `backlog-service.ts` — `BacklogService` (`RunManager.backlog`): `/v1/overseer/:id/backlog` operations, `dispatchItem()` (a dispatch with `item` under the backlog lock), item outcomes from their runs (`reconcileItems()`), discovered items of child runs, `policyFor()` (`overseer_policy` on `needs_input`, enforced in `answer()`); config in `getOverseerConfig()`
 - `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
 - `transcript.ts` — per-step live transcripts (`steps/<NN-step>/transcript.jsonl`, `TranscriptWriter`, `transcriptEntries()`, `readTranscriptPage()` with its own cursor and caps) and `session.json` (`readStepSession()`, read by crash recovery to resume a session); `stepDirName()`
@@ -113,6 +115,7 @@ The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
 - `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_logs`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
+- `tools-backlog.ts` — backlog tools (`af_backlog_list`, `af_backlog_add`, `af_backlog_update`) over `/v1/overseer/:id/backlog`; tests in `tests/backlog.test.ts`
 - `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) and `af_notify` over the `/v1/runs/:id/*` control endpoints
 - `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)
@@ -125,7 +128,7 @@ The bundled `af-overseer` Claude Code plugin (`.claude-plugin/plugin.json`, vers
 
 #### `workflows/`
 
-Bundled generic demo workflows (7 workflows: `claude-demo`, `codex-demo`, `multi-demo`, `ralph-loop`, `plan-loop`, `permission-test-claude`, `permission-test-codex`). They use only generic steps (no skill calls); `tests/bundled-workflows.test.ts` checks it.
+Bundled generic workflows (8 workflows: `claude-demo`, `codex-demo`, `multi-demo`, `ralph-loop`, `plan-loop`, `permission-test-claude`, `permission-test-codex`, and `instruction`, the overseer's one-step track). They use only generic steps (no skill calls); `tests/bundled-workflows.test.ts` checks it.
 
 ### `schemas/`
 

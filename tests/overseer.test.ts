@@ -470,6 +470,12 @@ describe("af overseer launcher", () => {
 			"AskUserQuestion",
 			"--finish",
 			"Rehydration",
+			"af_backlog_list",
+			"af_backlog_add",
+			"af_backlog_update",
+			"item: <id>",
+			"overseer_policy",
+			"track_reason",
 		]) {
 			expect(skill).toContain(word);
 		}

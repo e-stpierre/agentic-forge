@@ -103,7 +103,9 @@ describe("backlog items", () => {
 
 	it("requires a reason with a track, and a track before ready", () => {
 		const b = backlog();
-		expect(() => addItems(b, [{ title: "x", track: "full" }], DEFAULTS)).toThrow(/track_reason is required/);
+		expect(() => addItems(b, [{ title: "x", track: "full" }], DEFAULTS)).toThrow(
+			/track_reason is required/,
+		);
 		expect(() => addItems(b, [{ title: "x", status: "ready" }], DEFAULTS)).toThrow(/triage it/);
 		const [item] = addItems(b, [{ title: "x" }], DEFAULTS);
 		expect(() => updateItem(b, item.id, { status: "ready" }, DEFAULTS)).toThrow(/triage it/);
@@ -113,21 +115,39 @@ describe("backlog items", () => {
 			{ track: "instruction", track_reason: "one-line fix", status: "ready" },
 			DEFAULTS,
 		);
-		expect(updated).toMatchObject({ track: "instruction", track_reason: "one-line fix", status: "ready" });
+		expect(updated).toMatchObject({
+			track: "instruction",
+			track_reason: "one-line fix",
+			status: "ready",
+		});
 		// A new track needs its own reason
-		expect(() => updateItem(b, item.id, { track: "full" }, DEFAULTS)).toThrow(/track_reason is required/);
+		expect(() => updateItem(b, item.id, { track: "full" }, DEFAULTS)).toThrow(
+			/track_reason is required/,
+		);
 	});
 
 	it("refuses unknown fields, unknown or cyclic dependencies and the harness statuses", () => {
 		const b = backlog();
-		expect(() => addItems(b, [{ title: "x", color: "red" } as never], DEFAULTS)).toThrow(/Unknown item field/);
-		expect(() => addItems(b, [{ title: "x", depends_on: ["T09"] }], DEFAULTS)).toThrow(/unknown item T09/);
+		expect(() => addItems(b, [{ title: "x", color: "red" } as never], DEFAULTS)).toThrow(
+			/Unknown item field/,
+		);
+		expect(() => addItems(b, [{ title: "x", depends_on: ["T09"] }], DEFAULTS)).toThrow(
+			/unknown item T09/,
+		);
 		addItems(b, [{ title: "a" }, { title: "b", depends_on: ["T01"] }], DEFAULTS);
-		expect(() => updateItem(b, "T01", { depends_on: ["T02"] }, DEFAULTS)).toThrow(/cycle: T01 -> T02 -> T01/);
+		expect(() => updateItem(b, "T01", { depends_on: ["T02"] }, DEFAULTS)).toThrow(
+			/cycle: T01 -> T02 -> T01/,
+		);
 		expect(() => updateItem(b, "T01", { status: "running" }, DEFAULTS)).toThrow(/af_dispatch/);
-		expect(() => updateItem(b, "T01", { status: "done" }, DEFAULTS)).toThrow(/cannot go from proposed to done/);
-		expect(() => updateItem(b, "T07", { title: "x" }, DEFAULTS)).toThrow(/Unknown backlog item T07/);
-		expect(() => addItems(b, [{ title: "x", source: "discovered" }], DEFAULTS)).toThrow(/set by the harness/);
+		expect(() => updateItem(b, "T01", { status: "done" }, DEFAULTS)).toThrow(
+			/cannot go from proposed to done/,
+		);
+		expect(() => updateItem(b, "T07", { title: "x" }, DEFAULTS)).toThrow(
+			/Unknown backlog item T07/,
+		);
+		expect(() => addItems(b, [{ title: "x", source: "discovered" }], DEFAULTS)).toThrow(
+			/set by the harness/,
+		);
 	});
 
 	it("refuses items past budgets.max_tasks but still logs them", () => {
@@ -136,7 +156,9 @@ describe("backlog items", () => {
 		addItems(b, [{ title: "a" }, { title: "b" }], config);
 		expect(() => addItems(b, [{ title: "c" }], config)).toThrow(/Task budget exhausted/);
 		expect(addItems(b, [{ title: "c", status: "logged" }], config)[0].status).toBe("logged");
-		expect(() => updateItem(b, "T03", { status: "proposed" }, config)).toThrow(/Task budget exhausted/);
+		expect(() => updateItem(b, "T03", { status: "proposed" }, config)).toThrow(
+			/Task budget exhausted/,
+		);
 		updateItem(b, "T01", { status: "dropped" }, config);
 		expect(updateItem(b, "T03", { status: "proposed" }, config).status).toBe("proposed");
 	});
@@ -152,7 +174,9 @@ describe("backlog items", () => {
 		startItem(b, "T01", "run-2");
 		reconcileItems(b, () => "merged");
 		expect(b.items[0]).toMatchObject({ status: "done", run: "run-2", runs: ["run-1", "run-2"] });
-		expect(() => updateItem(b, "T01", { status: "ready" }, DEFAULTS)).toThrow(/cannot go from done/);
+		expect(() => updateItem(b, "T01", { status: "ready" }, DEFAULTS)).toThrow(
+			/cannot go from done/,
+		);
 	});
 });
 
@@ -235,7 +259,11 @@ describe("backlog scheduling", () => {
 
 	it("halts the epic on a halted item, an open critical finding or the run minutes budget", () => {
 		const b = backlog();
-		addItems(b, [triaged("a", { conflict_zones: ["a"] }), triaged("b", { conflict_zones: ["b"] })], DEFAULTS);
+		addItems(
+			b,
+			[triaged("a", { conflict_zones: ["a"] }), triaged("b", { conflict_zones: ["b"] })],
+			DEFAULTS,
+		);
 		expect(schedule(b, DEFAULTS, 480).halt).toMatch(/budget: 480 run minutes/);
 		startItem(b, "T01", "r1");
 		reconcileItems(b, () => "halted");
@@ -245,7 +273,12 @@ describe("backlog scheduling", () => {
 		expect(view.waiting.T02).toBe("epic halted");
 		expect(schedule(b, withConfig({ halt_epic_on: [] })).runnable).toEqual(["T02"]);
 		updateItem(b, "T01", { status: "dropped" }, DEFAULTS);
-		acceptDiscovered(b, { run: "r1", step: "review" }, [{ type: "security", title: "Token leak", severity: "critical" }], DEFAULTS);
+		acceptDiscovered(
+			b,
+			{ run: "r1", step: "review" },
+			[{ type: "security", title: "Token leak", severity: "critical" }],
+			DEFAULTS,
+		);
 		view = schedule(b);
 		expect(view.halt).toMatch(/critical finding T03/);
 	});
@@ -287,14 +320,24 @@ describe("discovered items and the answer policy", () => {
 			answer: "a",
 			reason: "risk low <= low, recommended option a",
 		});
-		expect(evaluateAnswerPolicy(request, { risk: "medium", permission: false }, DEFAULTS).reason).toMatch(
-			/above answer_policy.max_risk low/,
+		expect(
+			evaluateAnswerPolicy(request, { risk: "medium", permission: false }, DEFAULTS).reason,
+		).toMatch(/above answer_policy.max_risk low/);
+		expect(evaluateAnswerPolicy(request, { risk: null, permission: false }, DEFAULTS).within).toBe(
+			false,
 		);
-		expect(evaluateAnswerPolicy(request, { risk: null, permission: false }, DEFAULTS).within).toBe(false);
-		expect(evaluateAnswerPolicy(request, { risk: "low", permission: true }, DEFAULTS).within).toBe(false);
-		expect(evaluateAnswerPolicy({ recommended: null }, low, DEFAULTS).reason).toBe("no recommended option");
-		expect(evaluateAnswerPolicy(request, low, withConfig({ answer_policy: { blocking: false } })).within).toBe(false);
-		expect(evaluateAnswerPolicy(request, low, withConfig({ answer_policy: { enabled: false } })).within).toBe(false);
+		expect(evaluateAnswerPolicy(request, { risk: "low", permission: true }, DEFAULTS).within).toBe(
+			false,
+		);
+		expect(evaluateAnswerPolicy({ recommended: null }, low, DEFAULTS).reason).toBe(
+			"no recommended option",
+		);
+		expect(
+			evaluateAnswerPolicy(request, low, withConfig({ answer_policy: { blocking: false } })).within,
+		).toBe(false);
+		expect(
+			evaluateAnswerPolicy(request, low, withConfig({ answer_policy: { enabled: false } })).within,
+		).toBe(false);
 		expect(
 			evaluateAnswerPolicy(
 				{ recommended: null, blocking: false },
@@ -349,7 +392,10 @@ function block(value: Record<string, unknown>): string {
 function payload(extra: Partial<DispatchPayload> = {}, task = "x"): DispatchPayload {
 	return {
 		repo_root: repo,
-		workflow: { path: path.join(repo, "agentic", "workflows", "one-step.yaml"), contents: ONE_STEP },
+		workflow: {
+			path: path.join(repo, "agentic", "workflows", "one-step.yaml"),
+			contents: ONE_STEP,
+		},
 		config: getDefaultConfig(),
 		env: { PATH: process.env.PATH ?? "" },
 		variables: { task },
@@ -373,8 +419,15 @@ async function startSupervisor() {
 }
 
 async function openOverseer(client: SupervisorClient, overseer: Record<string, unknown> = {}) {
-	const config = { ...getDefaultConfig(), overseer: { ...(getDefaultConfig().overseer as object), ...overseer } };
-	return client.request<OverseerOpenResult>("POST", "/v1/overseer", { repo_root: repo, config, env: {} });
+	const config = {
+		...getDefaultConfig(),
+		overseer: { ...(getDefaultConfig().overseer as object), ...overseer },
+	};
+	return client.request<OverseerOpenResult>("POST", "/v1/overseer", {
+		repo_root: repo,
+		config,
+		env: {},
+	});
 }
 
 async function waitForStatus(manager: RunManager, id: string, status: string): Promise<void> {
@@ -424,12 +477,16 @@ describe("backlog in the supervisor", () => {
 		const { manager, client } = await startSupervisor();
 		const overseer = await openOverseer(client);
 		const base = `/v1/overseer/${overseer.run.id}/backlog`;
-		const added = await client.request<{ added: { id: string }[]; runnable: string[] }>("POST", base, {
-			items: [
-				triaged("cache", { conflict_zones: ["src/cache"] }),
-				triaged("cache client", { conflict_zones: ["src/cache/client.ts"] }),
-			],
-		});
+		const added = await client.request<{ added: { id: string }[]; runnable: string[] }>(
+			"POST",
+			base,
+			{
+				items: [
+					triaged("cache", { conflict_zones: ["src/cache"] }),
+					triaged("cache client", { conflict_zones: ["src/cache/client.ts"] }),
+				],
+			},
+		);
 		expect(added.runnable).toEqual(["T01"]);
 		expect(existsSync(path.join(overseer.dir, "backlog.json"))).toBe(true);
 
@@ -447,36 +504,47 @@ describe("backlog in the supervisor", () => {
 		);
 		// Only the refused dispatches' runs were never created
 		expect(manager.list({ parent: overseer.run.id }).map((r) => r.id)).toEqual([first.run.id]);
-		expect(new RunStore(first.dir).readEvents().find((e) => e.type === "run.queued")?.data).toMatchObject({
+		expect(
+			new RunStore(first.dir).readEvents().find((e) => e.type === "run.queued")?.data,
+		).toMatchObject({
 			parent: overseer.run.id,
 			item: "T01",
 		});
 
 		release();
 		await waitForStatus(manager, first.run.id, "done");
-		const list = await client.request<{ items: { id: string; status: string; run: string }[]; runnable: string[] }>(
-			"GET",
-			base,
-		);
+		const list = await client.request<{
+			items: { id: string; status: string; run: string }[];
+			runnable: string[];
+		}>("GET", base);
 		expect(list.items[0]).toMatchObject({ id: "T01", status: "done", run: first.run.id });
 		expect(list.runnable).toEqual(["T02"]);
 		const second = await manager.dispatch(payload({ parent: overseer.run.id, item: "T02" }, "two"));
 		await waitForStatus(manager, second.run.id, "done");
 		const run = new RunStore(overseer.dir).readRun();
 		await client.request("GET", base);
-		expect(new RunStore(overseer.dir).readRun().budgets_used).toMatchObject({ tasks: 2, dispatches: 2, retries: 0 });
+		expect(new RunStore(overseer.dir).readRun().budgets_used).toMatchObject({
+			tasks: 2,
+			dispatches: 2,
+			retries: 0,
+		});
 		expect(run.type).toBe("overseer");
 	});
 
 	it("refuses backlog operations on workflow runs and ended overseers", async () => {
 		const { manager, client } = await startSupervisor();
 		const run = await manager.dispatch(payload());
-		await expectRejects(client.request("GET", `/v1/overseer/${run.run.id}/backlog`), /not an overseer run/);
+		await expectRejects(
+			client.request("GET", `/v1/overseer/${run.run.id}/backlog`),
+			/not an overseer run/,
+		);
 		await expectRejects(client.request("GET", "/v1/overseer/nope/backlog"), /Run not found/);
 		const overseer = await openOverseer(client);
 		await client.request("POST", `/v1/overseer/${overseer.run.id}/finish`, {});
 		await expectRejects(
-			client.request("POST", `/v1/overseer/${overseer.run.id}/backlog`, { items: [{ title: "x" }] }),
+			client.request("POST", `/v1/overseer/${overseer.run.id}/backlog`, {
+				items: [{ title: "x" }],
+			}),
 			/has ended/,
 		);
 		await waitForStatus(manager, run.run.id, "done");
@@ -491,7 +559,14 @@ describe("backlog in the supervisor", () => {
 				block({
 					status: "done",
 					summary: "Built.",
-					discovered_items: [{ type: "bug", title: "Off-by-one in pager", severity: "medium", files: ["src/pager.ts"] }],
+					discovered_items: [
+						{
+							type: "bug",
+							title: "Off-by-one in pager",
+							severity: "medium",
+							files: ["src/pager.ts"],
+						},
+					],
 				}),
 			),
 		);
@@ -528,7 +603,15 @@ describe("backlog in the supervisor", () => {
 		const ask = (risk: string) => (o: RuntimeRunOptions) => {
 			asks[risk] = (asks[risk] ?? 0) + 1;
 			return asks[risk] === 1
-				? reply(o, block({ status: "awaiting-human", summary: "Need a choice", max_risk: risk, needs_input: question }))
+				? reply(
+						o,
+						block({
+							status: "awaiting-human",
+							summary: "Need a choice",
+							max_risk: risk,
+							needs_input: question,
+						}),
+					)
 				: reply(o, block({ status: "done", summary: "Built." }));
 		};
 		fakeRuntime.on("BUILD low", ask("low"));
@@ -556,13 +639,20 @@ describe("backlog in the supervisor", () => {
 		);
 		await manager.answer(high.run.id, { request_id: "q1", answer: "b", from: "user" });
 		await waitForStatus(manager, high.run.id, "done");
-		expect(new RunStore(high.dir).readDecisions().find((d) => d.id === "d-q1")?.source).toBe("operator");
+		expect(new RunStore(high.dir).readDecisions().find((d) => d.id === "d-q1")?.source).toBe(
+			"operator",
+		);
 	});
 });
 
 describe("backlog over MCP", () => {
 	async function connect(client: SupervisorClient) {
-		const server = createMcpServer({ getClient: async () => client, registryRoot: home.root, cwd: repo, version: "1.0.0" });
+		const server = createMcpServer({
+			getClient: async () => client,
+			registryRoot: home.root,
+			cwd: repo,
+			version: "1.0.0",
+		});
 		const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 		const mcp = new Client({ name: "backlog-test", version: "1.0.0" });
 		await Promise.all([server.connect(serverTransport), mcp.connect(clientTransport)]);
@@ -587,7 +677,9 @@ describe("backlog over MCP", () => {
 		const { manager, client } = await startSupervisor();
 		const mcp = await connect(client);
 		const names = (await mcp.listTools()).tools.map((t) => t.name);
-		expect(names).toEqual(expect.arrayContaining(["af_backlog_list", "af_backlog_add", "af_backlog_update"]));
+		expect(names).toEqual(
+			expect.arrayContaining(["af_backlog_list", "af_backlog_add", "af_backlog_update"]),
+		);
 		const overseer = await openOverseer(client);
 		const run = overseer.run.id;
 
@@ -604,9 +696,16 @@ describe("backlog over MCP", () => {
 			priority: 0,
 			source: "epic",
 		});
-		const invalid = await call(mcp, "af_backlog_add", { run, items: [{ title: "x", track: "huge" }] });
+		const invalid = await call(mcp, "af_backlog_add", {
+			run,
+			items: [{ title: "x", track: "huge" }],
+		});
 		expect(invalid.isError).toBe(true);
-		const running = await call(mcp, "af_backlog_update", { run, id: "T01", fields: { status: "running" } });
+		const running = await call(mcp, "af_backlog_update", {
+			run,
+			id: "T01",
+			fields: { status: "running" },
+		});
 		expect(running.isError).toBe(true);
 		expect(running.text).toContain("status must be one of proposed, ready, logged, dropped");
 
@@ -618,13 +717,23 @@ describe("backlog over MCP", () => {
 		expect(approved.isError, approved.text).toBe(false);
 		expect(approved.json.runnable).toEqual(["T01"]);
 
-		const dispatched = await call(mcp, "af_dispatch", { workflow: "one-step", repo, parent: run, item: "T01" });
+		const dispatched = await call(mcp, "af_dispatch", {
+			workflow: "one-step",
+			repo,
+			parent: run,
+			item: "T01",
+		});
 		expect(dispatched.isError, dispatched.text).toBe(false);
 		await waitForStatus(manager, dispatched.json.run_id, "done");
 		const list = await call(mcp, "af_backlog_list", { run, status: "done" });
 		expect(list.json.items.map((i: { id: string }) => i.id)).toEqual(["T01"]);
 		expect(list.json).toMatchObject({ max_parallel: 2, halt: null, budgets: { max_tasks: 20 } });
-		const again = await call(mcp, "af_dispatch", { workflow: "one-step", repo, parent: run, item: "T01" });
+		const again = await call(mcp, "af_dispatch", {
+			workflow: "one-step",
+			repo,
+			parent: run,
+			item: "T01",
+		});
 		expect(again.isError).toBe(true);
 		expect(again.text).toContain("T01 is done");
 	});

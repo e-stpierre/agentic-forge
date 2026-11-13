@@ -73,6 +73,7 @@ af run <workflow> [vars...] [options]
 | `--terminal-output <mode>` | Terminal output granularity: `base` or `all`                                                                                                                                                                           |
 | `--ignore-requires`        | Run a workflow whose `requires` asks for a newer agentic-forge, with a warning. Never overrides the `contract` requirement.                                                                                            |
 | `--parent <run>`           | Parent run ID recorded in `run.json` `parent` (for example an overseer run). `af list --parent` lists the children. An unknown run is refused.                                                                         |
+| `--item <id>`              | Backlog item of the `--parent` overseer run this run implements. Refused unless the item may start now (see [Backlog](#backlog)); the item becomes `running` and takes the run's outcome.                              |
 | `--list`                   | List all available workflows (same output as `af workflows`)                                                                                                                                                           |
 
 ### Examples
@@ -714,30 +715,35 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 
 ### Tools
 
-| Tool            | Inputs                                                                         | Supervisor endpoint                         | CLI equivalent  |
-| --------------- | ------------------------------------------------------------------------------ | ------------------------------------------- | --------------- |
-| `af_dispatch`   | `workflow`, `repo?`, `vars?`, `runtime?`, `slug?`, `priority?`, `parent?`      | `POST /v1/runs`                             | `af run`        |
-| `af_status`     | `run?` (without it: the active runs)                                           | `GET /v1/runs/:id`, `GET /v1/runs`          | `af status`     |
-| `af_list_runs`  | `status?` (one or a list), `repo?`, `since?`, `parent?`, `limit?`              | `GET /v1/runs`                              | `af list`       |
-| `af_events`     | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_now?` | `GET /v1/events`                            | `af events`     |
-| `af_logs`       | `run`, `step?`, `cursor?`, `limit?`, `max_chars?`, `wait_seconds?` (0 to 120)  | `GET /v1/runs/:id/logs`                     | `af logs`       |
-| `af_send`       | `run`, `text`, `mode?` (`next` or `now`), `step?`, `from?`                     | `POST /v1/runs/:id/messages`                | `af send`       |
-| `af_amend`      | `run`, `text`, `affects?`, `from?`                                             | `POST /v1/runs/:id/amend`                   | `af amend`      |
-| `af_answer`     | `run`, `answer`, `request_id?`, `from?`                                        | `POST /v1/runs/:id/answer`                  | `af answer`     |
-| `af_pause`      | `run`, `now?`                                                                  | `POST /v1/runs/:id/pause`                   | `af pause`      |
-| `af_resume`     | `run`                                                                          | `POST /v1/runs/:id/resume`                  | `af resume`     |
-| `af_cancel`     | `run`                                                                          | `POST /v1/runs/:id/cancel`                  | `af cancel`     |
-| `af_retry_step` | `run`, `step`, `context?`, `from?`                                             | `POST /v1/runs/:id/retry`                   | `af retry-step` |
-| `af_notify`     | `text`, `level?` (`info`, `warning`, `error`), `run?`, `title?`                | `POST /v1/notifications`                    | `af notify`     |
-| `af_artifacts`  | `run`, `kind?` (`plan`, `summary`, `decisions`, `review`), `content?`          | none (reads the run registry and directory) | `af artifacts`  |
+| Tool                | Inputs                                                                             | Supervisor endpoint                         | CLI equivalent  |
+| ------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------- | --------------- |
+| `af_dispatch`       | `workflow`, `repo?`, `vars?`, `runtime?`, `slug?`, `priority?`, `parent?`, `item?` | `POST /v1/runs`                             | `af run`        |
+| `af_status`         | `run?` (without it: the active runs)                                               | `GET /v1/runs/:id`, `GET /v1/runs`          | `af status`     |
+| `af_list_runs`      | `status?` (one or a list), `repo?`, `since?`, `parent?`, `limit?`                  | `GET /v1/runs`                              | `af list`       |
+| `af_events`         | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_now?`     | `GET /v1/events`                            | `af events`     |
+| `af_logs`           | `run`, `step?`, `cursor?`, `limit?`, `max_chars?`, `wait_seconds?` (0 to 120)      | `GET /v1/runs/:id/logs`                     | `af logs`       |
+| `af_send`           | `run`, `text`, `mode?` (`next` or `now`), `step?`, `from?`                         | `POST /v1/runs/:id/messages`                | `af send`       |
+| `af_amend`          | `run`, `text`, `affects?`, `from?`                                                 | `POST /v1/runs/:id/amend`                   | `af amend`      |
+| `af_answer`         | `run`, `answer`, `request_id?`, `from?`                                            | `POST /v1/runs/:id/answer`                  | `af answer`     |
+| `af_pause`          | `run`, `now?`                                                                      | `POST /v1/runs/:id/pause`                   | `af pause`      |
+| `af_resume`         | `run`                                                                              | `POST /v1/runs/:id/resume`                  | `af resume`     |
+| `af_cancel`         | `run`                                                                              | `POST /v1/runs/:id/cancel`                  | `af cancel`     |
+| `af_retry_step`     | `run`, `step`, `context?`, `from?`                                                 | `POST /v1/runs/:id/retry`                   | `af retry-step` |
+| `af_notify`         | `text`, `level?` (`info`, `warning`, `error`), `run?`, `title?`                    | `POST /v1/notifications`                    | `af notify`     |
+| `af_artifacts`      | `run`, `kind?` (`plan`, `summary`, `decisions`, `review`), `content?`              | none (reads the run registry and directory) | `af artifacts`  |
+| `af_backlog_list`   | `run` (an overseer run), `status?` (comma-separated)                               | `GET /v1/overseer/:id/backlog`              | none            |
+| `af_backlog_add`    | `run`, `items` (see [Backlog](#backlog))                                           | `POST /v1/overseer/:id/backlog`             | none            |
+| `af_backlog_update` | `run`, `id`, `fields`                                                              | `POST /v1/overseer/:id/backlog/:item`       | none            |
 
-- `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. `parent` records the run that dispatched it (an overseer passes its own run). Returns `{ run_id, status, dir, workflow, warnings }`
+- `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. `parent` records the run that dispatched it (an overseer passes its own run); `item` dispatches a backlog item of that overseer (409 with the reason when it cannot start now). Returns `{ run_id, status, dir, workflow, warnings }`
 - `af_list_runs`: newest first, cut to `limit` (default 50); returns `{ runs, total }`
 - `af_events`: returns `{ events, cursor, more, status }`; pass `cursor` back to resume without duplicates. `wait_seconds` long-polls until a new event arrives or the wait ends. `types` takes exact types or prefixes such as `run.*`
 - `af_logs`: the live transcript of a run (see [logs](#logs)), as compact JSON `{ run, step, entries, cursor, more, truncated, active, status }`. Without `cursor`, the last `limit` entries (default 20); with it, only newer ones. Each entry's text is cut to 500 characters and the page to about 8 KB, with `truncated: true`; an explicit `max_chars` (up to 20,000) lifts the page budget. `active` is false once the step (or run) ended; `wait_seconds` long-polls for new entries while it is active
 - `af_artifacts`: `content: true` needs a `kind` and returns the latest file of that kind (cut at 20,000 characters)
 - `af_notify`: returns `{ sent, errors, event }` (`event` is the `seq` of `notification.sent` in the run, or null without a run); `hint` says when no channel is enabled
-- `from` (steering tools) is `user` or `overseer` (default `overseer`)
+- `af_backlog_list`: returns `{ items, runnable, waiting, running, max_parallel, halt, budgets, budgets_used }` (items without timestamps, nulls or empty lists)
+- `af_backlog_add` / `af_backlog_update`: return the added items (`added`) or the item, and the new `runnable` list
+- `from` (steering tools) is `user` or `overseer` (default `overseer`). An `af_answer` from the overseer on a run it dispatched is refused (409) outside its [answer policy](#answer-policy)
 
 The MCP SDK client's default request timeout is 60 seconds, below the `wait_seconds` cap of 120. Use shorter waits (for example 30) unless your client sets a longer timeout.
 
@@ -779,7 +785,7 @@ Project `.mcp.json` (Claude Code) or `claude_desktop_config.json` (Claude Deskto
 
 ## overseer
 
-Start an interactive Claude Code session that oversees runs: it dispatches workflows, follows their events, relays your corrections and questions, and reports completion. The session uses the bundled `af-overseer` plugin (the `overseer` skill) and the af MCP server, and works in an overseer run (`run.json` `type: overseer`) that the supervisor records but never executes.
+Start an interactive Claude Code session that oversees runs: it turns an epic into a backlog, schedules and dispatches its items, follows their events, relays your corrections, answers low-risk questions within its policy, escalates the rest, and reports completion. The session uses the bundled `af-overseer` plugin (the `overseer` skill) and the af MCP server, and works in an overseer run (`run.json` `type: overseer`) that the supervisor records but never executes.
 
 ```bash
 af overseer [options] [-- <claude args>]
@@ -814,8 +820,24 @@ Arguments after `--` go to `claude` unchanged.
 - **Files**: `run.json`, `events.jsonl`, `overseer.json` (repository, config snapshot, one entry per session), `epic.md` (the epic, when given), `overseer/` (MCP config and the event monitor cursor), and `summary.md` once finished
 - **Status**: `running` while open, across sessions and supervisor restarts. It holds no checkout, does not count as an active run, and crash recovery leaves it alone. `pause`, `resume`, `send`, `amend` and `retry-step` are refused (talk to the overseer in its session); `af cancel` ends it as `canceled`
 - **Events**: `run.started` (`type: overseer`, `session: 1`), `run.resumed` for each later session, and the end event of `--finish`. The default notification triggers include `run.completed` of overseer runs
+- **Backlog**: `backlog.json` (see [Backlog](#backlog))
 - **Children**: the overseer passes its run as `parent` to `af_dispatch`, so `af list --parent <run>` and `af_list_runs` with `parent` list what it dispatched
 - **Epics** (v1): a file or a text. To work from a GitHub issue or milestone, pass its URL as the text; the overseer reads it with `gh`
+
+### Backlog
+
+An overseer run has a backlog, `backlog.json` in its run directory. The harness is its only writer: the overseer changes it through `af_backlog_add` and `af_backlog_update`, dispatches with `item`, and the harness adds the discovered items of child runs.
+
+- **Items**: `T01`, `T02`, ... with `title`, `description`, `status`, `track` and `track_reason` (triage: `instruction`, `light` or `full`, always with a reason), `depends_on`, `conflict_zones` (paths or modules: `src/runs` overlaps `src/runs/manager.ts`; an item without zones runs alone), `priority`, `workflow`, `source` (`epic`, `user`, `overseer`, `discovered`), `discovered` (the run, step, type, severity and files of a discovered item), `run` and `runs` (its dispatches), `notes`
+- **Statuses**: `proposed` (default, waits for the user), `ready` (approved: needs a track), `running` (set by a dispatch with `item`), then the run's outcome: `done` (done or merged), `failed`, `halted`, `canceled`. `logged` items are recorded and never scheduled, `dropped` ones are rejected. A failed, halted or canceled item goes back to `ready` for a retry; a done item is final
+- **Scheduling**: a ready item is runnable when it has a track, its dependencies are done, it has retries left, no conflict zone overlaps a running item (or a runnable item before it), fewer than `overseer.max_parallel` items run (default 2), and the epic is not halted. A dispatch with `item` is refused otherwise, so overlapping items never run in parallel
+- **Halt** (`overseer.halt_epic_on`): `failed` or `halted` items, an open `critical` discovered item, or a spent `budget` (child run minutes) stop new dispatches until the user decides
+- **Discovered items**: the `discovered_items` of a child run's result blocks join the backlog per `overseer.accept_discovered_items` (`auto`: ready, untriaged; `ask`: proposed; `log`: logged; logged anyway once `budgets.max_tasks` is reached), once per run, step, type and title, each logged as a `policy` decision in the overseer run
+- **Budgets**: `run.json` `budgets_used` of the overseer run records `tasks`, `dispatches`, `retries` and `run_minutes`
+
+### Answer policy
+
+A `needs_input` event of a run dispatched by an overseer carries `overseer_policy` `{ within, answer, reason }`. Within `overseer.answer_policy` (default: the asking step reported `max_risk: low`, the request has a recommended option, permission requests excluded), the overseer answers it itself with `from: overseer`, and the answer is logged as a `policy` decision. Outside it, or with another option than the recommended one, the supervisor refuses an answer from the overseer (409); the overseer asks the user and answers with `from: user`.
 
 ### Event monitor
 

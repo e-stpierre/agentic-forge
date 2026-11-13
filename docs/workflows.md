@@ -1,6 +1,6 @@
 # Workflows
 
-Agentic Forge ships 7 generic demo workflows. They use only generic steps (no skill calls), and you can run any of them immediately without initialization. The SDLC and analysis workflows of earlier versions were removed: bring your own skills and workflows instead (see [Bring Your Own Skills](#bring-your-own-skills)). Use `af workflows --verbose` to see all available workflows and their variables.
+Agentic Forge ships 8 generic workflows (7 demos and `instruction`). They use only generic steps (no skill calls), and you can run any of them immediately without initialization. The SDLC and analysis workflows of earlier versions were removed: bring your own skills and workflows instead (see [Bring Your Own Skills](#bring-your-own-skills)). Use `af workflows --verbose` to see all available workflows and their variables.
 
 Workflows support a `runtime` field on individual steps and in `settings`. See [Coding Agents](coding-agents.md) for the runtime resolution order and per-runtime capabilities.
 
@@ -111,6 +111,29 @@ af run plan-loop --var "input=Follow the alignment notes in C:\\path\\to\\alignm
 
 # Explicit task list
 af run plan-loop --var "input=1. Add rate limiting\n2. Wire metrics\n3. Document the new headers"
+```
+
+## instruction
+
+Carries out a short instruction in one prompt step. The overseer uses it for backlog items on the `instruction` track (a rename, a config value, a typo fix).
+
+**Use cases**: Trivial one-step changes dispatched by the overseer or by hand.
+
+**Runtime**: Claude (default)
+
+**Flow**: Instruction
+
+### Variables
+
+| Variable       | Required | Default | Description                                                                     |
+| -------------- | -------- | ------- | ------------------------------------------------------------------------------- |
+| `instruction`  | Yes      | none    | What to do, in a few sentences, with the files it concerns                      |
+| `use_worktree` | No       | `false` | Run in an isolated worktree (needed to run beside another run of the same repo) |
+
+### Examples
+
+```bash
+af run instruction --var instruction="Rename the MAX_ITEMS constant in src/pager.ts to PAGE_SIZE"
 ```
 
 ## claude-demo

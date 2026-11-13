@@ -60,8 +60,8 @@ import type {
 	WorkflowProgress,
 } from "../types.js";
 import { resolveWorktreeEnabled } from "../worktree-settings.js";
-import { BacklogError, type PolicyVerdict } from "./backlog.js";
 import { BacklogService } from "./backlog-service.js";
+import { BacklogError, type PolicyVerdict } from "./backlog.js";
 import { type DispatchPayload, validateDispatch } from "./dispatch.js";
 import {
 	CursorError,

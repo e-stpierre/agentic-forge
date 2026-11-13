@@ -275,6 +275,25 @@ Template placeholders: `run`, `workflow`, `repo`, `status`, `run_type`, `pr`, `e
 
 Webhook URLs and tokens are secrets: keep them in the global config, and note that each run stores its config snapshot in its run directory (`dispatch.json`). The supervisor reads new events every 2 seconds and keeps its read positions in `<global dir>/notifications/positions.json`, so a restarted supervisor sends nothing twice.
 
+### overseer
+
+The backlog, scheduling and answer policy of `af overseer`. The overseer run uses the config of the repository it was opened in (refreshed each time a session opens it). See [overseer](cli.md#overseer).
+
+| Key                                       | Type    | Default                            | Description                                                                                                           |
+| ----------------------------------------- | ------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `overseer.max_parallel`                   | number  | `2`                                | Backlog items running at once (only items without a dependency or a conflict zone overlap run in parallel)            |
+| `overseer.accept_discovered_items`        | string  | `"ask"`                            | Discovered items of child runs: `auto` (ready, untriaged), `ask` (proposed, the user approves), `log` (recorded only) |
+| `overseer.halt_epic_on`                   | array   | `["halted", "critical", "budget"]` | What stops new dispatches: `failed` or `halted` items, an open `critical` discovered item, a spent `budget`           |
+| `overseer.budgets.max_tasks`              | number  | `20`                               | Backlog items (dropped and logged ones excluded); more are refused, discovered ones are logged                        |
+| `overseer.budgets.max_retries`            | number  | `1`                                | Extra dispatches of one item after its first run                                                                      |
+| `overseer.budgets.max_run_minutes`        | number  | `480`                              | Total minutes of the overseer's child runs (parallel runs add up); `budget` halts the epic when reached               |
+| `overseer.answer_policy.enabled`          | boolean | `true`                             | Let the overseer answer some `needs_input` requests itself                                                            |
+| `overseer.answer_policy.max_risk`         | string  | `"low"`                            | Highest `max_risk` of the asking step (`low`, `medium`, `high`); a step without `max_risk` is always asked            |
+| `overseer.answer_policy.recommended_only` | boolean | `true`                             | Only the recommended option (a request without one is asked)                                                          |
+| `overseer.answer_policy.blocking`         | boolean | `true`                             | Also blocking requests (permission requests are always asked)                                                         |
+
+Review rounds are not an overseer budget: the workflows bound their own rounds (for example the esp-skills `fix-review` settings).
+
 ### execution
 
 Controls parallel execution behavior.
