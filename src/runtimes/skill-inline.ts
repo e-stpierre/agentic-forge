@@ -107,7 +107,7 @@ function readManifest(root: string): { name?: string; skills: string[] } {
 
 /** Splits `SKILL.md` into its frontmatter fields (flat `key: value` only) and body. */
 export function splitFrontmatter(text: string): { fields: Record<string, string>; body: string } {
-	const normalized = text.replace(/^﻿/, "");
+	const normalized = text.replace(/^\uFEFF/, "");
 	const match = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(normalized);
 	if (!match) return { fields: {}, body: normalized };
 	const fields: Record<string, string> = {};

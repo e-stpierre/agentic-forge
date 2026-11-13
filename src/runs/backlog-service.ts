@@ -97,7 +97,10 @@ export class BacklogService {
 	private runStatus = (run: string): RunStatus | null =>
 		this.deps.registry.get(run)?.status ?? null;
 
-	/** Items whose run ended take its outcome; `budgets_used` follows. Call under the backlog lock. */
+	/**
+	 * Items follow their runs: an ended run gives its outcome, a reopened one
+	 * makes its item running again. Call under the backlog lock.
+	 */
 	private reconcile(backlog: BacklogFile): void {
 		for (const item of reconcileItems(backlog, this.runStatus)) {
 			this.deps.log(`Backlog ${backlog.run}: ${item.id} ${item.status} (run ${item.run})`);
@@ -192,7 +195,7 @@ export class BacklogService {
 		const entry = this.openOverseer(overseer);
 		const { result, backlog } = await updateBacklog(entry.dir, overseer, async (b) => {
 			this.reconcile(b);
-			const refusal = dispatchRefusal(b, itemId, this.view(entry, b));
+			const refusal = dispatchRefusal(b, itemId, this.view(entry, b), this.runStatus);
 			if (refusal)
 				throw new BacklogError(refusal, b.items.some((i) => i.id === itemId) ? 409 : 404);
 			const created = await create();

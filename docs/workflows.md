@@ -320,8 +320,8 @@ requires: { agentic-forge: ">=0.12", contract: 1 }
 Three step types wait on GitHub and merge without an agent session: the supervisor polls `gh`, so waiting on bots and checks costs no tokens.
 
 - **`wait-for-review`**: waits until every listed reviewer (`claude`, `codex`, or any login) has reviewed the pull request's current head, and can post the reviewer's trigger comment (`@codex review`). A push restarts the wait for the new head. On timeout the run stops `awaiting-human`: `af answer <run> <id> wait` or `continue`.
-- **`wait-for-checks`**: waits for the required checks (every check when the base requires none) and reports pass or fail. A failing check fails the step unless `on-fail: continue`.
-- **`merge`**: merges under a per-repository lock, so runs of one repository (from any worktree) never merge at once. Natively it resolves the method from the repository settings and runs `gh pr merge --repo` from outside the checkout; with `skill: esp-skills:esp-merge` it runs the skill with `AF_MERGE_LOCK` set. Branch protection is never bypassed: a refused merge stops the run `awaiting-human`.
+- **`wait-for-checks`**: waits for the checks the base branch rules require (every check when they require none, until a required check shows up) and reports pass or fail. A failing check fails the step unless `on-fail: continue`.
+- **`merge`**: merges under a per-repository lock, so runs of one repository (from any worktree) never merge at once. Natively it checks that the pull request head is still the head the latest `wait-for-review` or `wait-for-checks` step verified (or the step's `head:`, a template), resolves the method from the repository settings and runs `gh pr merge --repo --match-head-commit <head>` from outside the checkout; with `skill: esp-skills:esp-merge` it runs the skill with `AF_MERGE_LOCK` set. A head that moved stops the run `awaiting-human`: `af answer <run> <id> merge` (merge the new head anyway) or `stop`, or `af retry-step <run> <wait step>` to verify the new head. Branch protection is never bypassed: a refused merge stops the run `awaiting-human`.
 
 ```yaml
 name: ship
@@ -338,7 +338,7 @@ steps:
   - { name: merge, type: merge }
 ```
 
-`cleanup: on-merge` removes the worktree, then its branch, once the merge succeeded. The steps find the pull request through `pr:` (a template), the run's pull request from an earlier step's result block, or the current branch. Reviewers, intervals, timeouts and the merge preference are in the [`github` configuration](configuration.md#github).
+`cleanup: on-merge` removes the worktree, then its branch, once the merge succeeded; when changes left in the worktree had to be auto-saved, the branch is kept with them. The steps find the pull request through `pr:` (a template), the run's pull request from an earlier step's result block, or the current branch. Reviewers, intervals, timeouts and the merge preference are in the [`github` configuration](configuration.md#github).
 
 ## Custom Workflows
 

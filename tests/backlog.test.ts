@@ -19,6 +19,7 @@ import {
 	type BacklogFile,
 	acceptDiscovered,
 	addItems,
+	dispatchRefusal,
 	emptyBacklog,
 	evaluateAnswerPolicy,
 	reconcileItems,
@@ -178,6 +179,34 @@ describe("backlog items", () => {
 			/cannot go from done/,
 		);
 	});
+
+	it("follows a run reopened after the item took its outcome", () => {
+		const b = backlog();
+		addItems(b, [triaged("a"), triaged("b")], DEFAULTS);
+		startItem(b, "T01", "run-1");
+		reconcileItems(b, () => "failed");
+		expect(b.items[0].status).toBe("failed");
+		// A missing run leaves an ended item as it is
+		expect(reconcileItems(b, () => null)).toEqual([]);
+		expect(reconcileItems(b, () => "queued").map((i) => i.status)).toEqual(["running"]);
+		expect(reconcileItems(b, () => "running")).toEqual([]);
+		reconcileItems(b, () => "halted");
+		expect(b.items[0].status).toBe("halted");
+		reconcileItems(b, () => "done");
+		expect(b.items[0].status).toBe("done");
+
+		// Set ready for a retry, then the old run is resumed instead
+		startItem(b, "T02", "run-2");
+		reconcileItems(b, () => "failed");
+		updateItem(b, "T02", { status: "ready" }, DEFAULTS);
+		const open = (run: string) => (run === "run-2" ? "queued" : "done");
+		expect(dispatchRefusal(b, "T02", schedule(b), open)).toMatch(
+			/T02 still has an open run run-2 \(queued\)/,
+		);
+		expect(reconcileItems(b, open).map((i) => i.id)).toEqual(["T02"]);
+		expect(b.items[1].status).toBe("running");
+		expect(dispatchRefusal(b, "T02", schedule(b), () => "failed")).toMatch(/T02 is running/);
+	});
 });
 
 describe("backlog scheduling", () => {
@@ -310,6 +339,25 @@ describe("discovered items and the answer policy", () => {
 		const [logged] = acceptDiscovered(full, { run: "r1", step: "build" }, items, config);
 		expect(logged.status).toBe("logged");
 		expect(logged.reason).toMatch(/task budget spent/);
+	});
+
+	it("adds the discovered items of every run of one backlog item once", () => {
+		const items = [{ type: "bug", title: "Null check" }];
+		const b = backlog();
+		const config = withConfig({ accept_discovered_items: "ask" });
+		addItems(b, [triaged("a")], config);
+		startItem(b, "T01", "r1");
+		expect(acceptDiscovered(b, { run: "r1", step: "build" }, items, config)).toHaveLength(1);
+		reconcileItems(b, () => "failed");
+		updateItem(b, "T01", { status: "ready" }, config);
+		startItem(b, "T01", "r2");
+		expect(acceptDiscovered(b, { run: "r2", step: "build" }, items, config)).toEqual([]);
+		expect(acceptDiscovered(b, { run: "r3", step: "build", item: "T01" }, items, config)).toEqual(
+			[],
+		);
+		// Runs dispatched without an item still dedupe per run
+		expect(acceptDiscovered(b, { run: "r9", step: "build" }, items, config)).toHaveLength(1);
+		expect(b.items.filter((i) => i.source === "discovered")).toHaveLength(2);
 	});
 
 	it("lets the overseer answer only low-risk requests with their recommended option", () => {
@@ -529,6 +577,85 @@ describe("backlog in the supervisor", () => {
 			retries: 0,
 		});
 		expect(run.type).toBe("overseer");
+	});
+
+	it("tracks an item again when its failed run is resumed", async () => {
+		const { manager, client } = await startSupervisor();
+		const overseer = await openOverseer(client);
+		const base = `/v1/overseer/${overseer.run.id}/backlog`;
+		await client.request("POST", base, {
+			items: [
+				triaged("cache", { conflict_zones: ["src/cache"] }),
+				triaged("cache client", { conflict_zones: ["src/cache/client.ts"] }),
+			],
+		});
+		let calls = 0;
+		let release = () => {};
+		const released = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		fakeRuntime.on("BUILD one", async (o) => {
+			calls++;
+			if (calls === 1) return reply(o, block({ status: "failed", summary: "Tests fail." }));
+			await released;
+			return reply(o, block({ status: "done", summary: "Built." }));
+		});
+		type List = {
+			items: { id: string; status: string; run: string }[];
+			runnable: string[];
+			waiting: Record<string, string>;
+		};
+		const run = await manager.dispatch(payload({ parent: overseer.run.id, item: "T01" }, "one"));
+		await waitForStatus(manager, run.run.id, "failed");
+		let list = await client.request<List>("GET", base);
+		expect(list.items[0]).toMatchObject({ id: "T01", status: "failed", run: run.run.id });
+		expect(list.runnable).toEqual(["T02"]);
+
+		await manager.resume(run.run.id);
+		for (let i = 0; i < 300 && calls < 2; i++) await new Promise((r) => setTimeout(r, 10));
+		expect(calls).toBe(2);
+		list = await client.request<List>("GET", base);
+		expect(list.items[0]).toMatchObject({ id: "T01", status: "running", run: run.run.id });
+		expect(list.runnable).toEqual([]);
+		expect(list.waiting.T02).toMatch(/conflicts with T01 \(running\): src\/cache/);
+		await expectRejects(
+			manager.dispatch(payload({ parent: overseer.run.id, item: "T01" }, "again")),
+			/T01 still has an open run/,
+		);
+
+		release();
+		await waitForStatus(manager, run.run.id, "done");
+		list = await client.request<List>("GET", base);
+		expect(list.items[0]).toMatchObject({ id: "T01", status: "done", run: run.run.id });
+		expect(list.runnable).toEqual(["T02"]);
+	});
+
+	it("adds a discovered item once when its backlog item is dispatched again", async () => {
+		const { manager, client } = await startSupervisor();
+		const overseer = await openOverseer(client, { accept_discovered_items: "ask" });
+		const base = `/v1/overseer/${overseer.run.id}/backlog`;
+		await client.request("POST", base, { items: [triaged("pager")] });
+		let calls = 0;
+		fakeRuntime.on("BUILD", (o) => {
+			calls++;
+			return reply(
+				o,
+				block({
+					status: calls === 1 ? "failed" : "done",
+					summary: "Pager work.",
+					discovered_items: [{ type: "bug", title: "Off-by-one in pager" }],
+				}),
+			);
+		});
+		const first = await manager.dispatch(payload({ parent: overseer.run.id, item: "T01" }));
+		await waitForStatus(manager, first.run.id, "failed");
+		await client.request("POST", `${base}/T01`, { fields: { status: "ready" } });
+		const second = await manager.dispatch(payload({ parent: overseer.run.id, item: "T01" }));
+		await waitForStatus(manager, second.run.id, "done");
+		const file = JSON.parse(readFileSync(path.join(overseer.dir, "backlog.json"), "utf-8"));
+		const discovered = file.items.filter((i: { source: string }) => i.source === "discovered");
+		expect(discovered).toHaveLength(1);
+		expect(discovered[0]).toMatchObject({ discovered: { run: first.run.id, type: "bug" } });
 	});
 
 	it("refuses backlog operations on workflow runs and ended overseers", async () => {

@@ -90,6 +90,8 @@ describe("helpers", () => {
 		expect(fields).toEqual({ name: "x", description: "A skill" });
 		expect(body).toBe("\nBody\n");
 		expect(splitFrontmatter("No frontmatter").body).toBe("No frontmatter");
+		// A byte order mark before the frontmatter is dropped
+		expect(splitFrontmatter(`\uFEFF${skillFile("x", "Body\n")}`).fields.name).toBe("x");
 	});
 
 	it("splits arguments like a shell", () => {

@@ -83,7 +83,7 @@ Set `workflow` on the item when you know it. Then show the user the backlog in a
 
 - Dispatch each runnable item with `af_dispatch` (`workflow`, `repo`, `vars`, `parent: <your run id>`, `item: <id>`). A 409 says why it cannot start now: read it, do not retry blindly
 - Two items running at once in one repository need their own worktree: pass the workflow's worktree variable (`use_worktree: true` for the bundled ones). Without it, the supervisor queues the second run until the first ends
-- An item takes the outcome of its run (`done`, `failed`, `halted`, `canceled`). Retry a failed item with `status: ready`, then dispatch it again (`budgets.max_retries` extra runs)
+- An item takes the outcome of its run (`done`, `failed`, `halted`, `canceled`). Retry a failed item with `status: ready`, then dispatch it again (`budgets.max_retries` extra runs). Resuming its run instead (`af_resume`, `af_retry_step`) makes the item `running` again
 - When `halt` is set (an item failed or halted, an open critical finding, a spent budget, per `halt_epic_on`), dispatch nothing: tell the user the reason and ask what to do (retry, drop, or raise the budget in the `overseer` config)
 - Dispatch without `item` only for one-off work the user asks for outside the backlog
 
@@ -122,7 +122,7 @@ A `needs_input` request is a question from a run. When the run is yours, its eve
 - `within: true`: the request is inside `answer_policy` (by default: the asking step reported low risk and there is a recommended option). Answer it yourself with `af_answer` (`run`, `request_id`, `answer` = `overseer_policy.answer`, `from: overseer`), unless something the user told you contradicts the recommendation: then ask. Tell the user in one line what you answered; the harness logs it as a policy decision
 - Otherwise (`within: false`, or no `overseer_policy`): ask the user with AskUserQuestion: the question, its context in one sentence, and its options with the recommended one first and marked. Then answer with `af_answer` (`run`, `request_id`, `answer` = the option id or the user's own text, `from: user`)
 
-The harness refuses an `af_answer` from the overseer outside the policy (409): ask the user then. Permission requests are always asked.
+The harness refuses an `af_answer` with `from: overseer` outside the policy (409): ask the user then. The harness cannot tell who sent `from: user`, so use it only for an answer the user gave you, never to get around a 409. Permission requests are always asked.
 
 ## Rehydration
 

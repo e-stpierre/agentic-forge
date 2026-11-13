@@ -2,7 +2,11 @@
 
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { CodexAdapter, buildWritableRootsConfig } from "../../src/runtimes/codex.js";
+import {
+	CODEX_ARG_PROMPT_MAX_CHARS,
+	CodexAdapter,
+	buildWritableRootsConfig,
+} from "../../src/runtimes/codex.js";
 import type { RuntimeRunOptions } from "../../src/runtimes/types.js";
 
 vi.mock("../../src/runtimes/utils.js", async (importOriginal) => {
@@ -81,6 +85,21 @@ describe("CodexAdapter.buildCommand", () => {
 		expect(cmd.args.indexOf("--model")).toBeGreaterThan(resume);
 		// thread id then the prompt alone (the resumed session has the system prompt)
 		expect(cmd.args.slice(-2)).toEqual(["thread-1", "Use pnpm."]);
+	});
+
+	it("sends a large prompt on stdin with -", () => {
+		const big = "x".repeat(CODEX_ARG_PROMPT_MAX_CHARS + 1);
+		const cmd = adapter.buildCommand({ prompt: big });
+		expect(cmd.args.at(-1)).toBe("-");
+		expect(cmd.args).not.toContain(big);
+		expect(cmd.stdinInput).toBe(big);
+		const resumed = adapter.buildCommand({ prompt: big, resumeSessionId: "thread-1" });
+		expect(resumed.args.slice(-2)).toEqual(["thread-1", "-"]);
+		expect(resumed.stdinInput).toBe(big);
+		// A short prompt stays an argument
+		const small = adapter.buildCommand({ prompt: "hello" });
+		expect(small.args.at(-1)).toBe("hello");
+		expect(small.stdinInput).toBe("");
 	});
 
 	it("keeps exec without resume when no session is recorded", () => {

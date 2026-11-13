@@ -31,16 +31,27 @@ import {
 	readMergeLock,
 } from "../src/github/merge-lock.js";
 import { mergePolicy, resolveMergeMethod } from "../src/github/merge-method.js";
-import type { PullRequest } from "../src/github/pr.js";
-import { codexReviewState, resolveReviewers, reviewOfHead } from "../src/github/reviews.js";
+import { type PullRequest, deleteRemoteBranch } from "../src/github/pr.js";
+import {
+	codexReviewState,
+	isReviewResultComment,
+	resolveReviewers,
+	reviewOfHead,
+} from "../src/github/reviews.js";
 import { WorkflowParseError, WorkflowParser } from "../src/parser.js";
 import { dispatchRun } from "../src/runs/client.js";
 import type { DispatchPayload } from "../src/runs/dispatch.js";
 import { RunManager, pendingInput } from "../src/runs/manager.js";
 import { RunStore } from "../src/runs/run-store.js";
 import { SessionOutput } from "../src/runtimes/types.js";
-import { Backoff } from "../src/steps/github-base.js";
-import { summarizeChecks } from "../src/steps/wait-for-checks-step.js";
+import { Backoff, idSlug } from "../src/steps/github-base.js";
+import { headRequestId } from "../src/steps/merge-step.js";
+import {
+	NO_CHECKS_GRACE_SECONDS,
+	checksTiming,
+	requiresChecks,
+	summarizeChecks,
+} from "../src/steps/wait-for-checks-step.js";
 import { Supervisor, SupervisorClient } from "../src/supervisor/index.js";
 // @ts-expect-error plain ESM test helper without types
 import { fakeGh } from "./helpers/fake-gh.mjs";
@@ -231,6 +242,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+	checksTiming.noChecksGraceSeconds = NO_CHECKS_GRACE_SECONDS;
 	for (const m of managers.splice(0)) m.close();
 	await Promise.all(supervisors.splice(0).map((s) => s.stop()));
 	rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
@@ -272,6 +284,10 @@ describe("parsing", () => {
 			WorkflowParseError,
 		);
 		expect(() => parse("  - { name: m, type: merge, method: fast-forward }")).toThrow(/method/);
+		expect(() => parse('  - { name: m, type: merge, head: "" }')).toThrow(/head/);
+		expect(
+			parse("  - { name: m, type: merge, head: \"{{ outputs['c'].head }}\" }").steps[0].head,
+		).toBe("{{ outputs['c'].head }}");
 		expect(() =>
 			parse(
 				"  - name: p\n    type: parallel\n    steps:\n      - { name: m, type: merge }\n      - { name: x, type: prompt, prompt: hi }",
@@ -337,6 +353,85 @@ describe("pure helpers", () => {
 		expect(
 			reviewOfHead(claude, pr(), [], [comment("claude[bot]", "old", "2026-10-01T00:00:00Z")]),
 		).toBeNull();
+	});
+
+	it("counts only review result comments, newer than the time a pushed head was first seen", () => {
+		const claude = { name: "claude", login: "claude[bot]", trigger: null };
+		const comment = (body: string, at: string) => ({
+			id: 2,
+			login: "claude[bot]",
+			body,
+			createdAt: at,
+			updatedAt: at,
+			url: null,
+		});
+		expect(isReviewResultComment("## Code review\n\nFound 2 issues")).toBe(true);
+		expect(isReviewResultComment("No issues found. Checked for bugs.")).toBe(true);
+		expect(isReviewResultComment("Claude is working on your request...")).toBe(false);
+		// A progress comment after the head commit does not count
+		expect(
+			reviewOfHead(claude, pr(), [], [comment("Working on it...", "2026-11-01T12:00:00Z")]),
+		).toBeNull();
+		// A head committed at 10:00, pushed and first seen at 10:12: the 10:05
+		// comment is about the previous head
+		const old = comment("## Code review\nNo issues found.", "2026-11-01T10:05:00Z");
+		expect(reviewOfHead(claude, pr(), [], [old])?.source).toBe("comment");
+		const since = Date.parse("2026-11-01T10:12:00Z");
+		expect(reviewOfHead(claude, pr(), [], [old], { since })).toBeNull();
+		const fresh = comment("## Code review\nNo issues found.", "2026-11-01T10:20:00Z");
+		expect(reviewOfHead(claude, pr(), [], [old, fresh], { since })?.at).toBe(
+			"2026-11-01T10:20:00Z",
+		);
+	});
+
+	it("reads required checks from the branch rules", () => {
+		expect(requiresChecks([])).toBe(false);
+		expect(requiresChecks([{ type: "pull_request" }])).toBe(false);
+		expect(
+			requiresChecks([
+				{ type: "required_status_checks", parameters: { required_status_checks: [] } },
+			]),
+		).toBe(false);
+		expect(
+			requiresChecks([
+				{
+					type: "required_status_checks",
+					parameters: { required_status_checks: [{ context: "test" }] },
+				},
+			]),
+		).toBe(true);
+	});
+
+	it("builds contract ids from any step name", () => {
+		expect(idSlug("Merge PR")).toBe("Merge-PR");
+		expect(idSlug("  ")).toBe("step");
+		expect(headRequestId("Merge PR", NEW_HEAD)).toBe("merge-head-Merge-PR-bbbbbbb");
+	});
+
+	it("keeps the polling intervals above zero", () => {
+		const config = getGithubConfig({ github: { poll_seconds: 0, max_poll_seconds: -1 } });
+		expect(config.pollSeconds).toBe(30);
+		expect(config.maxPollSeconds).toBe(300);
+		expect(getGithubConfig({ github: { poll_seconds: 0.5 } }).pollSeconds).toBe(0.5);
+	});
+
+	it("encodes the branch of a remote delete and tells a missing branch from a failure", async () => {
+		const file = ghState("delete", {});
+		const env = { FAKE_GH_STATE: file };
+		expect(await deleteRemoteBranch(pr({ headRefName: "fix/issue#12" }), { env })).toEqual({
+			outcome: "deleted",
+		});
+		expect(readState(file).deletedBranches).toEqual(["fix/issue%2312"]);
+		const s = readState(file);
+		s.deleteError = "gh: Reference does not exist (HTTP 422)";
+		writeFileSync(file, JSON.stringify(s));
+		expect((await deleteRemoteBranch(pr(), { env })).outcome).toBe("gone");
+		s.deleteError = "gh: Resource not accessible by integration (HTTP 403)";
+		writeFileSync(file, JSON.stringify(s));
+		expect(await deleteRemoteBranch(pr(), { env })).toEqual({
+			outcome: "failed",
+			detail: "gh: Resource not accessible by integration (HTTP 403)",
+		});
 	});
 
 	it("resolves reviewer names from the config and treats unknown names as logins", () => {
@@ -654,6 +749,67 @@ describe("wait-for-checks", () => {
 			passed: false,
 		});
 	});
+
+	it("keeps the required scope when the base rules require checks that are not listed yet", async () => {
+		const repo = initRepo(path.join(work, "repo"));
+		const state = ghState("rules", {
+			rules: [
+				{
+					type: "required_status_checks",
+					parameters: { required_status_checks: [{ context: "test" }] },
+				},
+			],
+			// Right after the push: no required check listed yet, an optional one failed
+			requiredChecks: null,
+			checks: [check("lint", "fail")],
+			timeline: {
+				"3": {
+					requiredChecks: [check("test", "pass")],
+					checks: [check("test", "pass"), check("lint", "fail")],
+				},
+			},
+		});
+		const { manager, client } = await startSupervisor();
+		const { run, dir } = await dispatchRun(
+			client,
+			payload(repo, wf("  - { name: checks, type: wait-for-checks }"), state),
+		);
+		await waitForStatus(manager, run, "done");
+		expect(stepResult(dir, "checks").outputs).toMatchObject({
+			result: "pass",
+			scope: "required",
+			total: 1,
+		});
+	});
+
+	it("restarts the no-check grace period on a new head", async () => {
+		checksTiming.noChecksGraceSeconds = 1;
+		const repo = initRepo(path.join(work, "repo"));
+		const newHead = prJson({
+			headRefOid: NEW_HEAD,
+			commits: [{ oid: NEW_HEAD, committedDate: "2026-11-02T10:00:00Z" }],
+		});
+		const state = ghState("grace", {
+			// The first head keeps a pending check past the grace period
+			checks: [check("test", "pending")],
+			timeline: {
+				// A push: the new head lists no check on its first polls
+				"30": { pr: newHead, checks: [] },
+				"32": { checks: [check("test", "pass")] },
+			},
+		});
+		const { manager, client } = await startSupervisor();
+		const { run, dir } = await dispatchRun(
+			client,
+			payload(repo, wf("  - { name: checks, type: wait-for-checks, checks: all }"), state),
+		);
+		await waitForStatus(manager, run, "done");
+		expect(stepResult(dir, "checks").outputs).toMatchObject({
+			head: NEW_HEAD,
+			result: "pass",
+			total: 1,
+		});
+	});
 });
 
 describe("merge", () => {
@@ -765,6 +921,131 @@ describe("merge", () => {
 		const args = ghCalls(state).flatMap((c) => c.args);
 		expect(args).not.toContain("--admin");
 		expect(existsSync(mergeLockPath(repo))).toBe(false);
+	});
+
+	it("refuses a head that moved since the wait step verified it, and merges it on a merge answer", async () => {
+		const repo = initRepo(path.join(work, "repo"));
+		const state = ghState("moved", {
+			checks: [{ name: "test", bucket: "pass", state: "SUCCESS" }],
+			requiredChecks: [{ name: "test", bucket: "pass", state: "SUCCESS" }],
+			timeline: {
+				// A push between the checks passing and the merge
+				"2": {
+					pr: prJson({
+						headRefOid: NEW_HEAD,
+						commits: [{ oid: NEW_HEAD, committedDate: "2026-11-02T10:00:00Z" }],
+					}),
+				},
+			},
+		});
+		const { manager, client } = await startSupervisor();
+		const { run, dir } = await dispatchRun(
+			client,
+			payload(
+				repo,
+				wf("  - { name: wait-checks, type: wait-for-checks }\n  - { name: merge, type: merge }"),
+				state,
+			),
+		);
+		await waitForStatus(manager, run, "awaiting-human");
+		expect(stepResult(dir, "wait-checks").outputs.head).toBe(HEAD);
+		const pending = pendingInput(new RunStore(dir).readRun());
+		expect(pending?.request).toMatchObject({
+			id: "merge-head-merge-bbbbbbb",
+			options: [{ id: "merge" }, { id: "stop" }],
+			blocking: true,
+		});
+		expect(readState(state).merges).toBeUndefined();
+
+		await client.request("POST", `/v1/runs/${run.id}/answer`, { answer: "merge" });
+		await waitForStatus(manager, run, "merged");
+		const merge = ghCalls(state).find((c) => c.args[0] === "pr" && c.args[1] === "merge");
+		expect(merge?.args).toEqual(expect.arrayContaining(["--match-head-commit", NEW_HEAD]));
+	});
+
+	it("checks the head field, and fails on a stop answer", async () => {
+		const repo = initRepo(path.join(work, "repo"));
+		const state = ghState("head-field", {});
+		const { manager, client } = await startSupervisor();
+		const steps = wf(`  - { name: merge, type: merge, head: "${"c".repeat(40)}" }`);
+		const { run, dir } = await dispatchRun(client, payload(repo, steps, state));
+		await waitForStatus(manager, run, "awaiting-human");
+		expect(pendingInput(new RunStore(dir).readRun())?.request.id).toBe("merge-head-merge-aaaaaaa");
+		await client.request("POST", `/v1/runs/${run.id}/answer`, { answer: "stop" });
+		await waitForStatus(manager, run, "failed");
+		expect(readState(state).merges).toBeUndefined();
+
+		// A template head that matches merges with that SHA
+		const ok = ghState("head-ok", {
+			checks: [{ name: "test", bucket: "pass", state: "SUCCESS" }],
+			requiredChecks: [{ name: "test", bucket: "pass", state: "SUCCESS" }],
+		});
+		const matching = await dispatchRun(
+			client,
+			payload(
+				repo,
+				wf(
+					"  - { name: wait-checks, type: wait-for-checks }\n  - { name: merge, type: merge, head: \"{{ outputs['wait-checks'].head }}\" }",
+				),
+				ok,
+			),
+		);
+		await waitForStatus(manager, matching.run, "merged");
+		const merge = ghCalls(ok).find((c) => c.args[0] === "pr" && c.args[1] === "merge");
+		expect(merge?.args).toEqual(expect.arrayContaining(["--match-head-commit", HEAD]));
+	});
+
+	it("merges from a step name with a space and reports a failed branch delete", async () => {
+		const repo = initRepo(path.join(work, "repo"));
+		const state = ghState("spaced", {
+			deleteError: "gh: Resource not accessible by integration (HTTP 403)",
+		});
+		const { manager, client } = await startSupervisor();
+		const { run, dir } = await dispatchRun(
+			client,
+			payload(repo, wf("  - { name: Merge PR, type: merge }"), state),
+		);
+		await waitForStatus(manager, run, "merged");
+		expect(new RunStore(dir).readDecisions().at(-1)?.id).toBe("d-merge-Merge-PR-aaaaaaa");
+		expect(stepResult(dir, "merge-pr").outputs.remote_branch).toBe(
+			"delete failed: gh: Resource not accessible by integration (HTTP 403)",
+		);
+	});
+
+	it("keeps the branch when on-merge cleanup auto-saved leftover changes", async () => {
+		const repo = initRepo(path.join(work, "repo"));
+		const state = ghState("leftover", {});
+		fakeRuntime.on("edit after merge", (o) => {
+			writeFileSync(path.join(o.cwd ?? "", "late.txt"), "late\n");
+			return {
+				returncode: 0,
+				stdout: "ok",
+				stderr: "",
+				prompt: o.prompt,
+				cwd: o.cwd ?? null,
+				model: null,
+				success: true,
+				sessionOutput: { sessionId: null, isSuccess: true, context: "done" },
+			};
+		});
+		const { manager, client } = await startSupervisor();
+		const { run, dir } = await dispatchRun(
+			client,
+			payload(
+				repo,
+				wf(
+					"  - { name: merge, type: merge }\n  - { name: after, type: prompt, prompt: edit after merge }",
+					"settings:\n  worktree: { enabled: true, cleanup: on-merge }\n",
+				),
+				state,
+			),
+		);
+		await waitForStatus(manager, run, "merged");
+		const runJson = new RunStore(dir).readRun();
+		const branch = runJson.branch as string;
+		expect(existsSync(runJson.worktree as string)).toBe(false);
+		expect(git(repo, "branch", "--list", branch).trim()).not.toBe("");
+		expect(git(repo, "show", "--name-only", "--format=%s", branch)).toMatch(/late\.txt/);
 	});
 
 	it("runs a merge skill with AF_MERGE_LOCK and does not hold the lock itself", async () => {

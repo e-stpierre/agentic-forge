@@ -70,7 +70,7 @@ export interface DiscoveredFrom {
 	severity: string | null;
 	evidence: string | null;
 	files: string[];
-	/** Dedupe key of the run, step, type and title (a rerun reports the same item again). */
+	/** Dedupe key of the backlog item (or the run without one), step, type and title. */
 	key: string;
 }
 
@@ -609,9 +609,19 @@ export function itemStatusForRun(status: RunStatus): ItemStatus | null {
 	}
 }
 
+/** Item statuses taken from a run that ended, which the run can leave again (resume, retry-step). */
+const REOPENABLE_ITEM_STATUSES: readonly ItemStatus[] = ["failed", "halted", "canceled"];
+
+/** True when a run status is known and the run has not ended. */
+export function runIsOpen(status: RunStatus | null): boolean {
+	return status !== null && itemStatusForRun(status) === null;
+}
+
 /**
- * Brings running items in line with their runs: an item whose run ended takes
- * the run outcome. Returns the items that changed.
+ * Brings items in line with their runs: a running item whose run ended takes
+ * the run outcome, and a failed, halted, canceled (or ready again) item whose
+ * run was reopened (resume, retry-step) follows it again: running while the
+ * run is open, then its new outcome. Returns the items that changed.
  */
 export function reconcileItems(
 	backlog: BacklogFile,
@@ -620,11 +630,21 @@ export function reconcileItems(
 ): BacklogItem[] {
 	const changed: BacklogItem[] = [];
 	for (const item of backlog.items) {
-		if (item.status !== "running" || !item.run) continue;
-		const status = runStatus(item.run);
-		// A run that left the registry cannot finish any more
-		const next = status === null ? "failed" : itemStatusForRun(status);
-		if (!next) continue;
+		if (!item.run) continue;
+		let next: ItemStatus | null = null;
+		if (item.status === "running") {
+			const status = runStatus(item.run);
+			// A run that left the registry cannot finish any more
+			next = status === null ? "failed" : itemStatusForRun(status);
+		} else if (REOPENABLE_ITEM_STATUSES.includes(item.status)) {
+			const status = runStatus(item.run);
+			if (status === null) continue;
+			next = itemStatusForRun(status) ?? "running";
+		} else if (item.status === "ready" && runIsOpen(runStatus(item.run))) {
+			// Set ready for a retry, then its last run was reopened instead
+			next = "running";
+		}
+		if (!next || next === item.status) continue;
 		item.status = next;
 		item.updated_at = now;
 		changed.push(item);
@@ -653,11 +673,15 @@ export function dispatchRefusal(
 	backlog: BacklogFile,
 	id: string,
 	view: BacklogView,
+	runStatus: (run: string) => RunStatus | null = () => null,
 ): string | null {
 	const item = backlog.items.find((i) => i.id === id);
 	if (!item) {
 		const ids = backlog.items.map((i) => i.id).join(", ") || "none";
 		return `Unknown backlog item ${id}. Items: ${ids}`;
+	}
+	if (item.run && runIsOpen(runStatus(item.run))) {
+		return `${id} still has an open run ${item.run} (${runStatus(item.run)}): wait for it, or cancel it before a new dispatch`;
 	}
 	if (view.runnable.includes(id)) return null;
 	if (item.status !== "ready") {
@@ -666,10 +690,14 @@ export function dispatchRefusal(
 	return `${id} cannot start now: ${view.waiting[id] ?? "not runnable"}${view.halt ? ` (halt: ${view.halt})` : ""}`;
 }
 
-/** Dedupe key of a discovered item. */
-export function discoveredKey(run: string, step: string, type: string, title: string): string {
+/**
+ * Dedupe key of a discovered item. `owner` is the backlog item the run was
+ * dispatched for (so a retry in a new run adds nothing twice), or the run for
+ * a dispatch without an item.
+ */
+export function discoveredKey(owner: string, step: string, type: string, title: string): string {
 	return createHash("sha256")
-		.update(`${run}\n${step}\n${type}\n${title}`)
+		.update(`${owner}\n${step}\n${type}\n${title}`)
 		.digest("hex")
 		.slice(0, 16);
 }
@@ -686,11 +714,12 @@ export interface DiscoveredOutcome {
  * `accept_discovered_items`: `auto` -> ready (untriaged: the overseer triages
  * it before dispatch), `ask` -> proposed (the user approves), `log` -> logged.
  * When the task budget is spent, auto and ask items are logged instead. An
- * item already added for the same run, step, type and title is skipped.
+ * item already added for the same backlog item (or, for a run dispatched
+ * without one, the same run), step, type and title is skipped.
  */
 export function acceptDiscovered(
 	backlog: BacklogFile,
-	source: { run: string; step: string },
+	source: { run: string; step: string; item?: string | null },
 	discovered: readonly Record<string, unknown>[],
 	config: OverseerConfig,
 	now = new Date().toISOString(),
@@ -698,11 +727,14 @@ export function acceptDiscovered(
 	const outcomes: DiscoveredOutcome[] = [];
 	const known = new Set(backlog.items.map((i) => i.discovered?.key).filter(Boolean));
 	const policy = config.acceptDiscoveredItems;
+	// The backlog item the run was dispatched for: every one of its runs shares the key
+	const owner =
+		source.item ?? backlog.items.find((i) => i.runs.includes(source.run))?.id ?? source.run;
 	for (const raw of discovered) {
 		const title = typeof raw.title === "string" ? raw.title.trim() : "";
 		const type = typeof raw.type === "string" ? raw.type : "other";
 		if (!title) continue;
-		const key = discoveredKey(source.run, source.step, type, title);
+		const key = discoveredKey(owner, source.step, type, title);
 		if (known.has(key)) continue;
 		known.add(key);
 		let status: ItemStatus = policy === "auto" ? "ready" : policy === "ask" ? "proposed" : "logged";

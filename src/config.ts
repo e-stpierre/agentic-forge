@@ -174,14 +174,17 @@ export function getGithubConfig(config: Record<string, unknown>): GithubConfig {
 	const merge = (merged.merge as Record<string, unknown>) ?? {};
 	const num = (value: unknown, fallback: number): number =>
 		typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+	// Polling intervals must stay above zero, or the wait steps poll in a tight loop
+	const positive = (value: unknown, fallback: number): number =>
+		typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback;
 	const d = defaults as Record<string, number>;
 	const dm = defaults.merge as Record<string, unknown>;
 	return {
 		reviewers: (merged.reviewers as Record<string, unknown>) ?? {},
 		autoTrigger: merged.auto_trigger === true,
 		triggerAfterSeconds: num(merged.trigger_after_seconds, d.trigger_after_seconds),
-		pollSeconds: num(merged.poll_seconds, d.poll_seconds),
-		maxPollSeconds: num(merged.max_poll_seconds, d.max_poll_seconds),
+		pollSeconds: positive(merged.poll_seconds, d.poll_seconds),
+		maxPollSeconds: positive(merged.max_poll_seconds, d.max_poll_seconds),
 		reviewTimeoutMinutes: num(merged.review_timeout_minutes, d.review_timeout_minutes),
 		checksTimeoutMinutes: num(merged.checks_timeout_minutes, d.checks_timeout_minutes),
 		merge: {

@@ -7,11 +7,16 @@
  *   script takes and releases the lock itself (the harness does not hold it,
  *   or the two would deadlock) and emits `merge.locked` / `merge.completed`.
  * - Without, the harness merges natively: it takes the lock, re-reads the pull
- *   request, resolves the method from the repository settings and rulesets,
- *   then runs `gh pr merge --repo` outside the checkout, so `gh` never checks
- *   out the base branch in a worktree. The remote head branch is deleted
- *   through the API. Anything GitHub refuses (branch protection, a moved
- *   head, conflicts) stops the run `awaiting-human`: nothing is bypassed.
+ *   request, checks that its head is the expected head (the step's `head`,
+ *   else the `head` output of the run's latest `wait-for-review` or
+ *   `wait-for-checks` step), resolves the method from the repository settings
+ *   and rulesets, then runs `gh pr merge --repo --match-head-commit <expected>`
+ *   outside the checkout, so `gh` never checks out the base branch in a
+ *   worktree. The remote head branch is deleted through the API. A head that
+ *   moved since it was verified stops the run `awaiting-human` with a
+ *   `needs_input` request (merge it anyway, or stop); anything GitHub refuses
+ *   (branch protection, conflicts) stops it `awaiting-human` too: nothing is
+ *   bypassed.
  *
  * The `on-merge` worktree cleanup runs at the end of the run, once a step
  * reported `merged`: the worktree is removed, then its local branch.
@@ -32,6 +37,7 @@ import {
 	repoMergeSettings,
 	viewPr,
 } from "../github/pr.js";
+import { sameCommit } from "../github/reviews.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import { type StepContext, StepExecutor, type StepResult, emitStepEvent } from "./base.js";
@@ -39,15 +45,30 @@ import {
 	completeStep,
 	failStep,
 	ghOptions,
+	idSlug,
 	interrupted,
+	latestWaitHead,
 	minutes,
 	pullRequestRef,
+	renderField,
 	stopAwaitingHuman,
 } from "./github-base.js";
 import { SkillStepExecutor } from "./skill-step.js";
 
 /** Environment variable that names the merge lock file for a merge skill. */
 export const MERGE_LOCK_ENV = "AF_MERGE_LOCK";
+
+/** The head a native merge expects, and where it comes from. */
+interface ExpectedHead {
+	sha: string;
+	/** What set it: the step's `head` field, the wait step that verified it, or the operator. */
+	source: string;
+}
+
+/** `needs_input` id of a head mismatch: `merge-head-<step>-<short head>`. */
+export function headRequestId(step: string, head: string): string {
+	return `merge-head-${idSlug(step)}-${head.slice(0, 7)}`.slice(0, 200);
+}
 
 export class MergeStepExecutor extends StepExecutor {
 	private readonly skillExecutor = new SkillStepExecutor();
@@ -85,6 +106,10 @@ export class MergeStepExecutor extends StepExecutor {
 
 		const early = await this.settled(step, progress, context, logger, console, pr);
 		if (early) return early;
+		let expected = this.expectedHead(step, progress, context);
+		const earlyHead = await this.checkHead(step, progress, context, logger, console, pr, expected);
+		if (earlyHead.stop) return earlyHead.stop;
+		expected = earlyHead.expected;
 
 		const lock = await acquireMergeLock(lockPath, {
 			timeoutMs: minutes(config.merge.lockTimeoutMinutes),
@@ -119,6 +144,19 @@ export class MergeStepExecutor extends StepExecutor {
 			pr = await viewPr(pr.url, outside);
 			const settled = await this.settled(step, progress, context, logger, console, pr);
 			if (settled) return settled;
+			const headCheck = await this.checkHead(
+				step,
+				progress,
+				context,
+				logger,
+				console,
+				pr,
+				expected,
+			);
+			if (headCheck.stop) return headCheck.stop;
+			expected = headCheck.expected;
+			// The full id of the verified head (the expected one may be a short SHA)
+			const matchHead = expected && expected.sha.length === 40 ? expected.sha : pr.headRefOid;
 
 			let resolved: ReturnType<typeof resolveMergeMethod>;
 			try {
@@ -141,7 +179,7 @@ export class MergeStepExecutor extends StepExecutor {
 			}
 			logger.info(step.name, `Merge method ${resolved.method}: ${resolved.reason}`);
 			await context.recordDecision?.({
-				id: `d-merge-${step.name}-${pr.headRefOid.slice(0, 7)}`,
+				id: `d-merge-${idSlug(step.name)}-${pr.headRefOid.slice(0, 7)}`.slice(0, 200),
 				phase: step.name,
 				risk: "low",
 				decision: `${resolved.queue ? "Enqueue" : "Merge"} ${pr.url} with ${resolved.method}`,
@@ -151,7 +189,7 @@ export class MergeStepExecutor extends StepExecutor {
 			});
 
 			try {
-				await mergePr(pr, resolved.method, resolved.queue, outside);
+				await mergePr(pr, resolved.method, resolved.queue, outside, matchHead);
 			} catch (e) {
 				if (context.signal?.aborted) return interrupted();
 				const detail = e instanceof Error ? e.message : String(e);
@@ -186,7 +224,19 @@ export class MergeStepExecutor extends StepExecutor {
 
 			let remote = "kept";
 			if ((step.deleteBranch ?? config.merge.deleteBranch) && !pr.isCrossRepository) {
-				remote = (await deleteRemoteBranch(pr, outside)) ? "deleted" : "already gone";
+				const deleted = await deleteRemoteBranch(pr, outside);
+				remote =
+					deleted.outcome === "deleted"
+						? "deleted"
+						: deleted.outcome === "gone"
+							? "already gone"
+							: `delete failed: ${deleted.detail}`;
+				if (deleted.outcome === "failed") {
+					logger.warning(
+						step.name,
+						`Remote branch ${pr.headRefName} not deleted: ${deleted.detail}`,
+					);
+				}
 			}
 			await emitStepEvent(context, "merge.completed", {
 				step: step.name,
@@ -206,6 +256,87 @@ export class MergeStepExecutor extends StepExecutor {
 		} finally {
 			lock.release();
 		}
+	}
+
+	/**
+	 * The head the merge expects: the step's `head` (template), else the `head`
+	 * output of the run's latest wait step, else null (no check).
+	 */
+	private expectedHead(
+		step: StepDefinition,
+		progress: WorkflowProgress,
+		context: StepContext,
+	): ExpectedHead | null {
+		if (step.head) {
+			const rendered = renderField(context, step.head).trim();
+			if (rendered) return { sha: rendered, source: "the step's head field" };
+		}
+		const latest = latestWaitHead(progress, context);
+		return latest ? { sha: latest.head, source: `step ${latest.step}` } : null;
+	}
+
+	/**
+	 * Compares the pull request head with the expected head. On a mismatch the
+	 * step stops `awaiting-human` with a `needs_input` request, unless the
+	 * operator already answered it: `merge` takes the new head as expected,
+	 * `stop` fails the step.
+	 */
+	private async checkHead(
+		step: StepDefinition,
+		progress: WorkflowProgress,
+		context: StepContext,
+		logger: WorkflowLogger,
+		console: ConsoleOutput,
+		pr: PullRequest,
+		expected: ExpectedHead | null,
+	): Promise<{ stop: StepResult | null; expected: ExpectedHead | null }> {
+		if (!expected || sameCommit(expected.sha, pr.headRefOid)) return { stop: null, expected };
+		const id = headRequestId(step.name, pr.headRefOid);
+		const answer = context.inputAnswer ? await context.inputAnswer(step.name, id) : null;
+		const choice = answer ? (answer.option ?? answer.answer) : null;
+		const now = pr.headRefOid.slice(0, 7);
+		const was = expected.sha.slice(0, 7);
+		if (choice === "merge") {
+			logger.info(step.name, `Head ${now} differs from ${was}: merging it (operator)`);
+			return { stop: null, expected: { sha: pr.headRefOid, source: "the operator" } };
+		}
+		if (choice === "stop") {
+			return {
+				stop: await failStep(step, progress, context, logger, console, {
+					status: "failed",
+					summary: `Not merged: the head of ${pr.url} moved from ${was} to ${now} (operator)`,
+					pr: pr.url,
+				}),
+				expected,
+			};
+		}
+		return {
+			stop: await stopAwaitingHuman(
+				step,
+				progress,
+				context,
+				logger,
+				console,
+				`The head of ${pr.url} moved from ${was} (verified by ${expected.source}) to ${now}`,
+				{ pr: pr.url, blockers: [`head moved from ${was} to ${now}`] },
+				{
+					id,
+					question: `The head of ${pr.url} is ${now}, not ${was} verified by ${expected.source}. Merge ${now} anyway, or stop?`,
+					options: [
+						{
+							id: "merge",
+							label: "Merge anyway",
+							description: `Merge ${now} without the reviews or checks of the expected head`,
+						},
+						{ id: "stop", label: "Stop", description: "Fail the step without merging" },
+					],
+					recommended: null,
+					blocking: true,
+					context: "To verify the new head instead, rerun the wait step with af retry-step.",
+				},
+			),
+			expected,
+		};
 	}
 
 	/** An already merged, closed or draft pull request ends the step without merging. */

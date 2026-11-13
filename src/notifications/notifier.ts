@@ -251,18 +251,20 @@ export class Notifier {
 	}
 
 	private runConfig(entry: RegistryEntry): NotificationsConfig {
-		const cached = this.configs.get(entry.id);
+		// Overseer runs keep their config snapshot in overseer.json, rewritten
+		// each time a session opens the run: read it on every call
+		const overseer = entry.type === "overseer";
+		const cached = overseer ? undefined : this.configs.get(entry.id);
 		if (cached) return cached;
 		let snapshot: Record<string, unknown> = {};
 		try {
-			// Overseer runs keep their config snapshot in overseer.json
-			const file = entry.type === "overseer" ? OVERSEER_FILE : "dispatch.json";
+			const file = overseer ? OVERSEER_FILE : "dispatch.json";
 			snapshot = new RunStore(entry.dir).readJson<DispatchPayload>(file).config ?? {};
 		} catch {
 			// No snapshot: defaults (every channel off)
 		}
 		const config = getNotificationsConfig(snapshot);
-		this.configs.set(entry.id, config);
+		if (!overseer) this.configs.set(entry.id, config);
 		return config;
 	}
 

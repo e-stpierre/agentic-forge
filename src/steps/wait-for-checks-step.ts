@@ -2,14 +2,24 @@
  * `wait-for-checks` step: polls the checks of the pull request head from the
  * supervisor until none is pending, then reports pass or fail in its result.
  * No agent session runs while it waits. `checks: required` (the default)
- * waits for the checks branch protection requires, or for every check when
- * the base requires none. A failing check fails the step unless
+ * waits for the checks the base branch requires: its rules are read once, and
+ * when they require none, every check is waited for until a required check
+ * (classic branch protection) shows up on the head. A head with no check
+ * passes after a grace period, counted from the time the step first saw that
+ * head. A failing check fails the step unless
  * `on-fail: continue`. On timeout the run stops `awaiting-human`.
  */
 
 import { getGithubConfig } from "../config.js";
 import type { ConsoleOutput } from "../console.js";
-import { type Check, type PullRequest, listChecks, viewPr } from "../github/pr.js";
+import {
+	type BranchRule,
+	type Check,
+	type PullRequest,
+	branchRules,
+	listChecks,
+	viewPr,
+} from "../github/pr.js";
 import type { WorkflowLogger } from "../logging/logger.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import { type StepContext, StepExecutor, type StepResult, emitStepEvent } from "./base.js";
@@ -31,6 +41,21 @@ const KIND = "checks";
 
 /** Seconds without any check reported before a head with no checks counts as passing. */
 export const NO_CHECKS_GRACE_SECONDS = 60;
+
+/** Timing knobs of the step (tests shorten the grace period). */
+export const checksTiming = { noChecksGraceSeconds: NO_CHECKS_GRACE_SECONDS };
+
+/**
+ * True when the branch rules require status checks (a `required_status_checks`
+ * rule that lists at least one check).
+ */
+export function requiresChecks(rules: BranchRule[]): boolean {
+	return rules.some((rule) => {
+		if (rule.type !== "required_status_checks") return false;
+		const list = rule.parameters?.required_status_checks;
+		return Array.isArray(list) && list.length > 0;
+	});
+}
 
 export interface ChecksSummary {
 	conclusion: "pass" | "fail" | "pending";
@@ -72,30 +97,50 @@ export class WaitForChecksStepExecutor extends StepExecutor {
 		const timeoutMs = minutes(step.stepTimeoutMinutes ?? config.checksTimeoutMinutes);
 		const backoff = new Backoff(step.pollSeconds ?? config.pollSeconds, config.maxPollSeconds);
 		const deadline = Date.now() + timeoutMs;
-		const startedAt = Date.now();
 		const mode = step.checks ?? "required";
 		let head: string | null = null;
-		let requiredOnly = mode === "required";
+		let headSeenAt = Date.now();
+		// `required`: the base's rules decide. Rules that require checks keep the
+		// scope required for good; without, a required check that shows up on
+		// the head (classic branch protection) narrows it, and until then every
+		// check is waited for.
+		let requiredKnown = false;
+		let rulesRead = false;
 
 		for (;;) {
 			if (context.signal?.aborted) return interrupted();
 			const pr = await viewPr(ref, gh);
 			if (pr.headRefOid !== head) {
 				head = pr.headRefOid;
+				// A new head gets its own grace period: its checks may not be listed yet
+				headSeenAt = Date.now();
 				backoff.reset();
 			}
-			let checks = await listChecks(pr, requiredOnly, gh);
-			if (requiredOnly && checks.length === 0) {
-				// The base requires no check: wait for all of them instead
-				requiredOnly = false;
-				logger.info(step.name, "No required check on the base branch: waiting for all checks");
+			if (mode === "required" && !rulesRead) {
+				rulesRead = true;
+				requiredKnown = requiresChecks(await branchRules(pr.repo, pr.baseRefName, gh));
+				if (!requiredKnown) {
+					logger.info(
+						step.name,
+						"The base branch rules require no check: waiting for all checks until a required one shows up",
+					);
+				}
+			}
+			let checks: Check[];
+			let requiredOnly = false;
+			if (mode === "required") {
+				checks = await listChecks(pr, true, gh);
+				if (checks.length > 0) requiredKnown = true;
+				requiredOnly = requiredKnown;
+				if (!requiredKnown) checks = await listChecks(pr, false, gh);
+			} else {
 				checks = await listChecks(pr, false, gh);
 			}
 			const summary = summarizeChecks(checks);
 			const scope = requiredOnly ? "required" : "all";
 			const settled =
 				summary.conclusion !== "pending" &&
-				(summary.total > 0 || Date.now() - startedAt >= NO_CHECKS_GRACE_SECONDS * 1000);
+				(summary.total > 0 || Date.now() - headSeenAt >= checksTiming.noChecksGraceSeconds * 1000);
 
 			if (settled || answer === "continue") {
 				const conclusion = summary.conclusion === "pending" ? "pending" : summary.conclusion;

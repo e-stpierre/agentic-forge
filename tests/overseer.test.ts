@@ -221,6 +221,32 @@ describe("overseer runs", () => {
 		).rejects.toMatchObject({ status: 409 });
 	});
 
+	it("refuses to resume an overseer run from another repository and keeps its config", async () => {
+		const { manager, client } = await startSupervisor();
+		const open = await manager.openOverseer(overseerPayload());
+		const other = mkdtempSync(path.join(tmpdir(), "af-overseer-other-"));
+		try {
+			const config = { ...getDefaultConfig(), notifications: { enabled: false } };
+			await expect(
+				manager.openOverseer(overseerPayload({ resume: open.run.id, repo_root: other, config })),
+			).rejects.toMatchObject({ status: 409 });
+			await expect(
+				client.request(
+					"POST",
+					"/v1/overseer",
+					overseerPayload({ resume: open.run.id, repo_root: other }),
+				),
+			).rejects.toThrow(`belongs to repository ${repo}`);
+			const file = JSON.parse(readFileSync(path.join(open.dir, "overseer.json"), "utf-8"));
+			expect(file.repo_root).toBe(repo);
+			expect(file.config.notifications).toEqual(getDefaultConfig().notifications);
+			expect(file.sessions).toHaveLength(1);
+			expect(eventTypes(open.dir)).toEqual(["run.started"]);
+		} finally {
+			rmSync(other, { recursive: true, force: true });
+		}
+	});
+
 	it("never holds the checkout, counts as no active run and is skipped by crash recovery", async () => {
 		const first = await startSupervisor();
 		const open = await first.manager.openOverseer(overseerPayload());
@@ -310,6 +336,37 @@ describe("overseer runs", () => {
 		expect(sent).toHaveLength(1);
 		expect(sent[0]).toContain("https://ntfy.example/af-test");
 		expect(eventTypes(open.dir).at(-1)).toBe("notification.sent");
+	});
+
+	it("uses the config of the latest session of an overseer run", async () => {
+		const sent: string[] = [];
+		const transport: NotificationTransport = {
+			async post(url, body) {
+				sent.push(`${url} ${body}`);
+				return 200;
+			},
+			async exec() {},
+			async comment() {},
+		};
+		const { manager } = await startSupervisor(transport);
+		await manager.notifier.poll();
+		// First session: every channel off
+		const open = await manager.openOverseer(overseerPayload());
+		await manager.notifier.poll();
+		expect(sent).toHaveLength(0);
+		const config = {
+			...getDefaultConfig(),
+			notifications: {
+				channels: { ntfy: { enabled: true, topic: "af-later", server: "https://ntfy.example" } },
+			},
+		};
+		const again = await manager.openOverseer(overseerPayload({ resume: open.run.id, config }));
+		expect(again.mode).toBe("resumed");
+		await manager.notifier.poll();
+		await manager.finishOverseer(open.run.id, { summary: "All done" });
+		await manager.notifier.poll();
+		expect(sent).toHaveLength(1);
+		expect(sent[0]).toContain("https://ntfy.example/af-later");
 	});
 
 	it("records the parent of a dispatched run and refuses an unknown parent", async () => {

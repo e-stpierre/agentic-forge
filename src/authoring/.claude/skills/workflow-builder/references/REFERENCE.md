@@ -83,7 +83,7 @@ Nested under `settings.worktree`. Controls workflow-level git worktree isolation
 | --------------- | ------------------------------------------------------------------------------------------ |
 | `"on-success"`  | Remove worktree on success; preserve on failure                                            |
 | `"on-complete"` | Always remove worktree after the workflow finishes                                         |
-| `"on-merge"`    | Remove the worktree, then its local branch, once a step reported `merged` (a `merge` step) |
+| `"on-merge"`    | Remove the worktree, then its local branch, once a step reported `merged` (a `merge` step); the branch is kept when leftover changes were auto-saved on it |
 | `"manual"`      | Never remove automatically; log path for manual inspection                                 |
 
 **The `enabled` field accepts a Nunjucks template string** so users can toggle worktree mode via a CLI variable:
@@ -387,7 +387,7 @@ Request ids are `input-<step>-<n>` (`n` counts the questions the step asked). Ou
 
 ### wait-for-review
 
-Wait until every listed reviewer has reviewed the pull request's current head commit. The supervisor polls GitHub with `gh` (first interval `poll-seconds`, doubling up to `github.max_poll_seconds`); no coding agent runs while it waits. A push (new head) restarts the wait for that head. A reviewer has reviewed the head when it submitted a pull request review on that commit, when its Codex summary comment (`codex-review-state:v1` marker) completed on that commit, or when it commented after the head was committed (the Claude GitHub Action's "No issues found" comment). Each review emits `review.received`. On timeout the run stops `awaiting-human` with a `needs_input` request `review-timeout-<step>-<n>`: answer `wait` (wait again) or `continue` (go on without the missing reviews).
+Wait until every listed reviewer has reviewed the pull request's current head commit. The supervisor polls GitHub with `gh` (first interval `poll-seconds`, doubling up to `github.max_poll_seconds`); no coding agent runs while it waits. A push (new head) restarts the wait for that head, timeout included. A reviewer has reviewed the head when it submitted a pull request review on that commit, when its Codex summary comment (`codex-review-state:v1` marker) completed on that commit, or when it posted a review result comment (a `## Code review` heading or "No issues found", as the Claude GitHub Action does) after the head was committed and, for a head pushed during the step, after the step first saw that head. Each review emits `review.received`. On timeout the run stops `awaiting-human` with a `needs_input` request `review-timeout-<step>-<n>`: answer `wait` (wait again) or `continue` (go on without the missing reviews).
 
 **Specific properties:**
 
@@ -403,7 +403,7 @@ Outputs: `{{ outputs.<step>.reviews }}` (`reviewer`, `login`, `state`, `source`,
 
 ### wait-for-checks
 
-Wait until no check of the pull request head is pending, then report pass or fail. No coding agent runs. `checks: required` waits for the checks branch protection requires, or for every check when the base requires none; `all` waits for every check. A failing (or canceled) check fails the step, unless `on-fail: continue`, which completes it with `outputs.<step>.result: fail`. Emits `checks.completed`. On timeout the run stops `awaiting-human` (`checks-timeout-<step>-<n>`, answer `wait` or `continue`).
+Wait until no check of the pull request head is pending, then report pass or fail. No coding agent runs. `checks: required` waits for the checks the base branch requires: the step reads the base's rules once (`required_status_checks`); when they require none, it waits for every check until a required check (classic branch protection) shows up on the head. `all` waits for every check. A head with no check passes after 60 seconds, counted from the time the step first saw that head. A failing (or canceled) check fails the step, unless `on-fail: continue`, which completes it with `outputs.<step>.result: fail`. Emits `checks.completed`. On timeout the run stops `awaiting-human` (`checks-timeout-<step>-<n>`, answer `wait` or `continue`).
 
 | Key               | Type          | Default                           | Description                                |
 | ----------------- | ------------- | --------------------------------- | ------------------------------------------ |
@@ -419,7 +419,7 @@ Outputs: `result` (`pass`, `fail`, `pending`), `passed`, `scope`, `failed`, `pen
 
 Merge the pull request under the per-repository merge lock: every `merge` step of one repository (main checkout and all its worktrees, any run) takes the same lock file, so merges never race. A lock whose holder died (a supervisor crash) goes stale after 30 seconds and is taken over.
 
-- **Native** (no `skill`): the harness takes the lock (`merge.locked`), re-reads the pull request, resolves the method from the repository settings and rulesets (merge queue: enqueue; one method: use it; several: the first in `github.merge.preference`; linear history excludes `merge`; an explicit `method` that is not allowed fails the step), logs it as a decision, and runs `gh pr merge --repo <o/r> --<method> --match-head-commit <sha>` from outside the checkout (never `--delete-branch`, so `gh` never checks out the base in a worktree). It then deletes the remote head branch through the API (not for forks) and emits `merge.completed`. A draft, branch protection or any other refusal stops the run `awaiting-human`; nothing is bypassed. An already merged pull request completes `merged`.
+- **Native** (no `skill`): the harness takes the lock (`merge.locked`), re-reads the pull request, checks its head against the expected head (`head`, else the `head` output of the run's latest `wait-for-review` or `wait-for-checks` step; no check when neither is set), resolves the method from the repository settings and rulesets (merge queue: enqueue; one method: use it; several: the first in `github.merge.preference`; linear history excludes `merge`; an explicit `method` that is not allowed fails the step), logs it as a decision, and runs `gh pr merge --repo <o/r> --<method> --match-head-commit <expected sha>` from outside the checkout (never `--delete-branch`, so `gh` never checks out the base in a worktree). It then deletes the remote head branch through the API (not for forks; `remote_branch` output `deleted`, `already gone`, or `delete failed: <reason>`) and emits `merge.completed`. A head that moved since it was verified stops the run `awaiting-human` with a `needs_input` request `merge-head-<step>-<short sha>`: answer `merge` (merge the new head anyway) or `stop` (fail the step); to verify the new head instead, `af retry-step` the wait step. A draft, branch protection or any other refusal stops the run `awaiting-human`; nothing is bypassed. An already merged pull request completes `merged`.
 - **Skill** (`skill: esp-skills:esp-merge`): runs like a `skill` step with `AF_MERGE_LOCK` set to the lock file; the skill takes and releases the lock itself.
 
 | Key             | Type          | Default                           | Description                                    |
@@ -428,6 +428,7 @@ Merge the pull request under the per-repository merge lock: every `merge` step o
 | `pr`            | number/string | run `pr`, else the current branch | Pull request (template)                        |
 | `method`        | string        | `github.merge.method` (`repo`)    | `repo`, `squash`, `rebase` or `merge`          |
 | `delete-branch` | bool          | `github.merge.delete_branch`      | Delete the remote head branch after the merge  |
+| `head`          | string        | latest wait step's `head` output | Head SHA the pull request must have (template, native merge only) |
 
 The lock wait is `github.merge.lock_timeout_minutes` (then `awaiting-human`). The step result is `merged` (or `done` when queued); with `settings.worktree.cleanup: on-merge` the worktree is removed at the end of the run, then its branch.
 
@@ -686,7 +687,7 @@ When validating a workflow, check for these issues:
 - `settings.amend.step` naming a step that is not a top-level step
 - Nested parallel steps (parallel inside parallel)
 - A `human-input`, `wait-for-review`, `wait-for-checks` or `merge` step under a parallel step
-- `wait-for-review` without `reviewers`; `checks` other than required or all; `on-fail` other than fail or continue; `method` other than repo, squash, rebase or merge; `poll-seconds` or `timeout-minutes` not positive
+- `wait-for-review` without `reviewers`; `checks` other than required or all; `on-fail` other than fail or continue; `method` other than repo, squash, rebase or merge; an empty `head`; `poll-seconds` or `timeout-minutes` not positive
 - Prompt step without `prompt` field
 - Conditional step without `condition` field
 - Ralph-loop step without `prompt` field

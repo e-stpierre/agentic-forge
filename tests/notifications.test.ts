@@ -286,6 +286,47 @@ describe("messages", () => {
 		expect(failed.body).toContain("af resume 2026-11-11-x");
 		expect(renderTemplate("{{a}}-{{ b }}", { a: "1" })).toBe("1-");
 	});
+
+	it("uses placeholders without angle brackets in the default hints", () => {
+		const halted = buildNotification(
+			{ seq: 9, at: ask.at, run: run.id, type: "run.halted", data: { reason: "stop" } },
+			run,
+		);
+		expect(halted.body).toContain("af retry-step 2026-11-11-x STEP");
+		expect(halted.body).toContain('af_retry_step(run: "2026-11-11-x", step: STEP)');
+		const open = buildNotification({ ...ask, data: { id: "q2", question: "Name?" } }, run);
+		expect(open.body).toContain("Answer: af answer 2026-11-11-x q2 ANSWER");
+		expect(`${halted.body}${open.body}`).not.toMatch(/[<>]/);
+	});
+
+	it("points an ended overseer run to its summary and a new overseer", () => {
+		const overseer = { ...run, id: "2026-11-11-overseer", workflow: "overseer", type: "overseer" };
+		for (const type of ["run.halted", "run.failed"]) {
+			const n = buildNotification(
+				{
+					seq: 7,
+					at: ask.at,
+					run: overseer.id,
+					type,
+					data: { status: type.slice(4), type: "overseer", summary: "summary.md" },
+				},
+				overseer,
+			);
+			expect(n.title).toBe(`af: overseer 2026-11-11-overseer ${type.slice(4)}`);
+			expect(n.body).toContain("Summary: af artifacts 2026-11-11-overseer --kind summary");
+			expect(n.body).toContain("Start a new overseer: af overseer --new");
+			expect(n.body).not.toContain("af resume");
+			expect(n.body).not.toContain("af retry-step");
+			expect(n.body).not.toContain("summary.md");
+		}
+		// A configured template still wins
+		const custom = buildNotification(
+			{ seq: 7, at: ask.at, run: overseer.id, type: "run.halted", data: {} },
+			overseer,
+			{ "run.halted": { body: "custom {{run}}" } },
+		);
+		expect(custom.body).toBe("custom 2026-11-11-overseer");
+	});
 });
 
 describe("channels", () => {
@@ -341,6 +382,31 @@ describe("channels", () => {
 		const desktop = sent.find((s) => s.kind === "exec");
 		expect(desktop?.target).toBe(desktopCommand().command);
 		expect(desktop?.env).toEqual({ [TOAST_TITLE_ENV]: n.title, [TOAST_BODY_ENV]: n.body });
+	});
+
+	it("escapes Slack control characters so text cannot mention or get mangled", async () => {
+		const config = getNotificationsConfig(
+			configWith({
+				channels: { slack: { enabled: true, webhook_url: "https://hooks.slack.test/x" } },
+			}),
+		);
+		const { sent, transport } = mockTransport();
+		const report = await deliver(
+			{
+				...n,
+				title: "af: <r1> & co",
+				body: "Context: <!channel> <@U123> look\nRetry: af retry-step r1 <step>",
+			},
+			["slack"],
+			config,
+			transport,
+		);
+		expect(report.sent).toEqual(["slack"]);
+		const text = JSON.parse(sent[0].body).text as string;
+		expect(text).toBe(
+			"*af: &lt;r1&gt; &amp; co*\nContext: &lt;!channel&gt; &lt;@U123&gt; look\nRetry: af retry-step r1 &lt;step&gt;",
+		);
+		expect(text).not.toMatch(/[<>]/);
 	});
 
 	it("keeps the toast text off the command line on every platform", () => {
@@ -460,8 +526,19 @@ describe("notifier", () => {
 		await second.poll();
 		expect(sent).toHaveLength(1);
 
-		// Crash before the positions were saved: the event replays, notification.sent dedupes it
-		writeFileSync(path.join(home.root, "notifications", "positions.json"), "{}");
+		// Crash before the positions were saved: the saved positions are still before
+		// run.completed, so the event replays and its notification.sent dedupes it
+		const completed = overseer.readEvents().find((e) => e.type === "run.completed");
+		const workerCompleted = worker.readEvents().find((e) => e.type === "run.completed");
+		expect(completed).toBeDefined();
+		writeFileSync(
+			path.join(home.root, "notifications", "positions.json"),
+			JSON.stringify({
+				[overseer.id]: (completed?.seq ?? 1) - 1,
+				[worker.id]: (workerCompleted?.seq ?? 1) - 1,
+			}),
+		);
+		expect(sentEvents(overseer.dir)[0].data).toMatchObject({ event_seq: completed?.seq });
 		const third = new Notifier(options);
 		third.start();
 		await third.poll();

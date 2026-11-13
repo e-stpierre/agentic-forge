@@ -743,7 +743,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 - `af_notify`: returns `{ sent, errors, event }` (`event` is the `seq` of `notification.sent` in the run, or null without a run); `hint` says when no channel is enabled
 - `af_backlog_list`: returns `{ items, runnable, waiting, running, max_parallel, halt, budgets, budgets_used }` (items without timestamps, nulls or empty lists)
 - `af_backlog_add` / `af_backlog_update`: return the added items (`added`) or the item, and the new `runnable` list
-- `from` (steering tools) is `user` or `overseer` (default `overseer`). An `af_answer` from the overseer on a run it dispatched is refused (409) outside its [answer policy](#answer-policy)
+- `from` (steering tools) is `user` or `overseer` (default `overseer`). An `af_answer` with `from: overseer` on a run the overseer dispatched is refused (409) outside its [answer policy](#answer-policy); `from` is declared by the caller, not authenticated
 
 The MCP SDK client's default request timeout is 60 seconds, below the `wait_seconds` cap of 120. Use shorter waits (for example 30) unless your client sets a longer timeout.
 
@@ -802,23 +802,23 @@ When the session ends, the overseer run stays open: reopen it later with `--resu
 
 ### Options
 
-| Option              | Description                                                                                          |
-| ------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `--epic <file       | text>`                                                                                               | The epic to work on: an existing file is read, anything else is taken as the text. Always starts a new overseer run |
-| `--resume <run>`    | Reopen this overseer run in a new session. The overseer rehydrates from the harness (`--rehydrate`)  |
-| `--new`             | Create a new overseer run even when one is open for this repository                                  |
-| `--model <model>`   | Model of the claude session                                                                          |
-| `--print-command`   | Open the run, print the claude command and exit (start it yourself, for example in another terminal) |
-| `--finish <run>`    | End an overseer run: writes `summary.md` and emits `run.completed` (or `run.halted`, `run.failed`)   |
-| `--status <status>` | With `--finish`: `done` (default), `halted` or `failed`                                              |
-| `--summary <text>`  | With `--finish`: the summary text                                                                    |
+| Option                | Description                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `--epic <file\|text>` | The epic to work on: an existing file is read, anything else is taken as the text. Always starts a new overseer run |
+| `--resume <run>`      | Reopen this overseer run in a new session from its repository (409 elsewhere); it rehydrates (`--rehydrate`)        |
+| `--new`               | Create a new overseer run even when one is open for this repository                                                 |
+| `--model <model>`     | Model of the claude session                                                                                         |
+| `--print-command`     | Open the run, print the claude command and exit (start it yourself, for example in another terminal)                |
+| `--finish <run>`      | End an overseer run: writes `summary.md` and emits `run.completed` (or `run.halted`, `run.failed`)                  |
+| `--status <status>`   | With `--finish`: `done` (default), `halted` or `failed`                                                             |
+| `--summary <text>`    | With `--finish`: the summary text                                                                                   |
 
 Arguments after `--` go to `claude` unchanged.
 
 ### Overseer runs
 
 - **Files**: `run.json`, `events.jsonl`, `overseer.json` (repository, config snapshot, one entry per session), `epic.md` (the epic, when given), `overseer/` (MCP config and the event monitor cursor), and `summary.md` once finished
-- **Status**: `running` while open, across sessions and supervisor restarts. It holds no checkout, does not count as an active run, and crash recovery leaves it alone. `pause`, `resume`, `send`, `amend` and `retry-step` are refused (talk to the overseer in its session); `af cancel` ends it as `canceled`
+- **Status**: `running` while open, across sessions and supervisor restarts. It holds no checkout, does not count as an active run, and crash recovery leaves it alone. `pause`, `resume`, `send`, `amend`, `answer`, `retry-step` and `reprioritize` are refused (talk to the overseer in its session); `af cancel` ends it as `canceled`
 - **Events**: `run.started` (`type: overseer`, `session: 1`), `run.resumed` for each later session, and the end event of `--finish`. The default notification triggers include `run.completed` of overseer runs
 - **Backlog**: `backlog.json` (see [Backlog](#backlog))
 - **Children**: the overseer passes its run as `parent` to `af_dispatch`, so `af list --parent <run>` and `af_list_runs` with `parent` list what it dispatched
@@ -829,15 +829,17 @@ Arguments after `--` go to `claude` unchanged.
 An overseer run has a backlog, `backlog.json` in its run directory. The harness is its only writer: the overseer changes it through `af_backlog_add` and `af_backlog_update`, dispatches with `item`, and the harness adds the discovered items of child runs.
 
 - **Items**: `T01`, `T02`, ... with `title`, `description`, `status`, `track` and `track_reason` (triage: `instruction`, `light` or `full`, always with a reason), `depends_on`, `conflict_zones` (paths or modules: `src/runs` overlaps `src/runs/manager.ts`; an item without zones runs alone), `priority`, `workflow`, `source` (`epic`, `user`, `overseer`, `discovered`), `discovered` (the run, step, type, severity and files of a discovered item), `run` and `runs` (its dispatches), `notes`
-- **Statuses**: `proposed` (default, waits for the user), `ready` (approved: needs a track), `running` (set by a dispatch with `item`), then the run's outcome: `done` (done or merged), `failed`, `halted`, `canceled`. `logged` items are recorded and never scheduled, `dropped` ones are rejected. A failed, halted or canceled item goes back to `ready` for a retry; a done item is final
+- **Statuses**: `proposed` (default, waits for the user), `ready` (approved: needs a track), `running` (set by a dispatch with `item`), then the run's outcome: `done` (done or merged), `failed`, `halted`, `canceled`. `logged` items are recorded and never scheduled, `dropped` ones are rejected. A failed, halted or canceled item goes back to `ready` for a retry; a done item is final. When the run of an ended item is reopened (`af resume`, `af retry-step`), the item is `running` again and takes the new outcome; an item whose run is still open cannot be dispatched again
 - **Scheduling**: a ready item is runnable when it has a track, its dependencies are done, it has retries left, no conflict zone overlaps a running item (or a runnable item before it), fewer than `overseer.max_parallel` items run (default 2), and the epic is not halted. A dispatch with `item` is refused otherwise, so overlapping items never run in parallel
 - **Halt** (`overseer.halt_epic_on`): `failed` or `halted` items, an open `critical` discovered item, or a spent `budget` (child run minutes) stop new dispatches until the user decides
-- **Discovered items**: the `discovered_items` of a child run's result blocks join the backlog per `overseer.accept_discovered_items` (`auto`: ready, untriaged; `ask`: proposed; `log`: logged; logged anyway once `budgets.max_tasks` is reached), once per run, step, type and title, each logged as a `policy` decision in the overseer run
+- **Discovered items**: the `discovered_items` of a child run's result blocks join the backlog per `overseer.accept_discovered_items` (`auto`: ready, untriaged; `ask`: proposed; `log`: logged; logged anyway once `budgets.max_tasks` is reached), once per backlog item (or run, for a dispatch without `item`), step, type and title, so a retry adds nothing twice, each logged as a `policy` decision in the overseer run
 - **Budgets**: `run.json` `budgets_used` of the overseer run records `tasks`, `dispatches`, `retries` and `run_minutes`
 
 ### Answer policy
 
-A `needs_input` event of a run dispatched by an overseer carries `overseer_policy` `{ within, answer, reason }`. Within `overseer.answer_policy` (default: the asking step reported `max_risk: low`, the request has a recommended option, permission requests excluded), the overseer answers it itself with `from: overseer`, and the answer is logged as a `policy` decision. Outside it, or with another option than the recommended one, the supervisor refuses an answer from the overseer (409); the overseer asks the user and answers with `from: user`.
+A `needs_input` event of a run dispatched by an overseer carries `overseer_policy` `{ within, answer, reason }`. Within `overseer.answer_policy` (default: the asking step reported `max_risk: low`, the request has a recommended option, permission requests excluded), the overseer answers it itself with `from: overseer`, and the answer is logged as a `policy` decision. Outside it, or with another option than the recommended one, the supervisor refuses an answer sent with `from: overseer` (409); the overseer asks the user and answers with `from: user`.
+
+The 409 guards against overseer mistakes; it is not an access control. Known limitation: `from` is declared by the caller and not authenticated, so an answer sent with `from: user`, or an `af_send` followed by `af_resume` of the waiting run, is not checked against the policy.
 
 ### Event monitor
 

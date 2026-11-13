@@ -172,6 +172,15 @@ export async function openOverseer(
 				409,
 			);
 		}
+		// The session runs claude and dispatches children in the launching
+		// directory, so it must be the run's repository
+		const runRepo = readOverseerFile(existing.dir)?.repo_root ?? existing.repo;
+		if (runRepo && !samePath(runRepo, payload.repo_root)) {
+			throw new OverseerError(
+				`Overseer run ${payload.resume} belongs to repository ${runRepo}: resume it from that directory`,
+				409,
+			);
+		}
 		mode = "resumed";
 	} else if (!epic && !payload.new) {
 		existing =

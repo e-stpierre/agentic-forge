@@ -60,7 +60,7 @@ const DEFAULT_TEMPLATES: Record<string, Required<Template>> = {
 			"{{run_line}}",
 			"{{reason}}",
 			"Inspect: af status {{run}} (MCP: af_status(run: {{run_json}}))",
-			"Retry a step: af retry-step {{run}} <step> (MCP: af_retry_step(run: {{run_json}}, step: ...))",
+			"Retry a step: af retry-step {{run}} STEP (MCP: af_retry_step(run: {{run_json}}, step: STEP))",
 		].join("\n"),
 	},
 	"run.completed": {
@@ -72,6 +72,31 @@ const DEFAULT_TEMPLATES: Record<string, Required<Template>> = {
 	default: {
 		title: "af: {{run}} {{event}}",
 		body: ["{{run_line}}", "{{reason}}", "Events: af events --run {{run}}"].join("\n"),
+	},
+};
+
+/**
+ * Defaults for overseer runs: an ended overseer run cannot be resumed or have
+ * a step retried, so its messages point to its summary and a new overseer.
+ */
+const OVERSEER_TEMPLATES: Record<string, Required<Template>> = {
+	"run.failed": {
+		title: "af: overseer {{run}} failed",
+		body: [
+			"{{run_line}}",
+			"{{reason}}",
+			"Summary: af artifacts {{run}} --kind summary",
+			"Start a new overseer: af overseer --new",
+		].join("\n"),
+	},
+	"run.halted": {
+		title: "af: overseer {{run}} halted",
+		body: [
+			"{{run_line}}",
+			"{{reason}}",
+			"Summary: af artifacts {{run}} --kind summary",
+			"Start a new overseer: af overseer --new",
+		].join("\n"),
 	},
 };
 
@@ -121,13 +146,14 @@ export function templateVars(event: RunEvent, run: RunFacts): Record<string, str
 	const options = Array.isArray(data.options) ? data.options : [];
 	const recommended = str(data.recommended);
 	const firstOption = str((options[0] as Record<string, unknown> | undefined)?.id);
-	const example = recommended || firstOption || "<answer>";
+	const example = recommended || firstOption || "ANSWER";
 	const where = [run.workflow ? `workflow ${run.workflow}` : "", run.repo ? `repo ${run.repo}` : ""]
 		.filter(Boolean)
 		.join(", ");
 	const step = str(data.step);
 	const runLine = `Run ${run.id}${where ? ` (${where})` : ""}${step ? `, step ${step}` : ""}`;
-	const reason = str(data.error) || str(data.reason) || str(data.summary);
+	// Not data.summary: the end event of an overseer run names its summary file there
+	const reason = str(data.error) || str(data.reason);
 	return {
 		run: run.id,
 		run_json: JSON.stringify(run.id),
@@ -160,7 +186,10 @@ export function buildNotification(
 	templates: Record<string, Template> = {},
 ): Notification {
 	const vars = templateVars(event, run);
-	const base = DEFAULT_TEMPLATES[event.type] ?? DEFAULT_TEMPLATES.default;
+	const base =
+		(run.type === "overseer" ? OVERSEER_TEMPLATES[event.type] : undefined) ??
+		DEFAULT_TEMPLATES[event.type] ??
+		DEFAULT_TEMPLATES.default;
 	const own = templates[event.type] ?? {};
 	return {
 		title: tidy(renderTemplate(own.title ?? base.title, vars), 200),

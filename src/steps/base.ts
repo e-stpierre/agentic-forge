@@ -14,7 +14,7 @@ import { STEP_STATUS, WORKFLOW_STATUS, updateStepStopped } from "../progress.js"
 import type { TemplateRenderer } from "../renderer.js";
 import type { RuntimeAdapter, RuntimeId, RuntimeRunOptions } from "../runtimes/index.js";
 import type { SessionHost } from "../runtimes/session.js";
-import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../types.js";
+import type { StepDefinition, StepType, WorkflowProgress, WorkflowSettings } from "../types.js";
 
 // --- Step context ---
 
@@ -83,6 +83,8 @@ export interface StepContext {
 	runPr?: (() => string | null) | null;
 	/** Logs a `policy` decision of a step to `decisions.jsonl` (the merge method). */
 	recordDecision?: ((decision: StepDecision) => Promise<void>) | null;
+	/** Type of a step of the running workflow by name, or null (the merge step finds the last wait step). */
+	stepType?: ((name: string) => StepType | null) | null;
 }
 
 /** A decision a step made by policy (the harness adds `at` and `source: policy`). */

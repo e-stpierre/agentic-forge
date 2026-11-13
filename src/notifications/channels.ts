@@ -171,13 +171,22 @@ async function sendNtfy(
 	);
 }
 
+/**
+ * Escapes the Slack mrkdwn control characters, so text from agents and review
+ * comments shows literally and cannot trigger mentions (`<!channel>`, `<@U...>`).
+ */
+export function slackEscape(text: string): string {
+	return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 async function sendSlack(
 	n: Notification,
 	settings: Record<string, unknown>,
 	transport: NotificationTransport,
 ): Promise<void> {
 	const url = requireString(settings, "webhook_url", "slack");
-	await postOk(transport, url, JSON.stringify({ text: `*${n.title}*\n${n.body}` }), {
+	const text = `*${slackEscape(n.title)}*\n${slackEscape(n.body)}`;
+	await postOk(transport, url, JSON.stringify({ text }), {
 		"Content-Type": "application/json",
 	});
 }

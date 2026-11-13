@@ -100,10 +100,38 @@ export const TIMEOUT_OPTIONS = [
 	{ id: "continue", label: "Continue", description: "Go on to the next step without it" },
 ];
 
+/** A step name as a contract id part (`[A-Za-z0-9._-]`, never empty). */
+export function idSlug(step: string): string {
+	return step.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[-._]+|-+$/g, "") || "step";
+}
+
 /** `needs_input` id of the n-th timeout of a step: `<kind>-timeout-<step>-<n>`. */
 export function timeoutRequestId(kind: string, step: string, n: number): string {
-	const slug = step.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "step";
-	return `${kind}-timeout-${slug}-${n}`.slice(0, 200);
+	return `${kind}-timeout-${idSlug(step)}-${n}`.slice(0, 200);
+}
+
+/** Step types whose `head` output is the head they verified. */
+const WAIT_STEP_TYPES = ["wait-for-review", "wait-for-checks"];
+
+/**
+ * The `head` output of the run's latest completed `wait-for-review` or
+ * `wait-for-checks` step, with that step's name, or null when none ran.
+ */
+export function latestWaitHead(
+	progress: WorkflowProgress,
+	context: StepContext,
+): { step: string; head: string } | null {
+	if (!context.stepType) return null;
+	for (let i = progress.completedSteps.length - 1; i >= 0; i--) {
+		const record = progress.completedSteps[i];
+		if (record.status !== STEP_STATUS.COMPLETED || record.superseded) continue;
+		const type = context.stepType(record.name);
+		if (!type || !WAIT_STEP_TYPES.includes(type)) continue;
+		const outputs = progress.stepOutputs[record.name] as Record<string, unknown> | undefined;
+		const head = outputs?.head;
+		if (typeof head === "string" && head) return { step: record.name, head };
+	}
+	return null;
 }
 
 /** How many times this step stopped `awaiting-human`, and whether its last record is that stop. */

@@ -9,6 +9,8 @@
  *   "no required checks reported"
  * - `repo`: `GET /repos/:o/:r` (allow_* flags); `rules`: branch rules
  * - `mergeError`: makes `gh pr merge` fail with this message
+ * - `deleteError`: makes the remote branch delete fail with this message
+ *   (`deletedBranches` records the encoded branch path of each delete)
  * - `mergeDelayMs`: time a merge takes
  * - `timeline`: `{ "<n>": patch }`, merged into the state at the n-th `pr view`
  *
@@ -108,6 +110,7 @@ export async function fakeGh(args, options = {}) {
     else if (/\/issues\/\d+\/comments/.test(route)) out(state.comments ?? []);
     else if (/\/rules\/branches\//.test(route)) out(state.rules ?? []);
     else if (method === "DELETE" && /\/git\/refs\/heads\//.test(route)) {
+      if (state.deleteError) return fail(state.deleteError);
       state.deletedBranches = [
         ...(state.deletedBranches ?? []),
         route.split("/heads/")[1]

@@ -390,7 +390,8 @@ steps:
 
       - name: wait-checks
         type: wait-for-checks
-        # Optional: required (default; all checks when the base requires none) | all
+        # Optional: required (default; the base branch rules decide, all checks
+        # when they require none) | all
         checks: required
         # Optional: fail (default) | continue (result in outputs['wait-checks'].result)
         on-fail: fail
@@ -404,6 +405,10 @@ steps:
         method: repo
         # Optional: delete the remote head branch (default github.merge.delete_branch)
         delete-branch: true
+        # Optional: head SHA the pull request must have to merge (template; default
+        # the head output of the latest wait step). A different head stops the run
+        # awaiting-human (af answer: merge | stop).
+        head: "{{ outputs['wait-checks'].head }}"
 
   # ==================== FINAL SUMMARY ====================
   - name: generate-summary

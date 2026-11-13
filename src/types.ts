@@ -135,6 +135,12 @@ export interface StepDefinition {
 	method?: string | null;
 	/** `merge`: delete the remote head branch after the merge (default `github.merge.delete_branch`). */
 	deleteBranch?: boolean | null;
+	/**
+	 * `merge` (native): head the pull request must have to merge (template),
+	 * default the `head` output of the run's latest `wait-for-review` or
+	 * `wait-for-checks` step. A different head stops the step `awaiting-human`.
+	 */
+	head?: string | null;
 	model?: string | null;
 	runtime?: string | null;
 	stepTimeoutMinutes?: number | null;

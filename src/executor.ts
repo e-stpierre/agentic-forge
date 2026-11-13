@@ -155,6 +155,20 @@ export function runMerged(progress: WorkflowProgress): boolean {
 	return progress.completedSteps.some((s) => s.resultStatus === "merged" && !s.superseded);
 }
 
+/** Type of every step by name, nested steps included. */
+function collectStepTypes(
+	steps: StepDefinition[],
+	into = new Map<string, StepType>(),
+): Map<string, StepType> {
+	for (const step of steps) {
+		into.set(step.name, step.type);
+		collectStepTypes(step.steps ?? [], into);
+		collectStepTypes(step.thenSteps ?? [], into);
+		collectStepTypes(step.elseSteps ?? [], into);
+	}
+	return into;
+}
+
 /** Current branch of a checkout, or null (detached head, missing dir). */
 function currentBranchOf(cwd: string): string | null {
 	if (!existsSync(cwd)) return null;
@@ -170,6 +184,8 @@ export class WorkflowExecutor {
 	runtimeOverride: string | null;
 	renderer: TemplateRenderer;
 	workflowSettings: WorkflowSettings | null = null;
+	/** Type of every step of the running workflow, by name (nested steps included). */
+	private stepTypes = new Map<string, StepType>();
 	executors: Record<
 		string,
 		| PromptStepExecutor
@@ -314,6 +330,7 @@ export class WorkflowExecutor {
 	): Promise<WorkflowProgress> {
 		let vars = variables ? { ...variables } : {};
 		this.workflowSettings = workflow.settings;
+		this.stepTypes = collectStepTypes(workflow.steps);
 
 		// Merge config.worktree defaults under workflow settings.
 		// Layering: hardcoded defaults < config < workflow YAML.
@@ -554,6 +571,18 @@ export class WorkflowExecutor {
 							`Safety commit failed; preserving worktree to prevent data loss: ${workflowWorktree.path}`,
 						);
 						console.info(`Worktree preserved (safety commit failed): ${workflowWorktree.path}`);
+					} else if (cleanup === "on-merge" && commitResult.committed) {
+						// Changes made after the merge were auto-saved on the branch:
+						// keep the branch so the safety commit is not lost
+						const current = currentBranchOf(workflowWorktree.path) ?? workflowWorktree.branch;
+						removeWorktree(workflowWorktree, this.repoRoot, false);
+						logger.warning(
+							"workflow",
+							`Worktree removed after the merge: ${workflowWorktree.path}; branch ${current} kept with the auto-saved changes`,
+						);
+						console.info(
+							`Branch ${current} kept: it holds changes auto-saved after the merge (${workflowWorktree.path})`,
+						);
 					} else if (cleanup === "on-merge") {
 						// The pull request merged on GitHub: remove the worktree first,
 						// then its local branches (the recorded one and the one checked out)
@@ -793,6 +822,7 @@ export class WorkflowExecutor {
 			lastSession: this.options.lastSession ?? null,
 			runPr: this.options.runPr ?? null,
 			recordDecision: this.options.recordDecision ?? null,
+			stepType: (name) => this.stepTypes.get(name) ?? null,
 			shouldStop: this.checkStop,
 		};
 

@@ -232,13 +232,16 @@ export async function branchRules(
  * Merges the pull request with `gh pr merge --repo`, which never checks out
  * the base branch locally (no `--delete-branch`: the remote branch is deleted
  * through the API). `queue` enqueues with `--auto`. `--match-head-commit`
- * refuses a head that moved since it was checked.
+ * makes GitHub refuse the merge when the head is no longer `head` (default
+ * `pr.headRefOid`, the head read just before). It only guards that SHA: the
+ * caller compares it with the head its reviews and checks verified.
  */
 export async function mergePr(
 	pr: PullRequest,
 	method: string,
 	queue: boolean,
 	options: GhOptions = {},
+	head: string = pr.headRefOid,
 ): Promise<void> {
 	const args = [
 		"pr",
@@ -248,20 +251,37 @@ export async function mergePr(
 		pr.repo,
 		`--${method}`,
 		"--match-head-commit",
-		pr.headRefOid,
+		head,
 	];
 	if (queue) args.push("--auto");
 	await gh(args, options);
 }
 
-/** Deletes the remote head branch (never for a fork). Returns false when it was already gone. */
+/** Outcome of a remote branch delete. */
+export type BranchDeleteResult =
+	| { outcome: "deleted" }
+	| { outcome: "gone" }
+	| { outcome: "failed"; detail: string };
+
+/**
+ * Deletes the remote head branch (never for a fork). Each path segment of the
+ * branch name is encoded (`#`, `%`). A 404 or 422 answer means it was
+ * already gone; any other failure is reported with gh's message.
+ */
 export async function deleteRemoteBranch(
 	pr: PullRequest,
 	options: GhOptions = {},
-): Promise<boolean> {
+): Promise<BranchDeleteResult> {
+	const branch = pr.headRefName.split("/").map(encodeURIComponent).join("/");
 	const result = await runGh(
-		["api", "-X", "DELETE", `repos/${pr.repo}/git/refs/heads/${pr.headRefName}`],
+		["api", "-X", "DELETE", `repos/${pr.repo}/git/refs/heads/${branch}`],
 		options,
 	);
-	return result.code === 0;
+	if (result.code === 0) return { outcome: "deleted" };
+	const detail = `${result.stderr}\n${result.stdout}`.trim();
+	// gh api reports `<message> (HTTP 404)`; GitHub answers 422 for a missing ref
+	if (/\bHTTP (404|422)\b/.test(detail)) {
+		return { outcome: "gone" };
+	}
+	return { outcome: "failed", detail: detail || `gh exited with ${result.code}` };
 }

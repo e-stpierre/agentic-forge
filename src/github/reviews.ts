@@ -78,22 +78,35 @@ function sameLogin(a: string, b: string): boolean {
 	return norm(a) === norm(b);
 }
 
-function sameCommit(a: string | null, b: string): boolean {
+/** True when two commit ids name the same commit (a 7+ character prefix matches). */
+export function sameCommit(a: string | null, b: string): boolean {
 	if (!a) return false;
 	return a === b || (a.length >= 7 && b.startsWith(a)) || (b.length >= 7 && a.startsWith(b));
 }
 
 /**
+ * True when a comment body has the known result format of a review comment
+ * (the Claude Code GitHub Action: a `## Code review` heading, or "No issues
+ * found"). Progress and tracking comments do not match.
+ */
+export function isReviewResultComment(body: string): boolean {
+	return /^\s*#{1,6}\s*code review\b/im.test(body) || /\bno issues found\b/i.test(body);
+}
+
+/**
  * The reviewer's review of the head commit, or null while it has none. In
  * order: a submitted pull request review on the head; a Codex summary marker
- * that completed on the head; an issue comment (without a marker) created
- * after the head commit was committed.
+ * that completed on the head; an issue comment (without a marker) in the
+ * review result format, created after the head commit was committed and,
+ * with `options.since` (ms), after that time too (the step saw an older head
+ * then, so an earlier comment may be about that one).
  */
 export function reviewOfHead(
 	reviewer: ReviewerSpec,
 	pr: PullRequest,
 	reviews: Review[],
 	comments: IssueComment[],
+	options: { since?: number | null } = {},
 ): ReviewOfHead | null {
 	const head = pr.headRefOid;
 	const base = { reviewer: reviewer.name, login: reviewer.login, commit: head };
@@ -125,9 +138,14 @@ export function reviewOfHead(
 		}
 	}
 	if (pr.headCommittedAt) {
-		const since = Date.parse(pr.headCommittedAt);
+		const since = Math.max(Date.parse(pr.headCommittedAt), options.since ?? 0);
 		const comment = mine
-			.filter((c) => !codexReviewState(c.body) && Date.parse(c.createdAt) >= since)
+			.filter(
+				(c) =>
+					!codexReviewState(c.body) &&
+					isReviewResultComment(c.body) &&
+					Date.parse(c.createdAt) >= since,
+			)
 			.at(-1);
 		if (comment) {
 			return {

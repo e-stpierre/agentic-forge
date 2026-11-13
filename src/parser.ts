@@ -465,6 +465,13 @@ export class WorkflowParser {
 				}
 				step.deleteBranch = del;
 			}
+			const head = data.head;
+			if (head !== undefined && head !== null) {
+				if ((typeof head !== "string" && typeof head !== "number") || !String(head).trim()) {
+					throw new WorkflowParseError(`${where}: head must be a commit SHA or a template`);
+				}
+				step.head = String(head);
+			}
 		}
 	}
 

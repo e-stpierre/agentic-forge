@@ -1,9 +1,9 @@
 /**
  * `wait-for-review` step: polls GitHub from the supervisor until every listed
  * reviewer has reviewed the pull request's current head commit. No agent
- * session runs while it waits. A new head (a push) restarts the wait for that
- * head. On timeout the run stops `awaiting-human` with a `needs_input`
- * request: `wait` again or `continue` without the missing reviews.
+ * session runs while it waits. A new head (a push) restarts the wait, and its
+ * timeout, for that head. On timeout the run stops `awaiting-human` with a
+ * `needs_input` request: `wait` again or `continue` without the missing reviews.
  */
 
 import { getGithubConfig } from "../config.js";
@@ -95,11 +95,14 @@ export class WaitForReviewStepExecutor extends StepExecutor {
 		const trigger = step.trigger ?? config.autoTrigger;
 		const timeoutMs = minutes(step.stepTimeoutMinutes ?? config.reviewTimeoutMinutes);
 		const backoff = new Backoff(step.pollSeconds ?? config.pollSeconds, config.maxPollSeconds);
-		const deadline = Date.now() + timeoutMs;
+		let deadline = Date.now() + timeoutMs;
 		const reported = new Set<string>();
 		const triggered = new Set<string>();
 		let head: string | null = null;
 		let headSeenAt = Date.now();
+		// For a head pushed during the step: the time the step first saw it. A
+		// comment from before may be about the previous head, so it does not count
+		let since: number | null = null;
 		logger.info(
 			step.name,
 			`Waiting for reviews from ${reviewers.map((r) => `${r.name} (${r.login})`).join(", ")}`,
@@ -112,12 +115,17 @@ export class WaitForReviewStepExecutor extends StepExecutor {
 				throw new Error(`Pull request ${pr.url} is ${pr.state.toLowerCase()}: nothing to review`);
 			}
 			if (pr.headRefOid !== head) {
-				if (head) logger.info(step.name, `New head ${pr.headRefOid.slice(0, 7)}: waiting again`);
-				head = pr.headRefOid;
+				if (head) {
+					logger.info(step.name, `New head ${pr.headRefOid.slice(0, 7)}: waiting again`);
+					// A new head restarts the wait, timeout included
+					deadline = Date.now() + timeoutMs;
+				}
 				headSeenAt = Date.now();
+				if (head) since = headSeenAt;
+				head = pr.headRefOid;
 				backoff.reset();
 			}
-			const reviews = await this.reviewsOfHead(reviewers, pr, gh);
+			const reviews = await this.reviewsOfHead(reviewers, pr, gh, since);
 			for (const review of reviews) {
 				const key = `${review.reviewer}@${review.commit}`;
 				if (reported.has(key)) continue;
@@ -187,11 +195,12 @@ export class WaitForReviewStepExecutor extends StepExecutor {
 		reviewers: ReviewerSpec[],
 		pr: PullRequest,
 		gh: ReturnType<typeof ghOptions>,
+		since: number | null = null,
 	): Promise<ReviewOfHead[]> {
 		const reviews: Review[] = await listReviews(pr, gh);
 		const comments: IssueComment[] = await listIssueComments(pr, gh);
 		return reviewers
-			.map((r) => reviewOfHead(r, pr, reviews, comments))
+			.map((r) => reviewOfHead(r, pr, reviews, comments, { since }))
 			.filter((r): r is ReviewOfHead => r !== null);
 	}
 
