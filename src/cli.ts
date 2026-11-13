@@ -75,6 +75,7 @@ program
 		"run even if the workflow requires a newer agentic-forge (never overrides the contract)",
 	)
 	.option("--parent <run>", "parent run id (for example an overseer run)")
+	.option("--item <id>", "backlog item of the parent overseer run this run implements")
 	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
@@ -89,6 +90,7 @@ program
 			foreground: optBool(opts.foreground),
 			ignoreRequires: optBool(opts.ignoreRequires),
 			parent: optString(opts.parent),
+			item: optString(opts.item),
 		});
 	});
 

@@ -32,6 +32,8 @@ export interface DispatchPayload {
 	ignore_requires?: boolean;
 	/** Parent run id (`run.json` `parent`), for example the overseer run that dispatched it. */
 	parent?: string | null;
+	/** Backlog item of the parent overseer run this run implements (refused unless it may start now). */
+	item?: string | null;
 }
 
 /** Variables always forwarded (needed to spawn processes and find tools). */
@@ -134,6 +136,8 @@ export interface BuildDispatchOptions {
 	ignoreRequires?: boolean;
 	/** Parent run id; omitted from the payload when unset. */
 	parent?: string | null;
+	/** Backlog item of the parent overseer run; omitted from the payload when unset. */
+	item?: string | null;
 }
 
 /**
@@ -159,6 +163,7 @@ export function buildDispatchPayload(options: BuildDispatchOptions): DispatchPay
 	if (options.priority !== undefined) payload.priority = options.priority;
 	if (options.ignoreRequires) payload.ignore_requires = true;
 	if (options.parent) payload.parent = options.parent;
+	if (options.item) payload.item = options.item;
 	return payload;
 }
 
@@ -180,6 +185,9 @@ export function validateDispatch(body: unknown): string | null {
 	if (typeof p.variables !== "object" || p.variables === null) return "variables is required";
 	if (p.parent != null && (typeof p.parent !== "string" || p.parent.length === 0)) {
 		return "parent must be a run id";
+	}
+	if (p.item != null && (typeof p.item !== "string" || p.item.length === 0)) {
+		return "item must be a backlog item id";
 	}
 	return null;
 }

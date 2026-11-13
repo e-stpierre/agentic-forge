@@ -133,6 +133,37 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 			github: { enabled: false },
 		},
 	},
+	// Overseer (`af overseer`): its backlog, scheduling and answer policy. Read
+	// from the overseer run's config snapshot (the config of the launching repo).
+	overseer: {
+		// Backlog items running at once (parallel only without a dependency or a
+		// conflict zone overlap).
+		max_parallel: 2,
+		// Discovered items of child runs: auto (ready), ask (proposed, the user
+		// approves) or log (recorded, never scheduled).
+		accept_discovered_items: "ask",
+		// What stops new dispatches until the user decides: an item that failed or
+		// halted, an open critical discovered item, an exhausted budget.
+		halt_epic_on: ["halted", "critical", "budget"],
+		budgets: {
+			// Backlog items (dropped and logged ones excluded).
+			max_tasks: 20,
+			// Extra dispatches of one item after its first run.
+			max_retries: 1,
+			// Total minutes of the child runs (parallel runs add up).
+			max_run_minutes: 480,
+		},
+		// needs_input requests of child runs the overseer may answer itself.
+		answer_policy: {
+			enabled: true,
+			// Highest step risk (low, medium, high); a step without max_risk is asked.
+			max_risk: "low",
+			// Only the recommended option (a request without one is asked).
+			recommended_only: true,
+			// Also blocking requests (permission requests are always asked).
+			blocking: true,
+		},
+	},
 };
 
 /** The `github` config section merged over its defaults. */
@@ -160,6 +191,66 @@ export function getGithubConfig(config: Record<string, unknown>): GithubConfig {
 				: (dm.preference as string[]),
 			deleteBranch: merge.delete_branch !== false,
 			lockTimeoutMinutes: num(merge.lock_timeout_minutes, dm.lock_timeout_minutes as number),
+		},
+	};
+}
+
+export const DISCOVERED_ITEM_POLICIES = ["auto", "ask", "log"] as const;
+export type DiscoveredItemPolicy = (typeof DISCOVERED_ITEM_POLICIES)[number];
+export const HALT_CONDITIONS = ["failed", "halted", "critical", "budget"] as const;
+export type HaltCondition = (typeof HALT_CONDITIONS)[number];
+export const POLICY_RISKS = ["low", "medium", "high"] as const;
+export type PolicyRisk = (typeof POLICY_RISKS)[number];
+
+export interface OverseerConfig {
+	maxParallel: number;
+	acceptDiscoveredItems: DiscoveredItemPolicy;
+	haltEpicOn: HaltCondition[];
+	budgets: { maxTasks: number; maxRetries: number; maxRunMinutes: number };
+	answerPolicy: {
+		enabled: boolean;
+		maxRisk: PolicyRisk;
+		recommendedOnly: boolean;
+		blocking: boolean;
+	};
+}
+
+/** The `overseer` config section merged over its defaults (invalid values fall back to them). */
+export function getOverseerConfig(config: Record<string, unknown>): OverseerConfig {
+	const defaults = DEFAULT_CONFIG.overseer as Record<string, unknown>;
+	const raw = (config.overseer as Record<string, unknown> | undefined) ?? {};
+	const merged = deepMerge(deepCopy(defaults), raw) as Record<string, unknown>;
+	const db = defaults.budgets as Record<string, number>;
+	const da = defaults.answer_policy as Record<string, unknown>;
+	const budgets = (merged.budgets as Record<string, unknown>) ?? {};
+	const answer = (merged.answer_policy as Record<string, unknown>) ?? {};
+	const int = (value: unknown, fallback: number, min = 0): number =>
+		typeof value === "number" && Number.isInteger(value) && value >= min ? value : fallback;
+	const oneOf = <T extends string>(list: readonly T[], value: unknown, fallback: T): T =>
+		(list as readonly unknown[]).includes(value) ? (value as T) : fallback;
+	const halt = Array.isArray(merged.halt_epic_on)
+		? merged.halt_epic_on.filter((c): c is HaltCondition =>
+				(HALT_CONDITIONS as readonly unknown[]).includes(c),
+			)
+		: (defaults.halt_epic_on as HaltCondition[]);
+	return {
+		maxParallel: int(merged.max_parallel, defaults.max_parallel as number, 1),
+		acceptDiscoveredItems: oneOf(
+			DISCOVERED_ITEM_POLICIES,
+			merged.accept_discovered_items,
+			defaults.accept_discovered_items as DiscoveredItemPolicy,
+		),
+		haltEpicOn: halt,
+		budgets: {
+			maxTasks: int(budgets.max_tasks, db.max_tasks, 1),
+			maxRetries: int(budgets.max_retries, db.max_retries),
+			maxRunMinutes: int(budgets.max_run_minutes, db.max_run_minutes, 1),
+		},
+		answerPolicy: {
+			enabled: answer.enabled !== false,
+			maxRisk: oneOf(POLICY_RISKS, answer.max_risk, da.max_risk as PolicyRisk),
+			recommendedOnly: answer.recommended_only !== false,
+			blocking: answer.blocking !== false,
 		},
 	};
 }

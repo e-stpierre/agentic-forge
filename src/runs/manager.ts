@@ -60,6 +60,8 @@ import type {
 	WorkflowProgress,
 } from "../types.js";
 import { resolveWorktreeEnabled } from "../worktree-settings.js";
+import { BacklogError, type PolicyVerdict } from "./backlog.js";
+import { BacklogService } from "./backlog-service.js";
 import { type DispatchPayload, validateDispatch } from "./dispatch.js";
 import {
 	CursorError,
@@ -164,6 +166,12 @@ export interface PendingInput {
 	live?: boolean;
 	/** Runtime session id of the live session that asked. */
 	session_id?: string | null;
+	/** Permission request of a live session (never answered by the overseer policy). */
+	permission?: boolean;
+	/** Risk the asking step reported (`max_risk` of its result block), or null. */
+	risk?: string | null;
+	/** Answer policy verdict, for a run dispatched by an overseer. */
+	overseer_policy?: PolicyVerdict | null;
 }
 
 /** Amendment waiting for the amend step (af extension `x-af-amendments`). */
@@ -390,12 +398,15 @@ export class RunManager {
 	private readonly version: string;
 	/** Sends notifications for the events of every run (and `af notify`). */
 	readonly notifier: Notifier;
+	/** Overseer backlogs, discovered items and the answer policy. */
+	readonly backlog: BacklogService;
 
 	constructor(options: RunManagerOptions = {}) {
 		this.root = options.root ?? getGlobalRoot();
 		this.registry = new RunRegistry(this.root);
 		this.log = options.log ?? (() => {});
 		this.version = options.version ?? getVersion();
+		this.backlog = new BacklogService({ registry: this.registry, log: this.log });
 		this.notifier = new Notifier({
 			root: this.root,
 			registry: this.registry,
@@ -516,6 +527,39 @@ export class RunManager {
 		supervisor.route("POST", "/v1/overseer/:id/finish", ({ params, body }) =>
 			wrap(() => this.finishOverseer(params.id, (body ?? {}) as OverseerFinishInput))(),
 		);
+		supervisor.route("GET", "/v1/overseer/:id/backlog", ({ params, query }) =>
+			wrap(() =>
+				this.backlogCall(() =>
+					this.backlog.list(
+						params.id,
+						(query.get("status") ?? "")
+							.split(",")
+							.map((v) => v.trim())
+							.filter(Boolean),
+					),
+				),
+			)(),
+		);
+		supervisor.route("POST", "/v1/overseer/:id/backlog", ({ params, body }) =>
+			wrap(
+				() =>
+					this.backlogCall(() =>
+						this.backlog.add(params.id, (body as { items?: unknown } | null)?.items),
+					),
+				201,
+			)(),
+		);
+		supervisor.route("POST", "/v1/overseer/:id/backlog/:item", ({ params, body }) =>
+			wrap(() =>
+				this.backlogCall(() =>
+					this.backlog.update(
+						params.id,
+						params.item,
+						(body as { fields?: unknown } | null)?.fields,
+					),
+				),
+			)(),
+		);
 	}
 
 	/**
@@ -536,6 +580,27 @@ export class RunManager {
 			);
 		} catch (err) {
 			if (err instanceof OverseerError) throw new RunError(err.message, err.status);
+			throw err;
+		}
+	}
+
+	/**
+	 * Answer policy verdict of the overseer that dispatched a run, with its
+	 * current config, or null when the run has no overseer parent.
+	 */
+	private overseerVerdict(entry: RegistryEntry, pending: PendingInput): PolicyVerdict | null {
+		return this.backlog.policyFor(entry.dir, pending.request, {
+			risk: pending.risk ?? null,
+			permission: pending.permission === true,
+		});
+	}
+
+	/** Runs a backlog operation; its errors become `RunError`s with their status. */
+	private async backlogCall<T>(fn: () => Promise<T>): Promise<T> {
+		try {
+			return await fn();
+		} catch (err) {
+			if (err instanceof BacklogError) throw new RunError(err.message, err.status);
 			throw err;
 		}
 	}
@@ -762,6 +827,21 @@ export class RunManager {
 		if (parent && !this.registry.get(parent)) {
 			throw new RunError(`Parent run not found: ${parent}`);
 		}
+		const item = payload.item ?? null;
+		if (item) {
+			if (!parent) {
+				throw new RunError("item needs parent: the overseer run whose backlog holds the item");
+			}
+			// Under the backlog lock: refused unless the scheduler allows the item now
+			return this.backlogCall(() =>
+				this.backlog.dispatchItem(parent, item, () => this.queueRun(payload, parent)),
+			);
+		}
+		return this.queueRun(payload, parent);
+	}
+
+	/** Creates the queued run of a validated dispatch payload. */
+	private async queueRun(payload: DispatchPayload, parent: string | null): Promise<DispatchResult> {
 		const workflow = this.parseWorkflow(payload);
 		// Refused before the run exists, so no step ever runs.
 		const requires = checkRequires(workflow.name, workflow.requires, {
@@ -831,6 +911,7 @@ export class RunManager {
 			repo: payload.repo_root,
 			workflow_path: payload.workflow.path,
 			...(parent ? { parent } : {}),
+			...(payload.item ? { item: payload.item } : {}),
 		});
 		this.log(`Run queued: ${store.id} (${workflow.name}, ${payload.repo_root})`);
 		this.schedule();
@@ -1171,6 +1252,20 @@ export class RunManager {
 			request.options.find((o) => o.id === raw) ??
 			request.options.find((o) => o.label.toLowerCase() === raw.toLowerCase()) ??
 			null;
+		// The overseer answers a child run's question itself only within its answer policy
+		const verdict = from === "overseer" && !policy ? this.overseerVerdict(entry, pending) : null;
+		if (verdict && !verdict.within) {
+			throw new RunError(
+				`Outside the overseer answer_policy (${verdict.reason}): ask the user, then answer with from: user`,
+				409,
+			);
+		}
+		if (verdict?.answer && option?.id !== verdict.answer) {
+			throw new RunError(
+				`The overseer answer_policy only allows the recommended option ${verdict.answer}: ask the user for any other answer, then answer with from: user`,
+				409,
+			);
+		}
 		const answer = option ? `${option.id} (${option.label})` : raw;
 		const resolve = pending.live ? this.liveRequests.get(id)?.get(request.id) : undefined;
 		if (resolve) {
@@ -1211,12 +1306,14 @@ export class RunManager {
 			id: `d-${request.id}`,
 			at: message.at,
 			phase: pending.step,
-			source: policy ? "policy" : "operator",
+			source: policy || verdict ? "policy" : "operator",
 			risk: "low",
 			decision: `Answered ${request.id} (${request.question}): ${answer}`,
 			rationale: policy
 				? "No answer within the needs_input timeout; applied the recommended option of a non-blocking request"
-				: `Answer from ${from}`,
+				: verdict
+					? `Answered by the overseer within its answer_policy: ${verdict.reason}`
+					: `Answer from ${from}`,
 			alternatives: request.options.filter((o) => o.id !== option?.id).map((o) => o.label),
 			refs: [request.id, message.id],
 		});
@@ -1422,10 +1519,14 @@ export class RunManager {
 			context: request.context,
 			blocking: true,
 		};
+		const permission = request.kind === "permission";
 		const pending: PendingInput = {
 			...newPendingInput(step, needs, config),
 			live: true,
 			session_id: sessionId,
+			permission,
+			risk: null,
+			overseer_policy: this.backlog.policyFor(entry.dir, needs, { risk: null, permission }),
 		};
 		const requests =
 			this.liveRequests.get(entry.id) ?? new Map<string, (d: SessionDecision) => void>();
@@ -1444,6 +1545,7 @@ export class RunManager {
 			deadline: pending.deadline,
 			live: true,
 			tool: request.tool,
+			...(pending.overseer_policy ? { overseer_policy: pending.overseer_policy } : {}),
 		});
 		if (pending.deadline) this.armTimer(entry.id, pending);
 		this.log(`Run ${entry.id}: ${step} waits for ${request.id} (${request.tool})`);
@@ -1662,6 +1764,12 @@ export class RunManager {
 		if (Object.keys(patch).length > 0) await store.updateRun(patch);
 		// The first step that reports a pull request (or a new one) opened it for the run
 		if (opened) await store.appendEvent("pr.opened", { step, pr: effective.pr });
+		try {
+			// Discovered items join the backlog of the overseer that dispatched the run
+			await this.backlog.acceptDiscovered(entry.dir, entry.id, step, effective.discovered_items);
+		} catch (err) {
+			this.log(`Run ${entry.id}: discovered items not added: ${(err as Error).message}`);
+		}
 		this.results.set(entry.id, { step, block: effective });
 		return effective;
 	}
@@ -1683,11 +1791,17 @@ export class RunManager {
 			last?.block.status === "awaiting-human" ? (last.block.needs_input ?? null) : null;
 		if (!last || !request) return null;
 		const pending = newPendingInput(last.step, request, config);
+		pending.risk = last.block.max_risk ?? null;
+		pending.overseer_policy = this.backlog.policyFor(entry.dir, request, {
+			risk: pending.risk,
+			permission: false,
+		});
 		await store.updateRun({ "x-af-needs-input": [pending] });
 		await store.appendEvent("needs_input", {
 			...request,
 			step: last.step,
 			deadline: pending.deadline,
+			...(pending.overseer_policy ? { overseer_policy: pending.overseer_policy } : {}),
 		});
 		return pending;
 	}

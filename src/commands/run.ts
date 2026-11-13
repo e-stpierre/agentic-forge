@@ -182,6 +182,8 @@ export async function cmdRun(options: {
 	ignoreRequires?: boolean;
 	/** Parent run id (`run.json` `parent`). */
 	parent?: string;
+	/** Backlog item of the parent overseer run. */
+	item?: string;
 }): Promise<void> {
 	// Handle --list flag
 	if (options.listWorkflows) {
@@ -303,6 +305,7 @@ export async function cmdRun(options: {
 		terminalOutput,
 		ignoreRequires: options.ignoreRequires,
 		parent: options.parent,
+		item: options.item,
 	});
 
 	const { ensureSupervisor } = await import("../supervisor/client.js");

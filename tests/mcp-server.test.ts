@@ -216,13 +216,16 @@ afterEach(async () => {
 });
 
 describe("server", () => {
-	it("lists the fourteen dispatch, read, steering and notification tools, each with a title and a description", async () => {
+	it("lists the seventeen dispatch, read, steering, notification and backlog tools, each with a title and a description", async () => {
 		const { mcp } = await setup();
 		const { tools } = await mcp.listTools();
 		expect(tools.map((t) => t.name).sort()).toEqual([
 			"af_amend",
 			"af_answer",
 			"af_artifacts",
+			"af_backlog_add",
+			"af_backlog_list",
+			"af_backlog_update",
 			"af_cancel",
 			"af_dispatch",
 			"af_events",
