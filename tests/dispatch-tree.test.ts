@@ -220,7 +220,7 @@ describe("cross-runtime dispatch", () => {
 			[parent.run.id, 0, null],
 			[child, 1, parent.run.id],
 		]);
-		const status = await call(user, "af_status", { run: parent.run.id });
+		const status = await call(user, "af_status", { run: parent.run.id, verbose: true });
 		expect(status.tree).toMatchObject({
 			parent: null,
 			depth: 0,

@@ -131,6 +131,14 @@
 - Fixed the first `af_wait` or `af wait --until attention` call (no cursor) reporting attention events from the run's past, such as a question already answered; it now only looks at the current status
 - Fixed the step timeout running while the step's agent waits in an `af_ask` call: on the session driver it is paused while the step has an open `af_ask` question
 - Fixed an `af_ask` answer lost when the waiting call had already given up (client tool timeout, closed MCP server): a canceled call stops polling and the supervisor drops its long-poll at once, and the answer is always queued as an operator message, consumed by the call that returns it, else delivered at the step's next turn
+- Changed every MCP tool result to compact JSON, small by default (about 8 KB): the budgets are constants in `src/mcp/budgets.ts`, and a size test covers each tool's default result for a run with 20 steps, 200 events and a 50 KB plan, and the `tools/list` response (28.7 KB budget)
+- **Breaking:** `af_events` without a `cursor` now starts from now and returns no history; `from_start: true` replays it (replaces `from_now`). A default page holds at most 50 events within about 6 KB (an explicit `limit` lifts the size cap); `GET /v1/events` accepts `max_bytes`. `af events` (CLI) is unchanged
+- Added `cursor` to the `af_dispatch` result: an `af_events` cursor placed before the new run's first event
+- **Breaking:** `af_status` with `run` now returns a slim view (status, branch, worktree, pr, current step, open `needs_input` requests, and per step its status, result status, a short summary and an error flag); `verbose: true` returns the previous full payload. `af_status` without `run` and `af_list_runs` return slim run entries, at most 20 by default (was 50)
+- Added `max_chars` (default 6,000), `offset`, `section` (one markdown section) and `frontmatter_only` (the parsed `summary.md` frontmatter) to `af_artifacts`; cut content has `truncated: true` and `next_offset`
+- Shortened the MCP tool descriptions (what the tool returns and the next step); `tools/list` went from 28.4 KB to 23.9 KB
+- Changed event writes to cut every `data` string over 500 characters; the full payload goes to `event-data/<seq>-<type>.json` in the run directory, named by `data.data_path`. `step.failed` writes the full error to `steps/<NN-step>/error.txt`, named by `data.error_path`
+- Contract delta (no version bump, additive): optional event `data.data_path` (any event whose strings were cut) and `data.error_path` (`step.failed`), and the optional `event-data/` run directory and `steps/<NN-step>/error.txt` files
 
 ## 0.11.0
 

@@ -108,6 +108,8 @@ export interface EventsRequest {
 	/** Long-poll: seconds the supervisor waits for a first event (0 returns at once). */
 	waitSeconds?: number;
 	limit?: number;
+	/** Size limit of the returned events in bytes (`EventQuery.maxBytes`). */
+	maxBytes?: number;
 }
 
 export function fetchEvents(
@@ -121,6 +123,7 @@ export function fetchEvents(
 	if (request.fromNow) params.set("from", "now");
 	if (request.waitSeconds) params.set("wait", String(request.waitSeconds));
 	if (request.limit) params.set("limit", String(request.limit));
+	if (request.maxBytes) params.set("max_bytes", String(request.maxBytes));
 	const query = params.toString();
 	return client.request<EventResponse>(
 		"GET",

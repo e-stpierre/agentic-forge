@@ -324,6 +324,7 @@ An append-only log, one event per line. Required: `seq`, `at`, `run`, `type`; `d
 - `seq` equals the physical line number, starting at `1`, with no gaps. The file has no blank lines, except the final newline.
 - `run` is the ID of the run the event belongs to.
 - Readers must ignore event types they do not know.
+- `data` holds identifiers, statuses and short strings. agentic-forge cuts every string in `data` to 500 characters when it writes the event, writes the full payload to `event-data/<seq>-<type>.json` in the run directory, and names that file in the optional `data.data_path`. A `step.failed` event also writes the full error text to `steps/<NN-step>/error.txt` and names it in the optional `data.error_path`. Both files are written by agentic-forge, not required of other writers.
 
 | Group      | Types                                                                                                                     |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------- |

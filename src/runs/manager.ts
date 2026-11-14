@@ -84,6 +84,7 @@ import {
 	parseTypeFilter,
 	readEventPage,
 } from "./events.js";
+import { EVENT_STRING_MAX, cutText, fullEventData } from "./event-data.js";
 import { Inbox, type InboxMessage, type NewMessage, formatOperatorMessages } from "./inbox.js";
 import {
 	OverseerError,
@@ -527,6 +528,7 @@ export class RunManager {
 					run: query.get("run"),
 					types: parseTypeFilter(query.get("types")),
 					limit: Number.parseInt(query.get("limit") ?? "", 10) || undefined,
+					maxBytes: Number.parseInt(query.get("max_bytes") ?? "", 10) || undefined,
 					fromNow: query.get("from") === "now",
 					waitSeconds: Number.parseFloat(query.get("wait") ?? "0") || 0,
 				}),
@@ -1350,6 +1352,27 @@ export class RunManager {
 	/** `steps/<NN-step>/` of a step (result block, transcript, session). */
 	private stepDir(entry: RegistryEntry, step: string): string {
 		return path.join(entry.dir, "steps", stepDirName(this.stepNames(entry) ?? [], step));
+	}
+
+	/**
+	 * `step.failed` data: the error cut to 500 characters, its full text in
+	 * `steps/<NN-step>/error.txt` (`error_path`).
+	 */
+	private stepFailedData(
+		entry: RegistryEntry,
+		step: string,
+		error: string | null | undefined,
+	): Record<string, unknown> {
+		if (!error) return { step, error: error ?? null };
+		const file = path.join(this.stepDir(entry, step), STEP_ERROR_FILE);
+		try {
+			mkdirSync(path.dirname(file), { recursive: true });
+			writeFileSync(file, error, "utf-8");
+		} catch {
+			// The event still carries the cut error
+			return { step, error: cutText(error, EVENT_STRING_MAX) };
+		}
+		return { step, error: cutText(error, EVENT_STRING_MAX), error_path: file };
 	}
 
 	/** Every step name of a run's workflow, nested steps included (null if unreadable). */
@@ -2706,7 +2729,7 @@ export class RunManager {
 					},
 					onStepFinished: async (step, status, error) => {
 						if (status === STEP_STATUS.FAILED) {
-							await store.appendEvent("step.failed", { step, error });
+							await store.appendEvent("step.failed", this.stepFailedData(entry, step, error));
 						} else {
 							const result = this.results.get(entry.id);
 							const resultStatus = result?.step === step ? result.block.status : null;
@@ -2870,7 +2893,7 @@ export class RunManager {
 		await this.rebuildMessageEvents(store);
 		const interrupted: string[] = [];
 		if (progress) {
-			await this.rebuildStepEvents(store, progress, new Set(topLevel));
+			await this.rebuildStepEvents(entry, store, progress, new Set(topLevel));
 			const running = new Set(progress.runningSteps);
 			if (progress.currentStep?.name) running.add(progress.currentStep.name);
 			const now = new Date().toISOString();
@@ -3055,6 +3078,7 @@ export class RunManager {
 	 * event log is missing (crash between the state write and the event).
 	 */
 	private async rebuildStepEvents(
+		entry: RegistryEntry,
 		store: RunStore,
 		progress: WorkflowProgress,
 		topLevel: Set<string>,
@@ -3082,14 +3106,16 @@ export class RunManager {
 			}
 			for (let i = count("step.failed", name); i < failed.length; i++) {
 				await store.appendEvent("step.failed", {
-					step: name,
-					error: failed[i].error,
+					...this.stepFailedData(entry, name, failed[i].error),
 					rebuilt: true,
 				});
 			}
 		}
 	}
 }
+
+/** Full error text of a failed step, in its step directory. */
+export const STEP_ERROR_FILE = "error.txt";
 
 function messageEventData(m: InboxMessage): Record<string, unknown> {
 	return { id: m.id, from: m.from, mode: m.mode, target: m.target, step: m.step ?? null };
@@ -3155,13 +3181,15 @@ function answerOf(store: RunStore, requestId: string): InputAnswer | null {
 		.readEvents()
 		.filter((e) => e.type === "input.answered" && e.data?.id === requestId)
 		.at(-1);
-	if (!event?.data) return null;
-	const option = event.data.option;
+	// A long answer was cut in the event: read the full payload
+	const data = fullEventData(event?.data);
+	if (!data) return null;
+	const option = data.option;
 	return {
-		answer: String(event.data.answer ?? ""),
+		answer: String(data.answer ?? ""),
 		option: typeof option === "string" ? option : null,
-		from: String(event.data.from ?? "user"),
-		message: typeof event.data.message === "string" ? event.data.message : null,
+		from: String(data.from ?? "user"),
+		message: typeof data.message === "string" ? data.message : null,
 	};
 }
 

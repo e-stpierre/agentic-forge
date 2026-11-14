@@ -72,6 +72,12 @@ export interface EventQuery {
 	/** Maximum number of events returned (default 500). */
 	limit?: number;
 	/**
+	 * Maximum size of the returned events (their compact JSON); the page stops
+	 * before the event that would cross it, but always holds one event. 0 or
+	 * absent: no size limit.
+	 */
+	maxBytes?: number;
+	/**
 	 * Skip the events that exist now and return a cursor at the end of every
 	 * stream (`af events --follow --new`). Ignored when a cursor is given.
 	 */
@@ -114,7 +120,7 @@ export function readEventPage(entries: readonly RegistryEntry[], query: EventQue
 	}
 
 	matching.sort((a, b) => a.at.localeCompare(b.at) || a.run.localeCompare(b.run) || a.seq - b.seq);
-	const page = matching.slice(0, limit);
+	const page = takePage(matching, limit, query.maxBytes ?? 0);
 	const more = matching.length > page.length;
 
 	if (!fresh) {
@@ -122,7 +128,7 @@ export function readEventPage(entries: readonly RegistryEntry[], query: EventQue
 		// (skipping filtered-out events); a truncated run stops at the last
 		// event returned, so the rest comes with the next page.
 		const truncated = new Map<string, number>();
-		for (const event of matching.slice(limit)) {
+		for (const event of matching.slice(page.length)) {
 			if (!truncated.has(event.run)) truncated.set(event.run, event.seq);
 		}
 		for (const [run, last] of lastSeq) {
@@ -131,4 +137,20 @@ export function readEventPage(entries: readonly RegistryEntry[], query: EventQue
 		}
 	}
 	return { events: page, cursor: encodeCursor(next), more };
+}
+
+/** The first events of `matching` within `limit` and `maxBytes` (at least one). */
+function takePage(matching: RunEvent[], limit: number, maxBytes: number): RunEvent[] {
+	const page: RunEvent[] = [];
+	let bytes = 0;
+	for (const event of matching) {
+		if (page.length >= limit) break;
+		if (maxBytes > 0) {
+			const size = Buffer.byteLength(JSON.stringify(event), "utf-8") + 1;
+			if (page.length > 0 && bytes + size > maxBytes) break;
+			bytes += size;
+		}
+		page.push(event);
+	}
+	return page;
 }

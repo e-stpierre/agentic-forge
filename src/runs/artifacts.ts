@@ -70,3 +70,98 @@ export function readArtifact(file: string, maxChars = 20_000): string {
 	if (content.length <= maxChars) return content;
 	return `${content.slice(0, maxChars)}\n\n[truncated: ${content.length - maxChars} more characters in ${file}]\n`;
 }
+
+export interface ArtifactReadOptions {
+	/** Characters returned (default all). */
+	maxChars?: number;
+	/** First character returned, inside the section when one is named (default 0). */
+	offset?: number;
+	/** Markdown heading: only its section (up to the next heading of the same or a higher level). */
+	section?: string;
+}
+
+export interface ArtifactContent {
+	content: string;
+	/** Offset of `content` in the file (or the section). */
+	offset: number;
+	/** Characters of the file (or the section). */
+	total_chars: number;
+	/** True when characters follow `content`. */
+	truncated: boolean;
+	/** Offset of the next page, when truncated. */
+	next_offset?: number;
+	/** The heading matched by `section`. */
+	section?: string;
+}
+
+/** An artifact read failed for a reason the caller can fix (unknown section). */
+export class ArtifactReadError extends Error {
+	constructor(
+		message: string,
+		readonly headings: string[],
+	) {
+		super(message);
+		this.name = "ArtifactReadError";
+	}
+}
+
+const HEADING = /^(#{1,6})[ \t]+(.+?)[ \t#]*$/;
+
+/** Markdown headings of `text` with their level and line index, outside fenced code blocks. */
+export function markdownHeadings(text: string): { level: number; title: string; line: number }[] {
+	const out: { level: number; title: string; line: number }[] = [];
+	let fenced = false;
+	text.split(/\r?\n/).forEach((line, i) => {
+		if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
+		if (fenced) return;
+		const match = HEADING.exec(line);
+		if (match) out.push({ level: match[1].length, title: match[2].trim(), line: i });
+	});
+	return out;
+}
+
+/** The section of `text` under the heading `name` (exact title first, then a title containing it; case-insensitive). */
+export function markdownSection(text: string, name: string): { title: string; text: string } | null {
+	const headings = markdownHeadings(text);
+	const wanted = name.replace(/^#+\s*/, "").trim().toLowerCase();
+	const found =
+		headings.find((h) => h.title.toLowerCase() === wanted) ??
+		headings.find((h) => h.title.toLowerCase().includes(wanted));
+	if (!found) return null;
+	const end = headings.find((h) => h.line > found.line && h.level <= found.level);
+	const lines = text.split(/\r?\n/);
+	return {
+		title: found.title,
+		text: lines.slice(found.line, end ? end.line : lines.length).join("\n"),
+	};
+}
+
+/** Reads a page of an artifact file, or of one of its markdown sections. */
+export function readArtifactPage(file: string, options: ArtifactReadOptions = {}): ArtifactContent {
+	let text = readFileSync(file, "utf-8");
+	let title: string | undefined;
+	if (options.section) {
+		const section = markdownSection(text, options.section);
+		if (!section) {
+			throw new ArtifactReadError(
+				`No section "${options.section}" in ${file}`,
+				markdownHeadings(text).map((h) => h.title),
+			);
+		}
+		text = section.text;
+		title = section.title;
+	}
+	const offset = Math.min(Math.max(options.offset ?? 0, 0), text.length);
+	const max = options.maxChars && options.maxChars > 0 ? options.maxChars : text.length;
+	const content = text.slice(offset, offset + max);
+	const end = offset + content.length;
+	const truncated = end < text.length;
+	return {
+		content,
+		offset,
+		total_chars: text.length,
+		truncated,
+		...(truncated ? { next_offset: end } : {}),
+		...(title !== undefined ? { section: title } : {}),
+	};
+}

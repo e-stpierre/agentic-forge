@@ -12,13 +12,8 @@ import {
 	SupervisorUnavailableError,
 } from "../supervisor/client.js";
 
-/** A tool result whose text is the JSON of `value` (readable by any client). */
+/** A tool result whose text is the compact JSON of `value` (Token Budget Rule 1). */
 export function jsonResult(value: unknown): CallToolResult {
-	return { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] };
-}
-
-/** A tool result with compact JSON text (Token Budget Rule 1). */
-export function compactResult(value: unknown): CallToolResult {
 	return { content: [{ type: "text", text: JSON.stringify(value) }] };
 }
 
