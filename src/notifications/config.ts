@@ -12,11 +12,18 @@ export type ChannelId = (typeof CHANNEL_IDS)[number];
 export type NotificationLevel = "info" | "warning" | "error";
 export const NOTIFICATION_LEVELS: readonly NotificationLevel[] = ["info", "warning", "error"];
 
-/** One trigger: an event type pattern, optionally limited to one run type. */
+/**
+ * One trigger: an event type pattern, optionally limited to one run type and,
+ * for `needs_input`, to request kinds and risks.
+ */
 export interface Trigger {
 	event: string;
 	/** `run.json` `type` (`overseer`, `workflow`, `skill`), or null for every run. */
 	runType: string | null;
+	/** `needs_input` kinds (`question`, `permission`, `decision`), or null for every kind. */
+	kinds: string[] | null;
+	/** `needs_input` risks (`low`, `medium`, `high`, `none` for no risk), or null for every risk. */
+	risks: string[] | null;
 }
 
 export interface ChannelConfig {
@@ -39,16 +46,34 @@ export interface NotificationsConfig {
 	channels: Record<ChannelId, ChannelConfig>;
 }
 
-/** Parses a trigger list entry (`"needs_input"` or `{ event, run_type }`); null when invalid. */
+/**
+ * Parses a trigger list entry (`"needs_input"` or `{ event, run_type, kind,
+ * risk }`, `kind` and `risk` a string or a list); null when invalid.
+ */
 export function parseTrigger(value: unknown): Trigger | null {
-	if (typeof value === "string" && value.trim()) return { event: value.trim(), runType: null };
+	if (typeof value === "string" && value.trim()) {
+		return { event: value.trim(), runType: null, kinds: null, risks: null };
+	}
 	if (value && typeof value === "object" && !Array.isArray(value)) {
 		const raw = value as Record<string, unknown>;
 		if (typeof raw.event !== "string" || !raw.event.trim()) return null;
 		const runType = typeof raw.run_type === "string" && raw.run_type ? raw.run_type : null;
-		return { event: raw.event.trim(), runType };
+		return {
+			event: raw.event.trim(),
+			runType,
+			kinds: stringList(raw.kind),
+			risks: stringList(raw.risk),
+		};
 	}
 	return null;
+}
+
+/** A string or a list of strings as a non-empty list, else null. */
+function stringList(value: unknown): string[] | null {
+	const list = (Array.isArray(value) ? value : [value]).filter(
+		(v): v is string => typeof v === "string" && v.trim() !== "",
+	);
+	return list.length > 0 ? list.map((v) => v.trim()) : null;
 }
 
 function parseTriggers(value: unknown): Trigger[] | null {
@@ -86,14 +111,25 @@ export function getNotificationsConfig(config: Record<string, unknown>): Notific
 	};
 }
 
-/** True when an event of `type` in a run of `runType` matches one of the triggers. */
+/**
+ * True when an event of `type` in a run of `runType` matches one of the
+ * triggers. Trigger `kind` and `risk` filters read the event data (`kind`
+ * absent means `decision`, `risk` absent or null means `none`).
+ */
 export function matchesTrigger(
 	triggers: readonly Trigger[],
 	type: string,
 	runType: string | null,
+	data?: Record<string, unknown> | null,
 ): boolean {
+	const kind = typeof data?.kind === "string" ? data.kind : "decision";
+	const risk = typeof data?.risk === "string" ? data.risk : "none";
 	return triggers.some(
-		(t) => matchesTypes(type, [t.event]) && (t.runType === null || t.runType === runType),
+		(t) =>
+			matchesTypes(type, [t.event]) &&
+			(t.runType === null || t.runType === runType) &&
+			(t.kinds === null || t.kinds.includes(kind)) &&
+			(t.risks === null || t.risks.includes(risk)),
 	);
 }
 
@@ -102,13 +138,14 @@ export function channelsFor(
 	config: NotificationsConfig,
 	type: string | null,
 	runType: string | null,
+	data?: Record<string, unknown> | null,
 ): ChannelId[] {
 	if (!config.enabled) return [];
 	return CHANNEL_IDS.filter((id) => {
 		const channel = config.channels[id];
 		if (!channel.enabled) return false;
 		if (type === null) return true;
-		return matchesTrigger(channel.triggers ?? config.triggers, type, runType);
+		return matchesTrigger(channel.triggers ?? config.triggers, type, runType, data);
 	});
 }
 

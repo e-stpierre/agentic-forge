@@ -715,25 +715,26 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 
 ### Tools
 
-| Tool                | Inputs                                                                             | Supervisor endpoint                         | CLI equivalent  |
-| ------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------- | --------------- |
-| `af_dispatch`       | `workflow`, `repo?`, `vars?`, `runtime?`, `slug?`, `priority?`, `parent?`, `item?` | `POST /v1/runs`                             | `af run`        |
-| `af_status`         | `run?` (without it: the active runs)                                               | `GET /v1/runs/:id`, `GET /v1/runs`          | `af status`     |
-| `af_list_runs`      | `status?` (one or a list), `repo?`, `since?`, `parent?`, `limit?`                  | `GET /v1/runs`                              | `af list`       |
-| `af_events`         | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_now?`     | `GET /v1/events`                            | `af events`     |
-| `af_logs`           | `run`, `step?`, `cursor?`, `limit?`, `max_chars?`, `wait_seconds?` (0 to 120)      | `GET /v1/runs/:id/logs`                     | `af logs`       |
-| `af_send`           | `run`, `text`, `mode?` (`next` or `now`), `step?`, `from?`                         | `POST /v1/runs/:id/messages`                | `af send`       |
-| `af_amend`          | `run`, `text`, `affects?`, `from?`                                                 | `POST /v1/runs/:id/amend`                   | `af amend`      |
-| `af_answer`         | `run`, `answer`, `request_id?`, `from?`                                            | `POST /v1/runs/:id/answer`                  | `af answer`     |
-| `af_pause`          | `run`, `now?`                                                                      | `POST /v1/runs/:id/pause`                   | `af pause`      |
-| `af_resume`         | `run`                                                                              | `POST /v1/runs/:id/resume`                  | `af resume`     |
-| `af_cancel`         | `run`                                                                              | `POST /v1/runs/:id/cancel`                  | `af cancel`     |
-| `af_retry_step`     | `run`, `step`, `context?`, `from?`                                                 | `POST /v1/runs/:id/retry`                   | `af retry-step` |
-| `af_notify`         | `text`, `level?` (`info`, `warning`, `error`), `run?`, `title?`                    | `POST /v1/notifications`                    | `af notify`     |
-| `af_artifacts`      | `run`, `kind?` (`plan`, `summary`, `decisions`, `review`), `content?`              | none (reads the run registry and directory) | `af artifacts`  |
-| `af_backlog_list`   | `run` (an overseer run), `status?` (comma-separated)                               | `GET /v1/overseer/:id/backlog`              | none            |
-| `af_backlog_add`    | `run`, `items` (see [Backlog](#backlog))                                           | `POST /v1/overseer/:id/backlog`             | none            |
-| `af_backlog_update` | `run`, `id`, `fields`                                                              | `POST /v1/overseer/:id/backlog/:item`       | none            |
+| Tool                | Inputs                                                                                                                             | Supervisor endpoint                                      | CLI equivalent  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------- |
+| `af_dispatch`       | `workflow`, `repo?`, `vars?`, `runtime?`, `slug?`, `priority?`, `parent?`, `item?`                                                 | `POST /v1/runs`                                          | `af run`        |
+| `af_status`         | `run?` (without it: the active runs)                                                                                               | `GET /v1/runs/:id`, `GET /v1/runs`                       | `af status`     |
+| `af_list_runs`      | `status?` (one or a list), `repo?`, `since?`, `parent?`, `limit?`                                                                  | `GET /v1/runs`                                           | `af list`       |
+| `af_events`         | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_now?`                                                     | `GET /v1/events`                                         | `af events`     |
+| `af_logs`           | `run`, `step?`, `cursor?`, `limit?`, `max_chars?`, `wait_seconds?` (0 to 120)                                                      | `GET /v1/runs/:id/logs`                                  | `af logs`       |
+| `af_send`           | `run`, `text`, `mode?` (`next` or `now`), `step?`, `from?`                                                                         | `POST /v1/runs/:id/messages`                             | `af send`       |
+| `af_amend`          | `run`, `text`, `affects?`, `from?`                                                                                                 | `POST /v1/runs/:id/amend`                                | `af amend`      |
+| `af_answer`         | `run`, `answer`, `request_id?`, `from?`                                                                                            | `POST /v1/runs/:id/answer`                               | `af answer`     |
+| `af_ask`            | `question`, `options?`, `recommended?`, `context?`, `kind?`, `risk?`, `blocking?`, `wait_seconds?`, `request_id?`, `run?`, `step?` | `POST /v1/runs/:id/ask`, `GET /v1/runs/:id/ask/:request` | none            |
+| `af_pause`          | `run`, `now?`                                                                                                                      | `POST /v1/runs/:id/pause`                                | `af pause`      |
+| `af_resume`         | `run`                                                                                                                              | `POST /v1/runs/:id/resume`                               | `af resume`     |
+| `af_cancel`         | `run`                                                                                                                              | `POST /v1/runs/:id/cancel`                               | `af cancel`     |
+| `af_retry_step`     | `run`, `step`, `context?`, `from?`                                                                                                 | `POST /v1/runs/:id/retry`                                | `af retry-step` |
+| `af_notify`         | `text`, `level?` (`info`, `warning`, `error`), `run?`, `title?`                                                                    | `POST /v1/notifications`                                 | `af notify`     |
+| `af_artifacts`      | `run`, `kind?` (`plan`, `summary`, `decisions`, `review`), `content?`                                                              | none (reads the run registry and directory)              | `af artifacts`  |
+| `af_backlog_list`   | `run` (an overseer run), `status?` (comma-separated)                                                                               | `GET /v1/overseer/:id/backlog`                           | none            |
+| `af_backlog_add`    | `run`, `items` (see [Backlog](#backlog))                                                                                           | `POST /v1/overseer/:id/backlog`                          | none            |
+| `af_backlog_update` | `run`, `id`, `fields`                                                                                                              | `POST /v1/overseer/:id/backlog/:item`                    | none            |
 
 - `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. `parent` records the run that dispatched it (an overseer passes its own run); `item` dispatches a backlog item of that overseer (409 with the reason when it cannot start now). Returns `{ run_id, status, dir, workflow, warnings }`
 - `af_list_runs`: newest first, cut to `limit` (default 50); returns `{ runs, total }`
@@ -743,9 +744,22 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 - `af_notify`: returns `{ sent, errors, event }` (`event` is the `seq` of `notification.sent` in the run, or null without a run); `hint` says when no channel is enabled
 - `af_backlog_list`: returns `{ items, runnable, waiting, running, max_parallel, halt, budgets, budgets_used }` (items without timestamps, nulls or empty lists)
 - `af_backlog_add` / `af_backlog_update`: return the added items (`added`) or the item, and the new `runnable` list
+- `af_ask`: see [Asking from a step](#asking-from-a-step)
 - `from` (steering tools) is `user` or `overseer` (default `overseer`). An `af_answer` with `from: overseer` on a run the overseer dispatched is refused (409) outside its [answer policy](#answer-policy); `from` is declared by the caller, not authenticated
 
 The MCP SDK client's default request timeout is 60 seconds, below the `wait_seconds` cap of 120. Use shorter waits (for example 30) unless your client sets a longer timeout.
+
+### Asking from a step
+
+`af_ask` lets an agent inside a running workflow step ask a question, on any runtime and from Claude subagents (where `AskUserQuestion` is not available). The question is a `needs_input` request like any other: it appears in `x-af-needs-input` and as a `needs_input` event (with `via: af_ask`), the run is `awaiting-human` while it is open (the step keeps running), notifications and the overseer [answer policy](#answer-policy) apply, and `af answer` / `af_answer` answer it.
+
+- `run` and `step` default to the `AF_RUN_ID` and `AF_STEP` environment variables the supervisor sets for every step's agent process (an MCP server the agent starts inherits them). Without `step`, the run's only live session step is used, else its current step
+- `options` are labels or `{ id, label, description }` (ids `a`, `b`, ... when omitted); `recommended` is an option id or label. `kind` is `question` (default), `decision` or `permission`; `risk` (`low`, `medium`, `high`) is the risk of a wrong answer. `blocking: false` lets `supervisor.needs_input_timeout` apply `recommended`, only when `risk` is `low`
+- The call waits up to `wait_seconds` (default 50, max 3600) and returns `{ status: "answered", request_id, answer, option, from }`. When the wait runs out first it returns `{ status: "pending", request_id, next }`: the agent ends its turn, and the answer arrives as an operator message (`Answer to <id> ("<question>"): <answer>`) at the start of its next turn. On the session driver the session stays open while the question is open; on the `cli` driver the agent ends the step with `status: awaiting-human` and the step runs again with the answer
+- `request_id` alone checks a question asked before (`answered`, `pending`, or `withdrawn` when the run was paused, canceled or ended without an answer)
+- A run that is not executing a step returns a 409: end the step with a `needs_input` result block instead
+
+Keep `wait_seconds` under the client's MCP tool timeout: Codex stops a tool call after `tool_timeout_sec` (default 60 seconds), and MCP SDK clients after 60 seconds by default. Claude Code's default MCP tool timeout is far longer (about 27 hours, `MCP_TOOL_TIMEOUT` overrides it), so a Claude agent may wait longer in one call.
 
 ### Errors
 

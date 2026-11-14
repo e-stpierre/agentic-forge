@@ -194,10 +194,10 @@ describe("config", () => {
 		const config = getNotificationsConfig(getDefaultConfig());
 		expect(config.enabled).toBe(true);
 		expect(config.triggers).toEqual([
-			{ event: "needs_input", runType: null },
-			{ event: "run.halted", runType: null },
-			{ event: "run.failed", runType: null },
-			{ event: "run.completed", runType: "overseer" },
+			{ event: "needs_input", runType: null, kinds: null, risks: null },
+			{ event: "run.halted", runType: null, kinds: null, risks: null },
+			{ event: "run.failed", runType: null, kinds: null, risks: null },
+			{ event: "run.completed", runType: "overseer", kinds: null, risks: null },
 		]);
 		expect(Object.values(config.channels).every((c) => !c.enabled)).toBe(true);
 		expect(config.channels.ntfy.settings.server).toBe("https://ntfy.sh");
@@ -221,6 +221,28 @@ describe("config", () => {
 		expect(channelsFor(config, "needs_input", "workflow")).toEqual(["slack"]);
 		expect(channelsFor(config, null, null)).toEqual(["ntfy", "slack"]);
 		expect(channelsFor({ ...config, enabled: false }, null, null)).toEqual([]);
+	});
+
+	it("filters needs_input triggers by kind and risk", () => {
+		const config = getNotificationsConfig(
+			configWith({
+				triggers: [
+					{ event: "needs_input", kind: "permission" },
+					{ event: "needs_input", kind: ["question", "decision"], risk: "high" },
+				],
+				channels: { ntfy: { enabled: true, topic: "t" } },
+			}),
+		);
+		const match = (data: Record<string, unknown>) =>
+			matchesTrigger(config.triggers, "needs_input", "workflow", data);
+		expect(match({ kind: "permission" })).toBe(true);
+		expect(match({ kind: "question", risk: "high" })).toBe(true);
+		expect(match({ risk: "high" })).toBe(true);
+		expect(match({ kind: "question", risk: "low" })).toBe(false);
+		expect(match({ kind: "decision", risk: null })).toBe(false);
+		expect(channelsFor(config, "needs_input", "workflow", { kind: "permission" })).toEqual([
+			"ntfy",
+		]);
 	});
 });
 
@@ -253,10 +275,17 @@ describe("messages", () => {
 
 	it("includes the run, the question and options, and the CLI and MCP answer commands", () => {
 		const n = buildNotification(ask, run);
-		expect(n.title).toBe("af: 2026-11-11-x needs input");
+		expect(n.title).toBe("af: 2026-11-11-x needs input (decision)");
 		expect(n.level).toBe("warning");
 		expect(n.body).toContain("Run 2026-11-11-x (workflow esp-go, repo app), step approve.");
-		expect(n.body).toContain("Question (q1): Ship the release?");
+		expect(n.body).toContain("Decision (q1): Ship the release?");
+		const permission = buildNotification(
+			{ ...ask, data: { ...ask.data, kind: "permission", risk: "high" } },
+			run,
+		);
+		expect(permission.title).toBe("af: 2026-11-11-x needs input (permission)");
+		expect(permission.level).toBe("error");
+		expect(permission.body).toContain("Permission (q1, risk high): Ship the release?");
 		expect(n.body).toContain("ship: Ship it (recommended)");
 		expect(n.body).toContain("wait: Not yet");
 		expect(n.body).toContain("Answer: af answer 2026-11-11-x q1 ship");
@@ -460,7 +489,7 @@ describe("notifier", () => {
 		await manager.notifier.poll();
 
 		expect(sent).toHaveLength(1);
-		expect(sent[0].headers?.Title).toBe(`af: ${res.run.id} needs input`);
+		expect(sent[0].headers?.Title).toBe(`af: ${res.run.id} needs input (decision)`);
 		expect(sent[0].body).toContain("Ship the release?");
 		expect(sent[0].body).toMatch(new RegExp(`af answer ${res.run.id} \\S+ ship`));
 		expect(sent[0].body).toContain("af_answer(");

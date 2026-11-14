@@ -35,10 +35,10 @@ export const MAX_BODY_CHARS = 1800;
 
 const DEFAULT_TEMPLATES: Record<string, Required<Template>> = {
 	needs_input: {
-		title: "af: {{run}} needs input",
+		title: "af: {{run}} needs input ({{kind}})",
 		body: [
 			"{{run_line}}",
-			"Question ({{request_id}}): {{question}}",
+			"{{kind_label}} ({{request_id}}{{risk_suffix}}): {{question}}",
 			"{{context}}",
 			"{{options}}",
 			"Answer: {{answer_cli}}",
@@ -121,7 +121,10 @@ function str(value: unknown): string {
 
 function levelFor(type: string, data: Record<string, unknown>): NotificationLevel {
 	if (type === "run.failed" || type === "step.failed") return "error";
-	if (type === "needs_input") return data.blocking === false ? "info" : "warning";
+	if (type === "needs_input") {
+		if (data.risk === "high") return "error";
+		return data.blocking === false ? "info" : "warning";
+	}
 	if (type === "run.halted") return "warning";
 	return "info";
 }
@@ -151,6 +154,7 @@ export function templateVars(event: RunEvent, run: RunFacts): Record<string, str
 		.filter(Boolean)
 		.join(", ");
 	const step = str(data.step);
+	const kind = str(data.kind) || "decision";
 	const runLine = `Run ${run.id}${where ? ` (${where})` : ""}${step ? `, step ${step}` : ""}`;
 	// Not data.summary: the end event of an overseer run names its summary file there
 	const reason = str(data.error) || str(data.reason);
@@ -168,6 +172,10 @@ export function templateVars(event: RunEvent, run: RunFacts): Record<string, str
 		step,
 		reason,
 		request_id: requestId,
+		kind,
+		kind_label: kind.charAt(0).toUpperCase() + kind.slice(1),
+		risk: str(data.risk),
+		risk_suffix: data.risk ? `, risk ${str(data.risk)}` : "",
 		question: str(data.question),
 		context: str(data.context),
 		options: optionLines(data),

@@ -42,6 +42,8 @@ export interface ToolContext {
 	registryRoot?: string;
 	/** Base directory of relative `repo` inputs and the default repository. */
 	cwd: string;
+	/** Environment read by af_ask (`AF_RUN_ID`, `AF_STEP`); defaults to `process.env`. */
+	env?: NodeJS.ProcessEnv;
 }
 
 /** `withClient()` options of the read tools: a GET is retried once when the supervisor is unreachable. */

@@ -29,6 +29,7 @@ import {
 	emitStepEvent,
 	permissionOptions,
 	resolveModel,
+	stepEnv,
 } from "./base.js";
 
 /** Result statuses that stop the run, with the step and workflow status they record. */
@@ -189,7 +190,7 @@ export class PromptStepExecutor extends StepExecutor {
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,
 				sandbox: getSandboxMode(context.config),
-				env: context.env ?? null,
+				env: stepEnv(context, step.name),
 				signal: context.signal ?? null,
 				...driver,
 				resumeSessionId,

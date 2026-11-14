@@ -26,6 +26,7 @@ import {
 	emitStepEvent,
 	permissionOptions,
 	resolveModel,
+	stepEnv,
 	withOperatorMessages,
 } from "./base.js";
 
@@ -147,7 +148,7 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,
 				sandbox: getSandboxMode(context.config),
-				env: context.env ?? null,
+				env: stepEnv(context, step.name),
 				signal: context.signal ?? null,
 				...driverOptions(context, step.name),
 			});

@@ -180,7 +180,7 @@ export class Notifier {
 		if (!hasEnabledChannel(config)) return;
 		const store = new RunStore(entry.dir);
 		const facts = runFacts(entry, store);
-		const channels = withoutGithub(channelsFor(config, event.type, facts.type), facts);
+		const channels = withoutGithub(channelsFor(config, event.type, facts.type, event.data), facts);
 		if (channels.length === 0) return;
 		if (this.replay && alreadySent(store, event.seq)) return;
 		const notification = buildNotification(event, facts, config.templates);

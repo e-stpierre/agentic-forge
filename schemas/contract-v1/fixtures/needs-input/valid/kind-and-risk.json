@@ -1,0 +1,13 @@
+{
+  "id": "ask-1a2b3c4d",
+  "question": "Keep the legacy endpoint during the migration?",
+  "options": [
+    { "id": "a", "label": "Keep it" },
+    { "id": "b", "label": "Remove it" }
+  ],
+  "recommended": "a",
+  "context": "Two clients still call it.",
+  "blocking": false,
+  "kind": "decision",
+  "risk": "low"
+}

@@ -51,8 +51,11 @@ export async function runSession(
 		deciding = true;
 		try {
 			const open = !stop.signal.aborted && session.state !== "closed";
+			// The step timeout does not run while the host waits (open af_ask questions)
+			pauseTimer();
 			const next = open ? ((await host.nextMessages?.()) ?? "") : "";
-			if (next && session.state !== "closed") {
+			if (next && session.state !== "closed" && !stop.signal.aborted) {
+				resumeTimer();
 				if (console) {
 					console.streamText(next, "user");
 					console.streamComplete();

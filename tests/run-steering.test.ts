@@ -380,7 +380,7 @@ describe("needs_input and af answer", () => {
 					block({
 						status: "awaiting-human",
 						summary: "Choice.",
-						needs_input: { ...QUESTION, blocking: false },
+						needs_input: { ...QUESTION, blocking: false, risk: "low" },
 					}),
 				);
 			}
@@ -420,6 +420,37 @@ describe("needs_input and af answer", () => {
 		expect(pendingInput(store.readRun())?.deadline).toBeNull();
 	});
 
+	it("skips the timeout for requests whose risk is not low", async () => {
+		const { manager, client } = await startSupervisor();
+		const config = getDefaultConfig();
+		(config.supervisor as Record<string, unknown>).needs_input_timeout = 0.001;
+		for (const extra of [{}, { risk: "medium" }, { max_risk: "low", risk: "high" }]) {
+			const { max_risk, ...risk } = extra as { max_risk?: string; risk?: string };
+			fakeRuntime.reset();
+			fakeRuntime.on("BUILD", (o) =>
+				reply(
+					o,
+					block({
+						status: "awaiting-human",
+						summary: "Choice.",
+						...(max_risk ? { max_risk } : {}),
+						needs_input: { ...QUESTION, blocking: false, ...risk },
+					}),
+				),
+			);
+			const res = await dispatchRun(client, payload(THREE_STEPS, config));
+			await manager.idle();
+			await new Promise((r) => setTimeout(r, 100));
+			const store = new RunStore(res.dir);
+			expect(store.readRun().status).toBe("awaiting-human");
+			expect(pendingInput(store.readRun())?.deadline).toBeNull();
+			expect(store.readEvents().find((e) => e.type === "needs_input")?.data).toMatchObject({
+				kind: "decision",
+				risk: risk.risk ?? null,
+			});
+		}
+	});
+
 	it("re-arms a pending deadline after a supervisor restart", async () => {
 		const first = await startSupervisor();
 		let asks = 0;
@@ -431,6 +462,7 @@ describe("needs_input and af answer", () => {
 						block({
 							status: "awaiting-human",
 							summary: "Choice.",
+							max_risk: "low",
 							needs_input: { ...QUESTION, blocking: false },
 						}),
 					)

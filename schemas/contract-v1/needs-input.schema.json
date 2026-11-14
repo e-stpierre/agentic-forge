@@ -35,6 +35,14 @@
     "blocking": {
       "description": "false lets the harness continue other work and apply the recommended option after its configured timeout.",
       "type": "boolean"
+    },
+    "kind": {
+      "description": "What is asked: question (information or a choice), permission (approve or deny an action), decision (a choice the step may not take alone). Absent means decision.",
+      "enum": ["question", "permission", "decision"]
+    },
+    "risk": {
+      "description": "Risk of getting the answer wrong. Absent counts as not low: no automatic answer.",
+      "$ref": "urn:harness-contract:v1:common#/$defs/risk"
     }
   }
 }

@@ -18,6 +18,7 @@ import { getVersion } from "../commands/version.js";
 import { deepMerge, getDefaultConfig } from "../config.js";
 import {
 	type NeedsInput,
+	type NeedsInputKind,
 	type ResultBlock,
 	type RunStatus,
 	TERMINAL_RUN_STATUSES,
@@ -60,6 +61,14 @@ import type {
 	WorkflowProgress,
 } from "../types.js";
 import { resolveWorktreeEnabled } from "../worktree-settings.js";
+import {
+	type AskCreated,
+	type AskInput,
+	AskInputError,
+	type AskState,
+	askRequest,
+	newAskId,
+} from "./ask.js";
 import { BacklogService } from "./backlog-service.js";
 import { BacklogError, type PolicyVerdict } from "./backlog.js";
 import { type DispatchPayload, validateDispatch } from "./dispatch.js";
@@ -166,12 +175,17 @@ export interface PendingInput {
 	live?: boolean;
 	/** Runtime session id of the live session that asked. */
 	session_id?: string | null;
-	/** Permission request of a live session (never answered by the overseer policy). */
+	/** Permission request of a live session (written before `request.kind`; still read). */
 	permission?: boolean;
-	/** Risk the asking step reported (`max_risk` of its result block), or null. */
+	/**
+	 * Risk of the request: its own `risk`, else the `max_risk` of the asking
+	 * step's result block, or null.
+	 */
 	risk?: string | null;
 	/** Answer policy verdict, for a run dispatched by an overseer. */
 	overseer_policy?: PolicyVerdict | null;
+	/** Asked with `af_ask` from inside the step (the step keeps running). */
+	ask?: boolean;
 }
 
 /** Amendment waiting for the amend step (af extension `x-af-amendments`). */
@@ -386,6 +400,12 @@ export class RunManager {
 	 * the registry status behind `run.json`.
 	 */
 	private readonly inputLocks = new Map<string, Promise<unknown>>();
+	/** `af_ask` long-polls waiting per request (run + request key). */
+	private readonly askWaiters = new Map<string, number>();
+	/** `af_ask` answers handed to a waiting long-poll (run + request key). */
+	private readonly askAnswers = new Map<string, Extract<AskState, { status: "answered" }>>();
+	/** Wake-ups of `af_ask` long-polls and of steps waiting for their questions. */
+	private readonly askWake = new Map<string, Set<() => void>>();
 	private scheduling = false;
 	private rescheduleRequested = false;
 	private closed = false;
@@ -506,6 +526,14 @@ export class RunManager {
 		supervisor.route("POST", "/v1/runs/:id/resume", ({ params }) =>
 			wrap(() => this.resume(params.id))(),
 		);
+		supervisor.route("POST", "/v1/runs/:id/ask", ({ params, body }) =>
+			wrap(() => this.ask(params.id, (body ?? {}) as AskInput), 201)(),
+		);
+		supervisor.route("GET", "/v1/runs/:id/ask/:request", ({ params, query }) =>
+			wrap(() =>
+				this.askState(params.id, params.request, Number.parseFloat(query.get("wait") ?? "0") || 0),
+			)(),
+		);
 		supervisor.route("POST", "/v1/runs/:id/answer", ({ params, body }) =>
 			wrap(() => this.answer(params.id, (body ?? {}) as AnswerInput))(),
 		);
@@ -591,7 +619,7 @@ export class RunManager {
 	private overseerVerdict(entry: RegistryEntry, pending: PendingInput): PolicyVerdict | null {
 		return this.backlog.policyFor(entry.dir, pending.request, {
 			risk: pending.risk ?? null,
-			permission: pending.permission === true,
+			kind: pendingKind(pending),
 		});
 	}
 
@@ -1267,6 +1295,16 @@ export class RunManager {
 			);
 		}
 		const answer = option ? `${option.id} (${option.label})` : raw;
+		if (pending.ask && this.executing.has(id)) {
+			return this.answerAsk(entry, store, pending, {
+				raw,
+				option: option?.id ?? null,
+				answer,
+				from,
+				source: policy ? "policy" : verdict ? "overseer-policy" : "operator",
+				verdictReason: verdict?.reason ?? null,
+			});
+		}
 		const resolve = pending.live ? this.liveRequests.get(id)?.get(request.id) : undefined;
 		if (resolve) {
 			return this.answerLive(entry, store, pending, resolve, {
@@ -1322,6 +1360,307 @@ export class RunManager {
 		}
 		await this.resume(id);
 		return { id, request: request.id, message: message.id, status: "queued" };
+	}
+
+	/**
+	 * `af_ask`: raises a `needs_input` from inside a running step. The run is
+	 * `awaiting-human` while the question is open; the step keeps running.
+	 * The asking tool waits with `askState()`; an answer given while no
+	 * long-poll waits goes to the step as an operator message, delivered at
+	 * its next turn (session driver) or when it runs again (`cli` driver).
+	 */
+	async ask(id: string, input: AskInput): Promise<AskCreated & Partial<AskState>> {
+		const entry = this.requireWorkflowRun(id, "ask in");
+		const status = this.registry.get(id)?.status ?? entry.status;
+		if (!this.executing.has(id) || (status !== "running" && status !== "awaiting-human")) {
+			throw new RunError(
+				`af_ask needs a running step: run ${id} is '${status}'. End the step with a needs_input result block instead`,
+				409,
+			);
+		}
+		const step = this.askStep(entry, input.step);
+		let request: NeedsInput;
+		try {
+			request = askRequest(newAskId(), input);
+		} catch (err) {
+			if (err instanceof AskInputError) throw new RunError(err.message);
+			throw err;
+		}
+		const store = new RunStore(entry.dir);
+		const pending: PendingInput = {
+			...newPendingInput(step, request, this.dispatchConfig(store), null),
+			ask: true,
+		};
+		pending.overseer_policy = this.backlog.policyFor(entry.dir, request, {
+			risk: pending.risk ?? null,
+			kind: pendingKind(pending),
+		});
+		await this.withInputLock(id, async () => {
+			const run = await store.updateRunWith((current) => ({
+				status: "awaiting-human",
+				"x-af-needs-input": [...pendingInputs(current), pending],
+			}));
+			await this.registry.update(id, { status: run.status });
+		});
+		const session = this.liveSessions.get(id)?.has(step) === true;
+		// With `wait`, the call waits from before the question is visible, so an
+		// answer can never arrive between the ask and the first long-poll
+		const wait = typeof input.wait === "number" && input.wait > 0 ? input.wait : 0;
+		const key = stepKey(id, request.id);
+		if (wait > 0) this.askWaiters.set(key, (this.askWaiters.get(key) ?? 0) + 1);
+		await store.appendEvent("needs_input", {
+			...request,
+			risk: pending.risk ?? null,
+			step,
+			deadline: pending.deadline,
+			via: "af_ask",
+			live: session,
+			...(pending.overseer_policy ? { overseer_policy: pending.overseer_policy } : {}),
+		});
+		if (pending.deadline) this.armTimer(id, pending);
+		this.log(`Run ${id}: ${step} asks ${request.id} (af_ask)`);
+		const created = { run: id, request_id: request.id, step, session };
+		if (wait === 0) return created;
+		return { ...created, ...(await this.askState(id, request.id, wait, true)) };
+	}
+
+	/**
+	 * State of an `af_ask` request, waiting up to `waitSeconds` (max 120) for
+	 * its answer. An answer that arrives while this call waits is handed to
+	 * it and not queued as an operator message.
+	 */
+	async askState(
+		id: string,
+		requestId: string,
+		waitSeconds = 0,
+		registered = false,
+	): Promise<AskState> {
+		const entry = this.requireWorkflowRun(id, "ask in");
+		const store = new RunStore(entry.dir);
+		const key = stepKey(id, requestId);
+		const deadline = Date.now() + Math.min(Math.max(waitSeconds, 0), 120) * 1000;
+		const asked = store
+			.readEvents()
+			.some((e) => e.type === "needs_input" && e.data?.id === requestId);
+		if (!asked) throw new RunError(`Unknown request '${requestId}'`, 404);
+		if (!registered) this.askWaiters.set(key, (this.askWaiters.get(key) ?? 0) + 1);
+		let left = false;
+		const leave = () => {
+			if (left) return;
+			left = true;
+			const count = (this.askWaiters.get(key) ?? 1) - 1;
+			if (count > 0) this.askWaiters.set(key, count);
+			else this.askWaiters.delete(key);
+		};
+		const handed = (): AskState | null => {
+			const answer = this.askAnswers.get(key);
+			if (answer) this.askAnswers.delete(key);
+			return answer ?? null;
+		};
+		try {
+			for (;;) {
+				const own = handed();
+				if (own) return own;
+				const answered = answerOf(store, requestId);
+				if (answered) {
+					// Answered while no long-poll waited: the agent gets it here, so its
+					// operator message is consumed instead of delivered again next turn
+					const step = answeredStep(store, requestId);
+					if (answered.message && step) {
+						await this.deliverMessages(store, step, [answered.message]);
+					}
+					return {
+						status: "answered",
+						run: id,
+						request_id: requestId,
+						answer: answered.answer,
+						option: answered.option,
+						from: answered.from,
+					};
+				}
+				const pending = pendingInputs(store.readRun()).find((p) => p.request.id === requestId);
+				if (!pending) {
+					const now = this.registry.get(id)?.status ?? "unknown";
+					return {
+						status: "withdrawn",
+						run: id,
+						request_id: requestId,
+						reason: `the request was dropped without an answer (run ${now})`,
+					};
+				}
+				const now = Date.now();
+				if (now >= deadline || this.closing.signal.aborted) {
+					leave();
+					// An answer handed over in the same tick is still ours
+					return (
+						handed() ?? {
+							status: "pending",
+							run: id,
+							request_id: requestId,
+							session: this.liveSessions.get(id)?.has(pending.step) === true,
+						}
+					);
+				}
+				await this.waitAsk(key, Math.min(deadline - now, 1000));
+			}
+		} finally {
+			leave();
+		}
+	}
+
+	/** Step an `af_ask` comes from: the given one, the only live session step, else the current step. */
+	private askStep(entry: RegistryEntry, given: string | null | undefined): string {
+		if (typeof given === "string" && given.trim()) return given.trim();
+		const live = [...(this.liveSessions.get(entry.id)?.keys() ?? [])];
+		if (live.length === 1) return live[0];
+		const current = loadProgress(entry.id, entry.dir)?.currentStep?.name ?? null;
+		if (live.length === 0 && current) return current;
+		throw new RunError(
+			live.length > 1
+				? `Several steps are running (${live.join(", ")}): give the asking step`
+				: "No running step found: give the asking step",
+		);
+	}
+
+	/** The dispatch config snapshot of a run (empty when unreadable). */
+	private dispatchConfig(store: RunStore): Record<string, unknown> {
+		try {
+			const payload = JSON.parse(readFileSync(path.join(store.dir, "dispatch.json"), "utf-8")) as {
+				config?: Record<string, unknown>;
+			};
+			return payload.config ?? {};
+		} catch {
+			return {};
+		}
+	}
+
+	/** Waits until `key` is woken or `ms` passed. */
+	private waitAsk(key: string, ms: number): Promise<void> {
+		return new Promise((resolve) => {
+			const set = this.askWake.get(key) ?? new Set<() => void>();
+			this.askWake.set(key, set);
+			const done = () => {
+				clearTimeout(timer);
+				set.delete(done);
+				if (set.size === 0 && this.askWake.get(key) === set) this.askWake.delete(key);
+				resolve();
+			};
+			const timer = setTimeout(done, Math.max(0, ms));
+			timer.unref?.();
+			set.add(done);
+		});
+	}
+
+	private wakeAsk(key: string): void {
+		for (const done of [...(this.askWake.get(key) ?? [])]) done();
+	}
+
+	/**
+	 * Before a session step's next turn: waits while the step has open
+	 * `af_ask` questions (the agent ended its turn on `pending`), so the
+	 * session stays open and the answer is its next turn. Ends when the run
+	 * stops.
+	 */
+	private async waitForAsks(entry: RegistryEntry, store: RunStore, step: string): Promise<void> {
+		const signal = this.controllers.get(entry.id)?.signal;
+		const key = stepKey(entry.id, `step:${step}`);
+		while (!signal?.aborted && !this.closing.signal.aborted) {
+			const open = pendingInputs(store.readRun()).some((p) => p.ask && p.step === step);
+			if (!open) return;
+			await this.waitAsk(key, 1000);
+		}
+	}
+
+	/**
+	 * Answers an `af_ask` request of an executing run: hands the answer to a
+	 * waiting long-poll, else queues it as an operator message for the step.
+	 * The run is `running` again once no request is left.
+	 */
+	private async answerAsk(
+		entry: RegistryEntry,
+		store: RunStore,
+		pending: PendingInput,
+		a: {
+			raw: string;
+			option: string | null;
+			answer: string;
+			from: "user" | "overseer";
+			source: "policy" | "overseer-policy" | "operator";
+			verdictReason: string | null;
+		},
+	): Promise<AnswerResult> {
+		const request = pending.request;
+		const key = stepKey(entry.id, request.id);
+		const from = a.source === "policy" ? "policy" : a.from;
+		// Decided in one tick with the long-poll's own check, so the answer is never lost
+		const toTool = (this.askWaiters.get(key) ?? 0) > 0;
+		if (toTool) {
+			this.askAnswers.set(key, {
+				status: "answered",
+				run: entry.id,
+				request_id: request.id,
+				answer: a.option ?? a.raw,
+				option: a.option,
+				from,
+			});
+		}
+		const message = toTool
+			? null
+			: new Inbox(entry.dir).queue({
+					text: `Answer to ${request.id} ("${request.question}"): ${a.answer}`,
+					from: a.from,
+					mode: "next",
+					step: pending.step,
+				});
+		this.clearTimer(entry.id, request.id);
+		const resumed = await this.withInputLock(entry.id, async () => {
+			const run = await store.updateRunWith((current) => {
+				const remaining = pendingInputs(current).filter((p) => p.request.id !== request.id);
+				const running = remaining.length === 0 && current.status === "awaiting-human";
+				return {
+					"x-af-needs-input": remaining.length > 0 ? remaining : null,
+					...(running ? { status: "running" as RunStatus } : {}),
+				};
+			});
+			await this.registry.update(entry.id, { status: run.status });
+			return run.status === "running";
+		});
+		if (message) await store.appendEvent("message.queued", messageEventData(message));
+		await store.appendEvent("input.answered", {
+			id: request.id,
+			step: pending.step,
+			answer: a.option ?? a.raw,
+			option: a.option,
+			from,
+			message: message?.id ?? null,
+			via: "af_ask",
+		});
+		const rationale =
+			a.source === "policy"
+				? "No answer within the needs_input timeout; applied the recommended option of a non-blocking request"
+				: a.source === "overseer-policy"
+					? `Answered by the overseer within its answer_policy: ${a.verdictReason}`
+					: `Answer from ${a.from}, ${toTool ? "returned to the waiting af_ask call" : "queued for the asking step"}`;
+		await store.appendDecision({
+			id: `d-${request.id}`,
+			at: new Date().toISOString(),
+			phase: pending.step,
+			source: a.source === "operator" ? "operator" : "policy",
+			risk: "low",
+			decision: `Answered ${request.id} (${request.question}): ${a.answer}`,
+			rationale,
+			alternatives: request.options.filter((o) => o.id !== a.option).map((o) => o.label),
+			refs: message ? [request.id, message.id] : [request.id],
+		});
+		if (resumed) await store.appendEvent("run.resumed", { reason: "answered" });
+		this.wakeAsk(key);
+		this.wakeAsk(stepKey(entry.id, `step:${pending.step}`));
+		return {
+			id: entry.id,
+			request: request.id,
+			message: message?.id ?? null,
+			status: resumed ? "running" : "awaiting-human",
+		};
 	}
 
 	/**
@@ -1412,6 +1751,11 @@ export class RunManager {
 			},
 			requestInput: (request, sessionId) =>
 				this.requestLive(entry, store, config, step, request, sessionId),
+			// Open af_ask questions keep the session open: their answers are its next turn
+			nextMessages: async () => {
+				await this.waitForAsks(entry, store, step);
+				return this.deliverMessages(store, step);
+			},
 			onLive: (handle) => {
 				const sessions = this.liveSessions.get(entry.id) ?? new Map<string, LiveSession>();
 				sessions.set(step, handle);
@@ -1518,15 +1862,13 @@ export class RunManager {
 			recommended: request.recommended,
 			context: request.context,
 			blocking: true,
+			kind: request.kind,
 		};
-		const permission = request.kind === "permission";
 		const pending: PendingInput = {
-			...newPendingInput(step, needs, config),
+			...newPendingInput(step, needs, config, null),
 			live: true,
 			session_id: sessionId,
-			permission,
-			risk: null,
-			overseer_policy: this.backlog.policyFor(entry.dir, needs, { risk: null, permission }),
+			overseer_policy: this.backlog.policyFor(entry.dir, needs, { risk: null, kind: request.kind }),
 		};
 		const requests =
 			this.liveRequests.get(entry.id) ?? new Map<string, (d: SessionDecision) => void>();
@@ -1541,6 +1883,7 @@ export class RunManager {
 		});
 		await store.appendEvent("needs_input", {
 			...needs,
+			risk: null,
 			step,
 			deadline: pending.deadline,
 			live: true,
@@ -1790,15 +2133,18 @@ export class RunManager {
 		const request =
 			last?.block.status === "awaiting-human" ? (last.block.needs_input ?? null) : null;
 		if (!last || !request) return null;
-		const pending = newPendingInput(last.step, request, config);
-		pending.risk = last.block.max_risk ?? null;
+		const pending = newPendingInput(last.step, request, config, last.block.max_risk ?? null);
 		pending.overseer_policy = this.backlog.policyFor(entry.dir, request, {
-			risk: pending.risk,
-			permission: false,
+			risk: pending.risk ?? null,
+			kind: pendingKind(pending),
 		});
-		await store.updateRun({ "x-af-needs-input": [pending] });
+		// Open af_ask questions of a `cli` step stay: their answers rerun the step too
+		const asks = pendingInputs(store.readRun()).filter((p) => p.ask);
+		await store.updateRun({ "x-af-needs-input": [...asks, pending] });
 		await store.appendEvent("needs_input", {
 			...request,
+			kind: pendingKind(pending),
+			risk: pending.risk ?? null,
 			step: last.step,
 			deadline: pending.deadline,
 			...(pending.overseer_policy ? { overseer_policy: pending.overseer_policy } : {}),
@@ -1993,7 +2339,8 @@ export class RunManager {
 			let interruptedStep: string | null = null;
 			const executor = new WorkflowExecutor(payload.repo_root, false, payload.runtime ?? null, {
 				config: payload.config,
-				env: payload.env,
+				// AF_RUN_ID (and AF_STEP, set per step) let af_ask find the asking run
+				env: { ...payload.env, AF_RUN_ID: entry.id },
 				runDir: entry.dir,
 				worktree: recorded,
 				signal: controller.signal,
@@ -2078,7 +2425,7 @@ export class RunManager {
 				this.log(`Run ${entry.id}: interrupted by supervisor shutdown`);
 				return;
 			}
-			await this.dropLiveRequests(entry.id, store);
+			await this.dropLiveRequests(entry.id, store, status !== "awaiting-human");
 			if (request?.restart && status === "paused") {
 				// send --mode now: rerun the interrupted step at once with the message. Its
 				// session resumes; the worktree's work is committed first in case it cannot
@@ -2127,15 +2474,19 @@ export class RunManager {
 	}
 
 	/** Removes the requests of live sessions that ended without an answer (canceled, paused). */
-	private async dropLiveRequests(id: string, store: RunStore): Promise<void> {
+	private async dropLiveRequests(id: string, store: RunStore, asks: boolean): Promise<void> {
 		this.liveRequests.delete(id);
+		const gone = (p: PendingInput) => p.live === true || (asks && p.ask === true);
 		await this.withInputLock(id, async () => {
-			if (!pendingInputs(store.readRun()).some((p) => p.live)) return;
-			this.clearTimer(id);
+			const dropped = pendingInputs(store.readRun()).filter(gone);
+			if (dropped.length === 0) return;
+			for (const p of dropped) this.clearTimer(id, p.request.id);
 			await store.updateRunWith((current) => {
-				const kept = pendingInputs(current).filter((p) => !p.live);
+				const kept = pendingInputs(current).filter((p) => !gone(p));
 				return { "x-af-needs-input": kept.length > 0 ? kept : null };
 			});
+			// Long-polls of dropped af_ask questions return `withdrawn`
+			for (const p of dropped) this.wakeAsk(stepKey(id, p.request.id));
 		});
 	}
 
@@ -2465,6 +2816,15 @@ export function pendingInput(run: RunJson): PendingInput | null {
 	return pendingInputs(run)[0] ?? null;
 }
 
+/** Step of an answered request, from its `input.answered` event. */
+function answeredStep(store: RunStore, requestId: string): string | null {
+	const event = store
+		.readEvents()
+		.filter((e) => e.type === "input.answered" && e.data?.id === requestId)
+		.at(-1);
+	return typeof event?.data?.step === "string" ? event.data.step : null;
+}
+
 /** The latest `input.answered` event of a request, as a step reads it. */
 function answerOf(store: RunStore, requestId: string): InputAnswer | null {
 	const event = store
@@ -2482,18 +2842,22 @@ function answerOf(store: RunStore, requestId: string): InputAnswer | null {
 }
 
 /**
- * A pending request; non-blocking requests with a recommended option get the
+ * A pending request. A non-blocking request with a recommended option gets a
  * timeout deadline: the request's `x-af-timeout-minutes` (human-input
- * `timeout-minutes`), else `supervisor.needs_input_timeout`.
+ * `timeout-minutes`, set by the workflow author), else
+ * `supervisor.needs_input_timeout`, which also requires risk `low` (the
+ * request's `risk`, else `stepRisk`; a missing risk is not low).
  */
 function newPendingInput(
 	step: string,
 	request: NeedsInput,
 	config: Record<string, unknown>,
+	stepRisk: string | null,
 ): PendingInput {
 	const own = request["x-af-timeout-minutes"];
-	const minutes =
-		typeof own === "number" && Number.isFinite(own) && own >= 0 ? own : needsInputTimeout(config);
+	const ownMinutes = typeof own === "number" && Number.isFinite(own) && own >= 0 ? own : null;
+	const risk = request.risk ?? stepRisk ?? null;
+	const minutes = ownMinutes ?? (risk === "low" ? needsInputTimeout(config) : null);
 	const autoApply = request.blocking === false && request.recommended != null;
 	const now = Date.now();
 	return {
@@ -2501,7 +2865,16 @@ function newPendingInput(
 		request,
 		asked_at: new Date(now).toISOString(),
 		deadline: autoApply && minutes !== null ? new Date(now + minutes * 60_000).toISOString() : null,
+		risk,
 	};
+}
+
+/**
+ * Kind of a pending request: the request's `kind`, else `permission` for a
+ * live permission request stored before kinds existed, else `decision`.
+ */
+export function pendingKind(pending: PendingInput): NeedsInputKind {
+	return pending.request.kind ?? (pending.permission ? "permission" : "decision");
 }
 
 /** Amendments waiting for the amend step (`x-af-amendments` in run.json). */

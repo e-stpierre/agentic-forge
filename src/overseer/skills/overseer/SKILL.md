@@ -117,12 +117,12 @@ Confirm each relay in one line with the message or amendment id it returns.
 
 ## Questions
 
-A `needs_input` request is a question from a run. When the run is yours, its event carries `overseer_policy`:
+A `needs_input` request is a question from a run: a step that ended with it, or an agent that asked with `af_ask` while its step keeps running (`via: af_ask`). Its event carries `kind` (`question`, `decision` or `permission`) and `risk` (`low`, `medium`, `high`, or null). When the run is yours, it also carries `overseer_policy`:
 
-- `within: true`: the request is inside `answer_policy` (by default: the asking step reported low risk and there is a recommended option). Answer it yourself with `af_answer` (`run`, `request_id`, `answer` = `overseer_policy.answer`, `from: overseer`), unless something the user told you contradicts the recommendation: then ask. Tell the user in one line what you answered; the harness logs it as a policy decision
+- `within: true`: the request is inside `answer_policy` (by default: low risk and a recommended option). Answer it yourself with `af_answer` (`run`, `request_id`, `answer` = `overseer_policy.answer`, `from: overseer`), unless something the user told you contradicts the recommendation: then ask. Tell the user in one line what you answered; the harness logs it as a policy decision
 - Otherwise (`within: false`, or no `overseer_policy`): ask the user with AskUserQuestion: the question, its context in one sentence, and its options with the recommended one first and marked. Then answer with `af_answer` (`run`, `request_id`, `answer` = the option id or the user's own text, `from: user`)
 
-The harness refuses an `af_answer` with `from: overseer` outside the policy (409): ask the user then. The harness cannot tell who sent `from: user`, so use it only for an answer the user gave you, never to get around a 409. Permission requests are always asked.
+The harness refuses an `af_answer` with `from: overseer` outside the policy (409): ask the user then. The harness cannot tell who sent `from: user`, so use it only for an answer the user gave you, never to get around a 409. Permission requests (`kind: permission`) and high-risk requests are always asked; tell the user when a high-risk question is waiting even if they are busy with something else.
 
 ## Rehydration
 
