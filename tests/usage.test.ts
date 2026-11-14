@@ -32,12 +32,7 @@ import { codexStreamEvents } from "../src/runtimes/codex.js";
 import { ClaudeAdapter, CodexAdapter } from "../src/runtimes/index.js";
 import type { RuntimeResult, RuntimeRunOptions } from "../src/runtimes/types.js";
 import { SessionOutput } from "../src/runtimes/types.js";
-import {
-	type Usage,
-	addUsage,
-	claudeResultUsage,
-	totalTokens,
-} from "../src/runtimes/usage.js";
+import { type Usage, addUsage, claudeResultUsage, totalTokens } from "../src/runtimes/usage.js";
 import { Supervisor, SupervisorClient } from "../src/supervisor/index.js";
 import { fakeRuntime } from "./helpers/fake-runtime.js";
 import { useTempGlobalRoot } from "./helpers/temp-home.js";
@@ -363,6 +358,23 @@ describe("run usage", () => {
 		});
 		// Paused at the boundary after S3: S4 never ran
 		expect(fakeRuntime.calls.map((c) => c.prompt).some((p) => p.includes("S4"))).toBe(false);
+
+		// Resuming without a raise pauses again before the next step, with no new call
+		const callsAtPause = fakeRuntime.calls.length;
+		await call(mcp, "af_resume", { run });
+		await vi.waitFor(
+			() => expect(store.readEvents().filter((e) => e.type === "run.paused")).toHaveLength(2),
+			{ timeout: 5000 },
+		);
+		await waitForStatus(manager, run, "paused");
+		expect(fakeRuntime.calls).toHaveLength(callsAtPause);
+		const repaused = store.readEvents().filter((e) => e.type === "run.paused")[1];
+		expect(repaused.data).toMatchObject({
+			reason: "budget",
+			budget: "max_tokens",
+			used: 1350,
+			limit: 1000,
+		});
 
 		// Raising the budget on resume lets the run finish
 		const resumed = await call(mcp, "af_resume", { run, max_tokens: 5000 });

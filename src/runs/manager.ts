@@ -2583,8 +2583,8 @@ export class RunManager {
 	/**
 	 * Re-queues a paused, waiting, blocked or failed run; it resumes from the
 	 * last completed step. `budgets` raises (or with null removes) the run's
-	 * `max_tokens` / `max_cost_usd` (a run paused at a budget pauses again at
-	 * the next boundary unless it is raised).
+	 * `max_tokens` / `max_cost_usd` (a run paused at a budget pauses again before
+	 * its next step unless it is raised).
 	 */
 	async resume(
 		id: string,
@@ -2685,13 +2685,8 @@ export class RunManager {
 		});
 
 		const limits = budgets();
-		const checks: [string, number | null, number | null][] = [
-			["max_tokens", limits.maxTokens, totalTokens(total)],
-			["max_cost_usd", limits.maxCostUsd, total.cost_usd],
-		];
 		const warned = new Set((run["x-af-budget-warned"] as string[] | undefined) ?? []);
-		let exceeded: Record<string, unknown> | null = null;
-		for (const [budget, limit, used] of checks) {
+		for (const [budget, limit, used] of budgetChecks(total, limits)) {
 			if (limit === null || used === null) continue;
 			const ratio = used / limit;
 			if (ratio >= BUDGET_WARNING_RATIO && !warned.has(budget)) {
@@ -2705,8 +2700,8 @@ export class RunManager {
 					step,
 				});
 			}
-			if (ratio >= 1 && !exceeded) exceeded = { reason: "budget", budget, used, limit, step };
 		}
+		const exceeded = exceededBudget(total, limits, step);
 		if (exceeded && !this.stopRequests.has(entry.id) && this.executing.has(entry.id)) {
 			this.stopRequests.set(entry.id, { status: "paused", now: false, budget: exceeded });
 			this.log(`Run ${entry.id}: ${exceeded.budget} reached, pausing at the next boundary`);
@@ -2832,6 +2827,21 @@ export class RunManager {
 					? { path: run.worktree, branch: run.branch, baseBranch: run.base ?? "" }
 					: null;
 			await this.rebuildMessageEvents(store);
+			// A run resumed at its budget without a raise pauses before its next step
+			const used = sumStepUsage(readRunUsage(entry.dir));
+			const exhausted = used
+				? exceededBudget(
+						used,
+						this.runBudgets(store, payload.config, workflow.settings.budgets),
+						null,
+					)
+				: null;
+			if (exhausted && !this.stopRequests.has(entry.id)) {
+				this.stopRequests.set(entry.id, { status: "paused", now: false, budget: exhausted });
+				this.log(
+					`Run ${entry.id}: ${exhausted.budget} already reached, pausing before the next step`,
+				);
+			}
 			const controller = new AbortController();
 			this.controllers.set(entry.id, controller);
 			let interruptedStep: string | null = null;
@@ -3424,4 +3434,26 @@ function amendmentDecision(a: AmendmentEntry, phase: string): DecisionEntry {
 		rationale: `Requirement change from ${a.from ?? "user"}`,
 		refs: [a.id, ...a.affects],
 	};
+}
+
+/** Each run budget with its limit and the run's usage against it (null: none or unknown). */
+function budgetChecks(total: Usage, limits: RunBudgets): [string, number | null, number | null][] {
+	return [
+		["max_tokens", limits.maxTokens, totalTokens(total)],
+		["max_cost_usd", limits.maxCostUsd, total.cost_usd],
+	];
+}
+
+/** The `run.paused` data of the first budget the usage reached, null when none is reached. */
+function exceededBudget(
+	total: Usage,
+	limits: RunBudgets,
+	step: string | null,
+): Record<string, unknown> | null {
+	for (const [budget, limit, used] of budgetChecks(total, limits)) {
+		if (limit !== null && used !== null && used >= limit) {
+			return { reason: "budget", budget, used, limit, ...(step ? { step } : {}) };
+		}
+	}
+	return null;
 }

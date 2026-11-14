@@ -48,7 +48,7 @@ The model of each step decides most of a run's cost. Set a cheaper `model` on me
 
 - `af usage <run> --by step` shows the tokens of every step (input, cached input, cache writes, output) and the reported cost, which is an estimate (notional on a subscription login). It includes the runs a run dispatched
 - `af_usage` with `scope: "mcp"` shows the bytes each tool returned in the current MCP session, the only view af has of the overseer's tool-result load. The overseer's own tokens are only visible in the client (`/cost` or `/context` in Claude Code)
-- `settings.budgets.max_tokens` and `max_cost_usd` in a workflow, or `runs.budgets` in config, bound a run: a `budget.warning` event at 80%, and a pause with reason `budget` at the limit. `af resume --max-tokens <n>` continues after a raise. See [Configuration](./configuration.md)
+- `settings.budgets.max_tokens` and `max_cost_usd` in a workflow, or `runs.budgets` in config, bound a run: a `budget.warning` event at 80%, and a pause with reason `budget` at the limit. `af resume --max-tokens <n>` continues after a raise; a resume without one pauses again before the next step. See [Configuration](./configuration.md)
 
 ## Measured Baseline
 
