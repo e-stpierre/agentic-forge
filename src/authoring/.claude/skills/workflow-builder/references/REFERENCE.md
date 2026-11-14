@@ -79,12 +79,12 @@ Nested under `settings.worktree`. Controls workflow-level git worktree isolation
 
 **Cleanup policies:**
 
-| Value           | Behavior                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------ |
-| `"on-success"`  | Remove worktree on success; preserve on failure                                            |
-| `"on-complete"` | Always remove worktree after the workflow finishes                                         |
+| Value           | Behavior                                                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"on-success"`  | Remove worktree on success; preserve on failure                                                                                                            |
+| `"on-complete"` | Always remove worktree after the workflow finishes                                                                                                         |
 | `"on-merge"`    | Remove the worktree, then its local branch, once a step reported `merged` (a `merge` step); the branch is kept when leftover changes were auto-saved on it |
-| `"manual"`      | Never remove automatically; log path for manual inspection                                 |
+| `"manual"`      | Never remove automatically; log path for manual inspection                                                                                                 |
 
 **The `enabled` field accepts a Nunjucks template string** so users can toggle worktree mode via a CLI variable:
 
@@ -422,13 +422,13 @@ Merge the pull request under the per-repository merge lock: every `merge` step o
 - **Native** (no `skill`): the harness takes the lock (`merge.locked`), re-reads the pull request, checks its head against the expected head (`head`, else the `head` output of the run's latest `wait-for-review` or `wait-for-checks` step; no check when neither is set), resolves the method from the repository settings and rulesets (merge queue: enqueue; one method: use it; several: the first in `github.merge.preference`; linear history excludes `merge`; an explicit `method` that is not allowed fails the step), logs it as a decision, and runs `gh pr merge --repo <o/r> --<method> --match-head-commit <expected sha>` from outside the checkout (never `--delete-branch`, so `gh` never checks out the base in a worktree). It then deletes the remote head branch through the API (not for forks; `remote_branch` output `deleted`, `already gone`, or `delete failed: <reason>`) and emits `merge.completed`. A head that moved since it was verified stops the run `awaiting-human` with a `needs_input` request `merge-head-<step>-<short sha>`: answer `merge` (merge the new head anyway) or `stop` (fail the step); to verify the new head instead, `af retry-step` the wait step. A draft, branch protection or any other refusal stops the run `awaiting-human`; nothing is bypassed. An already merged pull request completes `merged`.
 - **Skill** (`skill: esp-skills:esp-merge`): runs like a `skill` step with `AF_MERGE_LOCK` set to the lock file; the skill takes and releases the lock itself.
 
-| Key             | Type          | Default                           | Description                                    |
-| --------------- | ------------- | --------------------------------- | ---------------------------------------------- |
-| `skill`, `args` | string        | null                              | Merge skill to run instead of the native merge |
-| `pr`            | number/string | run `pr`, else the current branch | Pull request (template)                        |
-| `method`        | string        | `github.merge.method` (`repo`)    | `repo`, `squash`, `rebase` or `merge`          |
-| `delete-branch` | bool          | `github.merge.delete_branch`      | Delete the remote head branch after the merge  |
-| `head`          | string        | latest wait step's `head` output | Head SHA the pull request must have (template, native merge only) |
+| Key             | Type          | Default                           | Description                                                       |
+| --------------- | ------------- | --------------------------------- | ----------------------------------------------------------------- |
+| `skill`, `args` | string        | null                              | Merge skill to run instead of the native merge                    |
+| `pr`            | number/string | run `pr`, else the current branch | Pull request (template)                                           |
+| `method`        | string        | `github.merge.method` (`repo`)    | `repo`, `squash`, `rebase` or `merge`                             |
+| `delete-branch` | bool          | `github.merge.delete_branch`      | Delete the remote head branch after the merge                     |
+| `head`          | string        | latest wait step's `head` output  | Head SHA the pull request must have (template, native merge only) |
 
 The lock wait is `github.merge.lock_timeout_minutes` (then `awaiting-human`). The step result is `merged` (or `done` when queued); with `settings.worktree.cleanup: on-merge` the worktree is removed at the end of the run, then its branch.
 
