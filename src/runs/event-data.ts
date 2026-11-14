@@ -1,5 +1,5 @@
 /**
- * Small event payloads (Token Budget Rule 6): every string in an event's
+ * Small event payloads: every string in an event's
  * `data` is cut to `EVENT_STRING_MAX` characters at write time. The writer
  * keeps the full payload in a file of the run directory and names it in the
  * event (`data_path`), so a reader that needs the full text knows where it is.

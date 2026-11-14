@@ -47,6 +47,14 @@ const TERMINAL_EVENTS = new Set(["run.completed", "run.failed", "run.canceled", 
 
 export type WaitState = "ended" | "attention" | "boundary" | "waiting";
 
+/** Seq of the last final run event (`run.completed`, `run.failed`, ...), or null. */
+export function terminalEventSeq(events: readonly RunEvent[]): number | null {
+	for (let i = events.length - 1; i >= 0; i--) {
+		if (TERMINAL_EVENTS.has(events[i].type)) return events[i].seq;
+	}
+	return null;
+}
+
 /** The state of a woken waiter: `ended`, `boundary` for a step end, else `attention`. */
 export function wokenState(status: string, reason: string): WaitState {
 	if (isTerminal(status)) return "ended";
@@ -74,6 +82,11 @@ export interface WaitResult {
 	state: WaitState;
 	/** Last event seq seen: pass it back to wait again without seeing the same events. */
 	cursor: number;
+	/**
+	 * Seq of the final run event, when `state` is `ended`. Events written after
+	 * it (`notification.sent`) move `cursor` but not this.
+	 */
+	ended_seq?: number;
 	/** What woke the waiter: the final status, or the attention event type. */
 	reason?: string;
 	/** Last step that reported a result block. */

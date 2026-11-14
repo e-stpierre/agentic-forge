@@ -152,6 +152,7 @@ import {
 	isWaitCondition,
 	lastError,
 	latestResult,
+	terminalEventSeq,
 	waitResultBlock,
 	wakeReason,
 	wokenState,
@@ -935,8 +936,13 @@ export class RunManager {
 				recommended: p.request.recommended ?? null,
 			}));
 		}
+		const events = store.exists() ? store.readEvents() : [];
+		if (result.state === "ended") {
+			const seq = terminalEventSeq(events);
+			if (seq !== null) result.ended_seq = seq;
+		}
 		if (status === "failed" || reason === "step.failed") {
-			result.error = lastError(store.readEvents());
+			result.error = lastError(events);
 		}
 		return result;
 	}

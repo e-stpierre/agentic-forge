@@ -285,7 +285,7 @@ async function runStartCursor(ctx: ToolContext, run: string): Promise<string | n
 			READ,
 		);
 		const positions = decodeCursor(page.cursor);
-		delete positions[run];
+		positions[run] = 0;
 		return encodeCursor(positions);
 	} catch {
 		return null;

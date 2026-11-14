@@ -8,12 +8,28 @@
  * returns every event after it, in any run, so a client that stores the cursor
  * resumes without gaps or duplicates. Filters never hold the cursor back: a
  * filtered-out event is skipped, not delivered later.
+ *
+ * A cursor read across all runs also holds a watermark (the reserved key
+ * {@link WATERMARK_KEY}, epoch ms): a run without a position starts after it
+ * instead of from its first event. That lets the cursor drop the ended runs
+ * whose events are all older than the watermark, so its size follows the
+ * active runs, not the whole registry.
  */
 
+import { TERMINAL_RUN_STATUSES } from "../contract/index.js";
 import type { RegistryEntry } from "./registry.js";
 import { type RunEvent, RunStore } from "./run-store.js";
 
 const CURSOR_PREFIX = "c1.";
+
+/** Reserved cursor key: runs without a position start after this time (epoch ms). */
+export const WATERMARK_KEY = "@w";
+
+/**
+ * How far the watermark stays behind the read: an event stamped just before
+ * a read and written just after it is still delivered.
+ */
+const WATERMARK_MARGIN_MS = 5_000;
 
 /** Last seen `seq` per run id. */
 export type CursorPositions = Record<string, number>;
@@ -98,7 +114,9 @@ export const DEFAULT_EVENT_LIMIT = 500;
  * (by `at`, then run id, then `seq`), and returns the next cursor.
  */
 export function readEventPage(entries: readonly RegistryEntry[], query: EventQuery): EventPage {
+	const readAt = Date.now();
 	const positions = decodeCursor(query.cursor);
+	const watermark = positions[WATERMARK_KEY];
 	const runs = query.run ? entries.filter((e) => e.id === query.run) : entries;
 	const types = query.types ?? [];
 	const limit = query.limit && query.limit > 0 ? query.limit : DEFAULT_EVENT_LIMIT;
@@ -107,8 +125,19 @@ export function readEventPage(entries: readonly RegistryEntry[], query: EventQue
 	const fresh = !query.cursor && query.fromNow === true;
 	const matching: RunEvent[] = [];
 	const lastSeq = new Map<string, number>();
+	/** Seq and time of each run's last event, for the runs that have events. */
+	const lastEvent = new Map<string, LastEvent>();
 	for (const entry of runs) {
-		const events = new RunStore(entry.dir).readEvents(positions[entry.id] ?? 0);
+		const all = new RunStore(entry.dir).readEvents();
+		const final = all.at(-1);
+		if (final) lastEvent.set(entry.id, { seq: final.seq, at: Date.parse(final.at) });
+		const known = positions[entry.id];
+		const events =
+			known !== undefined
+				? all.filter((e) => e.seq > known)
+				: watermark !== undefined
+					? all.filter((e) => Date.parse(e.at) > watermark)
+					: all;
 		if (events.length === 0) continue;
 		const last = events[events.length - 1].seq;
 		lastSeq.set(entry.id, last);
@@ -136,7 +165,36 @@ export function readEventPage(entries: readonly RegistryEntry[], query: EventQue
 			next[run] = firstLeft === undefined ? last : Math.max(positions[run] ?? 0, firstLeft - 1);
 		}
 	}
+	// A read of one run leaves the other runs' positions as they were
+	if (!query.run) {
+		pruneEndedRuns(next, runs, lastEvent, Math.max(watermark ?? 0, readAt - WATERMARK_MARGIN_MS));
+	}
 	return { events: page, cursor: encodeCursor(next), more };
+}
+
+/**
+ * Sets the watermark and drops the positions of the ended runs read to their
+ * last event when that event is older than it: such a run starts after the
+ * watermark, which is where it already is.
+ */
+function pruneEndedRuns(
+	next: CursorPositions,
+	runs: readonly RegistryEntry[],
+	lastEvent: ReadonlyMap<string, LastEvent>,
+	mark: number,
+): void {
+	next[WATERMARK_KEY] = mark;
+	for (const entry of runs) {
+		const last = lastEvent.get(entry.id);
+		const position = next[entry.id];
+		if (position === undefined || !last || position < last.seq || !(last.at <= mark)) continue;
+		if ((TERMINAL_RUN_STATUSES as readonly string[]).includes(entry.status)) delete next[entry.id];
+	}
+}
+
+interface LastEvent {
+	seq: number;
+	at: number;
 }
 
 /** The first events of `matching` within `limit` and `maxBytes` (at least one). */

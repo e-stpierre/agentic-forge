@@ -95,7 +95,7 @@ export function usageBudgetsUsed(usage: Usage | null): Record<string, number> {
 	return out;
 }
 
-/** The small usage object carried by `step.completed` (Rule 6: numbers only). */
+/** The small usage object carried by `step.completed` (numbers only, so events stay small). */
 export function compactUsage(usage: Usage | null): Record<string, number | null> | null {
 	if (!usage) return null;
 	return { tokens: totalTokens(usage), ...usage };

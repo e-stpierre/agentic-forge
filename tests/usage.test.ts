@@ -1,6 +1,7 @@
 /**
- * Tests for usage accounting: the adapters' usage parsing against captured
- * stream fixtures, per-step `usage.json`, `budgets_used`, `step.completed`
+ * Tests for usage accounting: the adapters' usage parsing against stream
+ * fixtures (Claude captured from a real run; Codex written from the
+ * `codex exec --json` field names until a capture exists), per-step `usage.json`, `budgets_used`, `step.completed`
  * usage, `af usage` / `af_usage`, MCP session accounting and the per-run
  * token budget (warning and pause), with an in-process supervisor and the
  * fake runtime.
@@ -31,7 +32,12 @@ import { codexStreamEvents } from "../src/runtimes/codex.js";
 import { ClaudeAdapter, CodexAdapter } from "../src/runtimes/index.js";
 import type { RuntimeResult, RuntimeRunOptions } from "../src/runtimes/types.js";
 import { SessionOutput } from "../src/runtimes/types.js";
-import { type Usage, addUsage, totalTokens } from "../src/runtimes/usage.js";
+import {
+	type Usage,
+	addUsage,
+	claudeResultUsage,
+	totalTokens,
+} from "../src/runtimes/usage.js";
 import { Supervisor, SupervisorClient } from "../src/supervisor/index.js";
 import { fakeRuntime } from "./helpers/fake-runtime.js";
 import { useTempGlobalRoot } from "./helpers/temp-home.js";
@@ -191,6 +197,43 @@ describe("adapter usage parsing", () => {
 			.flatMap((l) => claudeStreamEvents(JSON.parse(l)))
 			.find((e) => e.type === "turn.completed");
 		expect(turn && "usage" in turn ? turn.usage : null).toEqual(expected);
+	});
+
+	it("counts the subagent tokens of every model, not only the main loop usage", () => {
+		const usage = claudeResultUsage({
+			type: "result",
+			// Main agent loop only
+			usage: {
+				input_tokens: 2,
+				cache_read_input_tokens: 100,
+				cache_creation_input_tokens: 10,
+				output_tokens: 4,
+			},
+			total_cost_usd: 0.9,
+			model_usage_since_last_result: {
+				"claude-opus": {
+					inputTokens: 2,
+					cacheReadInputTokens: 100,
+					cacheCreationInputTokens: 10,
+					outputTokens: 4,
+					costUSD: 0.1,
+				},
+				"claude-haiku": {
+					inputTokens: 30,
+					cacheReadInputTokens: 500,
+					cacheCreationInputTokens: 0,
+					outputTokens: 20,
+					costUSD: 0.05,
+				},
+			},
+		});
+		expect(usage).toEqual({
+			input_tokens: 32,
+			cached_input_tokens: 600,
+			cache_creation_tokens: 10,
+			output_tokens: 24,
+			cost_usd: 0.15,
+		});
 	});
 
 	it("reads the Codex turn.completed usage of an exec --json run", () => {

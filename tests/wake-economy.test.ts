@@ -19,7 +19,7 @@ import { defaultWaitSeconds } from "../src/mcp/tools.js";
 import { cursorAfter, formatEventCompact } from "../src/runs/client.js";
 import { decodeCursor, encodeCursor } from "../src/runs/events.js";
 import { RunManager } from "../src/runs/manager.js";
-import type { RunEvent } from "../src/runs/run-store.js";
+import { type RunEvent, RunStore } from "../src/runs/run-store.js";
 import {
 	DEFAULT_WAIT_SECONDS,
 	LONG_WAIT_SECONDS,
@@ -327,7 +327,14 @@ describe("af_wait", () => {
 		expect(ended.json.state).toBe("ended");
 		expect(ended.json.woke.map((r: { run: string }) => r.run)).toEqual([slow.run]);
 
-		// An ended run already reported does not wake the waiter again
+		// An ended run already reported does not wake the waiter again, even
+		// when an event lands after its final event (a notification)
+		const entry = manager.registry.get(slow.run);
+		if (!entry) throw new Error("run missing");
+		await new RunStore(entry.dir).appendEvent("notification.sent", {
+			channels: ["desktop"],
+			text: "Run done",
+		});
 		const after = await call(mcp, "af_wait", {
 			runs: [slow.run],
 			cursor: ended.json.cursor,

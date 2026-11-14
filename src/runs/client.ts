@@ -466,9 +466,12 @@ export async function waitForRuns(
 	for (;;) {
 		const results = new Map<string, WaitResult>();
 		await Promise.all(runs.map(async (id) => results.set(id, await get(id, 0))));
+		// An ended run was reported when the cursor is at or past its final event
+		// (later events such as notification.sent move the run's cursor)
 		const reported = (id: string) => {
 			const r = results.get(id) as WaitResult;
-			return r.state === "ended" && cursors[id] !== undefined && r.cursor === cursors[id];
+			if (r.state !== "ended" || cursors[id] === undefined) return false;
+			return r.ended_seq !== undefined ? r.ended_seq <= cursors[id] : r.cursor === cursors[id];
 		};
 		const fresh = runs.filter((id) => results.get(id)?.state !== "waiting" && !reported(id));
 		// A run with nothing to report is pinned at its last seq: later events are new

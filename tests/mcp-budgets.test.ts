@@ -1,5 +1,5 @@
 /**
- * Token Budget Rules of the MCP tools: every tool's default result stays
+ * Size budgets of the MCP tools: every tool's default result stays
  * under RESULT_BUDGET_BYTES for a large run (20 steps, 200 events, a 50 KB
  * plan), cut content says so and names the way to the rest, event payload
  * strings are bounded at write time, and the tools/list response has a size

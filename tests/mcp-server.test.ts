@@ -707,7 +707,10 @@ describe("af_answer", () => {
 			{
 				id: "q1",
 				step: "build",
+				kind: "decision",
+				risk: null,
 				question: "Which token store?",
+				context: "Both exist.",
 				options: ["a: Redis cache", "b: Database table"],
 				recommended: "a",
 				live: false,

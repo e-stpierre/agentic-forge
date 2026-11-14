@@ -61,7 +61,7 @@ On each line:
 
 | Event                                     | What you do                                                                                                                                   |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `needs_input`                             | Read the request (`af_status` of the run, `x-af-needs-input`), then escalate it to the user (see Questions)                                   |
+| `needs_input`                             | Read the request (`af_status` of the run: its `needs_input` list), then escalate it to the user (see Questions)                               |
 | `run.completed`                           | Report the result in one or two lines, then `af_backlog_list`: report new discovered items and dispatch what became runnable (see Scheduling) |
 | `run.failed`, `run.halted`, `step.failed` | Tell the user what failed and the options: `af_retry_step`, `af_resume`, `af_cancel`, a retry of the item or dropping it                      |
 | `run.paused`                              | Note it; a paused run waits for `af_resume`                                                                                                   |

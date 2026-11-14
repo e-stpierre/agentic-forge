@@ -1,11 +1,11 @@
 /**
- * Slim views of supervisor responses for MCP tool results (Token Budget
- * Rule 2): the fields an overseer decides on, with long texts cut. The full
+ * Slim views of supervisor responses for MCP tool results: the fields an
+ * overseer decides on, with long texts cut. The full
  * payloads stay available through `verbose: true`.
  */
 
 import { cutText } from "../runs/event-data.js";
-import { type RunDetails, pendingInputs } from "../runs/manager.js";
+import { type RunDetails, pendingInputs, pendingKind } from "../runs/manager.js";
 import type { RegistryEntry, TreeEntry } from "../runs/registry.js";
 import {
 	STATUS_SUMMARY_BUDGET,
@@ -13,7 +13,7 @@ import {
 	STATUS_SUMMARY_MIN_CHARS,
 } from "./budgets.js";
 
-/** Longest question text of a pending request in the slim af_status view. */
+/** Longest question and context texts of a pending request in the slim af_status view. */
 const QUESTION_CHARS = 300;
 
 export interface SlimStep {
@@ -62,10 +62,16 @@ export function slimRunDetails(details: RunDetails): Record<string, unknown> {
 					needs_input: pending.map((p) => ({
 						id: p.request.id,
 						step: p.step,
+						kind: pendingKind(p),
+						risk: p.risk ?? null,
 						question: cutText(String(p.request.question ?? ""), QUESTION_CHARS),
+						...(p.request.context
+							? { context: cutText(String(p.request.context), QUESTION_CHARS) }
+							: {}),
 						options: (p.request.options ?? []).map((o) => `${o.id}: ${cutText(o.label, 80)}`),
 						recommended: p.request.recommended ?? null,
 						live: p.live === true,
+						...(p.overseer_policy ? { overseer_policy: p.overseer_policy } : {}),
 					})),
 				}
 			: {}),

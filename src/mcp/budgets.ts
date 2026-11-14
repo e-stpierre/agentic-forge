@@ -1,5 +1,5 @@
 /**
- * Size budgets of the MCP tool results (Token Budget Rules). Every tool
+ * Size budgets of the MCP tool results. Every tool
  * result stays under `RESULT_BUDGET_BYTES` by default; a caller gets more
  * only through an explicit parameter (`limit`, `max_chars`, `verbose`). Tests
  * and docs reference these constants.

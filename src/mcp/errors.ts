@@ -12,7 +12,7 @@ import {
 	SupervisorUnavailableError,
 } from "../supervisor/client.js";
 
-/** A tool result whose text is the compact JSON of `value` (Token Budget Rule 1). */
+/** A tool result whose text is the compact JSON of `value` (no indentation). */
 export function jsonResult(value: unknown): CallToolResult {
 	return { content: [{ type: "text", text: JSON.stringify(value) }] };
 }

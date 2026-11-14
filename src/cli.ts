@@ -84,7 +84,7 @@ program
 		"--wait",
 		"wait for the run to end and print its result as one JSON line (exit code from its status)",
 	)
-	.option("--until <condition>", "with --wait: terminal (default) or attention")
+	.option("--until <condition>", "with --wait: terminal (default), attention or boundary")
 	.option("--timeout <seconds>", "with --wait: give up after this many seconds (exit 124)")
 	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
