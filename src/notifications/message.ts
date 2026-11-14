@@ -63,6 +63,15 @@ const DEFAULT_TEMPLATES: Record<string, Required<Template>> = {
 			"Retry a step: af retry-step {{run}} STEP (MCP: af_retry_step(run: {{run_json}}, step: STEP))",
 		].join("\n"),
 	},
+	"budget.warning": {
+		title: "af: {{run}} at {{budget_percent}} of {{budget}}",
+		body: [
+			"{{run_line}}",
+			"Used {{budget_used}} of {{budget_limit}} ({{budget}}). The run pauses at the limit.",
+			"Usage: af usage {{run}} --by step (MCP: af_usage(run: {{run_json}}))",
+			"Raise: af resume {{run}} --max-tokens N or --max-cost-usd N once it pauses",
+		].join("\n"),
+	},
 	"run.completed": {
 		title: "af: {{run}} completed",
 		body: ["{{run_line}}", "{{pr_line}}", "Summary: af artifacts {{run}} --kind summary"].join(
@@ -157,7 +166,11 @@ export function templateVars(event: RunEvent, run: RunFacts): Record<string, str
 	const kind = str(data.kind) || "decision";
 	const runLine = `Run ${run.id}${where ? ` (${where})` : ""}${step ? `, step ${step}` : ""}`;
 	// Not data.summary: the end event of an overseer run names its summary file there
-	const reason = str(data.error) || str(data.reason);
+	let reason = str(data.error) || str(data.reason);
+	if (data.reason === "budget") {
+		reason = `Budget ${str(data.budget)} reached: used ${str(data.used)} of ${str(data.limit)}. Raise it with af resume ${run.id} --max-tokens N or --max-cost-usd N.`;
+	}
+	const ratio = typeof data.ratio === "number" ? data.ratio : null;
 	return {
 		run: run.id,
 		run_json: JSON.stringify(run.id),
@@ -180,6 +193,10 @@ export function templateVars(event: RunEvent, run: RunFacts): Record<string, str
 		context: str(data.context),
 		options: optionLines(data),
 		recommended,
+		budget: str(data.budget),
+		budget_used: str(data.used),
+		budget_limit: str(data.limit),
+		budget_percent: ratio === null ? "" : `${Math.round(ratio * 100)}%`,
 		answer_cli: requestId ? `af answer ${run.id} ${requestId} ${example}` : "",
 		answer_mcp: requestId
 			? `af_answer(run: ${JSON.stringify(run.id)}, request_id: ${JSON.stringify(requestId)}, answer: ${JSON.stringify(example)})`

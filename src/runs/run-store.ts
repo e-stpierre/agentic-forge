@@ -80,7 +80,8 @@ export type EventType =
 	| "checks.completed"
 	| "merge.locked"
 	| "merge.completed"
-	| "notification.sent";
+	| "notification.sent"
+	| "budget.warning";
 
 export interface RunEvent {
 	seq: number;

@@ -10,6 +10,13 @@ import { ARTIFACT_KINDS, isArtifactKind, listArtifacts, readArtifact } from "../
 import { decodeCursor, parseTypeFilter } from "../runs/events.js";
 import { RunRegistry } from "../runs/registry.js";
 import type { RunEvent } from "../runs/run-store.js";
+import {
+	USAGE_GROUPS,
+	type UsageGroup,
+	buildUsageReport,
+	formatUsageReport,
+	selectUsageRuns,
+} from "../runs/usage.js";
 import { WAIT_CONDITIONS, eventMeets, isWaitCondition } from "../runs/wait.js";
 import { CliExitError } from "./run.js";
 import { resolveLegacyOutputDir } from "./status.js";
@@ -110,6 +117,36 @@ export async function cmdEvents(options: EventsOptions): Promise<void> {
 	} finally {
 		process.removeListener("SIGINT", onSigint);
 	}
+}
+
+export interface UsageOptions {
+	runId?: string;
+	since?: string;
+	by?: string;
+	json?: boolean;
+}
+
+/** Prints the token usage of a run (and its child runs) or of all runs, grouped. */
+export function cmdUsage(options: UsageOptions): void {
+	const by = options.by ?? "run";
+	if (!(USAGE_GROUPS as readonly string[]).includes(by)) {
+		throw new CliExitError(`Error: Unknown --by '${by}' (expected ${USAGE_GROUPS.join(", ")})`);
+	}
+	let runs: ReturnType<typeof selectUsageRuns>;
+	try {
+		runs = selectUsageRuns(new RunRegistry().list(), {
+			run: options.runId ?? null,
+			since: options.since ?? null,
+		});
+	} catch (err) {
+		throw new CliExitError(`Error: ${(err as Error).message}`);
+	}
+	const report = buildUsageReport(runs, by as UsageGroup);
+	if (options.json) {
+		process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+		return;
+	}
+	process.stdout.write(formatUsageReport(report));
 }
 
 export interface ArtifactsOptions {

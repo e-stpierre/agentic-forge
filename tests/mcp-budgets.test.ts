@@ -359,6 +359,11 @@ describe("tool result sizes", () => {
 		const replay = await call(mcp, "af_digest", { cursor: encodeCursor({}) }, "af_digest(replay)");
 		expectSmall(replay, "af_digest(replay)");
 		expectSmall(await call(mcp, "af_logs", { run: id }), "af_logs");
+		expectSmall(
+			await call(mcp, "af_usage", { run: id, by: "step" }, "af_usage(by step)"),
+			"af_usage(by step)",
+		);
+		expectSmall(await call(mcp, "af_usage", { scope: "mcp" }, "af_usage(mcp)"), "af_usage(mcp)");
 
 		expectSmall(await call(mcp, "af_artifacts", { run: id }), "af_artifacts");
 		const planContent = await call(

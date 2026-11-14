@@ -48,6 +48,9 @@ export const ARTIFACT_MAX_CHARS = 100_000;
  */
 export const TOOLS_LIST_BUDGET_BYTES = 28_700;
 
+/** Most rows of one af_usage report; more set `truncated`. */
+export const USAGE_MCP_MAX_ROWS = 30;
+
 /** Most active runs listed by af_digest (one line each). */
 export const DIGEST_MAX_RUNS = 20;
 

@@ -12,6 +12,7 @@
 
 import { type RuntimeSession, type SessionEvent, userMessageItem } from "./session.js";
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions } from "./types.js";
+import { type Usage, addUsage } from "./usage.js";
 
 export async function runSession(
 	adapter: RuntimeAdapter,
@@ -32,6 +33,7 @@ export async function runSession(
 	let last: { text: string; isError: boolean } | null = null;
 	let model: string | null = options.model ?? null;
 	let lastError: string | null = null;
+	let usage: Usage | null = null;
 	let timedOut = false;
 	let deciding = false;
 	let closing = false;
@@ -116,6 +118,7 @@ export async function runSession(
 			}
 			case "turn.completed":
 				last = { text: event.result, isError: event.isError };
+				if (event.usage) usage = addUsage(usage, event.usage);
 				break;
 			case "state":
 				if (event.state === "idle") void onIdle();
@@ -203,5 +206,7 @@ export async function runSession(
 		stderr =
 			failure?.message ?? lastError ?? (final ? final.text : "Session ended without a result");
 	}
-	return adapter.buildFinalResult(returncode, stdout, stderr, options, session.sessionId);
+	const result = adapter.buildFinalResult(returncode, stdout, stderr, options, session.sessionId);
+	result.usage = usage;
+	return result;
 }

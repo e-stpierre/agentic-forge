@@ -8,7 +8,22 @@ import { resolveLegacyOutputDir } from "./status.js";
 export async function cmdResume(options: {
 	workflowId: string;
 	foreground?: boolean;
+	/** Raises the run's token budget (`settings.budgets.max_tokens`). */
+	maxTokens?: number;
+	/** Raises the run's cost budget (`settings.budgets.max_cost_usd`). */
+	maxCostUsd?: number;
 }): Promise<void> {
+	const budgets: Record<string, number> = {};
+	for (const [key, value] of [
+		["max_tokens", options.maxTokens],
+		["max_cost_usd", options.maxCostUsd],
+	] as const) {
+		if (value === undefined) continue;
+		if (!Number.isFinite(value) || value <= 0) {
+			throw new CliExitError(`Error: ${key} must be a positive number`);
+		}
+		budgets[key] = value;
+	}
 	const entry = new RunRegistry().get(options.workflowId);
 	if (!entry) {
 		if (resolveLegacyOutputDir(options.workflowId)) {
@@ -30,7 +45,11 @@ export async function cmdResume(options: {
 	let after = 0;
 	try {
 		after = (await client.request<{ events: { seq: number }[] }>("GET", eventsRoute)).events.length;
-		await client.request("POST", `/v1/runs/${encodeURIComponent(entry.id)}/resume`);
+		await client.request(
+			"POST",
+			`/v1/runs/${encodeURIComponent(entry.id)}/resume`,
+			Object.keys(budgets).length > 0 ? { budgets } : undefined,
+		);
 	} catch (err) {
 		throw new CliExitError(`Error: ${(err as Error).message}`);
 	}

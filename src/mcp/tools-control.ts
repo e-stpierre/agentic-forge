@@ -151,12 +151,28 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Resume a run",
 			description:
-				"Re-queues a paused, awaiting-human, blocked or failed run from the step that did not complete; returns { id, status: queued }. For an awaiting-human run prefer af_answer; to rerun an earlier step use af_retry_step. Next: af_wait.",
+				"Re-queues a paused, awaiting-human, blocked or failed run from the step that did not complete; returns { id, status: queued }. A run paused at a budget (reason budget) pauses again unless `max_tokens` or `max_cost_usd` raises it. For an awaiting-human run prefer af_answer; to rerun an earlier step use af_retry_step. Next: af_wait.",
 			inputSchema: {
 				run: runId("Run id"),
+				max_tokens: z
+					.number({ error: "max_tokens must be a positive number" })
+					.positive({ error: "max_tokens must be a positive number" })
+					.optional()
+					.describe("New token budget of the run"),
+				max_cost_usd: z
+					.number({ error: "max_cost_usd must be a positive number" })
+					.positive({ error: "max_cost_usd must be a positive number" })
+					.optional()
+					.describe("New cost budget of the run in USD"),
 			},
 		},
-		async (input) => jsonResult(await control(ctx, input.run, "resume", {})),
+		async (input) => {
+			const budgets: Record<string, number> = {};
+			if (input.max_tokens !== undefined) budgets.max_tokens = input.max_tokens;
+			if (input.max_cost_usd !== undefined) budgets.max_cost_usd = input.max_cost_usd;
+			const body = Object.keys(budgets).length > 0 ? { budgets } : {};
+			return jsonResult(await control(ctx, input.run, "resume", body));
+		},
 	);
 
 	register(

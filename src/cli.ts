@@ -45,6 +45,7 @@ import {
 	cmdServe,
 	cmdSetup,
 	cmdStatus,
+	cmdUsage,
 	cmdVersion,
 	cmdWait,
 	cmdWorkflows,
@@ -133,10 +134,14 @@ program
 	.description("Resume a paused, waiting or failed run from its last completed step")
 	.argument("<workflow_id>", "run ID to resume")
 	.option("--foreground", "follow the run until it ends (Ctrl+C detaches, the run continues)")
+	.option("--max-tokens <n>", "raise the run's token budget (a run paused at its budget)")
+	.option("--max-cost-usd <n>", "raise the run's cost budget in USD")
 	.action(async (workflowId: string, opts: Record<string, unknown>) => {
 		await cmdResume({
 			workflowId,
 			foreground: optBool(opts.foreground),
+			maxTokens: opts.maxTokens !== undefined ? Number(opts.maxTokens) : undefined,
+			maxCostUsd: opts.maxCostUsd !== undefined ? Number(opts.maxCostUsd) : undefined,
 		});
 	});
 
@@ -368,6 +373,25 @@ program
 			runId,
 			kind: optString(opts.kind),
 			content: optBool(opts.content),
+			json: optBool(opts.json),
+		});
+	});
+
+// usage command
+program
+	.command("usage")
+	.description(
+		"Token usage and reported cost of a run (with the runs it dispatched) or of all runs",
+	)
+	.argument("[run]", "run ID (its child runs included)")
+	.option("--since <when>", "only runs created since an ISO date or a duration (30m, 2h, 7d)")
+	.option("--by <group>", "group by run, step, runtime, model or workflow", "run")
+	.option("--json", "print the report as JSON")
+	.action((runId: string | undefined, opts: Record<string, unknown>) => {
+		cmdUsage({
+			runId,
+			since: optString(opts.since),
+			by: optString(opts.by),
 			json: optBool(opts.json),
 		});
 	});

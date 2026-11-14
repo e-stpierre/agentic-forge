@@ -14,6 +14,8 @@ import { STEP_STATUS, WORKFLOW_STATUS, updateStepStopped } from "../progress.js"
 import type { TemplateRenderer } from "../renderer.js";
 import type { RuntimeAdapter, RuntimeId, RuntimeRunOptions } from "../runtimes/index.js";
 import type { SessionHost } from "../runtimes/session.js";
+import type { RuntimeResult } from "../runtimes/types.js";
+import type { Usage } from "../runtimes/usage.js";
 import type { StepDefinition, StepType, WorkflowProgress, WorkflowSettings } from "../types.js";
 
 // --- Step context ---
@@ -60,6 +62,13 @@ export interface StepContext {
 	 * the step wrote itself (the file wins).
 	 */
 	recordResult?: ((step: string, block: ResultBlock) => Promise<ResultBlock | null>) | null;
+	/**
+	 * Called after every runtime call of a step (each attempt, each ralph-loop
+	 * iteration) with the tokens it reported. The supervisor writes
+	 * `steps/<NN-step>/usage.json`, sums the run's `budgets_used` and checks
+	 * the run's token and cost budgets.
+	 */
+	recordUsage?: ((step: string, record: StepUsageRecord) => Promise<void>) | null;
 	/**
 	 * Emits a contract event from inside a step (ralph-loop iterations, prompt
 	 * retries). The supervisor appends it to `events.jsonl`. Call it after the
@@ -143,6 +152,36 @@ export async function emitStepEvent(
 		await context.emitEvent(type, data);
 	} catch {
 		// Events are observability: a failed append must not fail the step
+	}
+}
+
+/** One runtime call of a step, as given to `StepContext.recordUsage`. */
+export interface StepUsageRecord {
+	runtime: RuntimeId;
+	model: string | null;
+	/** Null when the runtime reported no usage. */
+	usage: Usage | null;
+	/** Ralph-loop iteration of the call. */
+	iteration?: number;
+}
+
+/** Reports the usage of one runtime call; never throws into the step. */
+export async function reportUsage(
+	context: StepContext,
+	step: string,
+	result: RuntimeResult,
+	iteration?: number,
+): Promise<void> {
+	if (!context.recordUsage) return;
+	try {
+		await context.recordUsage(step, {
+			runtime: context.runtimeAdapter.id,
+			model: result.model ?? null,
+			usage: result.usage ?? null,
+			...(iteration !== undefined ? { iteration } : {}),
+		});
+	} catch {
+		// Accounting must not fail the step
 	}
 }
 

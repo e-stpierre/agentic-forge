@@ -18,6 +18,7 @@ import type {
 	StreamEvent,
 } from "./types.js";
 import { SessionOutput } from "./types.js";
+import { claudeResultUsage } from "./usage.js";
 import {
 	extractModelFromMessage,
 	extractResultText,
@@ -161,7 +162,11 @@ export class ClaudeAdapter implements RuntimeAdapter {
 		if (!data) {
 			return null;
 		}
-		const event = this.parseStreamData(data);
+		let event = this.parseStreamData(data);
+		// The final result message carries the tokens of the call
+		if (data.type === "result") {
+			event = { ...(event ?? { type: "session" }), usage: claudeResultUsage(data) };
+		}
 		// The session id (system init and result messages) is read from the stream
 		const sessionId = typeof data.session_id === "string" ? data.session_id : undefined;
 		if (!sessionId) return event;

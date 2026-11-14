@@ -53,6 +53,7 @@ import {
 	RUNS_MCP_DEFAULT_LIMIT,
 } from "./budgets.js";
 import { type ClientCache, ToolInputError, jsonResult, toolError, withClient } from "./errors.js";
+import { sessionUsageOf } from "./session-usage.js";
 import { slimEntry, slimRunDetails } from "./views.js";
 
 /** Everything a tool handler needs besides its input. */
@@ -190,14 +191,18 @@ export function register<Shape extends z.ZodRawShape>(
 				params: { progressToken: token, progress: value, ...(message ? { message } : {}) },
 			});
 		};
+		let result: CallToolResult;
 		try {
-			return await handler(input, {
+			result = await handler(input, {
 				signal: extra?.signal ?? new AbortController().signal,
 				progress,
 			});
 		} catch (err) {
-			return toolError(name, err);
+			result = toolError(name, err);
 		}
+		// MCP session accounting: the bytes every result adds to the client context
+		sessionUsageOf(server)?.record(name, result);
+		return result;
 		// The SDK's callback type is generic over every zod flavor; the handler
 		// receives the input parsed by `inputSchema`.
 	}) as unknown as Parameters<McpServer["registerTool"]>[2]);

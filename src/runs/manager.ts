@@ -15,7 +15,14 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { getVersion } from "../commands/version.js";
-import { deepMerge, getDefaultConfig, getOverseerConfig } from "../config.js";
+import {
+	type RunBudgets,
+	deepMerge,
+	getDefaultConfig,
+	getOverseerConfig,
+	getRunBudgets,
+	parseRunBudgets,
+} from "../config.js";
 import {
 	type NeedsInput,
 	type NeedsInputKind,
@@ -52,7 +59,9 @@ import type {
 	SessionHost,
 	SessionRequest,
 } from "../runtimes/session.js";
+import { type Usage, totalTokens } from "../runtimes/usage.js";
 import type { InputAnswer } from "../steps/base.js";
+import type { StepUsageRecord } from "../steps/base.js";
 import type { Supervisor } from "../supervisor/server.js";
 import type {
 	StepDefinition,
@@ -127,6 +136,14 @@ import {
 	stepDirName,
 } from "./transcript.js";
 import {
+	BUDGET_WARNING_RATIO,
+	compactUsage,
+	readRunUsage,
+	recordStepUsage,
+	sumStepUsage,
+	usageBudgetsUsed,
+} from "./usage.js";
+import {
 	MAX_WAIT_REQUEST_SECONDS,
 	WAIT_CONDITIONS,
 	type WaitCondition,
@@ -173,7 +190,12 @@ type StopRequest = {
 	restart?: { message: string };
 	/** Supervisor shutdown: leave the run `running` for the next supervisor to recover. */
 	shutdown?: boolean;
+	/** A run budget was reached: the `run.paused` data (`reason: budget`). */
+	budget?: Record<string, unknown>;
 };
+
+/** Run budgets raised on resume (`x-af-budgets` in run.json, snake_case like the config). */
+type RaisedBudgets = { max_tokens?: number | null; max_cost_usd?: number | null };
 
 /** Statuses `af cancel` accepts. */
 const CANCELABLE_STATUSES: readonly RunStatus[] = [
@@ -426,6 +448,8 @@ export class RunManager {
 	private readonly results = new Map<string, { step: string; block: ResultBlock }>();
 	/** Start time (ms) of the running attempt of each step, keyed by run and step. */
 	private readonly stepStarts = new Map<string, number>();
+	/** Usage of each step of executing runs (all its calls), keyed by run and step. */
+	private readonly stepUsage = new Map<string, Usage | null>();
 	/** needs_input deadlines (non-blocking requests). */
 	private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
 	/** Live session steps of executing runs (run id -> step -> handle), for `send --mode now`. */
@@ -585,8 +609,8 @@ export class RunManager {
 		supervisor.route("GET", "/v1/runs/:id/messages", ({ params }) =>
 			wrap(() => ({ messages: new Inbox(this.requireEntry(params.id).dir).list() }))(),
 		);
-		supervisor.route("POST", "/v1/runs/:id/resume", ({ params }) =>
-			wrap(() => this.resume(params.id))(),
+		supervisor.route("POST", "/v1/runs/:id/resume", ({ params, body }) =>
+			wrap(() => this.resume(params.id, (body ?? {}) as { budgets?: RaisedBudgets }))(),
 		);
 		// A long-poll whose client went away leaves the waiters at once, so an
 		// answer is never handed to a caller that cannot return it
@@ -2550,8 +2574,16 @@ export class RunManager {
 		}
 	}
 
-	/** Re-queues a paused, waiting, blocked or failed run; it resumes from the last completed step. */
-	async resume(id: string): Promise<{ id: string; status: RunStatus }> {
+	/**
+	 * Re-queues a paused, waiting, blocked or failed run; it resumes from the
+	 * last completed step. `budgets` raises (or with null removes) the run's
+	 * `max_tokens` / `max_cost_usd` (a run paused at a budget pauses again at
+	 * the next boundary unless it is raised).
+	 */
+	async resume(
+		id: string,
+		options: { budgets?: RaisedBudgets } = {},
+	): Promise<{ id: string; status: RunStatus; budgets?: RunBudgets }> {
 		const entry = this.requireWorkflowRun(id, "resume");
 		if (this.executing.has(id) && entry.status === "awaiting-human") {
 			throw new RunError("Run is still executing: a live session waits for af answer", 409);
@@ -2563,12 +2595,116 @@ export class RunManager {
 		const patch: Partial<RunJson> = { status: "queued", ended_at: null };
 		// Resuming without an answer reruns the step, which asks again if needed
 		if (pendingInputs(store.readRun()).length > 0) patch["x-af-needs-input"] = null;
+		const raised = this.raisedBudgets(options.budgets);
+		if (raised) {
+			const run = store.readRun();
+			patch["x-af-budgets"] = { ...((run["x-af-budgets"] as RaisedBudgets) ?? {}), ...raised };
+			// A raised budget warns again at 80% of its new limit
+			const warned = (run["x-af-budget-warned"] as string[] | undefined) ?? [];
+			patch["x-af-budget-warned"] = warned.filter((b) => !(b in raised));
+		}
 		this.clearTimer(id);
 		await store.updateRun(patch);
 		await this.registry.update(id, { status: "queued" });
-		await store.appendEvent("run.queued", { reason: "resumed", from: entry.status });
+		await store.appendEvent("run.queued", {
+			reason: "resumed",
+			from: entry.status,
+			...(raised ? { budgets: raised } : {}),
+		});
 		this.schedule();
-		return { id, status: "queued" };
+		if (!raised) return { id, status: "queued" };
+		const payload = store.readJson<DispatchPayload>("dispatch.json");
+		const settings = this.workflowBudgets(payload);
+		return { id, status: "queued", budgets: this.runBudgets(store, payload.config, settings) };
+	}
+
+	/** Validates the budgets of a resume request (positive numbers, or null to remove a limit). */
+	private raisedBudgets(input: unknown): RaisedBudgets | null {
+		if (input === undefined || input === null) return null;
+		if (typeof input !== "object" || Array.isArray(input)) {
+			throw new RunError("budgets must be an object with max_tokens and/or max_cost_usd");
+		}
+		const out: RaisedBudgets = {};
+		for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+			if (key !== "max_tokens" && key !== "max_cost_usd") {
+				throw new RunError(`Unknown budget '${key}': use max_tokens or max_cost_usd`);
+			}
+			if (value !== null && !(typeof value === "number" && Number.isFinite(value) && value > 0)) {
+				throw new RunError(`${key} must be a positive number or null`);
+			}
+			out[key] = value as number | null;
+		}
+		return Object.keys(out).length > 0 ? out : null;
+	}
+
+	/** `settings.budgets` of a run's workflow (null when the workflow cannot be parsed). */
+	private workflowBudgets(payload: DispatchPayload): Partial<RunBudgets> | null {
+		try {
+			return this.parseWorkflow(payload).settings.budgets ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	/** The run's budgets: config `runs.budgets`, workflow `settings.budgets`, then resume raises. */
+	private runBudgets(
+		store: RunStore,
+		config: Record<string, unknown> | undefined,
+		settings: Partial<RunBudgets> | null | undefined,
+	): RunBudgets {
+		const raised = store.readRun()["x-af-budgets"];
+		return getRunBudgets(config ?? {}, settings, parseRunBudgets(raised));
+	}
+
+	/**
+	 * Records one runtime call of a step: appends it to `steps/<NN-step>/usage.json`,
+	 * writes the run totals to `budgets_used`, then checks the run budgets. At
+	 * 80% of a budget the run gets one `budget.warning`; at the limit it pauses
+	 * at the next step or iteration boundary with reason `budget`.
+	 */
+	private async recordUsage(
+		entry: RegistryEntry,
+		store: RunStore,
+		step: string,
+		record: StepUsageRecord,
+		budgets: () => RunBudgets,
+	): Promise<void> {
+		const file = recordStepUsage(this.stepDir(entry, step), step, record);
+		this.stepUsage.set(stepKey(entry.id, step), file.usage);
+		const total = sumStepUsage(readRunUsage(entry.dir));
+		if (!total) return;
+		const run = store.readRun();
+		await store.updateRun({
+			budgets_used: { ...(run.budgets_used ?? {}), ...usageBudgetsUsed(total) },
+		});
+
+		const limits = budgets();
+		const checks: [string, number | null, number | null][] = [
+			["max_tokens", limits.maxTokens, totalTokens(total)],
+			["max_cost_usd", limits.maxCostUsd, total.cost_usd],
+		];
+		const warned = new Set((run["x-af-budget-warned"] as string[] | undefined) ?? []);
+		let exceeded: Record<string, unknown> | null = null;
+		for (const [budget, limit, used] of checks) {
+			if (limit === null || used === null) continue;
+			const ratio = used / limit;
+			if (ratio >= BUDGET_WARNING_RATIO && !warned.has(budget)) {
+				warned.add(budget);
+				await store.updateRun({ "x-af-budget-warned": [...warned] });
+				await store.appendEvent("budget.warning", {
+					budget,
+					used,
+					limit,
+					ratio: Math.round(ratio * 100) / 100,
+					step,
+				});
+			}
+			if (ratio >= 1 && !exceeded) exceeded = { reason: "budget", budget, used, limit, step };
+		}
+		if (exceeded && !this.stopRequests.has(entry.id) && this.executing.has(entry.id)) {
+			this.stopRequests.set(entry.id, { status: "paused", now: false, budget: exceeded });
+			this.log(`Run ${entry.id}: ${exceeded.budget} reached, pausing at the next boundary`);
+		}
 	}
 
 	/** Writes a status to run.json and the registry, then emits its event. */
@@ -2708,6 +2844,10 @@ export class RunManager {
 				operatorMessages: (step) => this.deliverMessages(store, step),
 				sessionHost: (step) => this.sessionHost(entry, store, payload.config, step),
 				recordResult: (step, block) => this.recordResult(entry, store, step, block),
+				recordUsage: (step, record) =>
+					this.recordUsage(entry, store, step, record, () =>
+						this.runBudgets(store, payload.config, workflow.settings.budgets),
+					),
 				inputAnswer: async (step, requestId) => {
 					const answer = answerOf(store, requestId);
 					// The answer's own operator message is consumed; other pending messages stay
@@ -2745,10 +2885,14 @@ export class RunManager {
 						} else {
 							const result = this.results.get(entry.id);
 							const resultStatus = result?.step === step ? result.block.status : null;
+							const key = stepKey(entry.id, step);
 							await store.appendEvent("step.completed", {
 								step,
 								status,
 								...(resultStatus ? { result_status: resultStatus } : {}),
+								...(this.stepUsage.has(key)
+									? { usage: compactUsage(this.stepUsage.get(key) ?? null) }
+									: {}),
 							});
 						}
 					},
@@ -2804,7 +2948,9 @@ export class RunManager {
 					? await this.recordNeedsInput(entry, store, payload.config)
 					: null;
 			if (pendingRequest) data.needs_input = pendingRequest.request.id;
-			if ((status === "paused" || status === "canceled") && request) {
+			if (status === "paused" && request?.budget) {
+				Object.assign(data, request.budget);
+			} else if ((status === "paused" || status === "canceled") && request) {
 				data.reason = `${status} by operator`;
 				data.now = request.now;
 				if (interruptedStep) data.interrupted_step = interruptedStep;
@@ -2823,8 +2969,10 @@ export class RunManager {
 			this.results.delete(entry.id);
 			this.liveSessions.delete(entry.id);
 			this.liveRequests.delete(entry.id);
-			for (const key of [...this.stepStarts.keys()]) {
-				if (key.startsWith(stepKey(entry.id, ""))) this.stepStarts.delete(key);
+			for (const map of [this.stepStarts, this.stepUsage]) {
+				for (const key of [...map.keys()]) {
+					if (key.startsWith(stepKey(entry.id, ""))) map.delete(key);
+				}
 			}
 		}
 	}

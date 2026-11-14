@@ -11,6 +11,7 @@ import type {
 	SessionSkill,
 	SessionStartOptions,
 } from "./session.js";
+import type { Usage } from "./usage.js";
 
 /** Supported runtime identifiers. */
 export type RuntimeId = "claude" | "codex";
@@ -65,6 +66,11 @@ export interface RuntimeResult {
 	model: string | null;
 	success: boolean;
 	sessionOutput: SessionOutput;
+	/**
+	 * Tokens the runtime reported for this call (summed over its turns), null
+	 * when it reported none. Set by the process and session runners.
+	 */
+	usage?: Usage | null;
 }
 
 /** Parsed streaming event, normalized across runtimes. */
@@ -79,6 +85,8 @@ export interface StreamEvent {
 	isNewTurn?: boolean;
 	/** True when text is an incremental delta; false/undefined for cumulative text. */
 	isDelta?: boolean;
+	/** Tokens of the turn this line ends (Claude `result`, Codex `turn.completed`). */
+	usage?: Usage | null;
 }
 
 /** Command descriptor returned by adapter.buildCommand(). */

@@ -60,6 +60,32 @@ describe("Claude session driver", () => {
 		expect(result.sessionOutput.isSuccess).toBe(true);
 	});
 
+	it("puts the usage of the result message in the step result", async () => {
+		fakeSdk.on("USAGE", async (s, first) => {
+			s.init();
+			s.result(resultBlock("done", "Done"), [first], {
+				usage: {
+					input_tokens: 5,
+					cache_read_input_tokens: 100,
+					cache_creation_input_tokens: 10,
+					output_tokens: 7,
+				},
+				// The turn's cost, not the query total
+				total_cost_usd: 0.5,
+				model_usage_since_last_result: { "claude-haiku": { costUSD: 0.25 } },
+			});
+			await s.nextUser();
+		});
+		const result = await run("USAGE");
+		expect(result.usage).toEqual({
+			input_tokens: 5,
+			cached_input_tokens: 100,
+			cache_creation_tokens: 10,
+			output_tokens: 7,
+			cost_usd: 0.25,
+		});
+	});
+
 	it("maps step options to SDK options and never sets credentials", async () => {
 		await run(
 			"OPTS",

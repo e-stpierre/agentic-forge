@@ -86,6 +86,47 @@ describe("Codex session driver", () => {
 		expect(fakeCodex.servers[0].closed).toBe(true);
 	});
 
+	it("gives each turn the tokens of thread/tokenUsage/updated since the previous turn", async () => {
+		const breakdown = (input: number, cached: number, output: number) => ({
+			totalTokens: input + output,
+			inputTokens: input,
+			cachedInputTokens: cached,
+			outputTokens: output,
+			reasoningOutputTokens: 0,
+		});
+		fakeCodex.on("TOKENS", async (turn) => {
+			const notify = (total: unknown, last: unknown, threadId = turn.server.threadId) =>
+				turn.server.notify("thread/tokenUsage/updated", {
+					threadId,
+					turnId: turn.id,
+					tokenUsage: { total, last, modelContextWindow: null },
+				});
+			// A resumed thread: 5,000 tokens of earlier processes before this call
+			notify(breakdown(5_900, 4_000, 120), breakdown(900, 500, 20));
+			// Another thread on the connection (a sub-agent) is ignored
+			notify(breakdown(99_999, 0, 9_999), breakdown(99_999, 0, 9_999), "other-thread");
+			notify(breakdown(7_000, 4_800, 150), breakdown(1_100, 800, 30));
+			turn.message(resultBlock("done", "Counted"));
+			turn.complete();
+		});
+		const result = await run("TOKENS");
+		expect(result.returncode).toBe(0);
+		// Since the baseline (total minus last of the first update): 2,000 input
+		// (1,300 cached), 50 output
+		expect(result.usage).toEqual({
+			input_tokens: 700,
+			cached_input_tokens: 1_300,
+			cache_creation_tokens: 0,
+			output_tokens: 50,
+			cost_usd: null,
+		});
+	});
+
+	it("reports no usage when the app-server sends none", async () => {
+		const result = await run("PLAIN");
+		expect(result.usage).toBeNull();
+	});
+
 	it("starts the thread with the sandbox, write roots, model and developer instructions", async () => {
 		const result = await runRuntime(adapter, {
 			prompt: "HELLO",

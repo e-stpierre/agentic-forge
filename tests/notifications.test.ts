@@ -190,13 +190,14 @@ afterEach(async () => {
 });
 
 describe("config", () => {
-	it("defaults to needs_input, run.halted, run.failed and run.completed of overseer runs, every channel off", () => {
+	it("defaults to needs_input, run.halted, run.failed, budget.warning and run.completed of overseer runs, every channel off", () => {
 		const config = getNotificationsConfig(getDefaultConfig());
 		expect(config.enabled).toBe(true);
 		expect(config.triggers).toEqual([
 			{ event: "needs_input", runType: null, kinds: null, risks: null },
 			{ event: "run.halted", runType: null, kinds: null, risks: null },
 			{ event: "run.failed", runType: null, kinds: null, risks: null },
+			{ event: "budget.warning", runType: null, kinds: null, risks: null },
 			{ event: "run.completed", runType: "overseer", kinds: null, risks: null },
 		]);
 		expect(Object.values(config.channels).every((c) => !c.enabled)).toBe(true);
