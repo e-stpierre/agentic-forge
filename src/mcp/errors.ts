@@ -57,6 +57,7 @@ export const READ_ONLY_TOOLS: ReadonlySet<string> = new Set([
 	"af_list_runs",
 	"af_events",
 	"af_artifacts",
+	"af_wait",
 ]);
 
 function withPeriod(message: string): string {
@@ -76,6 +77,8 @@ export function toolError(tool: string, err: unknown): CallToolResult {
 			case 404:
 				return errorResult(`${problem} Use af_list_runs to find run ids.`);
 			case 409:
+				// A refused dispatch names its reason and next step itself
+				if (err.message.startsWith("Dispatch refused")) return errorResult(problem);
 				return errorResult(`${problem} Call af_status to see the run's current status.`);
 			default:
 				return errorResult(

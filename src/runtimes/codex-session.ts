@@ -19,6 +19,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import readline from "node:readline";
 
+import { codexAfMcpConfig } from "./af-mcp.js";
 import type {
 	CommandExecutionRequestApprovalParams,
 	CommandExecutionRequestApprovalResponse,
@@ -578,18 +579,26 @@ export class CodexSession implements RuntimeSession {
 		this.pump();
 	}
 
+	/**
+	 * Thread config overrides: the sandbox write roots (cwd and run dir) and,
+	 * inside a run, the af MCP server (so the agent can dispatch and wait for
+	 * af runs, and ask with af_ask).
+	 */
 	private threadConfig(
 		options: SessionStartOptions,
 		sandbox: ThreadStartParams["sandbox"],
-	): Record<string, string[]> | null {
+	): ThreadStartParams["config"] {
 		const dirs = options.additionalDirectories?.length
 			? options.additionalDirectories
 			: [options.cwd];
 		const roots = dirs
 			.filter((dir): dir is string => typeof dir === "string" && dir.length > 0)
 			.map((dir) => dir.replace(/\\/g, "/"));
-		if (sandbox !== "workspace-write" || roots.length === 0) return null;
-		return { "sandbox_workspace_write.writable_roots": [...new Set(roots)] };
+		const config = { ...codexAfMcpConfig(options.env) } as NonNullable<ThreadStartParams["config"]>;
+		if (sandbox === "workspace-write" && roots.length > 0) {
+			config["sandbox_workspace_write.writable_roots"] = [...new Set(roots)];
+		}
+		return Object.keys(config).length > 0 ? config : null;
 	}
 
 	/**

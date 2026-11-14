@@ -159,6 +159,15 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 			max_retries: 1,
 			// Total minutes of the child runs (parallel runs add up).
 			max_run_minutes: 480,
+			// Run tree guards (any run with a parent: overseer children and runs a
+			// step dispatched with af_dispatch). Depth of a new run (a root run is
+			// 0); a deeper dispatch is refused.
+			max_dispatch_depth: 3,
+			// Runs in one tree, its root included (ended runs count).
+			max_tree_runs: 50,
+			// Runs of one tree that have not ended (queued, running, paused,
+			// blocked, awaiting-human), an overseer root excluded.
+			max_tree_active: 6,
 		},
 		// needs_input requests of child runs the overseer may answer itself.
 		answer_policy: {
@@ -216,7 +225,14 @@ export interface OverseerConfig {
 	maxParallel: number;
 	acceptDiscoveredItems: DiscoveredItemPolicy;
 	haltEpicOn: HaltCondition[];
-	budgets: { maxTasks: number; maxRetries: number; maxRunMinutes: number };
+	budgets: {
+		maxTasks: number;
+		maxRetries: number;
+		maxRunMinutes: number;
+		maxDispatchDepth: number;
+		maxTreeRuns: number;
+		maxTreeActive: number;
+	};
 	answerPolicy: {
 		enabled: boolean;
 		maxRisk: PolicyRisk;
@@ -255,6 +271,9 @@ export function getOverseerConfig(config: Record<string, unknown>): OverseerConf
 			maxTasks: int(budgets.max_tasks, db.max_tasks, 1),
 			maxRetries: int(budgets.max_retries, db.max_retries),
 			maxRunMinutes: int(budgets.max_run_minutes, db.max_run_minutes, 1),
+			maxDispatchDepth: int(budgets.max_dispatch_depth, db.max_dispatch_depth, 1),
+			maxTreeRuns: int(budgets.max_tree_runs, db.max_tree_runs, 2),
+			maxTreeActive: int(budgets.max_tree_active, db.max_tree_active, 1),
 		},
 		answerPolicy: {
 			enabled: answer.enabled !== false,

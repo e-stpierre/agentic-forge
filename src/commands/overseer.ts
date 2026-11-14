@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { loadConfig } from "../config.js";
 import { filterEnv, getEnvPassthrough } from "../runs/dispatch.js";
 import type { OverseerOpenResult, OverseerPayload } from "../runs/overseer.js";
+import { AF_MCP_SERVER, afInvocation } from "../runtimes/af-mcp.js";
 import { getExecutable, resolveCmdScript } from "../runtimes/utils.js";
 import type { SupervisorClient } from "../supervisor/client.js";
 import { CliExitError } from "./run.js";
@@ -19,7 +20,8 @@ import { CliExitError } from "./run.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Name of the af MCP server in the overseer's MCP config (tools are `mcp__agentic-forge__af_*`). */
-export const OVERSEER_MCP_SERVER = "agentic-forge";
+export const OVERSEER_MCP_SERVER = AF_MCP_SERVER;
+export { afInvocation };
 /** Slash command of the overseer skill inside the bundled plugin. */
 export const OVERSEER_SKILL_COMMAND = "/af-overseer:overseer";
 /** Subdirectory of the overseer run dir for launcher files (MCP config, event cursor). */
@@ -75,14 +77,6 @@ export interface OverseerCommand {
 /** Directory of the bundled `af-overseer` plugin (`dist/overseer`, `src/overseer` in tests). */
 export function getOverseerPluginDir(): string {
 	return path.resolve(__dirname, "..", "overseer");
-}
-
-/**
- * How to run this af CLI from another process: node with the CLI script, so
- * it works without `af` on PATH and without a Windows `.cmd` shim.
- */
-export function afInvocation(): { command: string; args: string[] } {
-	return { command: process.execPath, args: [path.resolve(__dirname, "..", "cli.js")] };
 }
 
 function quote(value: string): string {

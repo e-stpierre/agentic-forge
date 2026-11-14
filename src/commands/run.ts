@@ -184,6 +184,12 @@ export async function cmdRun(options: {
 	parent?: string;
 	/** Backlog item of the parent overseer run. */
 	item?: string;
+	/** Wait for the run (`af wait`) and print its wait result as JSON. */
+	wait?: boolean;
+	/** With `wait`: `terminal` (default) or `attention`. */
+	until?: string;
+	/** With `wait`: seconds before giving up (exit 124). */
+	timeout?: string;
 }): Promise<void> {
 	// Handle --list flag
 	if (options.listWorkflows) {
@@ -304,7 +310,7 @@ export async function cmdRun(options: {
 		slug: options.slug,
 		terminalOutput,
 		ignoreRequires: options.ignoreRequires,
-		parent: options.parent,
+		parent: options.parent ?? (process.env.AF_RUN_ID || undefined),
 		item: options.item,
 	});
 
@@ -327,6 +333,16 @@ export async function cmdRun(options: {
 	}
 	for (const warning of result.warnings ?? []) {
 		process.stderr.write(`\x1b[33mWarning: ${warning}\x1b[0m\n`);
+	}
+	if (options.wait) {
+		// stdout carries only the JSON wait result (read by agents through Bash)
+		process.stderr.write(`Run queued: ${result.run.id} (${result.dir})\n`);
+		const { waitAndReport } = await import("./wait.js");
+		await waitAndReport(client, result.run.id, {
+			until: options.until,
+			timeout: options.timeout,
+		});
+		return;
 	}
 	process.stdout.write(`Run queued: ${result.run.id}\n`);
 	process.stdout.write(`Run dir:    ${result.dir}\n`);

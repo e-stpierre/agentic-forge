@@ -15,7 +15,7 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { getVersion } from "../commands/version.js";
-import { deepMerge, getDefaultConfig } from "../config.js";
+import { deepMerge, getDefaultConfig, getOverseerConfig } from "../config.js";
 import {
 	type NeedsInput,
 	type NeedsInputKind,
@@ -93,8 +93,11 @@ import {
 	type RegistryEntry,
 	type RunListFilter,
 	RunRegistry,
+	RunTree,
+	type TreeEntry,
 	filterRuns,
 	parseSince,
+	withTreeInfo,
 } from "./registry.js";
 import {
 	type AmendmentEntry,
@@ -102,6 +105,7 @@ import {
 	type RunEvent,
 	type RunJson,
 	RunStore,
+	runtimeOf,
 } from "./run-store.js";
 import {
 	DEFAULT_MAX_PARALLEL_RUNS,
@@ -116,6 +120,18 @@ import {
 	readTranscriptPage,
 	stepDirName,
 } from "./transcript.js";
+import {
+	MAX_WAIT_REQUEST_SECONDS,
+	WAIT_CONDITIONS,
+	type WaitCondition,
+	type WaitResult,
+	cutQuestion,
+	isWaitCondition,
+	lastError,
+	latestResult,
+	waitResultBlock,
+	wakeReason,
+} from "./wait.js";
 
 /** Step status recorded for the step that was running when the supervisor died. */
 export const STEP_INTERRUPTED = STEP_STATUS.INTERRUPTED;
@@ -324,6 +340,15 @@ export interface RunDetails {
 	run: RunJson | null;
 	steps: StepProgress[];
 	current_step: string | null;
+	/** The run's place in its run tree: parent, depth, root and direct children. */
+	tree: RunTreeInfo;
+}
+
+export interface RunTreeInfo {
+	parent: string | null;
+	depth: number;
+	root: string;
+	children: { id: string; workflow: string; status: RunStatus; runtime: string | null }[];
 }
 
 /** Maps the engine's final workflow status to a contract run status. */
@@ -473,6 +498,7 @@ export class RunManager {
 					repo: query.get("repo") ?? undefined,
 					since: query.get("since") ?? undefined,
 					parent: query.get("parent") ?? undefined,
+					tree: query.get("tree") ?? undefined,
 				}),
 			}))(),
 		);
@@ -489,6 +515,20 @@ export class RunManager {
 			)(),
 		);
 		supervisor.route("GET", "/v1/runs/:id", ({ params }) => wrap(() => this.details(params.id))());
+		supervisor.route("GET", "/v1/runs/:id/wait", ({ params, query }) =>
+			wrap(() => {
+				const until = query.get("until") ?? "terminal";
+				if (!isWaitCondition(until)) {
+					throw new RunError(`until must be one of ${WAIT_CONDITIONS.join(", ")}`);
+				}
+				const cursor = query.get("cursor");
+				return this.waitRun(params.id, {
+					until,
+					cursor: cursor == null || cursor === "" ? null : Number.parseInt(cursor, 10) || 0,
+					waitSeconds: Number.parseFloat(query.get("wait") ?? "0") || 0,
+				});
+			})(),
+		);
 		supervisor.route("GET", "/v1/runs/:id/events", ({ params, query }) =>
 			wrap(() => {
 				const entry = this.requireEntry(params.id);
@@ -700,14 +740,16 @@ export class RunManager {
 		}
 	}
 
-	list(filter: RunListFilter = {}): RegistryEntry[] {
+	/** Registry entries matching the filters, each with its `parent` and `depth` in the run tree. */
+	list(filter: RunListFilter = {}): TreeEntry[] {
 		let since: number | null;
 		try {
 			since = parseSince(filter.since);
 		} catch (err) {
 			throw new RunError((err as Error).message);
 		}
-		return filterRuns(this.registry.list(), { ...filter, since });
+		const all = this.registry.list();
+		return withTreeInfo(filterRuns(all, { ...filter, since }), new RunTree(all));
 	}
 
 	/**
@@ -747,7 +789,90 @@ export class RunManager {
 			run: store.exists() ? store.readRun() : null,
 			steps: progress?.completedSteps ?? [],
 			current_step: progress?.currentStep?.name ?? null,
+			tree: this.treeInfo(id),
 		};
+	}
+
+	treeInfo(id: string): RunTreeInfo {
+		const tree = new RunTree(this.registry.list());
+		return {
+			parent: tree.parentOf(id),
+			depth: tree.depth(id),
+			root: tree.root(id),
+			children: tree.childrenOf(id).map((c) => ({
+				id: c.id,
+				workflow: c.workflow,
+				status: c.status,
+				runtime: runtimeOf(c),
+			})),
+		};
+	}
+
+	/**
+	 * Waits up to `waitSeconds` (max 120 s) until the run ends, or with
+	 * `attention` until it needs someone (needs_input, a failed step, a pause),
+	 * and returns a small result: status, the last result block and the open
+	 * requests. `cursor` is the last event seq the waiter saw (null on the
+	 * first call): attention events up to it are not reported again.
+	 */
+	async waitRun(
+		id: string,
+		query: { until: WaitCondition; cursor: number | null; waitSeconds: number },
+	): Promise<WaitResult> {
+		const entry = this.requireEntry(id);
+		const store = new RunStore(entry.dir);
+		const waitMs = Math.min(Math.max(query.waitSeconds, 0), MAX_WAIT_REQUEST_SECONDS) * 1000;
+		const deadline = Date.now() + waitMs;
+		const firstCall = query.cursor === null;
+		let cursor = query.cursor ?? 0;
+		for (;;) {
+			const status = this.registry.get(id)?.status ?? entry.status;
+			const events = store.exists() ? store.readEvents(cursor) : [];
+			const reason = wakeReason(query.until, status, events, firstCall);
+			const last = events.length > 0 ? events[events.length - 1].seq : cursor;
+			if (reason || Date.now() >= deadline || this.closing.signal.aborted) {
+				if (!reason) return { run: id, status, state: "waiting", cursor: last };
+				return this.waitResult(entry, store, status, reason, last);
+			}
+			cursor = last;
+			await abortableDelay(EVENT_POLL_MS, this.closing.signal);
+		}
+	}
+
+	private waitResult(
+		entry: RegistryEntry,
+		store: RunStore,
+		status: RunStatus,
+		reason: string,
+		cursor: number,
+	): WaitResult {
+		const latest = latestResult(entry.dir, this.stepNames(entry));
+		const run = store.exists() ? store.readRun() : null;
+		const result: WaitResult = {
+			run: entry.id,
+			status,
+			state: isTerminal(status) ? "ended" : "attention",
+			cursor,
+			reason,
+			step: latest?.step ?? null,
+			result: latest ? waitResultBlock(latest.block) : null,
+			result_path: latest?.path ?? null,
+		};
+		const open = run ? pendingInputs(run) : [];
+		if (open.length > 0) {
+			result.needs_input = open.map((p) => ({
+				id: p.request.id,
+				step: p.step,
+				kind: pendingKind(p),
+				risk: p.risk ?? null,
+				question: cutQuestion(p.request.question),
+				recommended: p.request.recommended ?? null,
+			}));
+		}
+		if (status === "failed" || reason === "step.failed") {
+			result.error = lastError(store.readEvents());
+		}
+		return result;
 	}
 
 	/**
@@ -847,13 +972,17 @@ export class RunManager {
 	}
 
 	/** Creates a queued run from a dispatch payload. */
-	async dispatch(payload: DispatchPayload): Promise<DispatchResult> {
+	async dispatch(request: DispatchPayload): Promise<DispatchResult> {
+		let payload = request;
 		const invalid = validateDispatch(payload);
 		if (invalid) throw new RunError(`Invalid dispatch: ${invalid}`);
 		if (this.closed) throw new RunError("Supervisor is shutting down", 503);
 		const parent = payload.parent ?? null;
-		if (parent && !this.registry.get(parent)) {
-			throw new RunError(`Parent run not found: ${parent}`);
+		if (parent) {
+			const parentEntry = this.registry.get(parent);
+			if (!parentEntry) throw new RunError(`Parent run not found: ${parent}`);
+			this.checkTreeGuards(parentEntry, payload);
+			payload = { ...payload, env: { ...this.parentEnv(parentEntry), ...payload.env } };
 		}
 		const item = payload.item ?? null;
 		if (item) {
@@ -866,6 +995,57 @@ export class RunManager {
 			);
 		}
 		return this.queueRun(payload, parent);
+	}
+
+	/**
+	 * Refuses a child run past the run tree guards (`overseer.budgets` of the
+	 * dispatch config): its depth (`max_dispatch_depth`), the runs of the tree
+	 * (`max_tree_runs`) and its runs that have not ended (`max_tree_active`).
+	 * The 409 message is the reason the dispatching agent reads.
+	 */
+	private checkTreeGuards(parent: RegistryEntry, payload: DispatchPayload): void {
+		const budgets = getOverseerConfig(payload.config ?? {}).budgets;
+		const tree = new RunTree(this.registry.list());
+		const depth = tree.depth(parent.id) + 1;
+		const root = tree.root(parent.id);
+		const refuse = (reason: string): never => {
+			throw new RunError(
+				`Dispatch refused: ${reason}. Do the work in your own session, or wait for runs of this tree to end (af_list_runs tree: ${root})`,
+				409,
+			);
+		};
+		if (depth > budgets.maxDispatchDepth) {
+			refuse(
+				`the run would be at depth ${depth} of run tree ${root}, past overseer.budgets.max_dispatch_depth ${budgets.maxDispatchDepth}`,
+			);
+		}
+		const members = tree.walk(root).map((n) => n.entry);
+		if (members.length + 1 > budgets.maxTreeRuns) {
+			refuse(
+				`run tree ${root} already has ${members.length} runs (overseer.budgets.max_tree_runs ${budgets.maxTreeRuns})`,
+			);
+		}
+		const active = members.filter((r) => !isOverseerEntry(r) && !isTerminal(r.status)).length;
+		if (active + 1 > budgets.maxTreeActive) {
+			refuse(
+				`run tree ${root} has ${active} runs that have not ended (overseer.budgets.max_tree_active ${budgets.maxTreeActive})`,
+			);
+		}
+	}
+
+	/**
+	 * Environment of the parent run's dispatch: a child run inherits it under
+	 * its own (an agent's af MCP server only gets a small environment).
+	 */
+	private parentEnv(parent: RegistryEntry): Record<string, string> {
+		const file = path.join(parent.dir, "dispatch.json");
+		if (!existsSync(file)) return {};
+		try {
+			const env = (JSON.parse(readFileSync(file, "utf-8")) as { env?: unknown }).env;
+			return env && typeof env === "object" ? (env as Record<string, string>) : {};
+		} catch {
+			return {};
+		}
 	}
 
 	/** Creates the queued run of a validated dispatch payload. */
@@ -931,6 +1111,7 @@ export class RunManager {
 			status: "queued",
 			worktree: usesWorktree,
 			priority: payload.priority ?? 0,
+			...(parent ? { parent } : {}),
 			created_at: now,
 			updated_at: now,
 		});
@@ -2246,6 +2427,7 @@ export class RunManager {
 				do {
 					this.rescheduleRequested = false;
 					const runs = this.registry.list();
+					const tree = new RunTree(runs);
 					// A run waiting on a live session (awaiting-human) still holds its checkout
 					// An open overseer run holds no checkout and is never executed
 					const running = runs.filter(
@@ -2261,6 +2443,7 @@ export class RunManager {
 							DEFAULT_MAX_PARALLEL_RUNS,
 						),
 						maxParallelTasks: (entry) => this.maxParallelTasks(entry),
+						ancestors: (entry) => tree.ancestors(entry.id),
 					});
 					for (const entry of picked) {
 						await this.registry.update(entry.id, { status: "running" });

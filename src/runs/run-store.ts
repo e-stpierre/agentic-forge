@@ -332,3 +332,13 @@ export class RunStore {
 		return JSON.parse(readFileSync(path.join(this.dir, name), "utf-8")) as T;
 	}
 }
+
+/** `run.json` runtime of a run directory's run, or null. */
+export function runtimeOf(entry: { dir: string }): string | null {
+	try {
+		const store = new RunStore(entry.dir);
+		return store.exists() ? (store.readRun().runtime ?? null) : null;
+	} catch {
+		return null;
+	}
+}

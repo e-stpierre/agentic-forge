@@ -39,6 +39,7 @@ const TOOLS = [
 	"af_retry_step",
 	"af_send",
 	"af_status",
+	"af_wait",
 ];
 
 function childEnv(): Record<string, string> {
@@ -65,7 +66,7 @@ afterEach(async () => {
 });
 
 describe.skipIf(!existsSync(cliPath))("af mcp over stdio", () => {
-	it("lists the eighteen tools and answers tool calls through an on-demand supervisor", async () => {
+	it("lists the nineteen tools and answers tool calls through an on-demand supervisor", async () => {
 		const transport = new StdioClientTransport({
 			command: process.execPath,
 			args: [cliPath, "mcp"],

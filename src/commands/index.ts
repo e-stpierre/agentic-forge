@@ -35,3 +35,4 @@ export { cmdServe } from "./serve.js";
 export { cmdMcp } from "./mcp.js";
 export { cmdOverseer } from "./overseer.js";
 export { cmdDoctor } from "./doctor.js";
+export { cmdWait } from "./wait.js";

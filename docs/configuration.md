@@ -292,10 +292,15 @@ The backlog, scheduling and answer policy of `af overseer`. The overseer run use
 | `overseer.budgets.max_tasks`              | number  | `20`                               | Backlog items (dropped and logged ones excluded); more are refused, discovered ones are logged                                |
 | `overseer.budgets.max_retries`            | number  | `1`                                | Extra dispatches of one item after its first run                                                                              |
 | `overseer.budgets.max_run_minutes`        | number  | `480`                              | Total minutes of the overseer's child runs (parallel runs add up); `budget` halts the epic when reached                       |
+| `overseer.budgets.max_dispatch_depth`     | number  | `3`                                | Deepest run of a [run tree](cli.md#run-trees) (a root run is 0); a deeper dispatch is refused                                 |
+| `overseer.budgets.max_tree_runs`          | number  | `50`                               | Runs in one run tree, its root and ended runs included; more dispatches are refused                                           |
+| `overseer.budgets.max_tree_active`        | number  | `6`                                | Runs of one run tree that have not ended (an overseer root excluded); more dispatches are refused                             |
 | `overseer.answer_policy.enabled`          | boolean | `true`                             | Let the overseer answer some `needs_input` requests itself                                                                    |
 | `overseer.answer_policy.max_risk`         | string  | `"low"`                            | Highest risk of the request (its `risk`, else the asking step's `max_risk`: `low`, `medium`, `high`); no risk is always asked |
 | `overseer.answer_policy.recommended_only` | boolean | `true`                             | Only the recommended option (a request without one is asked)                                                                  |
 | `overseer.answer_policy.blocking`         | boolean | `true`                             | Also blocking requests (requests of kind `permission` are always asked)                                                       |
+
+The run tree guards apply to every dispatch with a parent (an overseer's runs and the runs an agent dispatches from a step with `af_dispatch`) and are read from the dispatching repository's config.
 
 Review rounds are not an overseer budget: the workflows bound their own rounds (for example the esp-skills `fix-review` settings).
 

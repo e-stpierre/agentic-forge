@@ -45,6 +45,7 @@ Runtime adapter layer for coding agent integrations:
 - `codex-protocol/` — generated app-server bindings (`scripts/codex-bindings.js`, never edit by hand), Codex version in `CODEX_PROTOCOL_VERSION`
 - `process-runner.ts` — `runRuntime()` shared process spawning (`options.signal` kills the process tree)
 - `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
+- `af-mcp.ts` — `afInvocation()` (node with this CLI), `AF_MCP_SERVER`, `codexAfMcpConfig()` (the af MCP server in the thread config of every Codex session inside a run), `afMcpEnv()`
 - `skill-inline.ts` — `resolveSkill()` (plugin and skill directory lookup) and `inlineSkillPrompt()` (`SKILL.md` with absolute paths and arguments) for runtimes without skill loading
 - `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
 - `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
@@ -86,7 +87,8 @@ Runs owned by the supervisor:
 
 - `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines; live transcripts through the session host and `logs()` behind `GET /v1/runs/:id/logs`; session resume or restart in recovery, `run.recovered` `sessions`)
 - `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
-- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`, entries carry `type: overseer` for overseer runs), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
+- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`, entries carry `type: overseer` for overseer runs and `parent`), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters, `tree` included), `RunTree` (parent links, depth, root, walk) and `withTreeInfo()`
+- `wait.ts` — waiting for a run: `wakeReason()` (`terminal` / `attention`), `latestResult()`, `waitResultBlock()`, the wait defaults; `RunManager.waitRun()` behind `GET /v1/runs/:id/wait`, `waitForRun()` in `client.ts` for `af_wait`, `af_dispatch` `wait`, `af wait` and `af run --wait`. Run tree guards (`overseer.budgets.max_dispatch_depth`, `max_tree_runs`, `max_tree_active`) are checked in `RunManager.dispatch()`; `pickRunnable()` lets a child use its running ancestors' slot and checkout
 - `overseer.ts` — overseer runs (`openOverseer()`: create, reuse or resume; `writeOverseerSummary()`; `isOverseerEntry()`; `overseer.json`, `epic.md`), behind `RunManager.openOverseer()` / `finishOverseer()` and `POST /v1/overseer`. The supervisor never executes them: scheduling, crash recovery and `activeCount()` skip them, and `requireWorkflowRun()` refuses the control operations
 - `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
 - `backlog.ts` — the overseer backlog model (`backlog.json` in the overseer run, harness is the single writer): `addItems()`, `updateItem()` (triage, transitions, dependency cycles, `budgets.max_tasks`), `scheduleBacklog()` (dependencies, conflict zones, `max_parallel`, `epicHalt()`), `acceptDiscovered()` (`accept_discovered_items`), `evaluateAnswerPolicy()`, `updateBacklog()` under the contract lock
@@ -117,7 +119,7 @@ Tests (`tests/notifications.test.ts`) build `RunManager` with `notifications: { 
 The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
-- `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_logs`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
+- `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_wait`, `af_logs`, `af_artifacts`); zod input schemas, `register()` (handler errors become `isError` results); `af_dispatch` defaults `parent` to the calling run (`callingRun()`). Cross-runtime dispatch tests in `tests/dispatch-tree.test.ts` (fake SDK and fake app-server sessions dispatching each other)
 - `tools-backlog.ts` — backlog tools (`af_backlog_list`, `af_backlog_add`, `af_backlog_update`) over `/v1/overseer/:id/backlog`; tests in `tests/backlog.test.ts`
 - `tools-ask.ts` — `af_ask` (asks, then waits up to `wait_seconds` with long-polls, `pending` past it); tests in `tests/ask.test.ts` (fake SDK sessions calling the tool)
 - `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) and `af_notify` over the `/v1/runs/:id/*` control endpoints

@@ -68,7 +68,14 @@ describe("overseer config", () => {
 			maxParallel: 2,
 			acceptDiscoveredItems: "ask",
 			haltEpicOn: ["halted", "critical", "budget"],
-			budgets: { maxTasks: 20, maxRetries: 1, maxRunMinutes: 480 },
+			budgets: {
+				maxTasks: 20,
+				maxRetries: 1,
+				maxRunMinutes: 480,
+				maxDispatchDepth: 3,
+				maxTreeRuns: 50,
+				maxTreeActive: 6,
+			},
 			answerPolicy: { enabled: true, maxRisk: "low", recommendedOnly: true, blocking: true },
 		});
 		const bad = withConfig({

@@ -100,6 +100,14 @@ The harness merge lock serializes merges in one repository (the `merge` step and
 - Find workflows with `<af> workflows` (Bash) or from what the user names. Prefer the user's workflow packs when installed (for example the esp workflows), else the bundled workflows
 - Dispatch with `af_dispatch` (`workflow`, `repo`, `vars`, always `parent: <your run id>`, and `item` for a backlog item). Tell the user the run id in one line
 - Never run two runs on one checkout at once: the supervisor queues the second one unless the workflow uses a worktree. Say so when a run stays `queued`
+- `runtime` (`claude` or `codex`) runs every step of the run on that runtime. To get one result back (a Codex check of a plan, for example), dispatch, then `af_wait` (`run`, `until: attention`) in a loop with the returned `cursor` until `state` is `ended`, handling any `needs_input` it reports (see Questions)
+- A refused dispatch (409 `Dispatch refused: ...`) hit a run tree guard (`overseer.budgets.max_dispatch_depth`, `max_tree_runs`, `max_tree_active`): tell the user the reason and wait for runs to end, never retry in a loop
+
+### Native Subagents or af Runs
+
+- **Native subagents** (your own Agent or Task tool): quick read-only work whose result you need now and nobody else watches: explore code, summarize a file or a diff, compare two options. They run inside your session, on your model, and end with it
+- **af runs** (`af_dispatch`): work that changes code, that the user may want to watch, steer or answer, that must survive a crash or the end of your session, or that runs on another runtime or model (Codex). They have a run directory, events, a transcript and a result block
+- When unsure, use an af run: the user can follow it in `af status` and the run tree, and you can answer its questions
 
 ## Relaying the User
 

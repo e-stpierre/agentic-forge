@@ -9,6 +9,7 @@ import type { DispatchPayload } from "./dispatch.js";
 import type { DispatchResult, EventResponse, LogsResponse } from "./manager.js";
 import type { RunEvent } from "./run-store.js";
 import type { TranscriptEntry } from "./transcript.js";
+import { MAX_WAIT_REQUEST_SECONDS, type WaitCondition, type WaitResult } from "./wait.js";
 
 export function dispatchRun(
 	client: SupervisorClient,
@@ -295,5 +296,45 @@ export function formatTranscriptEntry(entry: TranscriptEntry, withStep = true): 
 			return `${head} error: ${one(entry.text)}`;
 		default:
 			return `${head} ${entry.type}`;
+	}
+}
+
+export interface WaitRequest {
+	until?: WaitCondition;
+	/** Last event seq seen (from a previous wait result); omit on the first call. */
+	cursor?: number | null;
+	/** Total wait in seconds (looped in requests of at most 120 s). */
+	timeoutSeconds: number;
+	signal?: AbortSignal;
+}
+
+/**
+ * Waits for a run (`GET /v1/runs/:id/wait`), in supervisor requests of at
+ * most {@link MAX_WAIT_REQUEST_SECONDS}, until it ends (or, with
+ * `until: attention`, needs someone) or `timeoutSeconds` runs out. A result
+ * with `state: waiting` carries the cursor to wait again.
+ */
+export async function waitForRun(
+	client: SupervisorClient,
+	runId: string,
+	request: WaitRequest,
+): Promise<WaitResult> {
+	const deadline = Date.now() + Math.max(request.timeoutSeconds, 0) * 1000;
+	let cursor = request.cursor ?? null;
+	for (;;) {
+		const left = Math.max(0, (deadline - Date.now()) / 1000);
+		const wait = Math.min(left, MAX_WAIT_REQUEST_SECONDS);
+		const params = new URLSearchParams({ until: request.until ?? "terminal", wait: String(wait) });
+		if (cursor !== null) params.set("cursor", String(cursor));
+		const result = await client.request<WaitResult>(
+			"GET",
+			`/v1/runs/${encodeURIComponent(runId)}/wait?${params.toString()}`,
+			undefined,
+			(wait + 15) * 1000,
+		);
+		cursor = result.cursor;
+		if (result.state !== "waiting" || Date.now() >= deadline || request.signal?.aborted) {
+			return result;
+		}
 	}
 }

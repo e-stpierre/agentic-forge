@@ -477,6 +477,18 @@ describe("scheduler", () => {
 		expect(pickRunnable([entry("bb", "/r2")], running, limits(10, 10))).toHaveLength(1);
 	});
 
+	it("lets a child run use the slot and checkout of its running ancestors", () => {
+		const running = [{ ...entry("a", "/r1"), status: "running" as const }];
+		const child = entry("bb", "/r1");
+		const ancestors = (e: RegistryEntry) => (e.id === "bb" ? ["a"] : []);
+		expect(pickRunnable([child], running, limits(1, 1))).toEqual([]);
+		expect(pickRunnable([child], running, { ...limits(1, 1), ancestors })).toEqual([child]);
+		// Another run on the checkout still waits
+		expect(pickRunnable([entry("ccc", "/r1")], running, { ...limits(10, 10), ancestors })).toEqual(
+			[],
+		);
+	});
+
 	it("starts higher priority runs first", () => {
 		const picked = pickRunnable(
 			[entry("a", "/r1"), entry("bb", "/r2", false, 5)],

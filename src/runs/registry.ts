@@ -23,6 +23,8 @@ export interface RegistryEntry {
 	worktree: boolean;
 	/** Higher runs first; ties run in dispatch order. */
 	priority: number;
+	/** Parent run id (`run.json` `parent`), stored at dispatch; older entries read run.json. */
+	parent?: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -97,6 +99,8 @@ export interface RunListFilter {
 	since?: string;
 	/** Parent run id (`run.json` `parent`). */
 	parent?: string;
+	/** A run id: that run and every run below it in its run tree. */
+	tree?: string;
 }
 
 const DURATION = /^(\d+)\s*(m|h|d|w)$/i;
@@ -125,7 +129,9 @@ function samePath(a: string, b: string): boolean {
 	return process.platform === "win32" ? ra.toLowerCase() === rb.toLowerCase() : ra === rb;
 }
 
-function readParent(entry: RegistryEntry): string | null {
+/** Parent run id of an entry: the registry field, else `run.json` (entries written before it). */
+export function readParent(entry: RegistryEntry): string | null {
+	if (entry.parent !== undefined) return entry.parent ?? null;
 	try {
 		const run = JSON.parse(readFileSync(path.join(entry.dir, "run.json"), "utf-8")) as {
 			parent?: string | null;
@@ -141,6 +147,9 @@ export function filterRuns(
 	entries: readonly RegistryEntry[],
 	filter: Omit<RunListFilter, "since"> & { since?: number | null },
 ): RegistryEntry[] {
+	const tree = filter.tree
+		? new Set(new RunTree(entries).walk(filter.tree).map((n) => n.entry.id))
+		: null;
 	const statuses = (filter.status ?? "")
 		.split(",")
 		.map((s) => s.trim())
@@ -150,6 +159,90 @@ export function filterRuns(
 			(statuses.length === 0 || statuses.includes(r.status)) &&
 			(!filter.repo || samePath(r.repo, filter.repo)) &&
 			(filter.since == null || Date.parse(r.created_at) >= filter.since) &&
-			(!filter.parent || readParent(r) === filter.parent),
+			(!filter.parent || readParent(r) === filter.parent) &&
+			(!tree || tree.has(r.id)),
 	);
+}
+
+/**
+ * Run tree over registry entries: `parent` links from dispatch (an overseer
+ * run, or the run whose step dispatched a child with af_dispatch). Depth 0 is
+ * a root run. A missing parent (deleted from the registry) ends the chain.
+ */
+export class RunTree {
+	private readonly byId = new Map<string, RegistryEntry>();
+	private readonly parents = new Map<string, string | null>();
+	private readonly children = new Map<string, RegistryEntry[]>();
+
+	constructor(readonly entries: readonly RegistryEntry[]) {
+		for (const entry of entries) this.byId.set(entry.id, entry);
+		for (const entry of entries) {
+			const parent = readParent(entry);
+			this.parents.set(entry.id, parent);
+			if (parent && this.byId.has(parent)) {
+				const list = this.children.get(parent) ?? [];
+				list.push(entry);
+				this.children.set(parent, list);
+			}
+		}
+	}
+
+	get(id: string): RegistryEntry | null {
+		return this.byId.get(id) ?? null;
+	}
+
+	parentOf(id: string): string | null {
+		return this.parents.get(id) ?? null;
+	}
+
+	/** Ancestor ids, nearest first (stops on a cycle or a parent missing from the registry). */
+	ancestors(id: string): string[] {
+		const out: string[] = [];
+		let current = this.parentOf(id);
+		while (current && this.byId.has(current) && !out.includes(current) && current !== id) {
+			out.push(current);
+			current = this.parentOf(current);
+		}
+		return out;
+	}
+
+	depth(id: string): number {
+		return this.ancestors(id).length;
+	}
+
+	/** Root run id of the tree holding `id` (`id` itself for a root). */
+	root(id: string): string {
+		const ancestors = this.ancestors(id);
+		return ancestors.length > 0 ? ancestors[ancestors.length - 1] : id;
+	}
+
+	/** Direct children, oldest first. */
+	childrenOf(id: string): RegistryEntry[] {
+		return [...(this.children.get(id) ?? [])].sort((a, b) =>
+			a.created_at.localeCompare(b.created_at),
+		);
+	}
+
+	/** `id` and every descendant, depth first (children oldest first), with depths relative to the tree root. */
+	walk(id: string): { entry: RegistryEntry; depth: number }[] {
+		const start = this.byId.get(id);
+		if (!start) return [];
+		const out: { entry: RegistryEntry; depth: number }[] = [];
+		const seen = new Set<string>();
+		const visit = (entry: RegistryEntry, depth: number) => {
+			if (seen.has(entry.id)) return;
+			seen.add(entry.id);
+			out.push({ entry, depth });
+			for (const child of this.childrenOf(entry.id)) visit(child, depth + 1);
+		};
+		visit(start, this.depth(id));
+		return out;
+	}
+}
+
+/** A registry entry with its place in the run tree (`af_list_runs`, `af_status`). */
+export type TreeEntry = RegistryEntry & { parent: string | null; depth: number };
+
+export function withTreeInfo(entries: readonly RegistryEntry[], tree: RunTree): TreeEntry[] {
+	return entries.map((e) => ({ ...e, parent: tree.parentOf(e.id), depth: tree.depth(e.id) }));
 }

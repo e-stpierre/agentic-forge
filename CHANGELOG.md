@@ -108,6 +108,13 @@
 - **Breaking:** `supervisor.needs_input_timeout` now only auto-answers requests of risk `low` (the request's `risk`, else the step's `max_risk`); a request without a risk is never auto-answered. A `human-input` step's own `timeout-minutes` is unchanged
 - Changed the overseer answer policy to read the request's `kind` (`permission` is always asked) and its own `risk` before the step's `max_risk`
 - Added `kind` and `risk` filters to notification triggers (`{ "event": "needs_input", "kind": "permission" }`) and the `kind`, `kind_label`, `risk` and `risk_suffix` template placeholders; the `needs_input` title names the kind, and a high-risk request is an `error` level notification
+- Added the `af_wait` MCP tool and `GET /v1/runs/:id/wait`: waits until a run ends (`until: terminal`) or needs attention (`until: attention`: a `needs_input`, a failed step, a pause), for `timeout_seconds` (default 50, max 3600, looped in supervisor requests of at most 120 s), and returns compact JSON with the status, the last step's result block (summary cut to 1,000 characters, `result_path` for the rest), the open requests and a `cursor` to wait again without seeing an attention event twice
+- Added `wait` and `timeout_seconds` to `af_dispatch` (dispatch, then the `af_wait` result as `wait`), and `af wait <run> [--until] [--timeout] [--cursor]` and `af run --wait [--until] [--timeout]` (alias `af dispatch`), which print the wait result as one JSON line and exit with the run's code (`124` when the timeout ran out)
+- Added run trees: dispatch records `parent` in the registry entry; `af_dispatch` (and `af run`) inside a run's step default `parent` to the calling run (`AF_RUN_ID`, else `AF_OVERSEER_RUN`); `af_list_runs` and `af_status` return `parent` and `depth`, `af_list_runs tree` and `af list --tree` list a run and every run below it, `af_status` of a run returns its `tree`, and `af status` prints the run tree
+- Added the run tree guards `overseer.budgets.max_dispatch_depth` (default 3), `max_tree_runs` (default 50) and `max_tree_active` (default 6): a dispatch past one is refused with a 409 `Dispatch refused: <reason>`
+- Changed the scheduler so a child run is never held back by its running ancestors (they lend it their queue slot and checkout), and a child run inherits its parent's dispatch environment under its own
+- Added the af MCP server to every Codex session the supervisor starts (thread config `mcp_servers.agentic-forge`, with the run and step, a 900 s tool timeout and its tools approved without asking), so a Codex agent can dispatch, wait for and ask through af runs
+- Added overseer guidance on native subagents versus af runs and on waiting for a delegated run, and a delegation paragraph to the agentic system prompt
 
 ## 0.11.0
 

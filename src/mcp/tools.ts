@@ -14,11 +14,11 @@ import { z } from "zod";
 import { listAvailableWorkflows, resolveWorkflowPath } from "../commands/run.js";
 import type { RunStatus } from "../contract/index.js";
 import { ARTIFACT_KINDS, listArtifacts, readArtifact } from "../runs/artifacts.js";
-import { dispatchRun, fetchEvents, fetchLogs } from "../runs/client.js";
+import { dispatchRun, fetchEvents, fetchLogs, waitForRun } from "../runs/client.js";
 import { buildDispatchPayload } from "../runs/dispatch.js";
 import { DEFAULT_EVENT_LIMIT } from "../runs/events.js";
 import type { RunDetails } from "../runs/manager.js";
-import { type RegistryEntry, RunRegistry } from "../runs/registry.js";
+import { type RegistryEntry, RunRegistry, RunTree, type TreeEntry } from "../runs/registry.js";
 import {
 	LOGS_MAX_LIMIT,
 	LOGS_MCP_DEFAULT_LIMIT,
@@ -26,6 +26,11 @@ import {
 	LOGS_MCP_MAX_CHARS,
 	TRANSCRIPT_TEXT_MAX,
 } from "../runs/transcript.js";
+import {
+	DEFAULT_WAIT_SECONDS,
+	MAX_WAIT_SECONDS as MAX_RUN_WAIT_SECONDS,
+	WAIT_CONDITIONS,
+} from "../runs/wait.js";
 import {
 	type ClientCache,
 	ToolInputError,
@@ -141,7 +146,44 @@ function resolveWorkflow(workflow: string, repo: string): { path: string; locati
 	);
 }
 
-function newestFirst(runs: RegistryEntry[]): RegistryEntry[] {
+/** Depth first from the shallowest listed runs, children oldest first. */
+function treeOrder(runs: TreeEntry[]): TreeEntry[] {
+	const ids = new Set(runs.map((r) => r.id));
+	const tree = new RunTree(runs);
+	const out: TreeEntry[] = [];
+	const byId = new Map(runs.map((r) => [r.id, r]));
+	const roots = runs
+		.filter((r) => !r.parent || !ids.has(r.parent))
+		.sort((a, b) => a.created_at.localeCompare(b.created_at));
+	for (const root of roots) {
+		for (const node of tree.walk(root.id)) {
+			const entry = byId.get(node.entry.id);
+			if (entry) out.push(entry);
+		}
+	}
+	return out;
+}
+
+/** The af run whose step this MCP server serves (`AF_RUN_ID`), else the overseer run, else undefined. */
+export function callingRun(ctx: ToolContext): string | undefined {
+	const env = ctx.env ?? process.env;
+	return env.AF_RUN_ID || env.AF_OVERSEER_RUN || undefined;
+}
+
+/** `timeout_seconds` of af_wait and af_dispatch. */
+export function waitSeconds() {
+	const error = `timeout_seconds must be a number from 0 to ${MAX_RUN_WAIT_SECONDS}`;
+	return z
+		.number({ error })
+		.min(0, { error })
+		.max(MAX_RUN_WAIT_SECONDS, { error })
+		.optional()
+		.describe(
+			`Seconds to wait (default ${DEFAULT_WAIT_SECONDS}, under the 60 s tool timeout of Codex and most MCP clients; Claude Code allows longer)`,
+		);
+}
+
+function newestFirst<T extends RegistryEntry>(runs: T[]): T[] {
 	return [...runs].sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
@@ -160,8 +202,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 		"af_dispatch",
 		{
 			title: "Dispatch a workflow run",
-			description:
-				"Queues a run of an agentic-forge workflow in the af supervisor and returns at once with { run_id, status, dir, workflow, warnings }; the run then executes in the background. `workflow` is a workflow name (looked up in <repo>/agentic/workflows, then the user-global, the skill pack and the bundled workflows) or a path to a YAML file (absolute, or relative to repo). `repo` is the repository the run works in (default: the MCP server's working directory). `vars` sets workflow variables; a missing required variable is rejected with its name, and a workflow whose `requires` is unmet is refused with the required and installed versions. With `item` (and `parent`: the overseer run), the run implements that backlog item; a 409 says why it cannot start now. The returned status is usually queued or running. Next: follow the run with af_events (run, wait_seconds) or check it with af_status (run).",
+			description: `Queues a run of an agentic-forge workflow in the af supervisor and returns { run_id, status, dir, workflow, parent, warnings }; the run executes in the background. \`workflow\` is a workflow name (project, user-global, skill pack or bundled workflows) or a YAML path. \`repo\` defaults to the server's working directory; \`vars\` sets workflow variables; \`runtime\` runs every step on claude or codex. Called from inside an af run, the new run is its child (\`parent\` defaults to the calling run), and run tree guards (depth, runs, active runs) refuse a dispatch with the reason. With \`item\` (and \`parent\`: the overseer run), the run implements that backlog item. With \`wait: true\`, also waits up to \`timeout_seconds\` (default ${DEFAULT_WAIT_SECONDS}) and adds the af_wait result as \`wait\`. Next: af_wait (run) for its result block, af_status (run) for its progress.`,
 			inputSchema: {
 				workflow: nonEmpty("workflow", "Workflow name or path to a workflow YAML file"),
 				repo: nonEmpty(
@@ -197,6 +238,11 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 					"item",
 					"Backlog item of the parent overseer run (for example T02): refused unless af_backlog_list lists it as runnable; the item becomes running",
 				).optional(),
+				wait: z
+					.boolean({ error: "wait must be a boolean" })
+					.optional()
+					.describe("Also wait for the run to end (as af_wait) before returning"),
+				timeout_seconds: waitSeconds(),
 			},
 		},
 		async (input) => {
@@ -212,17 +258,28 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 				slug: input.slug,
 				priority: input.priority,
 				ignoreRequires: input.ignore_requires,
-				parent: input.parent,
+				parent: input.parent ?? callingRun(ctx),
 				item: input.item,
 			});
 			const result = await withClient(ctx.clients, (client) => dispatchRun(client, payload));
-			return jsonResult({
+			const dispatched = {
 				run_id: result.run.id,
 				status: result.run.status,
 				dir: result.dir,
 				workflow: workflow.path,
+				parent: result.run.parent ?? null,
 				warnings: result.warnings ?? [],
-			});
+			};
+			if (!input.wait) return jsonResult(dispatched);
+			const waited = await withClient(
+				ctx.clients,
+				(client) =>
+					waitForRun(client, result.run.id, {
+						timeoutSeconds: input.timeout_seconds ?? DEFAULT_WAIT_SECONDS,
+					}),
+				READ,
+			);
+			return compactResult({ ...dispatched, wait: waited });
 		},
 	);
 
@@ -232,7 +289,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 		{
 			title: "Show run status",
 			description:
-				"With `run`, returns the state of one run: { entry (registry entry with status), run (run.json), steps (completed steps), current_step }. Without `run`, returns { runs } with every run that has not ended (queued, running, paused, blocked or awaiting-human), newest first. Run statuses: queued, running, paused, blocked, awaiting-human (a question waits for an answer), halted, failed, canceled, done, merged (the last five are final). Next: af_events to follow a run, af_artifacts to read its plan or summary, af_list_runs to find older runs.",
+				"With `run`, returns the state of one run: { entry (registry entry with status), run (run.json), steps (completed steps), current_step, tree (parent, depth, root, children) }. Without `run`, returns { runs } with every run that has not ended (queued, running, paused, blocked or awaiting-human), newest first, each with parent and depth. Run statuses: queued, running, paused, blocked, awaiting-human (a question waits for an answer), halted, failed, canceled, done, merged (the last five are final). Next: af_events to follow a run, af_artifacts to read its plan or summary, af_list_runs to find older runs.",
 			inputSchema: {
 				run: runId("Run id (omit to list the active runs)").optional(),
 			},
@@ -250,7 +307,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 			const res = await withClient(
 				ctx.clients,
 				(client) =>
-					client.request<{ runs: RegistryEntry[] }>(
+					client.request<{ runs: TreeEntry[] }>(
 						"GET",
 						runsQuery({ status: ACTIVE_RUN_STATUSES.join(",") }),
 					),
@@ -266,7 +323,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 		{
 			title: "List runs",
 			description:
-				"Lists runs from the af run registry, newest first, as { runs, total } where each run has id, workflow, status, repo, dir, created_at and updated_at; `total` counts the matches before `limit` (default 50). Filters combine: `status` (one status or a list: queued, running, paused, blocked, awaiting-human, halted, failed, canceled, done, merged), `repo` (runs dispatched from this repository root), `since` (an ISO date or a duration such as 30m, 2h, 7d) and `parent` (child runs of a parent run). Next: af_status or af_artifacts with a run id from the list.",
+				"Lists runs from the af run registry as { runs, total } where each run has id, workflow, status, repo, dir, parent, depth (0 for a root run), created_at and updated_at; newest first, or with `tree` depth first. `total` counts the matches before `limit` (default 50). Filters combine: `status` (one status or a list: queued, running, paused, blocked, awaiting-human, halted, failed, canceled, done, merged), `repo` (runs dispatched from this repository root), `since` (an ISO date or a duration such as 30m, 2h, 7d), `parent` (direct children of a run) and `tree` (a run and every run below it). Next: af_status or af_artifacts with a run id from the list.",
 			inputSchema: {
 				status: z
 					.union([statusEnum, z.array(statusEnum).min(1, { error: "status list is empty" })], {
@@ -280,6 +337,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 				).optional(),
 				since: nonEmpty("since", "ISO date or a duration such as 30m, 2h, 7d").optional(),
 				parent: nonEmpty("parent", "Parent run id").optional(),
+				tree: nonEmpty("tree", "Run id: that run and every run below it, depth first").optional(),
 				limit: z
 					.number({ error: "limit must be an integer from 1 to 1000" })
 					.int({ error: "limit must be an integer from 1 to 1000" })
@@ -295,13 +353,19 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 			const res = await withClient(
 				ctx.clients,
 				(client) =>
-					client.request<{ runs: RegistryEntry[] }>(
+					client.request<{ runs: TreeEntry[] }>(
 						"GET",
-						runsQuery({ status, repo, since: input.since, parent: input.parent }),
+						runsQuery({
+							status,
+							repo,
+							since: input.since,
+							parent: input.parent,
+							tree: input.tree,
+						}),
 					),
 				READ,
 			);
-			const runs = newestFirst(res.runs);
+			const runs = input.tree ? treeOrder(res.runs) : newestFirst(res.runs);
 			return jsonResult({
 				runs: runs.slice(0, input.limit ?? DEFAULT_LIST_LIMIT),
 				total: runs.length,
@@ -363,6 +427,42 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 				READ,
 			);
 			return jsonResult(page);
+		},
+	);
+
+	register(
+		server,
+		"af_wait",
+		{
+			title: "Wait for a run",
+			description: `Waits until a run ends (\`until: terminal\`, default) or needs attention (\`until: attention\`: also a needs_input, a failed step or a pause), for at most \`timeout_seconds\` (default ${DEFAULT_WAIT_SECONDS}). Returns compact JSON { run, status, state, cursor, reason, step, result, result_path, needs_input, error }: state is ended, attention or waiting (the wait ran out); result is the last step's result block (status, summary, pr, max_risk). On waiting, call af_wait again with the returned cursor; keep each call under your client's tool timeout and loop. Next: af_answer for an open needs_input, af_artifacts for the run's plan or summary.`,
+			inputSchema: {
+				run: runId("Run id (from af_dispatch or af_list_runs)"),
+				until: z
+					.enum(WAIT_CONDITIONS, { error: `until must be one of ${WAIT_CONDITIONS.join(", ")}` })
+					.optional()
+					.describe("terminal (default) or attention"),
+				timeout_seconds: waitSeconds(),
+				cursor: z
+					.number({ error: "cursor must be the cursor of a previous af_wait result" })
+					.int({ error: "cursor must be the cursor of a previous af_wait result" })
+					.min(0, { error: "cursor must be the cursor of a previous af_wait result" })
+					.optional()
+					.describe("Cursor of a previous af_wait result (attention events up to it are skipped)"),
+			},
+		},
+		async (input) => {
+			const result = await withClient(
+				ctx.clients,
+				(client) =>
+					waitForRun(client, input.run, {
+						until: input.until,
+						cursor: input.cursor ?? null,
+						timeoutSeconds: input.timeout_seconds ?? DEFAULT_WAIT_SECONDS,
+					}),
+				READ,
+			);
+			return compactResult(result);
 		},
 	);
 
