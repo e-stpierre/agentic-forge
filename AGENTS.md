@@ -183,6 +183,7 @@ User-facing documentation, linked from the README via GitHub `blob/main/` URLs. 
 - `coding-agents.md` — Supported runtimes, per-step configuration, and model names
 - `configuration.md` — All configuration options, defaults, and layering behavior
 - `overseer.md` — The overseer in Claude Desktop: `af setup`, event delivery, durability, locality, limits
+- `cost-and-tokens.md` — Where a run's tokens go, the recommended overseer patterns and anti-patterns, what af adds to a worker, `af usage` and budgets, the measured baseline
 - `harness-contract.md` — Harness contract v1 specification (owned by agentic-forge): run directory layout, artifacts, exit codes, compliance levels, versioning rules
 
 ### `agentic/`

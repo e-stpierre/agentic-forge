@@ -173,5 +173,8 @@ To reach the user away from the session (a long run finished, a question waits),
 ## Token Rules
 
 - Keep tool results small: `af_status` of one run, `af_backlog_list` with `status` when you need only some items, `af_events` with `types`, `af_logs` with a small `limit`, `af_artifacts` without `content` first
-- Do not read run transcripts or artifacts unless a decision needs them
+- Do not read run transcripts or artifacts unless a decision needs them; read a summary with `af_artifacts` `frontmatter_only: true` first, then one `section`
+- Never run `af run --foreground` or `af logs --follow` through Bash: they stream step output into your context. Dispatch with `af_dispatch` and wait with the monitor or `af_wait`
+- To keep a long wait out of your context, hand the `af_wait` loop to a subagent on a small model (Haiku) that returns only the result block
+- `af usage <run> --by step` shows what a run cost; `af_usage` with `scope: mcp` shows what your tool results cost
 - Report in one or two lines per event; the user asks when they want more
