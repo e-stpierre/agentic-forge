@@ -852,8 +852,7 @@ export class RunManager {
 		const firstCall = query.cursor === null;
 		// A first call looks at the current status only: past attention events
 		// (answered questions, retried steps) are not reported.
-		let cursor =
-			query.cursor ?? (store.exists() ? (store.readEvents().at(-1)?.seq ?? 0) : 0);
+		let cursor = query.cursor ?? (store.exists() ? (store.readEvents().at(-1)?.seq ?? 0) : 0);
 		for (;;) {
 			const status = this.registry.get(id)?.status ?? entry.status;
 			const events = store.exists() ? store.readEvents(cursor) : [];

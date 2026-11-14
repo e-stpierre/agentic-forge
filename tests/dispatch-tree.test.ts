@@ -471,7 +471,10 @@ describe("run tree guards", () => {
 
 describe("permission bypass of child runs", () => {
 	const bypassWorkflow = (name: string) =>
-		workflow(name, "claude", "NODE").replace("  max-retry: 0", "  max-retry: 0\n  bypass-permissions: true");
+		workflow(name, "claude", "NODE").replace(
+			"  max-retry: 0",
+			"  max-retry: 0\n  bypass-permissions: true",
+		);
 	const bypassConfig = () =>
 		deepMerge(getDefaultConfig(), {
 			runtimes: { codex: { permissions: "bypass" } },
@@ -494,9 +497,9 @@ describe("permission bypass of child runs", () => {
 			'    prompt: "NODE"',
 			'    prompt: "NODE"\n    bypass-permissions: true',
 		);
-		await expect(
-			manager.dispatch(payload(stepBypass, { parent: root.run.id })),
-		).rejects.toThrow(/bypass-permissions: true on step work/);
+		await expect(manager.dispatch(payload(stepBypass, { parent: root.run.id }))).rejects.toThrow(
+			/bypass-permissions: true on step work/,
+		);
 
 		// An agent of the run gets the refusal as a tool error naming the reason
 		writeFileSync(
@@ -523,7 +526,9 @@ describe("permission bypass of child runs", () => {
 		const viaConfig = deepMerge(getDefaultConfig(), {
 			runtimes: { claude: { permissions: "bypass" } },
 		}) as Record<string, unknown>;
-		const root2 = await manager.dispatch(payload(workflow("node", "claude", "NODE"), {}, viaConfig));
+		const root2 = await manager.dispatch(
+			payload(workflow("node", "claude", "NODE"), {}, viaConfig),
+		);
 		const child2 = await manager.dispatch(
 			payload(workflow("node", "claude", "NODE"), { parent: root2.run.id }, viaConfig),
 		);
@@ -594,9 +599,9 @@ describe("af_answer from inside a run", () => {
 		expect(own.isError).toBe(true);
 
 		const operator = await connect(client);
-		expect(await call(operator, "af_answer", { run: permission.run.id, answer: "a" })).toMatchObject(
-			{ request: "q1" },
-		);
+		expect(
+			await call(operator, "af_answer", { run: permission.run.id, answer: "a" }),
+		).toMatchObject({ request: "q1" });
 		expect(await call(operator, "af_answer", { run: outsider.run.id, answer: "a" })).toMatchObject({
 			request: "q1",
 		});
