@@ -27,11 +27,11 @@ import { dispatchRun, fetchEvents, followEvents, formatEvent } from "../src/runs
 import type { DispatchPayload } from "../src/runs/dispatch.js";
 import {
 	CursorError,
+	WATERMARK_KEY,
 	decodeCursor,
 	encodeCursor,
 	matchesTypes,
 	parseTypeFilter,
-	WATERMARK_KEY,
 	readEventPage,
 } from "../src/runs/events.js";
 import { RunManager } from "../src/runs/manager.js";
