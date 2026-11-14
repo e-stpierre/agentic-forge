@@ -180,6 +180,10 @@ export async function cmdRun(options: {
 	foreground?: boolean;
 	/** Run despite an unmet `requires` agentic-forge version (never the contract). */
 	ignoreRequires?: boolean;
+	/** Parent run id (`run.json` `parent`). */
+	parent?: string;
+	/** Backlog item of the parent overseer run. */
+	item?: string;
 }): Promise<void> {
 	// Handle --list flag
 	if (options.listWorkflows) {
@@ -300,6 +304,8 @@ export async function cmdRun(options: {
 		slug: options.slug,
 		terminalOutput,
 		ignoreRequires: options.ignoreRequires,
+		parent: options.parent,
+		item: options.item,
 	});
 
 	const { ensureSupervisor } = await import("../supervisor/client.js");

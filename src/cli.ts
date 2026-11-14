@@ -32,6 +32,8 @@ import {
 	cmdList,
 	cmdLogs,
 	cmdMcp,
+	cmdNotify,
+	cmdOverseer,
 	cmdPaths,
 	cmdPause,
 	cmdReleaseNotes,
@@ -72,6 +74,8 @@ program
 		"--ignore-requires",
 		"run even if the workflow requires a newer agentic-forge (never overrides the contract)",
 	)
+	.option("--parent <run>", "parent run id (for example an overseer run)")
+	.option("--item <id>", "backlog item of the parent overseer run this run implements")
 	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
@@ -85,6 +89,8 @@ program
 			slug: optString(opts.slug),
 			foreground: optBool(opts.foreground),
 			ignoreRequires: optBool(opts.ignoreRequires),
+			parent: optString(opts.parent),
+			item: optString(opts.item),
 		});
 	});
 
@@ -202,6 +208,28 @@ program
 			step,
 			context: optString(opts.context),
 			from: optString(opts.from),
+		});
+	});
+
+// notify command
+program
+	.command("notify")
+	.description("Send a notification to the enabled notification channels")
+	.argument("<text>", "message text")
+	.option("--title <title>", "notification title")
+	.option("--level <level>", "info, warning or error", "info")
+	.option(
+		"--run <run>",
+		"run the notification is about (uses its config; records notification.sent)",
+	)
+	.option("--json", "print the delivery report as JSON")
+	.action(async (text: string, opts: Record<string, unknown>) => {
+		await cmdNotify({
+			text,
+			title: optString(opts.title),
+			level: optString(opts.level),
+			runId: optString(opts.run),
+			json: optBool(opts.json),
 		});
 	});
 
@@ -444,6 +472,42 @@ program
 			force: optBool(opts.force),
 			port: optString(opts.port),
 		});
+	});
+
+// overseer command
+program
+	.command("overseer")
+	.description(
+		"Start an interactive Claude overseer session that dispatches and steers runs (creates or reuses an overseer run)",
+	)
+	.argument("[claude-args...]", "extra claude arguments, after --")
+	.option(
+		"--epic <file|text>",
+		"epic to work on: a file (read) or a text; starts a new overseer run",
+	)
+	.option(
+		"--resume <run>",
+		"reopen this overseer run in a new session (it rehydrates from the harness)",
+	)
+	.option("--new", "create a new overseer run even when one is open for this repository")
+	.option("--model <model>", "model of the claude session")
+	.option("--print-command", "open the run and print the claude command instead of starting it")
+	.option("--finish <run>", "end this overseer run (writes summary.md, emits run.completed)")
+	.option("--status <status>", "with --finish: done (default), halted or failed")
+	.option("--summary <text>", "with --finish: summary text")
+	.action(async (claudeArgs: string[], opts: Record<string, unknown>) => {
+		const code = await cmdOverseer({
+			epic: optString(opts.epic),
+			resume: optString(opts.resume),
+			new: optBool(opts.new),
+			model: optString(opts.model),
+			printCommand: optBool(opts.printCommand),
+			finish: optString(opts.finish),
+			status: optString(opts.status),
+			summary: optString(opts.summary),
+			claudeArgs,
+		});
+		if (code !== 0) process.exitCode = code;
 	});
 
 // mcp command

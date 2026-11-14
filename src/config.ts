@@ -83,9 +83,196 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 		},
 		// Codex has no session driver yet (codex app-server comes later). Its
 		// allowlist is the sandbox (`codex.sandbox`); bypass removes it.
-		codex: { driver: "cli", permissions: "allowlist" },
+		// Skill steps send the skill's SKILL.md inline; inline_references also
+		// appends the files it links to (otherwise their absolute paths are enough).
+		codex: { driver: "cli", permissions: "allowlist", inline_references: false },
+	},
+	// GitHub step types (wait-for-review, wait-for-checks, merge). Waiting polls
+	// `gh` from the supervisor: no agent session runs while waiting.
+	github: {
+		// Reviewer names usable in `reviewers:`; `trigger` is the comment that
+		// asks for a review (posted only when the step or auto_trigger enables it).
+		reviewers: {
+			claude: { login: "claude[bot]", trigger: null },
+			codex: { login: "chatgpt-codex-connector[bot]", trigger: "@codex review" },
+		},
+		auto_trigger: false,
+		// Seconds a reviewer gets on a new head before its trigger is posted.
+		trigger_after_seconds: 120,
+		poll_seconds: 30,
+		max_poll_seconds: 300,
+		review_timeout_minutes: 30,
+		checks_timeout_minutes: 30,
+		merge: {
+			// repo: resolve from the repository settings and rulesets.
+			method: "repo",
+			preference: ["squash", "rebase", "merge"],
+			delete_branch: true,
+			lock_timeout_minutes: 30,
+		},
+	},
+	// Notifications sent by the supervisor when a run event matches a trigger.
+	// Every channel is off until enabled. A trigger is an event type (a `run.*`
+	// prefix works) or { event, run_type } to match only one run type.
+	notifications: {
+		enabled: true,
+		triggers: [
+			"needs_input",
+			"run.halted",
+			"run.failed",
+			{ event: "run.completed", run_type: "overseer" },
+		],
+		// Per trigger event type: { title, body } with {{placeholders}}.
+		templates: {},
+		channels: {
+			desktop: { enabled: false },
+			ntfy: { enabled: false, server: "https://ntfy.sh", topic: null, token: null },
+			slack: { enabled: false, webhook_url: null },
+			discord: { enabled: false, webhook_url: null },
+			// Comment on the run's pull request (outward-facing: opt-in).
+			github: { enabled: false },
+		},
+	},
+	// Overseer (`af overseer`): its backlog, scheduling and answer policy. Read
+	// from the overseer run's config snapshot (the config of the launching repo).
+	overseer: {
+		// Backlog items running at once (parallel only without a dependency or a
+		// conflict zone overlap).
+		max_parallel: 2,
+		// Discovered items of child runs: auto (ready), ask (proposed, the user
+		// approves) or log (recorded, never scheduled).
+		accept_discovered_items: "ask",
+		// What stops new dispatches until the user decides: an item that failed or
+		// halted, an open critical discovered item, an exhausted budget.
+		halt_epic_on: ["halted", "critical", "budget"],
+		budgets: {
+			// Backlog items (dropped and logged ones excluded).
+			max_tasks: 20,
+			// Extra dispatches of one item after its first run.
+			max_retries: 1,
+			// Total minutes of the child runs (parallel runs add up).
+			max_run_minutes: 480,
+		},
+		// needs_input requests of child runs the overseer may answer itself.
+		answer_policy: {
+			enabled: true,
+			// Highest step risk (low, medium, high); a step without max_risk is asked.
+			max_risk: "low",
+			// Only the recommended option (a request without one is asked).
+			recommended_only: true,
+			// Also blocking requests (permission requests are always asked).
+			blocking: true,
+		},
 	},
 };
+
+/** The `github` config section merged over its defaults. */
+export function getGithubConfig(config: Record<string, unknown>): GithubConfig {
+	const defaults = DEFAULT_CONFIG.github as Record<string, unknown>;
+	const raw = (config.github as Record<string, unknown> | undefined) ?? {};
+	const merged = deepMerge(deepCopy(defaults), raw) as Record<string, unknown>;
+	const merge = (merged.merge as Record<string, unknown>) ?? {};
+	const num = (value: unknown, fallback: number): number =>
+		typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+	// Polling intervals must stay above zero, or the wait steps poll in a tight loop
+	const positive = (value: unknown, fallback: number): number =>
+		typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback;
+	const d = defaults as Record<string, number>;
+	const dm = defaults.merge as Record<string, unknown>;
+	return {
+		reviewers: (merged.reviewers as Record<string, unknown>) ?? {},
+		autoTrigger: merged.auto_trigger === true,
+		triggerAfterSeconds: num(merged.trigger_after_seconds, d.trigger_after_seconds),
+		pollSeconds: positive(merged.poll_seconds, d.poll_seconds),
+		maxPollSeconds: positive(merged.max_poll_seconds, d.max_poll_seconds),
+		reviewTimeoutMinutes: num(merged.review_timeout_minutes, d.review_timeout_minutes),
+		checksTimeoutMinutes: num(merged.checks_timeout_minutes, d.checks_timeout_minutes),
+		merge: {
+			method: typeof merge.method === "string" ? merge.method : (dm.method as string),
+			preference: Array.isArray(merge.preference)
+				? merge.preference.map(String)
+				: (dm.preference as string[]),
+			deleteBranch: merge.delete_branch !== false,
+			lockTimeoutMinutes: num(merge.lock_timeout_minutes, dm.lock_timeout_minutes as number),
+		},
+	};
+}
+
+export const DISCOVERED_ITEM_POLICIES = ["auto", "ask", "log"] as const;
+export type DiscoveredItemPolicy = (typeof DISCOVERED_ITEM_POLICIES)[number];
+export const HALT_CONDITIONS = ["failed", "halted", "critical", "budget"] as const;
+export type HaltCondition = (typeof HALT_CONDITIONS)[number];
+export const POLICY_RISKS = ["low", "medium", "high"] as const;
+export type PolicyRisk = (typeof POLICY_RISKS)[number];
+
+export interface OverseerConfig {
+	maxParallel: number;
+	acceptDiscoveredItems: DiscoveredItemPolicy;
+	haltEpicOn: HaltCondition[];
+	budgets: { maxTasks: number; maxRetries: number; maxRunMinutes: number };
+	answerPolicy: {
+		enabled: boolean;
+		maxRisk: PolicyRisk;
+		recommendedOnly: boolean;
+		blocking: boolean;
+	};
+}
+
+/** The `overseer` config section merged over its defaults (invalid values fall back to them). */
+export function getOverseerConfig(config: Record<string, unknown>): OverseerConfig {
+	const defaults = DEFAULT_CONFIG.overseer as Record<string, unknown>;
+	const raw = (config.overseer as Record<string, unknown> | undefined) ?? {};
+	const merged = deepMerge(deepCopy(defaults), raw) as Record<string, unknown>;
+	const db = defaults.budgets as Record<string, number>;
+	const da = defaults.answer_policy as Record<string, unknown>;
+	const budgets = (merged.budgets as Record<string, unknown>) ?? {};
+	const answer = (merged.answer_policy as Record<string, unknown>) ?? {};
+	const int = (value: unknown, fallback: number, min = 0): number =>
+		typeof value === "number" && Number.isInteger(value) && value >= min ? value : fallback;
+	const oneOf = <T extends string>(list: readonly T[], value: unknown, fallback: T): T =>
+		(list as readonly unknown[]).includes(value) ? (value as T) : fallback;
+	const halt = Array.isArray(merged.halt_epic_on)
+		? merged.halt_epic_on.filter((c): c is HaltCondition =>
+				(HALT_CONDITIONS as readonly unknown[]).includes(c),
+			)
+		: (defaults.halt_epic_on as HaltCondition[]);
+	return {
+		maxParallel: int(merged.max_parallel, defaults.max_parallel as number, 1),
+		acceptDiscoveredItems: oneOf(
+			DISCOVERED_ITEM_POLICIES,
+			merged.accept_discovered_items,
+			defaults.accept_discovered_items as DiscoveredItemPolicy,
+		),
+		haltEpicOn: halt,
+		budgets: {
+			maxTasks: int(budgets.max_tasks, db.max_tasks, 1),
+			maxRetries: int(budgets.max_retries, db.max_retries),
+			maxRunMinutes: int(budgets.max_run_minutes, db.max_run_minutes, 1),
+		},
+		answerPolicy: {
+			enabled: answer.enabled !== false,
+			maxRisk: oneOf(POLICY_RISKS, answer.max_risk, da.max_risk as PolicyRisk),
+			recommendedOnly: answer.recommended_only !== false,
+			blocking: answer.blocking !== false,
+		},
+	};
+}
+
+export interface GithubConfig {
+	reviewers: Record<string, unknown>;
+	autoTrigger: boolean;
+	triggerAfterSeconds: number;
+	pollSeconds: number;
+	maxPollSeconds: number;
+	reviewTimeoutMinutes: number;
+	checksTimeoutMinutes: number;
+	merge: {
+		method: string;
+		preference: string[];
+		deleteBranch: boolean;
+		lockTimeoutMinutes: number;
+	};
+}
 
 /**
  * Returns the platform-native global config file path.
@@ -319,6 +506,14 @@ export function getRuntimePlugins(config: Record<string, unknown>, runtimeId: st
 	return Array.isArray(value)
 		? value.filter((p): p is string => typeof p === "string" && p !== "")
 		: [];
+}
+
+/** Whether inlined skills also carry the files they link to (`runtimes.<id>.inline_references`). */
+export function getInlineReferences(config: Record<string, unknown>, runtimeId: string): boolean {
+	const runtimes = config.runtimes as
+		| Record<string, Record<string, unknown> | undefined>
+		| undefined;
+	return runtimes?.[runtimeId]?.inline_references === true;
 }
 
 /** Permission mode of a runtime (`runtimes.<id>.permissions`). */

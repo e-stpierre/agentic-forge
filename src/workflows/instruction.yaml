@@ -1,0 +1,34 @@
+name: instruction
+version: "1.0"
+description: One prompt step that carries out a short instruction (the overseer's instruction track)
+
+settings:
+  track-progress: true
+  terminal-output: base
+  bypass-permissions: false
+  worktree:
+    enabled: "{{ variables.use_worktree }}"
+    cleanup: "on-success"
+
+variables:
+  - name: instruction
+    type: string
+    required: true
+    description: What to do, in a few sentences, with the files it concerns
+  - name: use_worktree
+    type: boolean
+    required: false
+    default: false
+    description: Run in an isolated worktree (needed to run beside another run of the same repository)
+
+steps:
+  - name: instruction
+    type: prompt
+    prompt: |
+      Carry out this instruction in the repository:
+
+      {{ variables.instruction }}
+
+      Keep the change to what the instruction asks. Run the checks that cover the
+      files you changed. If the instruction is unclear or needs a decision that
+      changes its scope, stop and ask instead of guessing.

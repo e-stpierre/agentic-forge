@@ -3,17 +3,18 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { getInlineReferences } from "../config.js";
+import { getClaudeConfigDir } from "../paths.js";
+import { inlineSkillPrompt, resolveSkill } from "../runtimes/skill-inline.js";
 import type { StepDefinition } from "../types.js";
 import { type StepContext, buildTemplateContext } from "./base.js";
 import { PromptStepExecutor } from "./prompt-step.js";
 
-/** Runtimes that load skills natively (`/<plugin>:<skill>`). */
-const NATIVE_SKILL_RUNTIMES = new Set(["claude"]);
-
-/** Error of a skill step on a runtime without skill support (Codex inlining comes later). */
-export function unsupportedSkillRuntime(runtime: string): string {
-	return `Skill steps are not supported yet on the '${runtime}' runtime: run them with runtime: claude`;
-}
+/**
+ * Runtimes that load skills natively (`/<plugin>:<skill>`). Every other
+ * runtime gets the skill's `SKILL.md` inline (`inlineSkillPrompt()`).
+ */
+export const NATIVE_SKILL_RUNTIMES = new Set(["claude"]);
 
 /** Quotes an argument that contains whitespace or quotes. */
 function quoteArg(value: string): string {
@@ -44,6 +45,14 @@ export function writeConfigSnapshot(
 	return file;
 }
 
+/** The skill arguments: `<args> --run-dir <dir> --config-snapshot <file>`. */
+export function skillArgs(args: string | null, runDir: string, configSnapshot: string): string {
+	const parts: string[] = [];
+	if (args?.trim()) parts.push(args.trim());
+	parts.push("--run-dir", quoteArg(runDir), "--config-snapshot", quoteArg(configSnapshot));
+	return parts.join(" ");
+}
+
 /** The skill invocation: `/<skill> <args> --run-dir <dir> --config-snapshot <file>`. */
 export function skillPrompt(
 	skill: string,
@@ -51,16 +60,14 @@ export function skillPrompt(
 	runDir: string,
 	configSnapshot: string,
 ): string {
-	const parts = [`/${skill}`];
-	if (args?.trim()) parts.push(args.trim());
-	parts.push("--run-dir", quoteArg(runDir), "--config-snapshot", quoteArg(configSnapshot));
-	return parts.join(" ");
+	return `/${skill} ${skillArgs(args, runDir, configSnapshot)}`;
 }
 
 /**
  * Runs `/<skill>` like a prompt step (same drivers, retries, result block and
  * steering). `skill` and `args` are templates. The result block's `outputs`
- * become `{{ outputs.<step>.<key> }}` for later steps.
+ * become `{{ outputs.<step>.<key> }}` for later steps. On a runtime that does
+ * not load skills (Codex), the prompt is the skill's `SKILL.md`, inlined.
  */
 export class SkillStepExecutor extends PromptStepExecutor {
 	/** The slash command must start the message: operator messages follow it. */
@@ -70,9 +77,6 @@ export class SkillStepExecutor extends PromptStepExecutor {
 
 	protected override buildPrompt(step: StepDefinition, context: StepContext): string {
 		const runtime = context.runtimeAdapter.id;
-		if (!NATIVE_SKILL_RUNTIMES.has(runtime)) {
-			throw new Error(unsupportedSkillRuntime(runtime));
-		}
 		const templateContext = buildTemplateContext(context);
 		const render = (value: string): string =>
 			context.renderer.hasVariables(value)
@@ -84,7 +88,22 @@ export class SkillStepExecutor extends PromptStepExecutor {
 		if (!skill) throw new Error(`Skill step '${step.name}' has no skill to run`);
 		const runDir = context.outputDir ?? context.repoRoot;
 		const snapshot = writeConfigSnapshot(runDir, context.config, skill);
+		const args = step.args ? render(step.args) : null;
+		if (!NATIVE_SKILL_RUNTIMES.has(runtime)) {
+			// Found on disk where Claude Code would load it (the dispatch env's config dir)
+			const claudeDir = context.env?.CLAUDE_CONFIG_DIR
+				? path.resolve(context.env.CLAUDE_CONFIG_DIR)
+				: getClaudeConfigDir();
+			const resolved = resolveSkill(skill, {
+				config: context.config,
+				repoRoot: context.repoRoot,
+				claudeDir,
+			});
+			return inlineSkillPrompt(resolved, skillArgs(args, runDir, snapshot), {
+				inlineReferences: getInlineReferences(context.config, runtime),
+			});
+		}
 		// The slash command must start the prompt: no `agent:` file here
-		return skillPrompt(skill, step.args ? render(step.args) : null, runDir, snapshot);
+		return skillPrompt(skill, args, runDir, snapshot);
 	}
 }

@@ -184,3 +184,42 @@ export async function cmdReprioritize(options: { runId: string; priority: string
 		throw new CliExitError(`Error: ${(err as Error).message}`);
 	}
 }
+
+export async function cmdNotify(options: {
+	text: string;
+	title?: string;
+	level?: string;
+	runId?: string;
+	json?: boolean;
+}): Promise<void> {
+	if (options.runId) requireRun(options.runId);
+	const client = await supervisorClient();
+	try {
+		const res = await client.request<{
+			sent: string[];
+			errors: { channel: string; error: string }[];
+			event: number | null;
+			hint?: string;
+		}>("POST", "/v1/notifications", {
+			text: options.text,
+			title: options.title ?? null,
+			level: options.level ?? "info",
+			run: options.runId ?? null,
+		});
+		if (options.json) {
+			process.stdout.write(`${JSON.stringify(res)}\n`);
+		} else if (res.hint) {
+			process.stdout.write(`Not sent: ${res.hint}\n`);
+		} else {
+			if (res.sent.length > 0) process.stdout.write(`Notification sent: ${res.sent.join(", ")}\n`);
+			for (const e of res.errors)
+				process.stderr.write(`Warning: ${e.channel} failed: ${e.error}\n`);
+		}
+		if (res.sent.length === 0 && res.errors.length > 0) {
+			throw new CliExitError("Error: no channel delivered the notification");
+		}
+	} catch (err) {
+		if (err instanceof CliExitError) throw err;
+		throw new CliExitError(`Error: ${(err as Error).message}`);
+	}
+}

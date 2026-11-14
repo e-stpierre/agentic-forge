@@ -7,6 +7,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SupervisorClient } from "../supervisor/client.js";
 import { ClientCache } from "./errors.js";
+import { registerBacklogTools } from "./tools-backlog.js";
 import { registerControlTools } from "./tools-control.js";
 import { type ToolContext, registerRunTools } from "./tools.js";
 
@@ -36,5 +37,6 @@ export function createMcpServer(options: CreateMcpServerOptions): McpServer {
 	};
 	registerRunTools(server, ctx);
 	registerControlTools(server, ctx);
+	registerBacklogTools(server, ctx);
 	return server;
 }

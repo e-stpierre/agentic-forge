@@ -17,7 +17,7 @@ import type {
 	WorktreeLocation,
 	WorktreeSettings,
 } from "./types.js";
-import { STEP_TYPE_ALIASES, VALID_STEP_TYPES } from "./types.js";
+import { NOT_IN_PARALLEL_STEP_TYPES, STEP_TYPE_ALIASES, VALID_STEP_TYPES } from "./types.js";
 
 /** `<plugin>:<skill>` or `<skill>` (Claude plugin and skill names). */
 const SKILL_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*(:[A-Za-z0-9][A-Za-z0-9._-]*)?$/;
@@ -145,10 +145,10 @@ export class WorkflowParser {
 
 		if (worktreeRaw.cleanup !== undefined) {
 			const cleanupRaw = worktreeRaw.cleanup as string;
-			const validCleanups = ["on-success", "on-complete", "manual"] as const;
+			const validCleanups = ["on-success", "on-complete", "on-merge", "manual"] as const;
 			if (!(validCleanups as readonly string[]).includes(cleanupRaw)) {
 				throw new WorkflowParseError(
-					`Invalid worktree.cleanup: '${cleanupRaw}'. Must be one of: on-success, on-complete, manual`,
+					`Invalid worktree.cleanup: '${cleanupRaw}'. Must be one of: on-success, on-complete, on-merge, manual`,
 				);
 			}
 			result.cleanup = cleanupRaw as WorktreeCleanup;
@@ -234,6 +234,11 @@ export class WorkflowParser {
 				`Human-input steps are not allowed inside a parallel step: '${name}' is under a parallel step`,
 			);
 		}
+		if (inParallel && NOT_IN_PARALLEL_STEP_TYPES.includes(stepType)) {
+			throw new WorkflowParseError(
+				`${stepType} steps are not allowed inside a parallel step: '${name}' is under a parallel step`,
+			);
+		}
 
 		const step: StepDefinition = {
 			name,
@@ -298,6 +303,12 @@ export class WorkflowParser {
 			step.args = data.args === undefined || data.args === null ? null : String(data.args);
 		} else if (stepType === "human-input") {
 			this.parseHumanInput(step, data, declaredType === "wait-for-human");
+		} else if (
+			stepType === "wait-for-review" ||
+			stepType === "wait-for-checks" ||
+			stepType === "merge"
+		) {
+			this.parseGithubStep(step, data);
 		}
 
 		step.model = (data.model as string) ?? null;
@@ -373,6 +384,94 @@ export class WorkflowParser {
 			throw new WorkflowParseError(
 				`Human-input step '${step.name}': timeout-minutes needs blocking: false and a recommended option`,
 			);
+		}
+	}
+
+	/** Fields of `wait-for-review`, `wait-for-checks` and `merge`. */
+	private parseGithubStep(step: StepDefinition, data: Record<string, unknown>): void {
+		const where = `Step '${step.name}' (${step.type})`;
+		const pr = data.pr;
+		if (pr !== undefined && pr !== null) {
+			if (typeof pr !== "string" && typeof pr !== "number") {
+				throw new WorkflowParseError(`${where}: pr must be a number, '#<n>', a URL or a template`);
+			}
+			step.pr = String(pr);
+		}
+		const poll = data["poll-seconds"];
+		if (poll !== undefined && poll !== null) {
+			if (typeof poll !== "number" || !(poll > 0)) {
+				throw new WorkflowParseError(`${where}: poll-seconds must be a positive number`);
+			}
+			step.pollSeconds = poll;
+		}
+		const timeout = data["timeout-minutes"];
+		if (
+			timeout !== undefined &&
+			timeout !== null &&
+			(typeof timeout !== "number" || !(timeout > 0))
+		) {
+			throw new WorkflowParseError(`${where}: timeout-minutes must be a positive number`);
+		}
+
+		if (step.type === "wait-for-review") {
+			const reviewers = data.reviewers;
+			if (reviewers === undefined || reviewers === null) {
+				throw new WorkflowParseError(`${where} needs 'reviewers' (names or logins)`);
+			}
+			if (typeof reviewers === "string") {
+				if (!reviewers.trim()) throw new WorkflowParseError(`${where}: reviewers is empty`);
+				step.reviewers = reviewers;
+			} else if (Array.isArray(reviewers) && reviewers.length > 0) {
+				step.reviewers = reviewers.map((r) => String(r));
+			} else {
+				throw new WorkflowParseError(`${where}: reviewers must be a non-empty list or a string`);
+			}
+			const trigger = data.trigger;
+			if (trigger !== undefined && trigger !== null) {
+				if (typeof trigger !== "boolean") {
+					throw new WorkflowParseError(`${where}: trigger must be a boolean`);
+				}
+				step.trigger = trigger;
+			}
+		} else if (step.type === "wait-for-checks") {
+			const checks = data.checks ?? "required";
+			if (checks !== "required" && checks !== "all") {
+				throw new WorkflowParseError(`${where}: checks must be 'required' or 'all'`);
+			}
+			step.checks = checks;
+			const onFail = data["on-fail"] ?? "fail";
+			if (onFail !== "fail" && onFail !== "continue") {
+				throw new WorkflowParseError(`${where}: on-fail must be 'fail' or 'continue'`);
+			}
+			step.onChecksFail = onFail;
+		} else {
+			if (data.skill !== undefined && data.skill !== null) {
+				step.skill = this.parseSkillName(step.name, data.skill);
+				step.args = data.args === undefined || data.args === null ? null : String(data.args);
+			}
+			const method = data.method;
+			if (method !== undefined && method !== null) {
+				if (typeof method !== "string" || !["repo", "squash", "rebase", "merge"].includes(method)) {
+					throw new WorkflowParseError(
+						`${where}: method must be one of repo, squash, rebase, merge`,
+					);
+				}
+				step.method = method;
+			}
+			const del = data["delete-branch"];
+			if (del !== undefined && del !== null) {
+				if (typeof del !== "boolean") {
+					throw new WorkflowParseError(`${where}: delete-branch must be a boolean`);
+				}
+				step.deleteBranch = del;
+			}
+			const head = data.head;
+			if (head !== undefined && head !== null) {
+				if ((typeof head !== "string" && typeof head !== "number") || !String(head).trim()) {
+					throw new WorkflowParseError(`${where}: head must be a commit SHA or a template`);
+				}
+				step.head = String(head);
+			}
 		}
 	}
 

@@ -30,6 +30,10 @@ export interface DispatchPayload {
 	priority?: number;
 	/** `--ignore-requires`: run despite an unmet agentic-forge version (never the contract). */
 	ignore_requires?: boolean;
+	/** Parent run id (`run.json` `parent`), for example the overseer run that dispatched it. */
+	parent?: string | null;
+	/** Backlog item of the parent overseer run this run implements (refused unless it may start now). */
+	item?: string | null;
 }
 
 /** Variables always forwarded (needed to spawn processes and find tools). */
@@ -130,6 +134,10 @@ export interface BuildDispatchOptions {
 	env?: NodeJS.ProcessEnv;
 	/** Run despite an unmet `requires` version; omitted from the payload when false. */
 	ignoreRequires?: boolean;
+	/** Parent run id; omitted from the payload when unset. */
+	parent?: string | null;
+	/** Backlog item of the parent overseer run; omitted from the payload when unset. */
+	item?: string | null;
 }
 
 /**
@@ -154,6 +162,8 @@ export function buildDispatchPayload(options: BuildDispatchOptions): DispatchPay
 	};
 	if (options.priority !== undefined) payload.priority = options.priority;
 	if (options.ignoreRequires) payload.ignore_requires = true;
+	if (options.parent) payload.parent = options.parent;
+	if (options.item) payload.item = options.item;
 	return payload;
 }
 
@@ -173,5 +183,11 @@ export function validateDispatch(body: unknown): string | null {
 	if (typeof p.config !== "object" || p.config === null) return "config is required";
 	if (typeof p.env !== "object" || p.env === null) return "env is required";
 	if (typeof p.variables !== "object" || p.variables === null) return "variables is required";
+	if (p.parent != null && (typeof p.parent !== "string" || p.parent.length === 0)) {
+		return "parent must be a run id";
+	}
+	if (p.item != null && (typeof p.item !== "string" || p.item.length === 0)) {
+		return "item must be a backlog item id";
+	}
 	return null;
 }

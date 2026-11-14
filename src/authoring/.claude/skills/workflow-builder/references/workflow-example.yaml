@@ -11,7 +11,8 @@ version: "1.0"
 # Optional: Human-readable description
 description: |
   Comprehensive example workflow demonstrating all available features:
-  - All step types (prompt, skill, serial, parallel, conditional, ralph-loop, human-input)
+  - All step types (prompt, skill, serial, parallel, conditional, ralph-loop, human-input,
+    wait-for-review, wait-for-checks, merge)
   - Worktree isolation (workflow-level and step-level)
   - Error handling and retries
   - Checkpoints and progress tracking
@@ -58,7 +59,7 @@ settings:
 
   # Default coding agent runtime for all steps: claude, codex (default: claude)
   # Runtime resolution order: step.runtime > --runtime CLI flag > settings.runtime > config.defaults.runtime > "claude"
-  # Note: skill steps and slash-command prompts only work with runtime: claude
+  # Note: slash-command prompts only work with runtime: claude (skill steps are inlined on codex)
   runtime: claude
 
   # Tools Claude can use without prompting (default: [])
@@ -77,7 +78,8 @@ settings:
     # Where to create the worktree: sibling (default), nested, absolute
     location: "sibling"
 
-    # Cleanup policy: on-success (default), on-complete, manual
+    # Cleanup policy: on-success (default), on-complete, on-merge (after a merge
+    # step reported merged: remove the worktree, then its branch), manual
     cleanup: "on-success"
 
   # Amend step (optional): the top-level step `af amend` runs at the next step
@@ -173,8 +175,9 @@ steps:
     # such as "gpt-5.3-codex". Omitted here on purpose.
 
   # ==================== SKILL STEP ====================
-  # Invoke a skill by namespace (claude runtime only; Codex fails with "not supported yet").
-  # The prompt is: /<skill> <args> --run-dir <run dir> --config-snapshot <file>
+  # Invoke a skill by namespace. On claude the prompt is:
+  #   /<skill> <args> --run-dir <run dir> --config-snapshot <file>
+  # On codex the skill's SKILL.md is sent inline (absolute paths, $ARGUMENTS filled).
   # The snapshot file holds af config skill_config.<plugin> ({} when unset).
   # The result block's `outputs` become {{ outputs.generate-plan.<key> }} for later steps.
   - name: generate-plan
@@ -368,6 +371,44 @@ steps:
         prompt: |
           Push the branch and open a pull request titled
           "[{{ variables.plan_type }}] {{ outputs.generate_plan.summary }}" with `gh pr create`.
+
+      # ==================== GITHUB STEPS ====================
+      # The supervisor polls GitHub with gh: no coding agent runs while these
+      # wait. The pull request is `pr:` (template), else the run's pr (from a
+      # result block), else the pull request of the current branch.
+      # Not allowed under a parallel step.
+      - name: wait-review
+        type: wait-for-review
+        # Names from github.reviewers (claude, codex) or GitHub logins
+        reviewers: [claude, codex]
+        # Optional: post "@codex review" once per head when Codex has not reviewed it
+        trigger: true
+        # Optional: first polling interval (doubles up to github.max_poll_seconds)
+        poll-seconds: 30
+        # Optional: then the run stops awaiting-human (af answer: wait | continue)
+        timeout-minutes: 30
+
+      - name: wait-checks
+        type: wait-for-checks
+        # Optional: required (default; the base branch rules decide, all checks
+        # when they require none) | all
+        checks: required
+        # Optional: fail (default) | continue (result in outputs['wait-checks'].result)
+        on-fail: fail
+
+      # Merge under the per-repository merge lock. Without `skill`, gh pr merge
+      # --repo with the method resolved from the repository settings; with
+      # `skill: esp-skills:esp-merge`, the skill runs with AF_MERGE_LOCK set.
+      - name: merge-pr
+        type: merge
+        # Optional: repo (default, resolve) | squash | rebase | merge
+        method: repo
+        # Optional: delete the remote head branch (default github.merge.delete_branch)
+        delete-branch: true
+        # Optional: head SHA the pull request must have to merge (template; default
+        # the head output of the latest wait step). A different head stops the run
+        # awaiting-human (af answer: merge | stop).
+        head: "{{ outputs['wait-checks'].head }}"
 
   # ==================== FINAL SUMMARY ====================
   - name: generate-summary

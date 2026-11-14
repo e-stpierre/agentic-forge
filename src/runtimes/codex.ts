@@ -13,6 +13,13 @@ import type {
 import { SessionOutput } from "./types.js";
 import { getAgenticSystemPrompt, getExecutable } from "./utils.js";
 
+/**
+ * Longest prompt passed as a command-line argument; a longer one goes on
+ * stdin (`codex exec -`). Leaves room for the other arguments under the
+ * 32,767 character command line of Windows.
+ */
+export const CODEX_ARG_PROMPT_MAX_CHARS = 8_000;
+
 /** Parse a single JSONL line from Codex output. */
 function parseCodexJsonLine(line: string): Record<string, unknown> | null {
 	const trimmed = line.trim();
@@ -118,14 +125,18 @@ export class CodexAdapter implements RuntimeAdapter {
 			args.push("resume", ...sessionArgs, resume);
 		}
 
-		// Codex exec takes the prompt as a positional argument, not via stdin
-		args.push(prompt);
+		// The prompt is a positional argument; a large one (an inlined skill with
+		// its references) goes on stdin with `-`, which `codex exec` and
+		// `codex exec resume` read as the prompt, so the command line stays
+		// under the OS limits (32,767 characters on Windows)
+		const onStdin = prompt.length > CODEX_ARG_PROMPT_MAX_CHARS;
+		args.push(onStdin ? "-" : prompt);
 
 		return {
 			executable: getExecutable(this.executableName),
 			args,
 			env: Object.keys(env).length > 0 ? env : undefined,
-			stdinInput: "",
+			stdinInput: onStdin ? prompt : "",
 		};
 	}
 

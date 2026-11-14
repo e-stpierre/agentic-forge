@@ -26,6 +26,13 @@ import {
 import { latestPlan } from "../contract/plan.js";
 import { WorkflowExecutor, shouldRemoveWorktree } from "../executor.js";
 import { type Worktree, pruneOrphaned, removeWorktree, safetyCommit } from "../git/worktree.js";
+import type { NotificationTransport } from "../notifications/channels.js";
+import {
+	Notifier,
+	NotifyError,
+	type NotifyInput,
+	type NotifyResult,
+} from "../notifications/notifier.js";
 import { WorkflowParseError, WorkflowParser } from "../parser.js";
 import { getGlobalRoot, resolveRunsRoot, runDatePrefix, sanitizeSlug } from "../paths.js";
 import {
@@ -53,6 +60,8 @@ import type {
 	WorkflowProgress,
 } from "../types.js";
 import { resolveWorktreeEnabled } from "../worktree-settings.js";
+import { BacklogService } from "./backlog-service.js";
+import { BacklogError, type PolicyVerdict } from "./backlog.js";
 import { type DispatchPayload, validateDispatch } from "./dispatch.js";
 import {
 	CursorError,
@@ -62,6 +71,15 @@ import {
 	readEventPage,
 } from "./events.js";
 import { Inbox, type InboxMessage, type NewMessage, formatOperatorMessages } from "./inbox.js";
+import {
+	OverseerError,
+	type OverseerFinishInput,
+	type OverseerOpenResult,
+	type OverseerPayload,
+	isOverseerEntry,
+	openOverseer,
+	writeOverseerSummary,
+} from "./overseer.js";
 import {
 	type RegistryEntry,
 	type RunListFilter,
@@ -148,6 +166,12 @@ export interface PendingInput {
 	live?: boolean;
 	/** Runtime session id of the live session that asked. */
 	session_id?: string | null;
+	/** Permission request of a live session (never answered by the overseer policy). */
+	permission?: boolean;
+	/** Risk the asking step reported (`max_risk` of its result block), or null. */
+	risk?: string | null;
+	/** Answer policy verdict, for a run dispatched by an overseer. */
+	overseer_policy?: PolicyVerdict | null;
 }
 
 /** Amendment waiting for the amend step (af extension `x-af-amendments`). */
@@ -271,6 +295,8 @@ export interface RunManagerOptions {
 	log?: (message: string) => void;
 	/** agentic-forge version checked against a workflow's `requires` (defaults to the package version). */
 	version?: string;
+	/** Notifier settings: the transport (test seam) and the poll interval. */
+	notifications?: { transport?: NotificationTransport; pollMs?: number };
 }
 
 export interface DispatchResult {
@@ -370,20 +396,36 @@ export class RunManager {
 	private supervisorVersion: string | null = null;
 	/** agentic-forge version checked against `requires`. */
 	private readonly version: string;
+	/** Sends notifications for the events of every run (and `af notify`). */
+	readonly notifier: Notifier;
+	/** Overseer backlogs, discovered items and the answer policy. */
+	readonly backlog: BacklogService;
 
 	constructor(options: RunManagerOptions = {}) {
 		this.root = options.root ?? getGlobalRoot();
 		this.registry = new RunRegistry(this.root);
 		this.log = options.log ?? (() => {});
 		this.version = options.version ?? getVersion();
+		this.backlog = new BacklogService({ registry: this.registry, log: this.log });
+		this.notifier = new Notifier({
+			root: this.root,
+			registry: this.registry,
+			globalConfig: () => this.globalConfig(),
+			log: this.log,
+			transport: options.notifications?.transport,
+			pollMs: options.notifications?.pollMs,
+		});
 	}
 
-	/** Runs that are executing or waiting in the queue. */
+	/** Runs that are executing or waiting in the queue (an open overseer run executes nothing). */
 	activeCount(): number {
 		return this.registry
 			.list()
-			.filter((r) => r.status === "running" || r.status === "queued" || this.executing.has(r.id))
-			.length;
+			.filter(
+				(r) =>
+					!isOverseerEntry(r) &&
+					(r.status === "running" || r.status === "queued" || this.executing.has(r.id)),
+			).length;
 	}
 
 	/** Registers the `/v1/runs` routes, the active-run count and the shutdown hook on a supervisor. */
@@ -476,13 +518,127 @@ export class RunManager {
 		supervisor.route("POST", "/v1/runs/:id/priority", ({ params, body }) =>
 			wrap(() => this.reprioritize(params.id, (body as { priority?: unknown })?.priority))(),
 		);
+		supervisor.route("POST", "/v1/notifications", ({ body }) =>
+			wrap(() => this.notify((body ?? {}) as NotifyInput))(),
+		);
+		supervisor.route("POST", "/v1/overseer", ({ body }) =>
+			wrap(() => this.openOverseer((body ?? {}) as OverseerPayload), 201)(),
+		);
+		supervisor.route("POST", "/v1/overseer/:id/finish", ({ params, body }) =>
+			wrap(() => this.finishOverseer(params.id, (body ?? {}) as OverseerFinishInput))(),
+		);
+		supervisor.route("GET", "/v1/overseer/:id/backlog", ({ params, query }) =>
+			wrap(() =>
+				this.backlogCall(() =>
+					this.backlog.list(
+						params.id,
+						(query.get("status") ?? "")
+							.split(",")
+							.map((v) => v.trim())
+							.filter(Boolean),
+					),
+				),
+			)(),
+		);
+		supervisor.route("POST", "/v1/overseer/:id/backlog", ({ params, body }) =>
+			wrap(
+				() =>
+					this.backlogCall(() =>
+						this.backlog.add(params.id, (body as { items?: unknown } | null)?.items),
+					),
+				201,
+			)(),
+		);
+		supervisor.route("POST", "/v1/overseer/:id/backlog/:item", ({ params, body }) =>
+			wrap(() =>
+				this.backlogCall(() =>
+					this.backlog.update(
+						params.id,
+						params.item,
+						(body as { fields?: unknown } | null)?.fields,
+					),
+				),
+			)(),
+		);
+	}
+
+	/**
+	 * `af overseer`: creates an overseer run, reuses the open one of the
+	 * repository, or reopens one (`resume`). The supervisor records it and
+	 * never executes it.
+	 */
+	async openOverseer(payload: OverseerPayload): Promise<OverseerOpenResult> {
+		if (this.closed) throw new RunError("Supervisor is shutting down", 503);
+		try {
+			return await openOverseer(
+				{
+					registry: this.registry,
+					log: this.log,
+					allocateRunDir: (root, slug) => this.allocateRunDir(root, slug),
+				},
+				payload,
+			);
+		} catch (err) {
+			if (err instanceof OverseerError) throw new RunError(err.message, err.status);
+			throw err;
+		}
+	}
+
+	/**
+	 * Answer policy verdict of the overseer that dispatched a run, with its
+	 * current config, or null when the run has no overseer parent.
+	 */
+	private overseerVerdict(entry: RegistryEntry, pending: PendingInput): PolicyVerdict | null {
+		return this.backlog.policyFor(entry.dir, pending.request, {
+			risk: pending.risk ?? null,
+			permission: pending.permission === true,
+		});
+	}
+
+	/** Runs a backlog operation; its errors become `RunError`s with their status. */
+	private async backlogCall<T>(fn: () => Promise<T>): Promise<T> {
+		try {
+			return await fn();
+		} catch (err) {
+			if (err instanceof BacklogError) throw new RunError(err.message, err.status);
+			throw err;
+		}
+	}
+
+	/** `af overseer --finish`: writes summary.md and ends the overseer run (`run.completed` for done). */
+	async finishOverseer(
+		id: string,
+		input: OverseerFinishInput,
+	): Promise<{ id: string; status: RunStatus; summary: string }> {
+		const entry = this.requireEntry(id);
+		let result: { status: RunStatus; summary: string };
+		try {
+			result = writeOverseerSummary(entry, input);
+		} catch (err) {
+			if (err instanceof OverseerError) throw new RunError(err.message, err.status);
+			throw err;
+		}
+		await this.setStatus(entry, result.status, { type: "overseer", summary: "summary.md" });
+		this.log(`Overseer run finished: ${id} (${result.status})`);
+		return { id, status: result.status, summary: result.summary };
 	}
 
 	/** Recovers interrupted runs, then starts the queue. Call once at startup. */
 	async start(): Promise<void> {
 		await this.recover();
 		this.armInputTimers();
+		this.notifier.start();
 		this.schedule();
+	}
+
+	/** `af notify` / `af_notify`: sends a message to the enabled channels (of the run's config, or the global one). */
+	async notify(input: NotifyInput): Promise<NotifyResult> {
+		try {
+			return await this.notifier.notify(input);
+		} catch (err) {
+			if (err instanceof NotifyError) throw new RunError(err.message, err.status);
+			throw err;
+		}
 	}
 
 	/** Stops scheduling new runs. Executing runs are not interrupted. */
@@ -490,6 +646,7 @@ export class RunManager {
 		this.closed = true;
 		this.closing.abort();
 		for (const id of [...this.timers.keys()]) this.clearTimer(id);
+		void this.notifier.stop();
 	}
 
 	/**
@@ -636,6 +793,18 @@ export class RunManager {
 		return entry;
 	}
 
+	/** requireEntry() for the control operations an overseer run does not take (it is never executed). */
+	private requireWorkflowRun(id: string, action: string): RegistryEntry {
+		const entry = this.requireEntry(id);
+		if (isOverseerEntry(entry)) {
+			throw new RunError(
+				`Cannot ${action} an overseer run: talk to the overseer in its session (af overseer --resume ${id}), or end it with af overseer --finish ${id}`,
+				409,
+			);
+		}
+		return entry;
+	}
+
 	private parseWorkflow(payload: DispatchPayload): WorkflowDefinition {
 		try {
 			return new WorkflowParser(path.dirname(payload.workflow.path)).parseString(
@@ -654,6 +823,25 @@ export class RunManager {
 		const invalid = validateDispatch(payload);
 		if (invalid) throw new RunError(`Invalid dispatch: ${invalid}`);
 		if (this.closed) throw new RunError("Supervisor is shutting down", 503);
+		const parent = payload.parent ?? null;
+		if (parent && !this.registry.get(parent)) {
+			throw new RunError(`Parent run not found: ${parent}`);
+		}
+		const item = payload.item ?? null;
+		if (item) {
+			if (!parent) {
+				throw new RunError("item needs parent: the overseer run whose backlog holds the item");
+			}
+			// Under the backlog lock: refused unless the scheduler allows the item now
+			return this.backlogCall(() =>
+				this.backlog.dispatchItem(parent, item, () => this.queueRun(payload, parent)),
+			);
+		}
+		return this.queueRun(payload, parent);
+	}
+
+	/** Creates the queued run of a validated dispatch payload. */
+	private async queueRun(payload: DispatchPayload, parent: string | null): Promise<DispatchResult> {
 		const workflow = this.parseWorkflow(payload);
 		// Refused before the run exists, so no step ever runs.
 		const requires = checkRequires(workflow.name, workflow.requires, {
@@ -693,7 +881,7 @@ export class RunManager {
 			type: "workflow",
 			title: workflow.name,
 			workflow: workflow.name,
-			parent: null,
+			parent,
 			repo: payload.repo_root,
 			base: null,
 			branch: null,
@@ -722,6 +910,8 @@ export class RunManager {
 			workflow: workflow.name,
 			repo: payload.repo_root,
 			workflow_path: payload.workflow.path,
+			...(parent ? { parent } : {}),
+			...(payload.item ? { item: payload.item } : {}),
 		});
 		this.log(`Run queued: ${store.id} (${workflow.name}, ${payload.repo_root})`);
 		this.schedule();
@@ -774,7 +964,7 @@ export class RunManager {
 		id: string,
 		options: { now?: boolean } = {},
 	): Promise<{ id: string; status: RunStatus | "pausing" }> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "pause");
 		if (!PAUSABLE_STATUSES.includes(entry.status)) {
 			throw new RunError(`Cannot pause run in '${entry.status}' status`, 409);
 		}
@@ -799,7 +989,7 @@ export class RunManager {
 		id: string,
 		input: NewMessage,
 	): Promise<{ id: string; message: InboxMessage; steered: boolean }> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "send a message to");
 		const text = typeof input.text === "string" ? input.text.trim() : "";
 		if (!text) throw new RunError("Message text is required");
 		const mode = input.mode ?? "next";
@@ -1031,7 +1221,7 @@ export class RunManager {
 	 * runs again with the answer in its `## Operator Messages` section.
 	 */
 	async answer(id: string, input: AnswerInput): Promise<AnswerResult> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "answer");
 		if (entry.status !== "awaiting-human") {
 			throw new RunError(`Cannot answer a run in '${entry.status}' status`, 409);
 		}
@@ -1062,6 +1252,20 @@ export class RunManager {
 			request.options.find((o) => o.id === raw) ??
 			request.options.find((o) => o.label.toLowerCase() === raw.toLowerCase()) ??
 			null;
+		// The overseer answers a child run's question itself only within its answer policy
+		const verdict = from === "overseer" && !policy ? this.overseerVerdict(entry, pending) : null;
+		if (verdict && !verdict.within) {
+			throw new RunError(
+				`Outside the overseer answer_policy (${verdict.reason}): ask the user, then answer with from: user`,
+				409,
+			);
+		}
+		if (verdict?.answer && option?.id !== verdict.answer) {
+			throw new RunError(
+				`The overseer answer_policy only allows the recommended option ${verdict.answer}: ask the user for any other answer, then answer with from: user`,
+				409,
+			);
+		}
 		const answer = option ? `${option.id} (${option.label})` : raw;
 		const resolve = pending.live ? this.liveRequests.get(id)?.get(request.id) : undefined;
 		if (resolve) {
@@ -1102,12 +1306,14 @@ export class RunManager {
 			id: `d-${request.id}`,
 			at: message.at,
 			phase: pending.step,
-			source: policy ? "policy" : "operator",
+			source: policy || verdict ? "policy" : "operator",
 			risk: "low",
 			decision: `Answered ${request.id} (${request.question}): ${answer}`,
 			rationale: policy
 				? "No answer within the needs_input timeout; applied the recommended option of a non-blocking request"
-				: `Answer from ${from}`,
+				: verdict
+					? `Answered by the overseer within its answer_policy: ${verdict.reason}`
+					: `Answer from ${from}`,
 			alternatives: request.options.filter((o) => o.id !== option?.id).map((o) => o.label),
 			refs: [request.id, message.id],
 		});
@@ -1313,10 +1519,14 @@ export class RunManager {
 			context: request.context,
 			blocking: true,
 		};
+		const permission = request.kind === "permission";
 		const pending: PendingInput = {
 			...newPendingInput(step, needs, config),
 			live: true,
 			session_id: sessionId,
+			permission,
+			risk: null,
+			overseer_policy: this.backlog.policyFor(entry.dir, needs, { risk: null, permission }),
 		};
 		const requests =
 			this.liveRequests.get(entry.id) ?? new Map<string, (d: SessionDecision) => void>();
@@ -1335,6 +1545,7 @@ export class RunManager {
 			deadline: pending.deadline,
 			live: true,
 			tool: request.tool,
+			...(pending.overseer_policy ? { overseer_policy: pending.overseer_policy } : {}),
 		});
 		if (pending.deadline) this.armTimer(entry.id, pending);
 		this.log(`Run ${entry.id}: ${step} waits for ${request.id} (${request.tool})`);
@@ -1350,7 +1561,7 @@ export class RunManager {
 	 * delivered as an `Amendment:` operator message at the next boundary.
 	 */
 	async amend(id: string, input: AmendInput): Promise<AmendResult> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "amend");
 		const text = typeof input.text === "string" ? input.text.trim() : "";
 		if (!text) throw new RunError("Amendment text is required");
 		const from = input.from ?? "user";
@@ -1468,7 +1679,7 @@ export class RunManager {
 	 * completed. Optional extra context is queued as an operator message for it.
 	 */
 	async retryStep(id: string, input: RetryInput): Promise<RetryResult> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "retry a step of");
 		if (!RESUMABLE_STATUSES.includes(entry.status)) {
 			throw new RunError(`Cannot retry a step of a run in '${entry.status}' status`, 409);
 		}
@@ -1506,7 +1717,7 @@ export class RunManager {
 		if (typeof priority !== "number" || !Number.isInteger(priority)) {
 			throw new RunError("priority must be an integer");
 		}
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "reprioritize");
 		if (isTerminal(entry.status)) {
 			throw new RunError(`Cannot reprioritize a run in '${entry.status}' status`, 409);
 		}
@@ -1548,8 +1759,17 @@ export class RunManager {
 		const patch: Partial<RunJson> = {};
 		const risk = effective.max_risk;
 		if (risk && RISK_RANK[risk] > RISK_RANK[run.max_risk ?? "none"]) patch.max_risk = risk;
+		const opened = Boolean(effective.pr) && effective.pr !== run.pr;
 		if (effective.pr) patch.pr = effective.pr;
 		if (Object.keys(patch).length > 0) await store.updateRun(patch);
+		// The first step that reports a pull request (or a new one) opened it for the run
+		if (opened) await store.appendEvent("pr.opened", { step, pr: effective.pr });
+		try {
+			// Discovered items join the backlog of the overseer that dispatched the run
+			await this.backlog.acceptDiscovered(entry.dir, entry.id, step, effective.discovered_items);
+		} catch (err) {
+			this.log(`Run ${entry.id}: discovered items not added: ${(err as Error).message}`);
+		}
 		this.results.set(entry.id, { step, block: effective });
 		return effective;
 	}
@@ -1571,11 +1791,17 @@ export class RunManager {
 			last?.block.status === "awaiting-human" ? (last.block.needs_input ?? null) : null;
 		if (!last || !request) return null;
 		const pending = newPendingInput(last.step, request, config);
+		pending.risk = last.block.max_risk ?? null;
+		pending.overseer_policy = this.backlog.policyFor(entry.dir, request, {
+			risk: pending.risk,
+			permission: false,
+		});
 		await store.updateRun({ "x-af-needs-input": [pending] });
 		await store.appendEvent("needs_input", {
 			...request,
 			step: last.step,
 			deadline: pending.deadline,
+			...(pending.overseer_policy ? { overseer_policy: pending.overseer_policy } : {}),
 		});
 		return pending;
 	}
@@ -1626,7 +1852,7 @@ export class RunManager {
 
 	/** Re-queues a paused, waiting, blocked or failed run; it resumes from the last completed step. */
 	async resume(id: string): Promise<{ id: string; status: RunStatus }> {
-		const entry = this.requireEntry(id);
+		const entry = this.requireWorkflowRun(id, "resume");
 		if (this.executing.has(id) && entry.status === "awaiting-human") {
 			throw new RunError("Run is still executing: a live session waits for af answer", 409);
 		}
@@ -1675,8 +1901,13 @@ export class RunManager {
 					this.rescheduleRequested = false;
 					const runs = this.registry.list();
 					// A run waiting on a live session (awaiting-human) still holds its checkout
-					const running = runs.filter((r) => r.status === "running" || this.executing.has(r.id));
-					const queued = runs.filter((r) => r.status === "queued" && !this.executing.has(r.id));
+					// An open overseer run holds no checkout and is never executed
+					const running = runs.filter(
+						(r) => !isOverseerEntry(r) && (r.status === "running" || this.executing.has(r.id)),
+					);
+					const queued = runs.filter(
+						(r) => !isOverseerEntry(r) && r.status === "queued" && !this.executing.has(r.id),
+					);
 					const picked = pickRunnable(queued, running, {
 						maxParallelRuns: readNumber(
 							this.globalConfig(),
@@ -1787,6 +2018,14 @@ export class RunManager {
 				emitEvent: async (type, data) => {
 					await store.appendEvent(type, data);
 				},
+				runPr: () => store.readRun().pr ?? null,
+				recordDecision: async (decision) => {
+					await store.appendDecision({
+						...decision,
+						at: new Date().toISOString(),
+						source: "policy",
+					});
+				},
 				takeAmendment: async () => pendingAmendments(store.readRun()).length > 0,
 				onAmendStepFinished: (step, status) => this.finishAmendments(store, step, status),
 				hooks: {
@@ -1812,6 +2051,11 @@ export class RunManager {
 					},
 					onWorktreeCreated: async (wt) => {
 						await store.updateRun({ worktree: wt.path, branch: wt.branch, base: wt.baseBranch });
+						await store.appendEvent("branch.created", {
+							branch: wt.branch,
+							base: wt.baseBranch,
+							worktree: wt.path,
+						});
 					},
 				},
 			});
@@ -1904,6 +2148,8 @@ export class RunManager {
 		const recovered: string[] = [];
 		for (const entry of this.registry.list()) {
 			if (this.executing.has(entry.id)) continue;
+			// An overseer run stays open across supervisor restarts: its session is not ours
+			if (isOverseerEntry(entry)) continue;
 			const store = new RunStore(entry.dir);
 			if (!store.exists()) continue;
 			const run = store.readRun();

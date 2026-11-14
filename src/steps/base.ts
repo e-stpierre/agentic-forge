@@ -14,7 +14,7 @@ import { STEP_STATUS, WORKFLOW_STATUS, updateStepStopped } from "../progress.js"
 import type { TemplateRenderer } from "../renderer.js";
 import type { RuntimeAdapter, RuntimeId, RuntimeRunOptions } from "../runtimes/index.js";
 import type { SessionHost } from "../runtimes/session.js";
-import type { StepDefinition, WorkflowProgress, WorkflowSettings } from "../types.js";
+import type { StepDefinition, StepType, WorkflowProgress, WorkflowSettings } from "../types.js";
 
 // --- Step context ---
 
@@ -79,6 +79,23 @@ export interface StepContext {
 	 * of an attempt that `send --mode now` killed.
 	 */
 	lastSession?: ((step: string) => LastSession | null) | null;
+	/** The run's pull request (run.json `pr`), used by the GitHub steps when they name none. */
+	runPr?: (() => string | null) | null;
+	/** Logs a `policy` decision of a step to `decisions.jsonl` (the merge method). */
+	recordDecision?: ((decision: StepDecision) => Promise<void>) | null;
+	/** Type of a step of the running workflow by name, or null (the merge step finds the last wait step). */
+	stepType?: ((name: string) => StepType | null) | null;
+}
+
+/** A decision a step made by policy (the harness adds `at` and `source: policy`). */
+export interface StepDecision {
+	id: string;
+	phase: string;
+	risk: "low" | "medium" | "high";
+	decision: string;
+	rationale: string;
+	alternatives?: string[];
+	refs?: string[];
 }
 
 /** A runtime session a step recorded. */
@@ -101,7 +118,14 @@ export interface InputAnswer {
 }
 
 /** Events a step emits itself; the run and step events are emitted by the executor hooks. */
-export type StepEventType = "iteration.started" | "iteration.completed" | "step.retried";
+export type StepEventType =
+	| "iteration.started"
+	| "iteration.completed"
+	| "step.retried"
+	| "review.received"
+	| "checks.completed"
+	| "merge.locked"
+	| "merge.completed";
 
 export type StepEventEmitter = (
 	type: StepEventType,

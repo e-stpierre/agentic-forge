@@ -24,7 +24,7 @@ Interactive authoring skills for users to create and manage workflows (e.g., `wo
 
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, etc.). `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`).
+CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, `overseer`, etc.). `overseer.ts` holds `cmdOverseer()` (opens the overseer run, writes `<run dir>/overseer/mcp.json`, starts `claude` through the injectable `launch`), `buildOverseerCommand()`, `overseerPrompt()` and `getOverseerPluginDir()`. `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`).
 
 #### `prompts/`
 
@@ -43,12 +43,25 @@ Runtime adapter layer for coding agent integrations:
 - `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
 - `process-runner.ts` — `runRuntime()` shared process spawning (`options.signal` kills the process tree)
 - `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
+- `skill-inline.ts` — `resolveSkill()` (plugin and skill directory lookup) and `inlineSkillPrompt()` (`SKILL.md` with absolute paths and arguments) for runtimes without skill loading
 - `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
 - `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
 
 #### `steps/`
 
-Workflow step handlers (prompt, skill, human-input, parallel, serial, conditional, ralph-loop).
+Workflow step handlers (prompt, skill, human-input, parallel, serial, conditional, ralph-loop, wait-for-review, wait-for-checks, merge). `github-base.ts` holds the shared pieces of the GitHub steps (pull request reference, abortable polling with `Backoff`, the timeout `needs_input` request).
+
+#### `github/`
+
+`gh` access for the GitHub step types, called from the supervisor (no agent session):
+
+- `gh.ts` — `runGh()` / `gh()` / `ghJson()` (async `execFile`; `AF_GH_CMD` replaces the executable, `ghRunner.run` is the test seam), `parsePaginated()`, `repoFromPrUrl()`
+- `pr.ts` — `viewPr()`, `listReviews()`, `listIssueComments()`, `commentOnPr()`, `listChecks()`, `repoMergeSettings()`, `branchRules()`, `mergePr()` (`--repo`, never `--delete-branch`), `deleteRemoteBranch()`
+- `reviews.ts` — `reviewOfHead()` (review on the head, Codex summary marker, later comment), `resolveReviewers()`, `DEFAULT_REVIEWERS`
+- `merge-method.ts` — `mergePolicy()`, `resolveMergeMethod()` (same rules as esp-merge)
+- `merge-lock.ts` — `gitCommonDir()`, `mergeLockPath()`, `acquireMergeLock()` (esp-merge `AF_MERGE_LOCK` format, heartbeat, stale takeover)
+
+GitHub step tests (`tests/github-steps.test.ts`) use `tests/helpers/fake-gh.mjs`: in-process through `ghRunner.run`, or as a process through `AF_GH_CMD`.
 
 #### `contract/`
 
@@ -71,8 +84,11 @@ Runs owned by the supervisor:
 
 - `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines; live transcripts through the session host and `logs()` behind `GET /v1/runs/:id/logs`; session resume or restart in recovery, `run.recovered` `sessions`)
 - `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
-- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
+- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`, entries carry `type: overseer` for overseer runs), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
+- `overseer.ts` — overseer runs (`openOverseer()`: create, reuse or resume; `writeOverseerSummary()`; `isOverseerEntry()`; `overseer.json`, `epic.md`), behind `RunManager.openOverseer()` / `finishOverseer()` and `POST /v1/overseer`. The supervisor never executes them: scheduling, crash recovery and `activeCount()` skip them, and `requireWorkflowRun()` refuses the control operations
 - `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
+- `backlog.ts` — the overseer backlog model (`backlog.json` in the overseer run, harness is the single writer): `addItems()`, `updateItem()` (triage, transitions, dependency cycles, `budgets.max_tasks`), `scheduleBacklog()` (dependencies, conflict zones, `max_parallel`, `epicHalt()`), `acceptDiscovered()` (`accept_discovered_items`), `evaluateAnswerPolicy()`, `updateBacklog()` under the contract lock
+- `backlog-service.ts` — `BacklogService` (`RunManager.backlog`): `/v1/overseer/:id/backlog` operations, `dispatchItem()` (a dispatch with `item` under the backlog lock), item outcomes from their runs (`reconcileItems()`), discovered items of child runs, `policyFor()` (`overseer_policy` on `needs_input`, enforced in `answer()`); config in `getOverseerConfig()`
 - `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
 - `transcript.ts` — per-step live transcripts (`steps/<NN-step>/transcript.jsonl`, `TranscriptWriter`, `transcriptEntries()`, `readTranscriptPage()` with its own cursor and caps) and `session.json` (`readStepSession()`, read by crash recovery to resume a session); `stepDirName()`
@@ -82,21 +98,37 @@ Runs owned by the supervisor:
 
 Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthropic-ai/claude-agent-sdk`; never mock `runRuntime` there). Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
 
+#### `notifications/`
+
+Notifications sent by the supervisor (`RunManager.notifier`):
+
+- `config.ts` — `getNotificationsConfig()` (the `notifications` section over its defaults), `parseTrigger()`, `matchesTrigger()`, `channelsFor()`
+- `message.ts` — `buildNotification()` (default templates per event type, `notifications.templates` overrides, answer commands), `manualNotification()`, `renderTemplate()`
+- `channels.ts` — `deliver()` to desktop, ntfy, Slack, Discord and GitHub through a `NotificationTransport` (`defaultTransport`; tests pass a mock), `desktopCommand()`
+- `notifier.ts` — `Notifier` (tails the events of active runs, read positions in `<global dir>/notifications/positions.json`, `notification.sent`, `notify()` behind `POST /v1/notifications`)
+
+Tests (`tests/notifications.test.ts`) build `RunManager` with `notifications: { transport, pollMs: 0 }` and call `manager.notifier.poll()`.
+
 #### `mcp/`
 
 The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
 - `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_logs`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
-- `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) over the `/v1/runs/:id/*` control endpoints
+- `tools-backlog.ts` — backlog tools (`af_backlog_list`, `af_backlog_add`, `af_backlog_update`) over `/v1/overseer/:id/backlog`; tests in `tests/backlog.test.ts`
+- `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) and `af_notify` over the `/v1/runs/:id/*` control endpoints
 - `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)
 
 MCP tests (`tests/mcp-server.test.ts`) connect an SDK `Client` to `createMcpServer()` through `InMemoryTransport.createLinkedPair()`, with an in-process `Supervisor` and `RunManager` and `fakeRuntime`. `tests/mcp-stdio.test.ts` runs the built `dist/cli.js mcp` over real stdio (skipped without a build).
 
+#### `overseer/`
+
+The bundled `af-overseer` Claude Code plugin (`.claude-plugin/plugin.json`, version kept equal to `package.json`, and `skills/overseer/SKILL.md`), copied to `dist/overseer` and loaded by `af overseer` with `--plugin-dir`. Tests: `tests/overseer.test.ts`.
+
 #### `workflows/`
 
-Bundled generic demo workflows (7 workflows: `claude-demo`, `codex-demo`, `multi-demo`, `ralph-loop`, `plan-loop`, `permission-test-claude`, `permission-test-codex`). They use only generic steps (no skill calls); `tests/bundled-workflows.test.ts` checks it.
+Bundled generic workflows (8 workflows: `claude-demo`, `codex-demo`, `multi-demo`, `ralph-loop`, `plan-loop`, `permission-test-claude`, `permission-test-codex`, and `instruction`, the overseer's one-step track). They use only generic steps (no skill calls); `tests/bundled-workflows.test.ts` checks it.
 
 ### `schemas/`
 
@@ -217,7 +249,7 @@ The workflow engine delegates all coding agent interactions to runtime adapters 
 
 Runtime resolution order: `step.runtime` > `--runtime` CLI flag > `workflow settings.runtime` > `config.defaults.runtime` > `"claude"`.
 
-**Skill steps only work with the `claude` runtime.** agentic-forge bundles no execution skills: a `skill` step calls a skill the user installed (a Claude Code plugin or a `.claude/skills/` directory). On any other runtime it fails with a "not supported yet" message. The prompt step `agent:` file resolves relative to the workflow file, then the repo root.
+**Skill steps load natively only on the `claude` runtime.** agentic-forge bundles no execution skills: a `skill` step calls a skill the user installed (a Claude Code plugin or a `.claude/skills/` directory). On any other runtime (Codex) the step finds the skill on disk and sends its `SKILL.md` inline (`src/runtimes/skill-inline.ts`: `resolveSkill()`, `inlineSkillPrompt()`; `NATIVE_SKILL_RUNTIMES` in `src/steps/skill-step.ts`). The prompt step `agent:` file resolves relative to the workflow file, then the repo root.
 
 To add a new runtime: create an adapter in `src/runtimes/`, register it in `src/runtimes/index.ts`, and add the `RuntimeId` to the union type in `src/runtimes/types.ts`.
 

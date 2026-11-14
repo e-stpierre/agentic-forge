@@ -1,10 +1,10 @@
 # Workflows
 
-Agentic Forge ships 7 generic demo workflows. They use only generic steps (no skill calls), and you can run any of them immediately without initialization. The SDLC and analysis workflows of earlier versions were removed: bring your own skills and workflows instead (see [Bring Your Own Skills](#bring-your-own-skills)). Use `af workflows --verbose` to see all available workflows and their variables.
+Agentic Forge ships 8 generic workflows (7 demos and `instruction`). They use only generic steps (no skill calls), and you can run any of them immediately without initialization. The SDLC and analysis workflows of earlier versions were removed: bring your own skills and workflows instead (see [Bring Your Own Skills](#bring-your-own-skills)). Use `af workflows --verbose` to see all available workflows and their variables.
 
 Workflows support a `runtime` field on individual steps and in `settings`. See [Coding Agents](coding-agents.md) for the runtime resolution order and per-runtime capabilities.
 
-> **Note**: `skill` steps only work with the `claude` runtime. Steps that invoke skills must use `runtime: claude` (explicitly or by default).
+> **Note**: `skill` steps run natively on the `claude` runtime. On Codex, the step sends the skill's `SKILL.md` inline instead (see [Skills on Codex](coding-agents.md#skills-on-codex)).
 
 ## Tool Permissions Disclaimer
 
@@ -111,6 +111,29 @@ af run plan-loop --var "input=Follow the alignment notes in C:\\path\\to\\alignm
 
 # Explicit task list
 af run plan-loop --var "input=1. Add rate limiting\n2. Wire metrics\n3. Document the new headers"
+```
+
+## instruction
+
+Carries out a short instruction in one prompt step. The overseer uses it for backlog items on the `instruction` track (a rename, a config value, a typo fix).
+
+**Use cases**: Trivial one-step changes dispatched by the overseer or by hand.
+
+**Runtime**: Claude (default)
+
+**Flow**: Instruction
+
+### Variables
+
+| Variable       | Required | Default | Description                                                                     |
+| -------------- | -------- | ------- | ------------------------------------------------------------------------------- |
+| `instruction`  | Yes      | none    | What to do, in a few sentences, with the files it concerns                      |
+| `use_worktree` | No       | `false` | Run in an isolated worktree (needed to run beside another run of the same repo) |
+
+### Examples
+
+```bash
+af run instruction --var instruction="Rename the MAX_ITEMS constant in src/pager.ts to PAGE_SIZE"
 ```
 
 ## claude-demo
@@ -235,7 +258,7 @@ af run permission-test-codex use_worktree=true
 
 agentic-forge bundles no execution skills. Workflows call the skills you installed, through two step types:
 
-- **`skill`**: `skill: <plugin>:<skill>` (or a plain skill name) with optional `args`. The step sends `/<plugin>:<skill> <args> --run-dir <run dir> --config-snapshot <file>` to Claude, and the `outputs` of the skill's result block are available to later steps as `{{ outputs.<step>.<key> }}`.
+- **`skill`**: `skill: <plugin>:<skill>` (or a plain skill name) with optional `args`. The step sends `/<plugin>:<skill> <args> --run-dir <run dir> --config-snapshot <file>` to Claude, and the `outputs` of the skill's result block are available to later steps as `{{ outputs.<step>.<key> }}`. On Codex, the step sends the skill's `SKILL.md` inline instead (see [Skills on Codex](coding-agents.md#skills-on-codex)).
 - **`prompt`**: any prompt, including a slash command such as `/my-skill do this`. Use `agent:` to prepend an instructions file, resolved relative to the workflow file, then the repo root.
 
 A skill is found the way Claude Code finds it: an installed plugin, `~/.claude/skills/`, or the repo's `.claude/skills/`. Skills that follow the [harness contract](harness-contract.md) (result block, `--run-dir`, `## Operator Messages`) get the full feature set: outputs chaining, `needs_input` questions and steering.
@@ -291,6 +314,31 @@ requires: { agentic-forge: ">=0.12", contract: 1 }
 ```
 
 `agentic-forge` is a version range (`>=0.12`, `^0.12.0`, `>=0.12 <1`) and `contract` the [harness contract](harness-contract.md) version. af refuses a workflow it cannot satisfy before any step runs, naming the required and installed versions. `af run --ignore-requires` (or `ignore_requires` on `af_dispatch`) overrides only the version check, with a warning. `af doctor` checks every discovered pack.
+
+## GitHub Steps
+
+Three step types wait on GitHub and merge without an agent session: the supervisor polls `gh`, so waiting on bots and checks costs no tokens.
+
+- **`wait-for-review`**: waits until every listed reviewer (`claude`, `codex`, or any login) has reviewed the pull request's current head, and can post the reviewer's trigger comment (`@codex review`). A push restarts the wait for the new head. On timeout the run stops `awaiting-human`: `af answer <run> <id> wait` or `continue`.
+- **`wait-for-checks`**: waits for the checks the base branch rules require (every check when they require none, until a required check shows up) and reports pass or fail. A failing check fails the step unless `on-fail: continue`.
+- **`merge`**: merges under a per-repository lock, so runs of one repository (from any worktree) never merge at once. Natively it checks that the pull request head is still the head the latest `wait-for-review` or `wait-for-checks` step verified (or the step's `head:`, a template), resolves the method from the repository settings and runs `gh pr merge --repo --match-head-commit <head>` from outside the checkout; with `skill: esp-skills:esp-merge` it runs the skill with `AF_MERGE_LOCK` set. A head that moved stops the run `awaiting-human`: `af answer <run> <id> merge` (merge the new head anyway) or `stop`, or `af retry-step <run> <wait step>` to verify the new head. Branch protection is never bypassed: a refused merge stops the run `awaiting-human`.
+
+```yaml
+name: ship
+settings:
+  worktree: { enabled: true, cleanup: on-merge }
+steps:
+  - {
+      name: wait-review,
+      type: wait-for-review,
+      reviewers: [claude, codex],
+      trigger: true
+    }
+  - { name: wait-checks, type: wait-for-checks }
+  - { name: merge, type: merge }
+```
+
+`cleanup: on-merge` removes the worktree, then its branch, once the merge succeeded; when changes left in the worktree had to be auto-saved, the branch is kept with them. The steps find the pull request through `pr:` (a template), the run's pull request from an earlier step's result block, or the current branch. Reviewers, intervals, timeouts and the merge preference are in the [`github` configuration](configuration.md#github).
 
 ## Custom Workflows
 

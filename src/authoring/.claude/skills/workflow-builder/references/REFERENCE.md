@@ -56,18 +56,18 @@ All settings are optional with sensible defaults.
 
 **Per-runtime default models:** Each runtime resolves its own default model from config (`claude.model` or `codex.model`). Steps that use a non-default runtime do not need an explicit model: `settings.model` is deliberately **not** inherited across runtimes, so a codex step in a claude workflow falls back to `codex.model` or to no `--model` flag at all.
 
-**Note:** `skill` steps and slash-command prompts only work with `runtime: claude`. agentic-forge bundles no execution skills: they come from the user's installed plugins and `.claude/skills/` directories.
+**Note:** slash-command prompts only work with `runtime: claude`. `skill` steps run natively on Claude and inlined on Codex. agentic-forge bundles no execution skills: they come from the user's installed plugins and `.claude/skills/` directories.
 
 ### Worktree Settings
 
 Nested under `settings.worktree`. Controls workflow-level git worktree isolation. When enabled, the entire workflow runs in a dedicated worktree and all steps see that worktree as their working directory.
 
-| Key         | Type        | Default        | Valid Values                         | Description                                               |
-| ----------- | ----------- | -------------- | ------------------------------------ | --------------------------------------------------------- |
-| `enabled`   | bool/string | `false`        | true/false, Nunjucks template string | Enable worktree isolation for this workflow               |
-| `location`  | string      | `"sibling"`    | sibling, nested, absolute            | Where to create the worktree relative to the repository   |
-| `directory` | string/null | `null`         | any absolute path                    | Base directory for `absolute` location (required if used) |
-| `cleanup`   | string      | `"on-success"` | on-success, on-complete, manual      | When to remove the worktree after the workflow finishes   |
+| Key         | Type        | Default        | Valid Values                              | Description                                               |
+| ----------- | ----------- | -------------- | ----------------------------------------- | --------------------------------------------------------- |
+| `enabled`   | bool/string | `false`        | true/false, Nunjucks template string      | Enable worktree isolation for this workflow               |
+| `location`  | string      | `"sibling"`    | sibling, nested, absolute                 | Where to create the worktree relative to the repository   |
+| `directory` | string/null | `null`         | any absolute path                         | Base directory for `absolute` location (required if used) |
+| `cleanup`   | string      | `"on-success"` | on-success, on-complete, on-merge, manual | When to remove the worktree after the workflow finishes   |
 
 **Location modes:**
 
@@ -79,11 +79,12 @@ Nested under `settings.worktree`. Controls workflow-level git worktree isolation
 
 **Cleanup policies:**
 
-| Value           | Behavior                                                   |
-| --------------- | ---------------------------------------------------------- |
-| `"on-success"`  | Remove worktree on success; preserve on failure            |
-| `"on-complete"` | Always remove worktree after the workflow finishes         |
-| `"manual"`      | Never remove automatically; log path for manual inspection |
+| Value           | Behavior                                                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"on-success"`  | Remove worktree on success; preserve on failure                                                                                                            |
+| `"on-complete"` | Always remove worktree after the workflow finishes                                                                                                         |
+| `"on-merge"`    | Remove the worktree, then its local branch, once a step reported `merged` (a `merge` step); the branch is kept when leftover changes were auto-saved on it |
+| `"manual"`      | Never remove automatically; log path for manual inspection                                                                                                 |
 
 **The `enabled` field accepts a Nunjucks template string** so users can toggle worktree mode via a CLI variable:
 
@@ -141,18 +142,18 @@ Reference in templates: `{{ variables.task }}`, `{{ variables.max_iterations }}`
 
 These properties apply to all step types:
 
-| Key                  | Type   | Default      | Valid Values                                                          | Description                                                   |
-| -------------------- | ------ | ------------ | --------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `name`               | string | **required** | kebab-case                                                            | Unique step identifier                                        |
-| `type`               | string | **required** | prompt, skill, serial, parallel, conditional, ralph-loop, human-input | Step type                                                     |
-| `model`              | string | null         | Runtime-dependent (see Model Names)                                   | Override model for this step                                  |
-| `runtime`            | string | null         | claude, codex                                                         | Override runtime for this step (never overridden by CLI flag) |
-| `timeout-minutes`    | int    | null         | 1+                                                                    | Override workflow timeout                                     |
-| `max-retry`          | int    | null         | 0+                                                                    | Override workflow max-retry                                   |
-| `on-error`           | string | `"retry"`    | retry, skip, fail                                                     | Error handling strategy                                       |
-| `checkpoint`         | bool   | `false`      | true/false                                                            | Create checkpoint after step                                  |
-| `depends-on`         | string | null         | step name                                                             | Step dependency                                               |
-| `bypass-permissions` | bool   | null         | true/false                                                            | Override workflow-level permission bypass for this step       |
+| Key                  | Type   | Default      | Valid Values                                                                                                   | Description                                                   |
+| -------------------- | ------ | ------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `name`               | string | **required** | kebab-case                                                                                                     | Unique step identifier                                        |
+| `type`               | string | **required** | prompt, skill, serial, parallel, conditional, ralph-loop, human-input, wait-for-review, wait-for-checks, merge | Step type                                                     |
+| `model`              | string | null         | Runtime-dependent (see Model Names)                                                                            | Override model for this step                                  |
+| `runtime`            | string | null         | claude, codex                                                                                                  | Override runtime for this step (never overridden by CLI flag) |
+| `timeout-minutes`    | int    | null         | 1+                                                                                                             | Override workflow timeout                                     |
+| `max-retry`          | int    | null         | 0+                                                                                                             | Override workflow max-retry                                   |
+| `on-error`           | string | `"retry"`    | retry, skip, fail                                                                                              | Error handling strategy                                       |
+| `checkpoint`         | bool   | `false`      | true/false                                                                                                     | Create checkpoint after step                                  |
+| `depends-on`         | string | null         | step name                                                                                                      | Step dependency                                               |
+| `bypass-permissions` | bool   | null         | true/false                                                                                                     | Override workflow-level permission bypass for this step       |
 
 ### prompt
 
@@ -179,13 +180,13 @@ Execute a prompt in a coding agent session. The most common step type.
 
 ### skill
 
-Invoke a skill by namespace (`<plugin>:<skill>`, or a plain skill name) on the `claude` runtime. A skill step on Codex fails with "not supported yet" (Codex skill inlining comes later). It runs like a prompt step (drivers, retries, result block, steering) with the prompt:
+Invoke a skill by namespace (`<plugin>:<skill>`, or a plain skill name) on any runtime. On `claude` it runs like a prompt step (drivers, retries, result block, steering) with the prompt:
 
 ```text
 /<skill> <args> --run-dir <run dir> --config-snapshot <run dir>/skill-config/<pack>.json
 ```
 
-`<pack>` is the plugin of `<plugin>:<skill>` (or the skill name). The snapshot holds af config `skill_config.<pack>` (`{}` when unset). Pending operator messages follow the slash command instead of preceding it. The `outputs` object of the skill's result block becomes `{{ outputs.<step>.<key> }}` for later steps.
+`<pack>` is the plugin of `<plugin>:<skill>` (or the skill name). The snapshot holds af config `skill_config.<pack>` (`{}` when unset). On `codex`, the prompt is the skill's `SKILL.md` inline instead (found in `skill_packs.paths`, `runtimes.claude.plugins`, the installed Claude plugins, `.claude/skills/` or `~/.claude/skills/`; frontmatter dropped, `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_SKILL_DIR}` and relative links made absolute, `$ARGUMENTS` filled with the same arguments; `runtimes.codex.inline_references: true` appends the linked files). A skill that is not found fails the step. Pending operator messages follow the slash command (or the inlined skill) instead of preceding it. The `outputs` object of the skill's result block becomes `{{ outputs.<step>.<key> }}` for later steps.
 
 **Specific properties:**
 
@@ -384,6 +385,64 @@ Request ids are `input-<step>-<n>` (`n` counts the questions the step asked). Ou
     - { name: build, type: prompt, prompt: "Build the plan." }
 ```
 
+### wait-for-review
+
+Wait until every listed reviewer has reviewed the pull request's current head commit. The supervisor polls GitHub with `gh` (first interval `poll-seconds`, doubling up to `github.max_poll_seconds`); no coding agent runs while it waits. A push (new head) restarts the wait for that head, timeout included. A reviewer has reviewed the head when it submitted a pull request review on that commit, when its Codex summary comment (`codex-review-state:v1` marker) completed on that commit, or when it posted a review result comment (a `## Code review` heading or "No issues found", as the Claude GitHub Action does) after the head was committed and, for a head pushed during the step, after the step first saw that head. Each review emits `review.received`. On timeout the run stops `awaiting-human` with a `needs_input` request `review-timeout-<step>-<n>`: answer `wait` (wait again) or `continue` (go on without the missing reviews).
+
+**Specific properties:**
+
+| Key               | Type          | Default                           | Description                                                                                                        |
+| ----------------- | ------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `reviewers`       | list/string   | **required**                      | Names from `github.reviewers` (`claude`, `codex`) or GitHub logins; a string is comma-separated (template)         |
+| `pr`              | number/string | run `pr`, else the current branch | Pull request number, `#<n>` or URL (template)                                                                      |
+| `trigger`         | bool          | `github.auto_trigger` (`false`)   | Post each missing reviewer's trigger comment (`@codex review`) once per head, after `github.trigger_after_seconds` |
+| `poll-seconds`    | number        | `github.poll_seconds` (30)        | First polling interval                                                                                             |
+| `timeout-minutes` | number        | `github.review_timeout_minutes`   | Time before the run stops `awaiting-human`                                                                         |
+
+Outputs: `{{ outputs.<step>.reviews }}` (`reviewer`, `login`, `state`, `source`, `url`), `changes_requested`, `head`, `pr`, `url`, `missing`, `skipped` (true after `continue`).
+
+### wait-for-checks
+
+Wait until no check of the pull request head is pending, then report pass or fail. No coding agent runs. `checks: required` waits for the checks the base branch requires: the step reads the base's rules once (`required_status_checks`); when they require none, it waits for every check until a required check (classic branch protection) shows up on the head. `all` waits for every check. A head with no check passes after 60 seconds, counted from the time the step first saw that head. A failing (or canceled) check fails the step, unless `on-fail: continue`, which completes it with `outputs.<step>.result: fail`. Emits `checks.completed`. On timeout the run stops `awaiting-human` (`checks-timeout-<step>-<n>`, answer `wait` or `continue`).
+
+| Key               | Type          | Default                           | Description                                |
+| ----------------- | ------------- | --------------------------------- | ------------------------------------------ |
+| `pr`              | number/string | run `pr`, else the current branch | Pull request (template)                    |
+| `checks`          | string        | `required`                        | `required` or `all`                        |
+| `on-fail`         | string        | `fail`                            | `fail` or `continue`                       |
+| `poll-seconds`    | number        | `github.poll_seconds`             | First polling interval                     |
+| `timeout-minutes` | number        | `github.checks_timeout_minutes`   | Time before the run stops `awaiting-human` |
+
+Outputs: `result` (`pass`, `fail`, `pending`), `passed`, `scope`, `failed`, `pending`, `total`, `head`, `pr`, `url`.
+
+### merge
+
+Merge the pull request under the per-repository merge lock: every `merge` step of one repository (main checkout and all its worktrees, any run) takes the same lock file, so merges never race. A lock whose holder died (a supervisor crash) goes stale after 30 seconds and is taken over.
+
+- **Native** (no `skill`): the harness takes the lock (`merge.locked`), re-reads the pull request, checks its head against the expected head (`head`, else the `head` output of the run's latest `wait-for-review` or `wait-for-checks` step; no check when neither is set), resolves the method from the repository settings and rulesets (merge queue: enqueue; one method: use it; several: the first in `github.merge.preference`; linear history excludes `merge`; an explicit `method` that is not allowed fails the step), logs it as a decision, and runs `gh pr merge --repo <o/r> --<method> --match-head-commit <expected sha>` from outside the checkout (never `--delete-branch`, so `gh` never checks out the base in a worktree). It then deletes the remote head branch through the API (not for forks; `remote_branch` output `deleted`, `already gone`, or `delete failed: <reason>`) and emits `merge.completed`. A head that moved since it was verified stops the run `awaiting-human` with a `needs_input` request `merge-head-<step>-<short sha>`: answer `merge` (merge the new head anyway) or `stop` (fail the step); to verify the new head instead, `af retry-step` the wait step. A draft, branch protection or any other refusal stops the run `awaiting-human`; nothing is bypassed. An already merged pull request completes `merged`.
+- **Skill** (`skill: esp-skills:esp-merge`): runs like a `skill` step with `AF_MERGE_LOCK` set to the lock file; the skill takes and releases the lock itself.
+
+| Key             | Type          | Default                           | Description                                                       |
+| --------------- | ------------- | --------------------------------- | ----------------------------------------------------------------- |
+| `skill`, `args` | string        | null                              | Merge skill to run instead of the native merge                    |
+| `pr`            | number/string | run `pr`, else the current branch | Pull request (template)                                           |
+| `method`        | string        | `github.merge.method` (`repo`)    | `repo`, `squash`, `rebase` or `merge`                             |
+| `delete-branch` | bool          | `github.merge.delete_branch`      | Delete the remote head branch after the merge                     |
+| `head`          | string        | latest wait step's `head` output  | Head SHA the pull request must have (template, native merge only) |
+
+The lock wait is `github.merge.lock_timeout_minutes` (then `awaiting-human`). The step result is `merged` (or `done` when queued); with `settings.worktree.cleanup: on-merge` the worktree is removed at the end of the run, then its branch.
+
+```yaml
+- name: wait-review
+  type: wait-for-review
+  reviewers: [claude, codex]
+  trigger: true
+- { name: wait-checks, type: wait-for-checks }
+- { name: merge, type: merge }
+```
+
+`wait-for-review`, `wait-for-checks` and `merge` are not allowed under a parallel step.
+
 ## Templating
 
 Workflows use Nunjucks for dynamic content in prompts, conditions, and output paths.
@@ -513,7 +572,7 @@ At the next step boundary, the supervisor runs the amend step with the amendment
 
 ```bash
 # Run a workflow (bare key=value args or --var flag)
-agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex] [--ignore-requires]
+agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex] [--ignore-requires] [--parent <run>]
 
 # Resume a paused/failed workflow
 agentic-forge resume <workflow-id>
@@ -557,6 +616,10 @@ agentic-forge artifacts <workflow-id> [--kind plan|summary|decisions|review] [--
 # Run a stdio MCP server that dispatches and steers runs (claude mcp add agentic-forge -- af mcp)
 agentic-forge mcp
 
+# Start an interactive Claude overseer session (dispatches with itself as --parent), or end one
+agentic-forge overseer [--epic <file|text>] [--resume <run>] [--new]
+agentic-forge overseer --finish <run> [--status done|halted|failed] [--summary "text"]
+
 # Answer the single pending request of an awaiting-human run (human-input steps)
 agentic-forge input <workflow-id> "response text"
 
@@ -583,7 +646,7 @@ agentic-forge configure
 
 ## Skills
 
-agentic-forge bundles no execution skills. Workflows call the skills the user installed (Claude Code plugins, `~/.claude/skills/`, the repo's `.claude/skills/`), with a `skill` step (`skill: <plugin>:<skill>`, preferred: it passes `--run-dir` and `--config-snapshot` and chains the result block `outputs`) or a slash command in a prompt step. Skills only work with `runtime: claude` (the default).
+agentic-forge bundles no execution skills. Workflows call the skills the user installed (Claude Code plugins, `~/.claude/skills/`, the repo's `.claude/skills/`), with a `skill` step (`skill: <plugin>:<skill>`, preferred: it passes `--run-dir` and `--config-snapshot` and chains the result block `outputs`) or a slash command in a prompt step. Slash commands only work with `runtime: claude` (the default); `skill` steps also run on `codex`, with the skill inlined.
 
 Use fully qualified `<plugin>:<skill>` names for plugin skills. For example, with the esp-skills plugin installed (`/plugin install esp-skills@esp`):
 
@@ -620,10 +683,11 @@ When validating a workflow, check for these issues:
 
 - Missing `name` field
 - Missing `steps` field or empty steps list
-- Invalid step type (not one of: prompt, skill, serial, parallel, conditional, ralph-loop, human-input; `wait-for-human` is an alias of human-input)
+- Invalid step type (not one of: prompt, skill, serial, parallel, conditional, ralph-loop, human-input, wait-for-review, wait-for-checks, merge; `wait-for-human` is an alias of human-input)
 - `settings.amend.step` naming a step that is not a top-level step
 - Nested parallel steps (parallel inside parallel)
-- A `human-input` step under a parallel step
+- A `human-input`, `wait-for-review`, `wait-for-checks` or `merge` step under a parallel step
+- `wait-for-review` without `reviewers`; `checks` other than required or all; `on-fail` other than fail or continue; `method` other than repo, squash, rebase or merge; an empty `head`; `poll-seconds` or `timeout-minutes` not positive
 - Prompt step without `prompt` field
 - Conditional step without `condition` field
 - Ralph-loop step without `prompt` field

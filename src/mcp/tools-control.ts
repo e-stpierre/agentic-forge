@@ -1,12 +1,14 @@
 /**
  * MCP tools that steer runs: af_send, af_amend, af_answer, af_pause,
- * af_resume, af_cancel and af_retry_step. Each tool validates its input with
- * a zod schema, then makes one call to a supervisor control endpoint
- * (`/v1/runs/:id/{messages,amend,answer,pause,resume,cancel,retry}`).
+ * af_resume, af_cancel and af_retry_step, plus af_notify. Each tool validates
+ * its input with a zod schema, then makes one call to a supervisor control
+ * endpoint (`/v1/runs/:id/{messages,amend,answer,pause,resume,cancel,retry}`,
+ * `/v1/notifications`).
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { NOTIFICATION_LEVELS, type NotificationLevel } from "../notifications/config.js";
 import type { SupervisorClient } from "../supervisor/client.js";
 import { jsonResult, withClient } from "./errors.js";
 import { type ToolContext, nonEmpty, register, runId } from "./tools.js";
@@ -185,6 +187,38 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 					...(input.context ? { context: input.context } : {}),
 					from: input.from ?? DEFAULT_SENDER,
 				}),
+			),
+	);
+
+	register(
+		server,
+		"af_notify",
+		{
+			title: "Notify the user",
+			description:
+				"Sends a message to the user's enabled notification channels (desktop, ntfy, Slack, Discord, and with a run that has a pull request, a GitHub comment) and returns { sent, errors, event }. With `run`, the run's config picks the channels and the run gets a notification.sent event (event is its seq); without it, the supervisor's global config is used and no event is written. A result with hint means no channel is enabled. Use it when the user must act and may be away; needs_input, run.failed and run.halted are already notified by the supervisor.",
+			inputSchema: {
+				text: nonEmpty("text", "Message text"),
+				level: z
+					.enum(NOTIFICATION_LEVELS as [NotificationLevel, ...NotificationLevel[]], {
+						error: "level must be info, warning or error",
+					})
+					.optional()
+					.describe("info (default), warning or error"),
+				run: runId("Run the notification is about").optional(),
+				title: nonEmpty("title", "Notification title").optional(),
+			},
+		},
+		async (input) =>
+			jsonResult(
+				await withClient(ctx.clients, (client: SupervisorClient) =>
+					client.request<unknown>("POST", "/v1/notifications", {
+						text: input.text,
+						level: input.level ?? "info",
+						run: input.run ?? null,
+						title: input.title ?? null,
+					}),
+				),
 			),
 	);
 }
