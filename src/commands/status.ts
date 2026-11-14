@@ -16,10 +16,11 @@ import {
 	type RegistryEntry,
 	type RunListFilter,
 	RunRegistry,
+	RunTree,
 	filterRuns,
 	parseSince,
 } from "../runs/registry.js";
-import { RunStore } from "../runs/run-store.js";
+import { RunStore, runtimeOf } from "../runs/run-store.js";
 import type { WorkflowProgress } from "../types.js";
 import { CliExitError } from "./run.js";
 
@@ -67,9 +68,11 @@ function writeSteps(progress: WorkflowProgress): void {
 }
 
 export function cmdStatus(workflowId: string): void {
-	const entry = new RunRegistry().get(workflowId);
+	const runs = new RunRegistry().list();
+	const entry = runs.find((r) => r.id === workflowId);
 	if (entry) {
 		writeRunStatus(entry);
+		writeRunTree(new RunTree(runs), entry);
 		return;
 	}
 
@@ -105,6 +108,33 @@ function writeRunStatus(entry: RegistryEntry): void {
 	}
 	const progress = loadProgress(entry.id, entry.dir);
 	if (progress) writeSteps(progress);
+}
+
+/** One line per run of a tree: indentation by depth, then id, workflow, runtime and status. */
+export function treeLines(
+	tree: RunTree,
+	root: string,
+	mark: string | null = null,
+	runtime: (entry: RegistryEntry) => string | null = runtimeOf,
+): string[] {
+	const nodes = tree.walk(root);
+	const base = nodes[0]?.depth ?? 0;
+	return nodes.map(({ entry, depth }) => {
+		const rt = runtime(entry);
+		const here = entry.id === mark ? "  <- this run" : "";
+		return `${"  ".repeat(depth - base)}${entry.id} (${entry.workflow}${rt ? `, ${rt}` : ""}) ${entry.status}${here}`;
+	});
+}
+
+/** The run tree of a run with a parent or children (`af status`). */
+function writeRunTree(tree: RunTree, entry: RegistryEntry): void {
+	const parent = tree.parentOf(entry.id);
+	if (!parent && tree.childrenOf(entry.id).length === 0) return;
+	if (parent) process.stdout.write(`Parent: ${parent}\n`);
+	process.stdout.write(`\nRun tree (depth ${tree.depth(entry.id)}):\n`);
+	for (const line of treeLines(tree, tree.root(entry.id), entry.id)) {
+		process.stdout.write(`  ${line}\n`);
+	}
 }
 
 async function supervisorClient() {
@@ -215,20 +245,33 @@ export function cmdList(options: ListOptions | string = {}): void {
 	} catch (err) {
 		throw new CliExitError(`Error: ${(err as Error).message}`);
 	}
-	const runs = filterRuns(new RunRegistry().list(), { ...opts, since }).sort((a, b) =>
+	const all = new RunRegistry().list();
+	const runs = filterRuns(all, { ...opts, since }).sort((a, b) =>
 		b.created_at.localeCompare(a.created_at),
 	);
+	if (opts.tree && !opts.json) {
+		if (runs.length === 0) {
+			process.stdout.write(`No runs found. (tree=${opts.tree})\n`);
+			return;
+		}
+		const tree = new RunTree(runs);
+		const roots = runs.filter((r) => !tree.parentOf(r.id) || !tree.get(tree.parentOf(r.id) ?? ""));
+		for (const root of roots.reverse()) {
+			for (const line of treeLines(tree, root.id)) process.stdout.write(`${line}\n`);
+		}
+		return;
+	}
 	if (opts.json) {
 		process.stdout.write(`${JSON.stringify(runs, null, 2)}\n`);
 		return;
 	}
 	const legacy =
-		opts.repo || opts.since || opts.parent || statusFilter?.includes(",")
+		opts.repo || opts.since || opts.parent || opts.tree || statusFilter?.includes(",")
 			? []
 			: legacyEntries(cwd, statusFilter);
 
 	if (runs.length === 0 && legacy.length === 0) {
-		const filters = (["status", "repo", "since", "parent"] as const)
+		const filters = (["status", "repo", "since", "parent", "tree"] as const)
 			.filter((k) => opts[k])
 			.map((k) => `${k}=${opts[k]}`);
 		const suffix = filters.length > 0 ? ` (${filters.join(", ")})` : "";

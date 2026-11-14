@@ -7,6 +7,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SupervisorClient } from "../supervisor/client.js";
 import { ClientCache } from "./errors.js";
+import { registerAskTools } from "./tools-ask.js";
 import { registerBacklogTools } from "./tools-backlog.js";
 import { registerControlTools } from "./tools-control.js";
 import { type ToolContext, registerRunTools } from "./tools.js";
@@ -26,6 +27,8 @@ export interface CreateMcpServerOptions {
 	cwd?: string;
 	/** Server version reported to clients. */
 	version: string;
+	/** Environment read by af_ask (defaults to `process.env`). */
+	env?: NodeJS.ProcessEnv;
 }
 
 export function createMcpServer(options: CreateMcpServerOptions): McpServer {
@@ -34,9 +37,11 @@ export function createMcpServer(options: CreateMcpServerOptions): McpServer {
 		clients: new ClientCache(options.getClient),
 		registryRoot: options.registryRoot,
 		cwd: options.cwd ?? process.cwd(),
+		env: options.env,
 	};
 	registerRunTools(server, ctx);
 	registerControlTools(server, ctx);
 	registerBacklogTools(server, ctx);
+	registerAskTools(server, ctx);
 	return server;
 }

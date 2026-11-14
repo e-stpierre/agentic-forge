@@ -25,6 +25,11 @@ function fromField() {
 		.describe(`Who sends it: user or overseer (default ${DEFAULT_SENDER})`);
 }
 
+/** Run of the step whose agent calls the tool (`AF_RUN_ID`); unset for the operator and the overseer. */
+function stepRun(ctx: ToolContext): string | undefined {
+	return (ctx.env ?? process.env).AF_RUN_ID || undefined;
+}
+
 function control(ctx: ToolContext, run: string, action: string, body: Record<string, unknown>) {
 	return withClient(ctx.clients, (client: SupervisorClient) =>
 		client.request<unknown>("POST", `/v1/runs/${encodeURIComponent(run)}/${action}`, body),
@@ -98,7 +103,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Answer a run's question",
 			description:
-				"Answers the pending needs_input question of a run in awaiting-human status and resumes it; returns { id, request, message, status }. `request_id` is the question id from the needs_input event (af_events) or from the run['x-af-needs-input'] list in af_status; it is required when several requests are pending (parallel steps). `answer` for a permission request (needs_input event with live: true and a tool) is allow or deny. `answer` is an option id of the question (for example a) or free text. A request raised by a live session (live: true) goes straight to the waiting session (message: null, status running once no request is left). Otherwise the asking step runs again with the answer in its ## Operator Messages section (status: queued), resuming its session when it ran on the session driver. A run that is not awaiting-human returns a 409. Next: follow the run with af_events.",
+				"Answers the pending needs_input question of a run in awaiting-human status and resumes it; returns { id, request, message, status }. `request_id` is the question id from the needs_input event (af_events) or from the run['x-af-needs-input'] list in af_status; it is required when several requests are pending (parallel steps). `answer` for a permission request (needs_input event with live: true and a tool) is allow or deny. `answer` is an option id of the question (for example a) or free text. A request raised by a live session (live: true) goes straight to the waiting session (message: null, status running once no request is left). Otherwise the asking step runs again with the answer in its ## Operator Messages section (status: queued), resuming its session when it ran on the session driver. A run that is not awaiting-human returns a 409. Called from inside a run, it only answers requests of runs that run dispatched (and their children), never a permission request. Next: follow the run with af_events.",
 			inputSchema: {
 				run: runId("Run id"),
 				answer: nonEmpty("answer", "Option id of the question, or free text"),
@@ -115,6 +120,8 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 					...(input.request_id ? { request_id: input.request_id } : {}),
 					answer: input.answer,
 					from: input.from ?? DEFAULT_SENDER,
+					// From inside a run: only its descendants' non-permission requests
+					...(stepRun(ctx) ? { caller: stepRun(ctx) } : {}),
 				}),
 			),
 	);

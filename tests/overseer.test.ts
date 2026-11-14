@@ -497,6 +497,50 @@ describe("af overseer launcher", () => {
 		).rejects.toThrow(/cannot be combined/);
 	});
 
+	it("opens a run for an existing session with --open and prints it as JSON", async () => {
+		const { manager, client } = await startSupervisor();
+		writeFileSync(path.join(repo, "epic.md"), "# Cache epic\n", "utf-8");
+		const output: string[] = [];
+		let launched = false;
+		const code = await cmdOverseer(
+			{ open: true, epic: "epic.md" },
+			{
+				client,
+				cwd: repo,
+				env: {},
+				launch: async () => {
+					launched = true;
+					return 0;
+				},
+				out: (t) => output.push(t),
+			},
+		);
+		expect(code).toBe(0);
+		expect(launched).toBe(false);
+		expect(output).toHaveLength(1);
+		const info = JSON.parse(output[0]);
+		const [entry] = manager.list({});
+		expect(info).toMatchObject({
+			run: entry.id,
+			dir: entry.dir,
+			session: 1,
+			mode: "created",
+			rehydrate: false,
+			af: afShellCommand(),
+		});
+		expect(info.epic).toMatch(/epic\.md$/);
+		expect(info.monitor).toContain(`--types "${OVERSEER_EVENT_TYPES}"`);
+		expect(info.monitor).toContain("events.cursor");
+		expect(existsSync(path.join(entry.dir, "overseer"))).toBe(true);
+
+		const again: string[] = [];
+		await cmdOverseer({ open: true }, { client, cwd: repo, env: {}, out: (t) => again.push(t) });
+		expect(JSON.parse(again[0])).toMatchObject({ run: entry.id, mode: "reused", rehydrate: true });
+		await expect(
+			cmdOverseer({ open: true, printCommand: true }, { client, cwd: repo, out: () => {} }),
+		).rejects.toThrow(/--open starts no claude session/);
+	});
+
 	it("treats an --epic that is not a file as text", () => {
 		expect(readEpic("Build the cache layer", repo)).toEqual({
 			epic: "Build the cache layer",
@@ -536,6 +580,15 @@ describe("af overseer launcher", () => {
 		]) {
 			expect(skill).toContain(word);
 		}
+		expect(skill).toContain("af overseer --open");
+		expect(manifest.skills).toEqual(["./skills/overseer", "./skills/af-delegate"]);
+		const delegate = readFileSync(path.join(dir, "skills", "af-delegate", "SKILL.md"), "utf-8");
+		expect(delegate).toMatch(/^---\nname: af-delegate\n/);
+		for (const word of ["af_dispatch", "af_wait", "until: attention", "af_answer", "--wait"]) {
+			expect(delegate).toContain(word);
+		}
+		// The bundled plugin has no .mcp.json: af overseer passes --mcp-config, af setup generates one
+		expect(existsSync(path.join(dir, ".mcp.json"))).toBe(false);
 	});
 });
 

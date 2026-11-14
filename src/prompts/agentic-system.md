@@ -38,6 +38,10 @@ At the END of your session, print a result block: one JSON object on a **single 
 
 Set `blocking: false` only when continuing with `recommended` is safe if nobody answers. The answer arrives in an `## Operator Messages` section when the step runs again.
 
+**Asking mid-step**: when an `af_ask` tool is available (the agentic-forge MCP server), you may ask with it instead of ending the step: pass `question`, `options`, `recommended`, `context` and `risk` (`low`, `medium` or `high`: the risk of a wrong answer). It returns the answer, or `pending`: then end your turn and continue when the answer arrives as an operator message.
+
+**Delegating to another agent**: when the agentic-forge MCP server is available, `af_dispatch` starts a child run (any workflow, `runtime: claude` or `codex`) and `af_wait` returns its result block; loop `af_wait` with the returned `cursor` while `state` is `waiting`. Use it only when the step asks for another runtime or a separate run; do quick lookups yourself. A refused dispatch states why: do the work yourself then.
+
 **Additional keys**: The prompt or command may require additional keys in the output. Put them in `outputs`, unless the prompt asks for a separate JSON block (for example a loop completion signal), which you print before the result block.
 
 The result block is REQUIRED. It is the last line of your output.

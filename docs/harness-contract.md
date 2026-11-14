@@ -246,14 +246,16 @@ The harness never trusts a self-reported `gates` value for a merge decision on i
 
 A step that needs a decision it may not take alone ends with `status: awaiting-human` and a `needs_input` object, then exits with code `10`.
 
-| Field         | Type           | Description                                                                                                     |
-| ------------- | -------------- | --------------------------------------------------------------------------------------------------------------- |
-| `id`          | ID             | Unique within the run                                                                                           |
-| `question`    | string         | The question                                                                                                    |
-| `options`     | object[]       | `{ id, label, description? }`. Empty for a free-form answer                                                     |
-| `recommended` | string or null | ID of the recommended option                                                                                    |
-| `context`     | string         | Evidence and trade-offs the answerer needs, with paths to run artifacts                                         |
-| `blocking`    | boolean        | `false` lets the harness continue other work and apply `recommended` after the configured `needs_input_timeout` |
+| Field         | Type           | Description                                                                                                                                                            |
+| ------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | ID             | Unique within the run                                                                                                                                                  |
+| `question`    | string         | The question                                                                                                                                                           |
+| `options`     | object[]       | `{ id, label, description? }`. Empty for a free-form answer                                                                                                            |
+| `recommended` | string or null | ID of the recommended option                                                                                                                                           |
+| `context`     | string         | Evidence and trade-offs the answerer needs, with paths to run artifacts                                                                                                |
+| `blocking`    | boolean        | `false` lets the harness continue other work and apply `recommended` after the configured `needs_input_timeout`                                                        |
+| `kind`        | string         | Optional. `question` (information or a choice), `permission` (approve or deny an action) or `decision` (a choice the step may not take alone). Absent means `decision` |
+| `risk`        | string         | Optional. `low`, `medium` or `high`: the risk of a wrong answer. Absent counts as not low                                                                              |
 
 Flow:
 
@@ -261,7 +263,9 @@ Flow:
 2. The overseer answers within its policy, or forwards the question to the user.
 3. The answer is recorded as an `input.answered` event and as an `operator` decision, then the harness resumes or reruns the step with the answer injected as an operator message.
 
-A non-blocking request with no `recommended` option is treated as blocking.
+A non-blocking request with no `recommended` option is treated as blocking. A harness applies `recommended` automatically only when the request's risk is `low` (its `risk`, else the step's `max_risk`), and never answers a `permission` request by policy.
+
+A harness may also let an agent raise a request while its step keeps running (agentic-forge: the `af_ask` MCP tool). The request, event, answer and decision are the same; the answer reaches the step as an operator message, or as the tool result when the agent still waits.
 
 ## Inbox Messages
 

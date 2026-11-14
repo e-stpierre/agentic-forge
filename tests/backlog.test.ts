@@ -68,7 +68,14 @@ describe("overseer config", () => {
 			maxParallel: 2,
 			acceptDiscoveredItems: "ask",
 			haltEpicOn: ["halted", "critical", "budget"],
-			budgets: { maxTasks: 20, maxRetries: 1, maxRunMinutes: 480 },
+			budgets: {
+				maxTasks: 20,
+				maxRetries: 1,
+				maxRunMinutes: 480,
+				maxDispatchDepth: 3,
+				maxTreeRuns: 50,
+				maxTreeActive: 6,
+			},
 			answerPolicy: { enabled: true, maxRisk: "low", recommendedOnly: true, blocking: true },
 		});
 		const bad = withConfig({
@@ -362,21 +369,21 @@ describe("discovered items and the answer policy", () => {
 
 	it("lets the overseer answer only low-risk requests with their recommended option", () => {
 		const request = { recommended: "a", blocking: true };
-		const low = { risk: "low", permission: false };
+		const low = { risk: "low", kind: "decision" };
 		expect(evaluateAnswerPolicy(request, low, DEFAULTS)).toEqual({
 			within: true,
 			answer: "a",
 			reason: "risk low <= low, recommended option a",
 		});
 		expect(
-			evaluateAnswerPolicy(request, { risk: "medium", permission: false }, DEFAULTS).reason,
+			evaluateAnswerPolicy(request, { risk: "medium", kind: "decision" }, DEFAULTS).reason,
 		).toMatch(/above answer_policy.max_risk low/);
-		expect(evaluateAnswerPolicy(request, { risk: null, permission: false }, DEFAULTS).within).toBe(
+		expect(evaluateAnswerPolicy(request, { risk: null, kind: "decision" }, DEFAULTS).within).toBe(
 			false,
 		);
-		expect(evaluateAnswerPolicy(request, { risk: "low", permission: true }, DEFAULTS).within).toBe(
-			false,
-		);
+		expect(
+			evaluateAnswerPolicy(request, { risk: "low", kind: "permission" }, DEFAULTS).within,
+		).toBe(false);
 		expect(evaluateAnswerPolicy({ recommended: null }, low, DEFAULTS).reason).toBe(
 			"no recommended option",
 		);

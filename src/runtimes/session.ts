@@ -81,7 +81,23 @@ export type SessionEvent =
 	| { type: "request"; request: SessionRequest }
 	| { type: "request.resolved"; id: string; decision: SessionDecision }
 	| { type: "turn.completed"; result: string; isError: boolean; messageIds: string[] }
+	/** A choice the driver made that the step log should show (native skill or inlined). */
+	| { type: "notice"; text: string }
 	| { type: "error"; message: string };
+
+/**
+ * A skill step on a runtime that may load the skill natively (Codex
+ * `skills/list` and `skill` inputs). The session's `prompt` is the inlined
+ * fallback (empty when the skill was not found on disk).
+ */
+export interface SessionSkill {
+	/** Skill id as written in the workflow (`<plugin>:<skill>` or `<skill>`). */
+	id: string;
+	/** Text after the skill mention: arguments, then operator messages. */
+	text: string;
+	/** Why there is no inlined fallback (the skill was not found on disk). */
+	fallbackError?: string;
+}
 
 /** Options to start or resume a session. */
 export interface SessionStartOptions {
@@ -101,6 +117,12 @@ export interface SessionStartOptions {
 	env?: NodeJS.ProcessEnv | null;
 	/** Session id to resume instead of starting a new conversation. */
 	resume?: string | null;
+	/** Codex sandbox mode (`workspace-write` by default). */
+	sandbox?: string | null;
+	/** Skill step: try the runtime's native skill before the inlined prompt. */
+	skill?: SessionSkill | null;
+	/** Local image files sent with the first message (runtimes that take images). */
+	images?: string[];
 	/** Aborting closes the session and kills its process. */
 	signal?: AbortSignal | null;
 }
@@ -155,6 +177,14 @@ export interface SessionHost {
 	 * the function that unregisters it.
 	 */
 	onLive?: (handle: LiveSession) => () => void;
+	/**
+	 * Subscribes to the step's open `af_ask` questions: `listener` is called
+	 * with true when the step has one (its agent may block in the tool call),
+	 * false when none is left, and once at once with the current state. The
+	 * step timeout does not run while one is open. Returns the unsubscribe
+	 * function.
+	 */
+	onAsks?: (listener: (open: boolean) => void) => () => void;
 	/**
 	 * Every normalized event of the step (the live transcript). The `cli`
 	 * driver calls it too, with the events mapped from its stream lines.

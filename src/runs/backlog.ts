@@ -793,20 +793,21 @@ const RISK_ORDER: Record<string, number> = { low: 1, medium: 2, high: 3 };
 
 /**
  * Decides whether the overseer may answer a request itself: the policy is
- * enabled, the request is not a permission request, the asking step reported
- * a risk at or below `max_risk`, the request has a recommended option (with
- * `recommended_only`), and it is not blocking unless `blocking` allows it.
+ * enabled, the request is not of kind `permission`, its risk (the request's
+ * own `risk`, else the asking step's `max_risk`) is at or below `max_risk`,
+ * the request has a recommended option (with `recommended_only`), and it is
+ * not blocking unless `blocking` allows it.
  */
 export function evaluateAnswerPolicy(
 	request: { recommended?: string | null; blocking?: boolean; options?: { id: string }[] },
-	context: { risk: string | null; permission: boolean },
+	context: { risk: string | null; kind: string },
 	config: OverseerConfig,
 ): PolicyVerdict {
 	const policy = config.answerPolicy;
 	const ask = (reason: string): PolicyVerdict => ({ within: false, answer: null, reason });
 	if (!policy.enabled) return ask("answer_policy disabled");
-	if (context.permission) return ask("permission request: always asked");
-	if (!context.risk) return ask("the step reported no max_risk");
+	if (context.kind === "permission") return ask("permission request: always asked");
+	if (!context.risk) return ask("no risk reported (request risk or step max_risk)");
 	if ((RISK_ORDER[context.risk] ?? 99) > RISK_ORDER[policy.maxRisk]) {
 		return ask(`risk ${context.risk} above answer_policy.max_risk ${policy.maxRisk}`);
 	}

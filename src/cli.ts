@@ -43,8 +43,10 @@ import {
 	cmdRun,
 	cmdSend,
 	cmdServe,
+	cmdSetup,
 	cmdStatus,
 	cmdVersion,
+	cmdWait,
 	cmdWorkflows,
 	getVersion,
 } from "./commands/index.js";
@@ -57,6 +59,7 @@ const program = new Command()
 // run command
 program
 	.command("run")
+	.alias("dispatch")
 	.description(
 		"Run a workflow with optional key=value variables (prompts for missing required vars)",
 	)
@@ -76,6 +79,12 @@ program
 	)
 	.option("--parent <run>", "parent run id (for example an overseer run)")
 	.option("--item <id>", "backlog item of the parent overseer run this run implements")
+	.option(
+		"--wait",
+		"wait for the run to end and print its result as one JSON line (exit code from its status)",
+	)
+	.option("--until <condition>", "with --wait: terminal (default) or attention")
+	.option("--timeout <seconds>", "with --wait: give up after this many seconds (exit 124)")
 	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
@@ -91,6 +100,30 @@ program
 			ignoreRequires: optBool(opts.ignoreRequires),
 			parent: optString(opts.parent),
 			item: optString(opts.item),
+			wait: optBool(opts.wait),
+			until: optString(opts.until),
+			timeout: optString(opts.timeout),
+		});
+	});
+
+// wait command
+program
+	.command("wait")
+	.description(
+		"Wait for a run to end (or need attention) and print its result as one JSON line (exit code from its status, 124 on timeout)",
+	)
+	.argument("<run>", "run ID")
+	.option(
+		"--until <condition>",
+		"terminal (default) or attention (needs_input, failed step, pause)",
+	)
+	.option("--timeout <seconds>", "give up after this many seconds (exit 124)")
+	.option("--cursor <cursor>", "cursor of a previous wait result (skips attention events seen)")
+	.action(async (run: string, opts: Record<string, unknown>) => {
+		await cmdWait(run, {
+			until: optString(opts.until),
+			timeout: optString(opts.timeout),
+			cursor: optString(opts.cursor),
 		});
 	});
 
@@ -254,6 +287,7 @@ program
 	.option("--repo <path>", "only runs dispatched from this repository root")
 	.option("--since <when>", "only runs created since an ISO date or a duration (30m, 2h, 7d)")
 	.option("--parent <run>", "only child runs of this parent run")
+	.option("--tree <run>", "a run and every run below it, as a tree")
 	.option("--json", "print the registry entries as JSON")
 	.action((opts: Record<string, unknown>) => {
 		cmdList({
@@ -261,6 +295,7 @@ program
 			repo: optString(opts.repo),
 			since: optString(opts.since),
 			parent: optString(opts.parent),
+			tree: optString(opts.tree),
 			json: optBool(opts.json),
 		});
 	});
@@ -452,6 +487,28 @@ program
 		await cmdDoctor({ json: optBool(opts.json) });
 	});
 
+// setup command
+program
+	.command("setup")
+	.description(
+		"Register the af MCP server and install the af skills (overseer, af-delegate) in Claude Code or Codex",
+	)
+	.argument("<client>", "claude or codex")
+	.option(
+		"--mode <mode>",
+		"claude only: plugin (default, installs the af-overseer plugin) or mcp (user-scope MCP server and skills)",
+	)
+	.option("--dry-run", "show what would change without changing anything")
+	.option("--json", "print the report as JSON")
+	.action(async (client: string, opts: Record<string, unknown>) => {
+		await cmdSetup({
+			client,
+			mode: optString(opts.mode),
+			dryRun: optBool(opts.dryRun),
+			json: optBool(opts.json),
+		});
+	});
+
 // serve command
 program
 	.command("serve")
@@ -492,6 +549,10 @@ program
 	.option("--new", "create a new overseer run even when one is open for this repository")
 	.option("--model <model>", "model of the claude session")
 	.option("--print-command", "open the run and print the claude command instead of starting it")
+	.option(
+		"--open",
+		"open the run and print it as one JSON line, without starting claude (for an existing session, such as Claude Desktop)",
+	)
 	.option("--finish <run>", "end this overseer run (writes summary.md, emits run.completed)")
 	.option("--status <status>", "with --finish: done (default), halted or failed")
 	.option("--summary <text>", "with --finish: summary text")
@@ -502,6 +563,7 @@ program
 			new: optBool(opts.new),
 			model: optString(opts.model),
 			printCommand: optBool(opts.printCommand),
+			open: optBool(opts.open),
 			finish: optString(opts.finish),
 			status: optString(opts.status),
 			summary: optString(opts.summary),

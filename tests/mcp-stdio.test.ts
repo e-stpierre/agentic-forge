@@ -24,6 +24,7 @@ const TOOLS = [
 	"af_amend",
 	"af_answer",
 	"af_artifacts",
+	"af_ask",
 	"af_backlog_add",
 	"af_backlog_list",
 	"af_backlog_update",
@@ -38,6 +39,7 @@ const TOOLS = [
 	"af_retry_step",
 	"af_send",
 	"af_status",
+	"af_wait",
 ];
 
 function childEnv(): Record<string, string> {
@@ -64,7 +66,7 @@ afterEach(async () => {
 });
 
 describe.skipIf(!existsSync(cliPath))("af mcp over stdio", () => {
-	it("lists the seventeen tools and answers tool calls through an on-demand supervisor", async () => {
+	it("lists the nineteen tools and answers tool calls through an on-demand supervisor", async () => {
 		const transport = new StdioClientTransport({
 			command: process.execPath,
 			args: [cliPath, "mcp"],

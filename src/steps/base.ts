@@ -217,6 +217,15 @@ export function driverOptions(
 	};
 }
 
+/**
+ * Environment of a step's agent process: the run environment plus `AF_STEP`
+ * (the af MCP server's `af_ask` reads it with `AF_RUN_ID`). Null without a
+ * run environment (the process inherits `process.env`).
+ */
+export function stepEnv(context: StepContext, step: string): NodeJS.ProcessEnv | null {
+	return context.env ? { ...context.env, AF_STEP: step } : null;
+}
+
 /** Warning logged on every step that runs with permission checks bypassed. */
 export function bypassWarning(runtimeId: string, source: string): string {
 	return `Permission checks are bypassed for this step on ${runtimeId} (${source})`;

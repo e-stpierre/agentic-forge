@@ -235,6 +235,7 @@ export function validateContractFile(
 
 export {
 	type NeedsInput,
+	type NeedsInputKind,
 	type NeedsInputOption,
 	type ResultBlock,
 	exitCodeForRun,

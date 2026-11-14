@@ -59,7 +59,8 @@ settings:
 
   # Default coding agent runtime for all steps: claude, codex (default: claude)
   # Runtime resolution order: step.runtime > --runtime CLI flag > settings.runtime > config.defaults.runtime > "claude"
-  # Note: slash-command prompts only work with runtime: claude (skill steps are inlined on codex)
+  # Note: slash-command prompts only work with runtime: claude (skill steps run natively
+  # on codex when Codex lists the skill, else its SKILL.md is inlined)
   runtime: claude
 
   # Tools Claude can use without prompting (default: [])
@@ -177,7 +178,9 @@ steps:
   # ==================== SKILL STEP ====================
   # Invoke a skill by namespace. On claude the prompt is:
   #   /<skill> <args> --run-dir <run dir> --config-snapshot <file>
-  # On codex the skill's SKILL.md is sent inline (absolute paths, $ARGUMENTS filled).
+  # On codex (session driver) the skill is sent natively when Codex lists it
+  # (skills/list); otherwise, and always on the cli driver, its SKILL.md is sent
+  # inline (absolute paths, $ARGUMENTS filled).
   # The snapshot file holds af config skill_config.<plugin> ({} when unset).
   # The result block's `outputs` become {{ outputs.generate-plan.<key> }} for later steps.
   - name: generate-plan
@@ -355,10 +358,12 @@ steps:
     recommended: approved
 
     # Optional (default: true): false lets the harness apply `recommended`
-    # after timeout-minutes (or supervisor.needs_input_timeout)
+    # after timeout-minutes
     blocking: false
 
-    # Optional: only with blocking: false and recommended
+    # Optional: only with blocking: false and recommended. Without it the
+    # request waits for an answer: supervisor.needs_input_timeout only applies
+    # to low-risk requests, and a human-input request has no risk
     timeout-minutes: 120
 
   # ==================== CONDITIONAL STEP (CREATE PR) ====================

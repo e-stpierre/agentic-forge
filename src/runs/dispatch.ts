@@ -6,7 +6,8 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { loadConfig } from "../config.js";
+import { getRuntimePermissions, loadConfig } from "../config.js";
+import type { StepDefinition, WorkflowDefinition } from "../types.js";
 
 export interface DispatchPayload {
 	/** Absolute repository root of the dispatching client. */
@@ -190,4 +191,61 @@ export function validateDispatch(body: unknown): string | null {
 		return "item must be a backlog item id";
 	}
 	return null;
+}
+
+/** Every step of a workflow, nested ones included. */
+function allSteps(steps: readonly StepDefinition[]): StepDefinition[] {
+	return steps.flatMap((s) => [
+		s,
+		...allSteps(s.steps ?? []),
+		...allSteps(s.thenSteps ?? []),
+		...allSteps(s.elseSteps ?? []),
+	]);
+}
+
+/**
+ * Why a dispatched workflow would run a step with permission checks bypassed
+ * (`runtimes.<id>.permissions: bypass` in its config snapshot, or
+ * `bypass-permissions: true` on the workflow or a step), or null.
+ */
+export function dispatchBypass(
+	workflow: WorkflowDefinition,
+	config: Record<string, unknown>,
+): string | null {
+	const runtimes = config.runtimes;
+	if (runtimes && typeof runtimes === "object") {
+		for (const id of Object.keys(runtimes)) {
+			if (getRuntimePermissions(config, id).mode === "bypass") {
+				return `runtimes.${id}.permissions: bypass`;
+			}
+		}
+	}
+	if (workflow.settings.bypassPermissions) return "bypass-permissions: true on the workflow";
+	const step = allSteps(workflow.steps).find((s) => s.bypassPermissions === true);
+	return step ? `bypass-permissions: true on step ${step.name}` : null;
+}
+
+/**
+ * Whether a run's step bypasses permission checks: `step` (the parent's
+ * current step) is found in the workflow, its own `bypass-permissions` or the
+ * workflow's, else the workflow's, plus `runtimes.<id>.permissions: bypass`
+ * for the runtime it runs on (step, dispatch, workflow, config default, then
+ * claude).
+ */
+export function stepBypassed(
+	workflow: WorkflowDefinition,
+	config: Record<string, unknown>,
+	runtime: string | null,
+	stepName: string | null,
+): boolean {
+	const step = stepName ? allSteps(workflow.steps).find((s) => s.name === stepName) : undefined;
+	const defaults = config.defaults as Record<string, unknown> | undefined;
+	const runtimeId =
+		step?.runtime ??
+		runtime ??
+		workflow.settings.runtime ??
+		(typeof defaults?.runtime === "string" ? defaults.runtime : null) ??
+		"claude";
+	if (getRuntimePermissions(config, runtimeId).mode === "bypass") return true;
+	return (step?.bypassPermissions ?? workflow.settings.bypassPermissions) === true;
 }

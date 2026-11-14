@@ -248,7 +248,7 @@ export class BacklogService {
 	policyFor(
 		runDir: string,
 		request: { recommended?: string | null; blocking?: boolean },
-		context: { risk: string | null; permission: boolean },
+		context: { risk: string | null; kind: string },
 	): PolicyVerdict | null {
 		const overseer = this.parentOverseer(runDir);
 		if (!overseer) return null;

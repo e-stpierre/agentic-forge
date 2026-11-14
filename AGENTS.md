@@ -24,7 +24,7 @@ Interactive authoring skills for users to create and manage workflows (e.g., `wo
 
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, `overseer`, etc.). `overseer.ts` holds `cmdOverseer()` (opens the overseer run, writes `<run dir>/overseer/mcp.json`, starts `claude` through the injectable `launch`), `buildOverseerCommand()`, `overseerPrompt()` and `getOverseerPluginDir()`. `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`).
+CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, `overseer`, `setup`, etc.). `overseer.ts` holds `cmdOverseer()` (opens the overseer run, writes `<run dir>/overseer/mcp.json`, starts `claude` through the injectable `launch`; `--open` prints `overseerSessionInfo()` instead), `buildOverseerCommand()`, `overseerPrompt()` and `getOverseerPluginDir()`. `setup.ts` holds `cmdSetup()` over `src/setup/`. `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`; `checkClaudeMcp()` / `checkCodexMcp()` read the client configs through `src/setup/clients.ts`).
 
 #### `prompts/`
 
@@ -40,9 +40,12 @@ Runtime adapter layer for coding agent integrations:
 - `claude-stream.ts` — Claude stream message to `SessionEvent` items, shared by the session driver and `ClaudeAdapter.parseTranscriptLine()` (`cli`); Codex maps its JSONL in `codexStreamEvents()`
 - `claude-session.ts` — `ClaudeSession`, the Claude Agent SDK session driver (streaming input, `canUseTool` permission and `AskUserQuestion` requests); SDK pinned in `CLAUDE_AGENT_SDK_VERSION`
 - `session-runner.ts` — `runSession()`: one step on a session (`runRuntime` delegates to it with `driver: session`)
-- `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
+- `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming; `createSession()` and `sessionOptions()` for the session driver)
+- `codex-session.ts` — `CodexSession`, the `codex app-server` session driver (JSON-RPC over stdio: threads, turns, `turn/steer`, `turn/interrupt`, approvals and `requestUserInput` as session requests, native `skill` inputs from `skills/list`); `codexAppServer.spawn` is the test seam, `commandAllowed()` / `editsAllowed()` apply the allowlist to approvals
+- `codex-protocol/` — generated app-server bindings (`scripts/codex-bindings.js`, never edit by hand), Codex version in `CODEX_PROTOCOL_VERSION`
 - `process-runner.ts` — `runRuntime()` shared process spawning (`options.signal` kills the process tree)
 - `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
+- `af-mcp.ts` — `afInvocation()` (node with this CLI), `AF_MCP_SERVER`, `codexAfMcpConfig()` (the af MCP server in the thread config of every Codex session inside a run), `afMcpEnv()`
 - `skill-inline.ts` — `resolveSkill()` (plugin and skill directory lookup) and `inlineSkillPrompt()` (`SKILL.md` with absolute paths and arguments) for runtimes without skill loading
 - `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
 - `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
@@ -84,11 +87,13 @@ Runs owned by the supervisor:
 
 - `manager.ts` — `RunManager` (dispatch, `/v1/runs` routes, scheduling, execution in the supervisor, crash recovery, run control: `send` (next and now), `pause`, `cancel`, `resume`, `answer`, `amend`, `retryStep`, `reprioritize`; result blocks to `steps/<NN-step>/result.json`; needs_input deadlines; live transcripts through the session host and `logs()` behind `GET /v1/runs/:id/logs`; session resume or restart in recovery, `run.recovered` `sessions`)
 - `run-store.ts` — `RunStore` (one run directory: validated `run.json`, append-only `events.jsonl` under the contract lock)
-- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`, entries carry `type: overseer` for overseer runs), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters)
+- `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`, entries carry `type: overseer` for overseer runs and `parent`), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters, `tree` included), `RunTree` (parent links, depth, root, walk) and `withTreeInfo()`
+- `wait.ts` — waiting for a run: `wakeReason()` (`terminal` / `attention`), `latestResult()`, `waitResultBlock()`, the wait defaults; `RunManager.waitRun()` behind `GET /v1/runs/:id/wait`, `waitForRun()` in `client.ts` for `af_wait`, `af_dispatch` `wait`, `af wait` and `af run --wait`. Run tree guards (`overseer.budgets.max_dispatch_depth`, `max_tree_runs`, `max_tree_active`) are checked in `RunManager.dispatch()`; `pickRunnable()` lets a child use its running ancestors' slot and checkout
 - `overseer.ts` — overseer runs (`openOverseer()`: create, reuse or resume; `writeOverseerSummary()`; `isOverseerEntry()`; `overseer.json`, `epic.md`), behind `RunManager.openOverseer()` / `finishOverseer()` and `POST /v1/overseer`. The supervisor never executes them: scheduling, crash recovery and `activeCount()` skip them, and `requireWorkflowRun()` refuses the control operations
 - `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
 - `backlog.ts` — the overseer backlog model (`backlog.json` in the overseer run, harness is the single writer): `addItems()`, `updateItem()` (triage, transitions, dependency cycles, `budgets.max_tasks`), `scheduleBacklog()` (dependencies, conflict zones, `max_parallel`, `epicHalt()`), `acceptDiscovered()` (`accept_discovered_items`), `evaluateAnswerPolicy()`, `updateBacklog()` under the contract lock
 - `backlog-service.ts` — `BacklogService` (`RunManager.backlog`): `/v1/overseer/:id/backlog` operations, `dispatchItem()` (a dispatch with `item` under the backlog lock), item outcomes from their runs (`reconcileItems()`), discovered items of child runs, `policyFor()` (`overseer_policy` on `needs_input`, enforced in `answer()`); config in `getOverseerConfig()`
+- `ask.ts` — `af_ask` requests (`askRequest()`, `newAskId()`, `AskInput`, `AskState`); `RunManager.ask()` / `askState()` serve `POST /v1/runs/:id/ask` and `GET /v1/runs/:id/ask/:request` (long-poll; an answer while no call waits becomes an operator message, and the session host's `nextMessages` waits while the step has open questions). Steps get `AF_RUN_ID` and `AF_STEP` (`stepEnv()` in `steps/base.ts`)
 - `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
 - `transcript.ts` — per-step live transcripts (`steps/<NN-step>/transcript.jsonl`, `TranscriptWriter`, `transcriptEntries()`, `readTranscriptPage()` with its own cursor and caps) and `session.json` (`readStepSession()`, read by crash recovery to resume a session); `stepDirName()`
@@ -96,7 +101,7 @@ Runs owned by the supervisor:
 - `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment), `buildDispatchPayload()` (shared by `af run` and `af_dispatch`)
 - `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`; `fetchLogs()`, `followLogs()` used by `af logs` and `af_logs`
 
-Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthropic-ai/claude-agent-sdk`; never mock `runRuntime` there). Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
+Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthropic-ai/claude-agent-sdk`; never mock `runRuntime` there) and, for Codex, `tests/helpers/fake-app-server.ts` (`fakeCodex`, set `codexAppServer.spawn = fakeCodex.spawn`). Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
 
 #### `notifications/`
 
@@ -114,8 +119,9 @@ Tests (`tests/notifications.test.ts`) build `RunManager` with `notifications: { 
 The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
-- `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_logs`, `af_artifacts`), zod input schemas, `register()` (handler errors become `isError` results)
+- `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_wait`, `af_logs`, `af_artifacts`); zod input schemas, `register()` (handler errors become `isError` results); `af_dispatch` defaults `parent` to the calling run (`callingRun()`). Cross-runtime dispatch tests in `tests/dispatch-tree.test.ts` (fake SDK and fake app-server sessions dispatching each other)
 - `tools-backlog.ts` — backlog tools (`af_backlog_list`, `af_backlog_add`, `af_backlog_update`) over `/v1/overseer/:id/backlog`; tests in `tests/backlog.test.ts`
+- `tools-ask.ts` — `af_ask` (asks, then waits up to `wait_seconds` with long-polls, `pending` past it); tests in `tests/ask.test.ts` (fake SDK sessions calling the tool)
 - `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) and `af_notify` over the `/v1/runs/:id/*` control endpoints
 - `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)
@@ -124,7 +130,17 @@ MCP tests (`tests/mcp-server.test.ts`) connect an SDK `Client` to `createMcpServ
 
 #### `overseer/`
 
-The bundled `af-overseer` Claude Code plugin (`.claude-plugin/plugin.json`, version kept equal to `package.json`, and `skills/overseer/SKILL.md`), copied to `dist/overseer` and loaded by `af overseer` with `--plugin-dir`. Tests: `tests/overseer.test.ts`.
+The bundled `af-overseer` Claude Code plugin (`.claude-plugin/plugin.json`, version kept equal to `package.json`, `skills/overseer/SKILL.md` and `skills/af-delegate/SKILL.md`), copied to `dist/overseer` and loaded by `af overseer` with `--plugin-dir`. It has no `.mcp.json`: `af overseer` passes `--mcp-config`, and `af setup claude` generates one in its marketplace copy. Tests: `tests/overseer.test.ts`.
+
+#### `setup/`
+
+`af setup claude|codex` and the client config readers shared with `af doctor`:
+
+- `clients.ts` — `getClientDirs()` (`CLAUDE_CONFIG_DIR`, `~/.claude.json`, `CODEX_HOME`, af global dir), readers that never throw: `readClaudeUserMcp()`, `readAfMarketplace()`, `readOverseerPluginInstall()`, `readPluginMcp()`, `entryScript()`
+- `setup.ts` — `runSetup()` (compare first, then act; `dryRun`), the generated marketplace (`<global dir>/claude-marketplace/`), `defaultClaudeCli` (the `claude` CLI; `claudeCli` is the test seam), `AF_SKILLS` (standalone names `af-overseer`, `af-delegate`)
+- `codex-toml.ts` — `readCodexMcp()` / `writeCodexMcp()`: the `[mcp_servers.agentic-forge]` table edited as text, the rest of `config.toml` kept
+
+Tests (`tests/setup.test.ts`) use temp config dirs and a fake `claude` CLI that writes the files the real one writes; never point them at the user's real config.
 
 #### `workflows/`
 
@@ -160,6 +176,7 @@ User-facing documentation, linked from the README via GitHub `blob/main/` URLs. 
 - `workflows.md` — Bundled workflows with use cases, variables, and examples
 - `coding-agents.md` — Supported runtimes, per-step configuration, and model names
 - `configuration.md` — All configuration options, defaults, and layering behavior
+- `overseer.md` — The overseer in Claude Desktop: `af setup`, event delivery, durability, locality, limits
 - `harness-contract.md` — Harness contract v1 specification (owned by agentic-forge): run directory layout, artifacts, exit codes, compliance levels, versioning rules
 
 ### `agentic/`
