@@ -236,12 +236,16 @@ describe("af_wait", () => {
 		writeWorkflow("ten-steps", steps);
 		const { client } = await startSupervisor();
 		const mcp = await connect(client);
-		const { run } = await dispatch(mcp, "ten-steps");
+		const { run, cursor } = await dispatch(mcp, "ten-steps");
 
+		// The first call takes the cursor af_dispatch returned, the next ones af_wait's
 		let calls = 0;
 		let res: ToolOutput;
+		let next: string | number = cursor;
 		do {
-			res = await call(mcp, "af_wait", { run, until: "terminal", timeout_seconds: 30 });
+			res = await call(mcp, "af_wait", { run, until: "terminal", cursor: next, timeout_seconds: 30 });
+			expect(res.isError, res.text).toBe(false);
+			next = res.json.cursor;
 			calls += 1;
 		} while (res.json.state === "waiting" && calls < 5);
 		expect(calls).toBeLessThanOrEqual(2);

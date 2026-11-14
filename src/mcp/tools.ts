@@ -292,6 +292,23 @@ async function runStartCursor(ctx: ToolContext, run: string): Promise<string | n
 	}
 }
 
+/**
+ * af_wait with `run` takes the run's event seq. An af_events cursor (the one
+ * af_dispatch returns) becomes the run's position in it, so the cursor of a
+ * dispatch can be passed straight to af_wait.
+ */
+function singleRunCursor(
+	run: string | undefined,
+	cursor: number | string | undefined,
+): number | string | undefined {
+	if (run === undefined || typeof cursor !== "string") return cursor;
+	try {
+		return decodeCursor(cursor)[run] ?? 0;
+	} catch {
+		return cursor;
+	}
+}
+
 function newestFirst<T extends RegistryEntry>(runs: T[]): T[] {
 	return [...runs].sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
@@ -579,7 +596,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 						error: "cursor must be the cursor of a previous af_wait result",
 					})
 					.optional()
-					.describe("Cursor of a previous af_wait result (events up to it are not reported again)"),
+					.describe("Cursor of a previous af_wait result, or the cursor af_dispatch returned (events up to it are not reported again)"),
 			},
 		},
 		async (input, extra) => {
@@ -590,7 +607,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 				);
 			}
 			const runs = input.runs;
-			const cursor = input.cursor;
+			const cursor = singleRunCursor(input.run, input.cursor);
 			if (runs ? typeof cursor === "number" : typeof cursor === "string") {
 				throw new ToolInputError(
 					"cursor does not match: run takes the number cursor of a single-run result, runs the string cursor of a multi-run result",
