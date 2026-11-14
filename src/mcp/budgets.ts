@@ -47,3 +47,15 @@ export const ARTIFACT_MAX_CHARS = 100_000;
  * turn. Measured after the description cleanup, plus 20% headroom.
  */
 export const TOOLS_LIST_BUDGET_BYTES = 28_700;
+
+/** Most active runs listed by af_digest (one line each). */
+export const DIGEST_MAX_RUNS = 20;
+
+/** Most changes of one af_digest call; more set `truncated`. */
+export const DIGEST_MAX_CHANGES = 20;
+
+/** Size of the changes of one af_digest call; at least one change is returned. */
+export const DIGEST_CHANGES_MAX_BYTES = 4_000;
+
+/** Longest question or error text of an af_digest change. */
+export const DIGEST_TEXT_CHARS = 200;

@@ -42,7 +42,8 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		"af_send",
 		{
 			title: "Send an operator message to a run",
-			description: "Queues an operator message for a run that has not ended; returns { id, message, steered }. mode next (default): injected as ## Operator Messages at the next step (or the named `step`), or as the next turn of a live session. mode now: steers the live session at its next tool call, or restarts a cli-driver step with it. Use af_amend to change the plan, af_answer for a needs_input.",
+			description:
+				"Queues an operator message for a run that has not ended; returns { id, message, steered }. mode next (default): injected as ## Operator Messages at the next step (or the named `step`), or as the next turn of a live session. mode now: steers the live session at its next tool call, or restarts a cli-driver step with it. Use af_amend to change the plan, af_answer for a needs_input.",
 			inputSchema: {
 				run: runId("Run id"),
 				text: nonEmpty("text", "Message text"),
@@ -72,7 +73,8 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		"af_amend",
 		{
 			title: "Amend a run's plan",
-			description: "Records a plan amendment for a run that has not ended; returns { id, amendment, delivery, step, message }. With settings.amend.step, that step reruns at the next boundary to rewrite the plan (delivery amend-step); otherwise it is delivered as an operator message. `affects` lists milestone IDs (M2). Use af_send for guidance that keeps the plan.",
+			description:
+				"Records a plan amendment for a run that has not ended; returns { id, amendment, delivery, step, message }. With settings.amend.step, that step reruns at the next boundary to rewrite the plan (delivery amend-step); otherwise it is delivered as an operator message. `affects` lists milestone IDs (M2). Use af_send for guidance that keeps the plan.",
 			inputSchema: {
 				run: runId("Run id"),
 				text: nonEmpty("text", "What changes in the plan"),
@@ -100,7 +102,8 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		"af_answer",
 		{
 			title: "Answer a run's question",
-			description: "Answers an open needs_input request of an awaiting-human run and resumes it; returns { id, request, message, status }. `answer` is an option id or free text (allow or deny for a permission request). `request_id` (from af_wait, af_status or the event) is required when several are open. A live session gets the answer directly; otherwise the asking step reruns with it. From inside a run, only requests of runs it dispatched.",
+			description:
+				"Answers an open needs_input request of an awaiting-human run and resumes it; returns { id, request, message, status }. `answer` is an option id or free text (allow or deny for a permission request). `request_id` (from af_wait, af_status or the event) is required when several are open. A live session gets the answer directly; otherwise the asking step reruns with it. From inside a run, only requests of runs it dispatched.",
 			inputSchema: {
 				run: runId("Run id"),
 				answer: nonEmpty("answer", "Option id of the question, or free text"),
@@ -128,7 +131,8 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		"af_pause",
 		{
 			title: "Pause a run",
-			description: "Pauses a queued or running run; returns { id, status }. A running run stops at its next step or iteration boundary (pausing); `now: true` kills the running step, which reruns on resume. Next: af_resume to continue, af_cancel to stop for good.",
+			description:
+				"Pauses a queued or running run; returns { id, status }. A running run stops at its next step or iteration boundary (pausing); `now: true` kills the running step, which reruns on resume. Next: af_resume to continue, af_cancel to stop for good.",
 			inputSchema: {
 				run: runId("Run id"),
 				now: z
@@ -146,7 +150,8 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		"af_resume",
 		{
 			title: "Resume a run",
-			description: "Re-queues a paused, awaiting-human, blocked or failed run from the step that did not complete; returns { id, status: queued }. For an awaiting-human run prefer af_answer; to rerun an earlier step use af_retry_step. Next: af_wait.",
+			description:
+				"Re-queues a paused, awaiting-human, blocked or failed run from the step that did not complete; returns { id, status: queued }. For an awaiting-human run prefer af_answer; to rerun an earlier step use af_retry_step. Next: af_wait.",
 			inputSchema: {
 				run: runId("Run id"),
 			},
@@ -159,7 +164,8 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		"af_cancel",
 		{
 			title: "Cancel a run",
-			description: "Cancels a run that has not ended; returns { id, status } (canceled, or canceling while its step is killed). Final: a canceled run cannot be resumed. Use af_pause to stop a run you may continue.",
+			description:
+				"Cancels a run that has not ended; returns { id, status } (canceled, or canceling while its step is killed). Final: a canceled run cannot be resumed. Use af_pause to stop a run you may continue.",
 			inputSchema: {
 				run: runId("Run id"),
 			},
@@ -172,7 +178,8 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		"af_retry_step",
 		{
 			title: "Retry a step of a run",
-			description: "Reruns a top-level step of a failed, paused, blocked or awaiting-human run, and every later step; returns { id, step, message, status: queued }. `context` is queued as an operator message for that step. Next: af_wait.",
+			description:
+				"Reruns a top-level step of a failed, paused, blocked or awaiting-human run, and every later step; returns { id, step, message, status: queued }. `context` is queued as an operator message for that step. Next: af_wait.",
 			inputSchema: {
 				run: runId("Run id"),
 				step: nonEmpty("step", "Name of the top-level step to rerun"),
@@ -195,7 +202,8 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		"af_notify",
 		{
 			title: "Notify the user",
-			description: "Sends a message to the user's enabled notification channels (desktop, ntfy, Slack, Discord, GitHub comment on the run's PR); returns { sent, errors, event }. With `run`, its config picks the channels and it gets a notification.sent event. Use it when the user must act; needs_input, run.failed and run.halted are already notified.",
+			description:
+				"Sends a message to the user's enabled notification channels (desktop, ntfy, Slack, Discord, GitHub comment on the run's PR); returns { sent, errors, event }. With `run`, its config picks the channels and it gets a notification.sent event. Use it when the user must act; needs_input, run.failed and run.halted are already notified.",
 			inputSchema: {
 				text: nonEmpty("text", "Message text"),
 				level: z

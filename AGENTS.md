@@ -121,6 +121,7 @@ The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
 - `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_wait`, `af_logs`, `af_artifacts`); zod input schemas, `register()` (handler errors become `isError` results); `af_dispatch` defaults `parent` to the calling run (`callingRun()`). Cross-runtime dispatch tests in `tests/dispatch-tree.test.ts` (fake SDK and fake app-server sessions dispatching each other)
+- `tools-digest.ts` — `af_digest` (`buildDigest()`: active run lines and the `needs_input`, failure and run end changes since a cursor); `af_wait` with `runs` is `waitForRuns()` in `src/runs/client.ts`. Tests in `tests/wake-economy.test.ts` (also `af_wait` `boundary` and `af events --compact --until`)
 - `tools-backlog.ts` — backlog tools (`af_backlog_list`, `af_backlog_add`, `af_backlog_update`) over `/v1/overseer/:id/backlog`; tests in `tests/backlog.test.ts`
 - `tools-ask.ts` — `af_ask` (asks, then waits up to `wait_seconds` with long-polls, `pending` past it); tests in `tests/ask.test.ts` (fake SDK sessions calling the tool)
 - `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) and `af_notify` over the `/v1/runs/:id/*` control endpoints

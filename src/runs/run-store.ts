@@ -240,8 +240,12 @@ export class RunStore {
 			if (bounded.cut) {
 				const file = path.join(this.dir, EVENT_DATA_DIR, `${seq}-${type}.json`);
 				mkdirSync(path.dirname(file), { recursive: true });
-				writeFileSync(file, `${JSON.stringify(data, null, 2)}
-`, "utf-8");
+				writeFileSync(
+					file,
+					`${JSON.stringify(data, null, 2)}
+`,
+					"utf-8",
+				);
 				eventData = { ...eventData, data_path: file };
 			}
 			const event: RunEvent = {

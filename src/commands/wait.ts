@@ -5,6 +5,7 @@
  */
 
 import { exitCodeForRun } from "../contract/result.js";
+import { WAIT_CONDITIONS, isWaitCondition } from "../runs/wait.js";
 import type { SupervisorClient } from "../supervisor/client.js";
 import { CliExitError } from "./run.js";
 
@@ -27,8 +28,8 @@ export interface WaitOptions {
 
 function parseOptions(options: WaitOptions) {
 	const until = options.until ?? "terminal";
-	if (until !== "terminal" && until !== "attention") {
-		throw new CliExitError("Error: --until must be terminal or attention");
+	if (!isWaitCondition(until)) {
+		throw new CliExitError(`Error: --until must be one of ${WAIT_CONDITIONS.join(", ")}`);
 	}
 	let timeoutSeconds = Number.POSITIVE_INFINITY;
 	if (options.timeout !== undefined) {
@@ -44,7 +45,7 @@ function parseOptions(options: WaitOptions) {
 			throw new CliExitError("Error: --cursor must be the cursor of a previous wait result");
 		}
 	}
-	return { until: until as "terminal" | "attention", timeoutSeconds, cursor };
+	return { until, timeoutSeconds, cursor };
 }
 
 /**
@@ -82,6 +83,8 @@ export async function waitAndReport(
 	let code = exitCodeForRun(result.status);
 	// Attention is never a final status: only failed and canceled end a run with 1
 	if (result.state === "attention" && code === 1) code = WAIT_ATTENTION_EXIT;
+	// A step end of a run that goes on is what the caller waited for
+	if (result.state === "boundary" && code === 1) code = 0;
 	if (code !== 0) {
 		throw new CliExitError(`Run ${runId} is ${result.status} (${result.reason})`, code);
 	}

@@ -121,9 +121,15 @@ export function markdownHeadings(text: string): { level: number; title: string; 
 }
 
 /** The section of `text` under the heading `name` (exact title first, then a title containing it; case-insensitive). */
-export function markdownSection(text: string, name: string): { title: string; text: string } | null {
+export function markdownSection(
+	text: string,
+	name: string,
+): { title: string; text: string } | null {
 	const headings = markdownHeadings(text);
-	const wanted = name.replace(/^#+\s*/, "").trim().toLowerCase();
+	const wanted = name
+		.replace(/^#+\s*/, "")
+		.trim()
+		.toLowerCase();
 	const found =
 		headings.find((h) => h.title.toLowerCase() === wanted) ??
 		headings.find((h) => h.title.toLowerCase().includes(wanted));

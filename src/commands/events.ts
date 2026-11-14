@@ -10,6 +10,7 @@ import { ARTIFACT_KINDS, isArtifactKind, listArtifacts, readArtifact } from "../
 import { decodeCursor, parseTypeFilter } from "../runs/events.js";
 import { RunRegistry } from "../runs/registry.js";
 import type { RunEvent } from "../runs/run-store.js";
+import { WAIT_CONDITIONS, eventMeets, isWaitCondition } from "../runs/wait.js";
 import { CliExitError } from "./run.js";
 import { resolveLegacyOutputDir } from "./status.js";
 
@@ -26,6 +27,10 @@ export interface EventsOptions {
 	json?: boolean;
 	/** Long-poll length per request in seconds (default 30). */
 	wait?: string;
+	/** One short line per event (time, run, type, step, status, request id). */
+	compact?: boolean;
+	/** Exit after the first event that meets this condition (`terminal`, `attention`, `boundary`); implies follow. */
+	until?: string;
 }
 
 function readCursorFile(file: string): string | null {
@@ -57,10 +62,14 @@ export async function cmdEvents(options: EventsOptions): Promise<void> {
 			`Error: --wait must be a positive number of seconds, got '${options.wait}'`,
 		);
 	}
+	const until = options.until;
+	if (until !== undefined && !isWaitCondition(until)) {
+		throw new CliExitError(`Error: --until must be one of ${WAIT_CONDITIONS.join(", ")}`);
+	}
 
 	const { ensureSupervisor } = await import("../supervisor/client.js");
 	const { getVersion } = await import("./version.js");
-	const { followEvents, formatEvent } = await import("../runs/client.js");
+	const { followEvents, formatEvent, formatEventCompact } = await import("../runs/client.js");
 	const found = await ensureSupervisor({
 		version: getVersion(),
 		onWarn: (message) => process.stderr.write(`Warning: ${message}\n`),
@@ -72,6 +81,8 @@ export async function cmdEvents(options: EventsOptions): Promise<void> {
 	const print = (event: RunEvent) => {
 		if (options.json) {
 			process.stdout.write(`${JSON.stringify(event)}\n`);
+		} else if (options.compact) {
+			process.stdout.write(`${formatEventCompact(event, !options.run)}\n`);
 		} else {
 			const run = options.run ? "" : `${event.run} `;
 			process.stdout.write(`${run}${formatEvent(event)}\n`);
@@ -83,9 +94,10 @@ export async function cmdEvents(options: EventsOptions): Promise<void> {
 			run: options.run ?? null,
 			types: parseTypeFilter(options.types),
 			fromNow: options.new === true,
-			follow: options.follow === true,
+			follow: options.follow === true || until !== undefined,
 			waitSeconds: wait,
 			onEvent: print,
+			stopWhen: until ? (event) => eventMeets(until, event.type) : undefined,
 			onCursor: (next) => {
 				if (options.cursorFile) writeCursorFile(options.cursorFile, next);
 			},

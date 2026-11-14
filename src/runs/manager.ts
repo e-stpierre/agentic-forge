@@ -77,6 +77,7 @@ import {
 	stepBypassed,
 	validateDispatch,
 } from "./dispatch.js";
+import { EVENT_STRING_MAX, cutText, fullEventData } from "./event-data.js";
 import {
 	CursorError,
 	type EventPage,
@@ -84,7 +85,6 @@ import {
 	parseTypeFilter,
 	readEventPage,
 } from "./events.js";
-import { EVENT_STRING_MAX, cutText, fullEventData } from "./event-data.js";
 import { Inbox, type InboxMessage, type NewMessage, formatOperatorMessages } from "./inbox.js";
 import {
 	OverseerError,
@@ -137,6 +137,7 @@ import {
 	latestResult,
 	waitResultBlock,
 	wakeReason,
+	wokenState,
 } from "./wait.js";
 
 /** Step status recorded for the step that was running when the supervisor died. */
@@ -535,7 +536,7 @@ export class RunManager {
 			)(),
 		);
 		supervisor.route("GET", "/v1/runs/:id", ({ params }) => wrap(() => this.details(params.id))());
-		supervisor.route("GET", "/v1/runs/:id/wait", ({ params, query }) =>
+		supervisor.route("GET", "/v1/runs/:id/wait", ({ params, query, signal }) =>
 			wrap(() => {
 				const until = query.get("until") ?? "terminal";
 				if (!isWaitCondition(until)) {
@@ -546,6 +547,7 @@ export class RunManager {
 					until,
 					cursor: cursor == null || cursor === "" ? null : Number.parseInt(cursor, 10) || 0,
 					waitSeconds: Number.parseFloat(query.get("wait") ?? "0") || 0,
+					signal,
 				});
 			})(),
 		);
@@ -845,7 +847,13 @@ export class RunManager {
 	 */
 	async waitRun(
 		id: string,
-		query: { until: WaitCondition; cursor: number | null; waitSeconds: number },
+		query: {
+			until: WaitCondition;
+			cursor: number | null;
+			waitSeconds: number;
+			/** The HTTP request's signal: a client that went away ends the wait. */
+			signal?: AbortSignal;
+		},
 	): Promise<WaitResult> {
 		const entry = this.requireEntry(id);
 		const store = new RunStore(entry.dir);
@@ -860,12 +868,16 @@ export class RunManager {
 			const events = store.exists() ? store.readEvents(cursor) : [];
 			const reason = wakeReason(query.until, status, events, firstCall);
 			const last = events.length > 0 ? events[events.length - 1].seq : cursor;
-			if (reason || Date.now() >= deadline || this.closing.signal.aborted) {
+			const gone = this.closing.signal.aborted || query.signal?.aborted === true;
+			if (reason || Date.now() >= deadline || gone) {
 				if (!reason) return { run: id, status, state: "waiting", cursor: last };
 				return this.waitResult(entry, store, status, reason, last);
 			}
 			cursor = last;
-			await abortableDelay(EVENT_POLL_MS, this.closing.signal);
+			await abortableDelay(
+				EVENT_POLL_MS,
+				query.signal ? AbortSignal.any([this.closing.signal, query.signal]) : this.closing.signal,
+			);
 		}
 	}
 
@@ -881,7 +893,7 @@ export class RunManager {
 		const result: WaitResult = {
 			run: entry.id,
 			status,
-			state: isTerminal(status) ? "ended" : "attention",
+			state: wokenState(status, reason),
 			cursor,
 			reason,
 			step: latest?.step ?? null,

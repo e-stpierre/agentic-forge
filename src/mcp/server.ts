@@ -10,6 +10,7 @@ import { ClientCache } from "./errors.js";
 import { registerAskTools } from "./tools-ask.js";
 import { registerBacklogTools } from "./tools-backlog.js";
 import { registerControlTools } from "./tools-control.js";
+import { registerDigestTool } from "./tools-digest.js";
 import { type ToolContext, registerRunTools } from "./tools.js";
 
 export const MCP_SERVER_NAME = "agentic-forge";
@@ -38,10 +39,12 @@ export function createMcpServer(options: CreateMcpServerOptions): McpServer {
 		registryRoot: options.registryRoot,
 		cwd: options.cwd ?? process.cwd(),
 		env: options.env,
+		clientName: () => server.server.getClientVersion()?.name,
 	};
 	registerRunTools(server, ctx);
 	registerControlTools(server, ctx);
 	registerBacklogTools(server, ctx);
 	registerAskTools(server, ctx);
+	registerDigestTool(server, ctx);
 	return server;
 }

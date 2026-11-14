@@ -115,7 +115,7 @@ program
 	.argument("<run>", "run ID")
 	.option(
 		"--until <condition>",
-		"terminal (default) or attention (needs_input, failed step, pause)",
+		"terminal (default), attention (needs_input, failed step, pause) or boundary (also a step end)",
 	)
 	.option("--timeout <seconds>", "give up after this many seconds (exit 124)")
 	.option("--cursor <cursor>", "cursor of a previous wait result (skips attention events seen)")
@@ -311,9 +311,16 @@ program
 	.option("--cursor-file <path>", "read the start cursor from this file and keep it updated")
 	.option("--new", "skip existing events and only print new ones (ignored with a cursor)")
 	.option("--json", "print events as JSON lines (contract envelopes)")
+	.option("--compact", "one short line per event: time, run, type, step, status, request id")
+	.option(
+		"--until <condition>",
+		"follow, and exit after the first event that meets terminal (run ended), attention (also needs_input, failed step, pause) or boundary (also a step end)",
+	)
 	.option("--wait <seconds>", "long-poll length per request with --follow", "30")
 	.action(async (opts: Record<string, unknown>) => {
 		await cmdEvents({
+			compact: optBool(opts.compact),
+			until: optString(opts.until),
 			run: optString(opts.run),
 			types: optString(opts.types),
 			follow: optBool(opts.follow),

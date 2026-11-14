@@ -46,7 +46,8 @@ export function registerAskTools(server: McpServer, ctx: ToolContext): void {
 		"af_ask",
 		{
 			title: "Ask the operator a question",
-			description: "Asks the operator a question from inside an af step and waits up to `wait_seconds` (default 50) for the answer; use it instead of guessing a decision you may not take alone. Returns { status: answered, request_id, answer, option, from }, or { status: pending, request_id, next }: then follow `next` and never guess. `run` and `step` default to AF_RUN_ID and AF_STEP. `options`: labels or { id, label, description }. `risk` low and `blocking: false` allow an automatic answer. Call again with only `request_id` to check.",
+			description:
+				"Asks the operator a question from inside an af step and waits up to `wait_seconds` (default 50) for the answer; use it instead of guessing a decision you may not take alone. Returns { status: answered, request_id, answer, option, from }, or { status: pending, request_id, next }: then follow `next` and never guess. `run` and `step` default to AF_RUN_ID and AF_STEP. `options`: labels or { id, label, description }. `risk` low and `blocking: false` allow an automatic answer. Call again with only `request_id` to check.",
 			inputSchema: {
 				question: nonEmpty("question", "The question").optional(),
 				options: z

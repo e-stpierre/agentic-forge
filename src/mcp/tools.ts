@@ -20,7 +20,14 @@ import {
 	listArtifacts,
 	readArtifactPage,
 } from "../runs/artifacts.js";
-import { dispatchRun, fetchEvents, fetchLogs, waitForRun } from "../runs/client.js";
+import {
+	WAIT_MANY_MAX_RUNS,
+	dispatchRun,
+	fetchEvents,
+	fetchLogs,
+	waitForRun,
+	waitForRuns,
+} from "../runs/client.js";
 import { buildDispatchPayload } from "../runs/dispatch.js";
 import { DEFAULT_EVENT_LIMIT, decodeCursor, encodeCursor } from "../runs/events.js";
 import type { RunDetails } from "../runs/manager.js";
@@ -34,6 +41,7 @@ import {
 } from "../runs/transcript.js";
 import {
 	DEFAULT_WAIT_SECONDS,
+	LONG_WAIT_SECONDS,
 	MAX_WAIT_SECONDS as MAX_RUN_WAIT_SECONDS,
 	WAIT_CONDITIONS,
 } from "../runs/wait.js";
@@ -56,12 +64,53 @@ export interface ToolContext {
 	cwd: string;
 	/** Environment read by af_ask (`AF_RUN_ID`, `AF_STEP`); defaults to `process.env`. */
 	env?: NodeJS.ProcessEnv;
+	/** Name the MCP client reported at initialization (`clientInfo.name`). */
+	clientName?: () => string | undefined;
 }
 
 /** What a tool handler gets from the MCP request besides its input. */
 export interface ToolCallExtra {
 	/** Aborted when the MCP client cancels the call or the connection closes. */
 	signal: AbortSignal;
+	/**
+	 * Sends a progress notification when the client asked for progress
+	 * (a `progressToken`); a no-op otherwise. A client that resets its tool
+	 * timeout on progress then lets a long wait run.
+	 */
+	progress: (progress: number, message?: string) => Promise<void>;
+}
+
+/**
+ * MCP clients whose tool timeout is known to allow a {@link LONG_WAIT_SECONDS}
+ * wait: Claude Code (no short default), and Codex, whose af server entry
+ * (`af setup codex`, and the server given to Codex sessions in a run) sets
+ * `tool_timeout_sec` to 900.
+ */
+export const LONG_TOOL_TIMEOUT_CLIENTS: readonly string[] = ["claude-code", "codex-mcp-client"];
+
+/** Default `timeout_seconds` of af_wait and af_dispatch `wait` for the connected client. */
+export function defaultWaitSeconds(ctx: ToolContext): number {
+	const name = ctx.clientName?.();
+	return name && LONG_TOOL_TIMEOUT_CLIENTS.includes(name)
+		? LONG_WAIT_SECONDS
+		: DEFAULT_WAIT_SECONDS;
+}
+
+/** Interval of the progress notifications sent during a long wait. */
+const PROGRESS_INTERVAL_MS = 20_000;
+
+/** Runs `task`, sending a progress notification every 20 s while it runs. */
+export async function withProgress<T>(extra: ToolCallExtra, task: () => Promise<T>): Promise<T> {
+	let ticks = 0;
+	const timer = setInterval(() => {
+		ticks += 1;
+		extra.progress(ticks, "waiting").catch(() => {});
+	}, PROGRESS_INTERVAL_MS);
+	try {
+		return await task();
+	} finally {
+		clearInterval(timer);
+	}
 }
 
 /** `withClient()` options of the read tools: a GET is retried once when the supervisor is unreachable. */
@@ -112,6 +161,16 @@ const statusEnum = z.enum(RUN_STATUS_VALUES, {
 	error: `status must be one of ${RUN_STATUS_VALUES.join(", ")}`,
 });
 
+/** The parts of the SDK's request handler extra that `register()` reads. */
+interface SdkExtra {
+	signal?: AbortSignal;
+	_meta?: { progressToken?: string | number };
+	sendNotification?: (notification: {
+		method: "notifications/progress";
+		params: { progressToken: string | number; progress: number; message?: string };
+	}) => Promise<void>;
+}
+
 /** Registers a tool whose handler errors become `isError` results with a next step. */
 export function register<Shape extends z.ZodRawShape>(
 	server: McpServer,
@@ -121,10 +180,21 @@ export function register<Shape extends z.ZodRawShape>(
 ): void {
 	server.registerTool(name, config, (async (
 		input: z.infer<z.ZodObject<Shape>>,
-		extra: Partial<ToolCallExtra> | undefined,
+		extra: SdkExtra | undefined,
 	) => {
+		const token = extra?._meta?.progressToken;
+		const progress = async (value: number, message?: string) => {
+			if (token === undefined || !extra?.sendNotification) return;
+			await extra.sendNotification({
+				method: "notifications/progress",
+				params: { progressToken: token, progress: value, ...(message ? { message } : {}) },
+			});
+		};
 		try {
-			return await handler(input, { signal: extra?.signal ?? new AbortController().signal });
+			return await handler(input, {
+				signal: extra?.signal ?? new AbortController().signal,
+				progress,
+			});
 		} catch (err) {
 			return toolError(name, err);
 		}
@@ -193,7 +263,7 @@ export function waitSeconds() {
 		.max(MAX_RUN_WAIT_SECONDS, { error })
 		.optional()
 		.describe(
-			`Seconds to wait (default ${DEFAULT_WAIT_SECONDS}, under the 60 s tool timeout of Codex and most MCP clients; Claude Code allows longer)`,
+			`Seconds to wait (default ${LONG_WAIT_SECONDS} on Claude Code and Codex, ${DEFAULT_WAIT_SECONDS} on other clients, whose tool timeout is often 60 s)`,
 		);
 }
 
@@ -279,7 +349,7 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 				timeout_seconds: waitSeconds(),
 			},
 		},
-		async (input) => {
+		async (input, extra) => {
 			const repo = resolveRepo(ctx.cwd, input.repo);
 			const workflow = resolveWorkflow(input.workflow, repo);
 			const variables: Record<string, string> = {};
@@ -306,13 +376,16 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 				cursor: await runStartCursor(ctx, result.run.id),
 			};
 			if (!input.wait) return jsonResult(dispatched);
-			const waited = await withClient(
-				ctx.clients,
-				(client) =>
-					waitForRun(client, result.run.id, {
-						timeoutSeconds: input.timeout_seconds ?? DEFAULT_WAIT_SECONDS,
-					}),
-				READ,
+			const waited = await withProgress(extra, () =>
+				withClient(
+					ctx.clients,
+					(client) =>
+						waitForRun(client, result.run.id, {
+							timeoutSeconds: input.timeout_seconds ?? defaultWaitSeconds(ctx),
+							signal: extra.signal,
+						}),
+					READ,
+				),
 			);
 			return jsonResult({ ...dispatched, wait: waited });
 		},
@@ -419,7 +492,8 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 		"af_events",
 		{
 			title: "Read run events",
-			description: `Reads run events (run, seq, type, at, data) after \`cursor\`, across runs or for one \`run\`, as { events, cursor, more, status }. Without a cursor it starts from now (\`from_start: true\` replays history); start from the cursor af_dispatch returned. Pass the returned cursor to the next call; \`more\` means more events are ready. Filter with \`types\` (needs_input, run.*, step.failed) and long-poll with the longest \`wait_seconds\` your client allows. To wait for a run, use af_wait.`,
+			description:
+				"Reads run events (run, seq, type, at, data) after `cursor`, across runs or for one `run`, as { events, cursor, more, status }. Without a cursor it starts from now (`from_start: true` replays history); start from the cursor af_dispatch returned. Pass the returned cursor to the next call; `more` means more events are ready. Filter with `types` (needs_input, run.*, step.failed) and long-poll with the longest `wait_seconds` your client allows. To wait, use af_wait; to catch up after a compaction, af_digest.",
 			inputSchema: {
 				cursor: nonEmpty("cursor", "Cursor returned by a previous af_events call").optional(),
 				run: runId("Only events of this run").optional(),
@@ -478,33 +552,66 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 		server,
 		"af_wait",
 		{
-			title: "Wait for a run",
-			description: `Waits until a run ends (\`until: terminal\`, default) or needs attention (\`attention\`: also a needs_input, a failed step or a pause), for at most \`timeout_seconds\` (default ${DEFAULT_WAIT_SECONDS}). Returns { run, status, state, cursor, reason, step, result, result_path, needs_input, error }; state is ended, attention or waiting. On waiting, call again with the cursor. Next: af_answer for a needs_input, af_artifacts for the summary.`,
+			title: "Wait for runs",
+			description: `Waits until a run ends (\`until: terminal\`, default), needs attention (\`attention\`: also a needs_input, a failed step or a pause) or ends a step (\`boundary\`), for at most \`timeout_seconds\` (default ${LONG_WAIT_SECONDS} on Claude Code and Codex, which keeps each wake-up inside the 5 minute prompt cache, else ${DEFAULT_WAIT_SECONDS}). With \`run\`: { run, status, state, cursor, reason, step, result, result_path, needs_input, error }. With \`runs\`: { state, cursor, woke, waiting, ended }. state is ended, attention or waiting; call again with the cursor. Next: af_answer for a needs_input.`,
 			inputSchema: {
-				run: runId("Run id (from af_dispatch or af_list_runs)"),
+				run: runId("Run id (from af_dispatch or af_list_runs)").optional(),
+				runs: z
+					.array(runId("Run id"), { error: "runs must be a list of run ids" })
+					.min(1, { error: "runs must list at least one run id" })
+					.max(WAIT_MANY_MAX_RUNS, {
+						error: `runs must list at most ${WAIT_MANY_MAX_RUNS} run ids`,
+					})
+					.optional()
+					.describe("Several run ids: returns when one of them meets the condition"),
 				until: z
 					.enum(WAIT_CONDITIONS, { error: `until must be one of ${WAIT_CONDITIONS.join(", ")}` })
 					.optional()
-					.describe("terminal (default) or attention"),
+					.describe("terminal (default), attention or boundary"),
 				timeout_seconds: waitSeconds(),
 				cursor: z
-					.number({ error: "cursor must be the cursor of a previous af_wait result" })
-					.int({ error: "cursor must be the cursor of a previous af_wait result" })
-					.min(0, { error: "cursor must be the cursor of a previous af_wait result" })
+					.union([z.number().int().min(0), z.string().min(1)], {
+						error: "cursor must be the cursor of a previous af_wait result",
+					})
 					.optional()
-					.describe("Cursor of a previous af_wait result (attention events up to it are skipped)"),
+					.describe("Cursor of a previous af_wait result (events up to it are not reported again)"),
 			},
 		},
-		async (input) => {
-			const result = await withClient(
-				ctx.clients,
-				(client) =>
-					waitForRun(client, input.run, {
-						until: input.until,
-						cursor: input.cursor ?? null,
-						timeoutSeconds: input.timeout_seconds ?? DEFAULT_WAIT_SECONDS,
-					}),
-				READ,
+		async (input, extra) => {
+			if ((input.run === undefined) === (input.runs === undefined)) {
+				throw new ToolInputError(
+					"Pass either run or runs",
+					"Use run for one run id, runs for a list.",
+				);
+			}
+			const runs = input.runs;
+			const cursor = input.cursor;
+			if (runs ? typeof cursor === "number" : typeof cursor === "string") {
+				throw new ToolInputError(
+					"cursor does not match: run takes the number cursor of a single-run result, runs the string cursor of a multi-run result",
+					"Pass the cursor of the previous af_wait call made with the same run or runs.",
+				);
+			}
+			const timeoutSeconds = input.timeout_seconds ?? defaultWaitSeconds(ctx);
+			const result = await withProgress(extra, () =>
+				withClient(
+					ctx.clients,
+					(client): Promise<unknown> =>
+						runs
+							? waitForRuns(client, runs, {
+									until: input.until,
+									cursor: (cursor as string | undefined) ?? null,
+									timeoutSeconds,
+									signal: extra.signal,
+								})
+							: waitForRun(client, input.run as string, {
+									until: input.until,
+									cursor: (cursor as number | undefined) ?? null,
+									timeoutSeconds,
+									signal: extra.signal,
+								}),
+					READ,
+				),
 			);
 			return jsonResult(result);
 		},

@@ -139,6 +139,10 @@
 - Shortened the MCP tool descriptions (what the tool returns and the next step); `tools/list` went from 28.4 KB to 23.9 KB
 - Changed event writes to cut every `data` string over 500 characters; the full payload goes to `event-data/<seq>-<type>.json` in the run directory, named by `data.data_path`. `step.failed` writes the full error to `steps/<NN-step>/error.txt`, named by `data.error_path`
 - Contract delta (no version bump, additive): optional event `data.data_path` (any event whose strings were cut) and `data.error_path` (`step.failed`), and the optional `event-data/` run directory and `steps/<NN-step>/error.txt` files
+- Added `until: boundary` to `af_wait`, `af wait` and `af run --wait` (also wakes on a step end, `state: boundary`), and `runs` to `af_wait`: waits for the first of up to 20 runs, returns `{ state, cursor, woke, waiting, ended }` and reports each final status once
+- Changed the default `af_wait` and `af_dispatch` `wait` timeout to 240 seconds on Claude Code and Codex (one wake-up per 5 minute prompt cache lifetime); other MCP clients keep 50 seconds. A long wait sends progress notifications when the client asks for them, and an abandoned wait request ends on the supervisor at once
+- Added the `af_digest` MCP tool: one line per active run, and the `needs_input` requests, failed steps and ended runs since a cursor, for an overseer that catches up after a compaction or in a new session
+- Added `af events --compact` (one short line per event) and `--until terminal|attention|boundary` (follow, then exit after the first matching event, the cursor just after it); the overseer's event monitor now uses `--compact`
 
 ## 0.11.0
 

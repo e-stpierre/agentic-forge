@@ -216,7 +216,7 @@ afterEach(async () => {
 });
 
 describe("server", () => {
-	it("lists the nineteen dispatch, read, waiting, steering, asking, notification and backlog tools, each with a title and a description", async () => {
+	it("lists the twenty dispatch, read, waiting, digest, steering, asking, notification and backlog tools, each with a title and a description", async () => {
 		const { mcp } = await setup();
 		const { tools } = await mcp.listTools();
 		expect(tools.map((t) => t.name).sort()).toEqual([
@@ -228,6 +228,7 @@ describe("server", () => {
 			"af_backlog_list",
 			"af_backlog_update",
 			"af_cancel",
+			"af_digest",
 			"af_dispatch",
 			"af_events",
 			"af_list_runs",
@@ -497,7 +498,10 @@ describe("af_events", () => {
 		expect(fromNow.json.events).toEqual([]);
 		expect(typeof fromNow.json.cursor).toBe("string");
 		// The dispatch cursor sees the new run's first event and no older history
-		const next = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "y" } });
+		const next = await callTool(mcp, "af_dispatch", {
+			workflow: "two-steps",
+			vars: { topic: "y" },
+		});
 		await waitForStatus(manager, next.json.run_id, "done");
 		const fromDispatch = await callTool(mcp, "af_events", { cursor: next.json.cursor });
 		const runs = new Set(fromDispatch.json.events.map((e: RunEvent) => e.run));

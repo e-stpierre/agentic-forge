@@ -14,16 +14,17 @@ import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getDefaultConfig } from "../src/config.js";
 import {
 	ARTIFACT_DEFAULT_CHARS,
 	RESULT_BUDGET_BYTES,
 	RUNS_MCP_DEFAULT_LIMIT,
 	TOOLS_LIST_BUDGET_BYTES,
 } from "../src/mcp/budgets.js";
-import { getDefaultConfig } from "../src/config.js";
 import { createMcpServer } from "../src/mcp/index.js";
 import { summaryChars } from "../src/mcp/views.js";
 import { EVENT_STRING_MAX, boundEventData, cutText } from "../src/runs/event-data.js";
+import { encodeCursor } from "../src/runs/events.js";
 import { RunManager, STEP_ERROR_FILE } from "../src/runs/manager.js";
 import { type RunEvent, RunStore } from "../src/runs/run-store.js";
 import type { RuntimeResult, RuntimeRunOptions } from "../src/runtimes/types.js";
@@ -353,6 +354,10 @@ describe("tool result sizes", () => {
 		expectSmall(await call(mcp, "af_events"), "af_events");
 
 		expectSmall(await call(mcp, "af_wait", { run: id }), "af_wait");
+		expectSmall(await call(mcp, "af_wait", { runs: [id] }), "af_wait(runs)");
+		expectSmall(await call(mcp, "af_digest"), "af_digest");
+		const replay = await call(mcp, "af_digest", { cursor: encodeCursor({}) }, "af_digest(replay)");
+		expectSmall(replay, "af_digest(replay)");
 		expectSmall(await call(mcp, "af_logs", { run: id }), "af_logs");
 
 		expectSmall(await call(mcp, "af_artifacts", { run: id }), "af_artifacts");
@@ -439,10 +444,7 @@ describe("tool result sizes", () => {
 		expectSmall(await call(mcp, "af_resume", { run: heldId }), "af_resume");
 		await waitForStatus(manager, heldId, "done");
 		expectSmall(await call(mcp, "af_cancel", { run: heldId }), "af_cancel");
-		expectSmall(
-			await call(mcp, "af_retry_step", { run: heldId, step: "build" }),
-			"af_retry_step",
-		);
+		expectSmall(await call(mcp, "af_retry_step", { run: heldId, step: "build" }), "af_retry_step");
 		expectSmall(await call(mcp, "af_notify", { text: "Heads up" }), "af_notify");
 
 		// The backlog tools of an overseer run

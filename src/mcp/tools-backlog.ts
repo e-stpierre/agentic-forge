@@ -96,7 +96,8 @@ export function registerBacklogTools(server: McpServer, ctx: ToolContext): void 
 		"af_backlog_list",
 		{
 			title: "List an overseer backlog",
-			description: "Returns an overseer run's backlog: { items, runnable, waiting, running, max_parallel, halt, budgets, budgets_used }. `runnable` lists the ready items af_dispatch accepts now; `waiting` says why other ready items wait; `halt` is set when halt_epic_on stops dispatches (ask the user). `status` filters items (comma-separated). Next: af_dispatch with item.",
+			description:
+				"Returns an overseer run's backlog: { items, runnable, waiting, running, max_parallel, halt, budgets, budgets_used }. `runnable` lists the ready items af_dispatch accepts now; `waiting` says why other ready items wait; `halt` is set when halt_epic_on stops dispatches (ask the user). `status` filters items (comma-separated). Next: af_dispatch with item.",
 			inputSchema: {
 				run: runId("Overseer run id"),
 				status: nonEmpty(
@@ -157,7 +158,8 @@ export function registerBacklogTools(server: McpServer, ctx: ToolContext): void 
 		"af_backlog_update",
 		{
 			title: "Update an overseer backlog item",
-			description: "Changes fields of one backlog item; returns { item, runnable }. Triage: track and track_reason. Approve or retry: status ready. Drop: dropped or logged. The harness sets running and run outcomes; a done item cannot change. Next: af_dispatch with item.",
+			description:
+				"Changes fields of one backlog item; returns { item, runnable }. Triage: track and track_reason. Approve or retry: status ready. Drop: dropped or logged. The harness sets running and run outcomes; a done item cannot change. Next: af_dispatch with item.",
 			inputSchema: {
 				run: runId("Overseer run id"),
 				id: nonEmpty("id", "Item id (for example T03)"),
