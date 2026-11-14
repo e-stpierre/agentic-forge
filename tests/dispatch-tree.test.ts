@@ -22,7 +22,7 @@ import { dispatchRun, waitForRun } from "../src/runs/client.js";
 import type { DispatchPayload } from "../src/runs/dispatch.js";
 import { RunManager } from "../src/runs/manager.js";
 import { RunStore } from "../src/runs/run-store.js";
-import { AF_MCP_SERVER } from "../src/runtimes/af-mcp.js";
+import { AF_MCP_SERVER, WORKER_AF_TOOLS } from "../src/runtimes/af-mcp.js";
 import { codexAppServer, spawnAppServer } from "../src/runtimes/codex-session.js";
 import { Supervisor, SupervisorClient } from "../src/supervisor/index.js";
 import { fakeCodex } from "./helpers/fake-app-server.js";
@@ -202,8 +202,16 @@ describe("cross-runtime dispatch", () => {
 		const server = fakeCodex.servers[0];
 		const afServer = (server.threadParams?.config as Record<string, never>)[
 			`mcp_servers.${AF_MCP_SERVER}`
-		] as { command: string; args: string[]; env: Record<string, string> };
+		] as {
+			command: string;
+			args: string[];
+			env: Record<string, string>;
+			enabled_tools: string[];
+		};
 		expect(afServer.args[afServer.args.length - 1]).toBe("mcp");
+		// Only the worker tools: asking, delegating and following the child
+		expect(afServer.enabled_tools).toEqual([...WORKER_AF_TOOLS]);
+		expect(afServer.enabled_tools).not.toContain("af_backlog_add");
 		expect(afServer.env).toMatchObject({ AF_RUN_ID: child, AF_STEP: "work" });
 
 		// Run tree: the child links to the parent, one level down
@@ -220,7 +228,7 @@ describe("cross-runtime dispatch", () => {
 			[parent.run.id, 0, null],
 			[child, 1, parent.run.id],
 		]);
-		const status = await call(user, "af_status", { run: parent.run.id });
+		const status = await call(user, "af_status", { run: parent.run.id, verbose: true });
 		expect(status.tree).toMatchObject({
 			parent: null,
 			depth: 0,

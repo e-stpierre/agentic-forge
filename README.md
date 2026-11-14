@@ -141,7 +141,7 @@ af setup claude   # the af-overseer plugin, user scope
 af setup codex    # config.toml and the skills
 ```
 
-See the [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md#mcp) for the tools and other clients.
+Tool results are compact and small by default (about 8 KB), so an overseer session stays cheap: `af_status` returns a slim view (`verbose: true` for the full one), `af_events` starts from now, `af_wait` returns only when runs end or need you (`runs` waits on several, 240 seconds per call on Claude Code and Codex), `af_digest` catches up after a compaction, `af_usage` reports run tokens and this session's tool-result bytes, and `af_artifacts` pages content (`max_chars`, `offset`, `section`, `frontmatter_only`). See the [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md#mcp) for the tools and other clients, and [Cost and Tokens](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cost-and-tokens.md) for the overseer patterns that keep a session cheap.
 
 ### Overseer
 
@@ -166,6 +166,7 @@ To run the overseer from Claude Desktop (Code tab, and from your phone through R
 | [Configuration](https://github.com/e-stpierre/agentic-forge/blob/main/docs/configuration.md)       | All configuration options, defaults, and layering behavior                      |
 | [Harness Contract](https://github.com/e-stpierre/agentic-forge/blob/main/docs/harness-contract.md) | Contract v1 for skill packs: run directories, result blocks, events, exit codes |
 | [Overseer](https://github.com/e-stpierre/agentic-forge/blob/main/docs/overseer.md)                 | The overseer in Claude Desktop: setup, locality and limits                      |
+| [Cost and Tokens](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cost-and-tokens.md)   | Where tokens go, cheap overseer patterns, budgets and a measured baseline       |
 
 ## Contributing
 

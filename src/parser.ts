@@ -3,6 +3,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
+import { parseRunBudgets } from "./config.js";
 import { RequiresError, parseRequires } from "./requires.js";
 import type {
 	AmendSettings,
@@ -177,7 +178,28 @@ export class WorkflowParser {
 			requiredTools: (data["required-tools"] as string[]) ?? [],
 			worktree: this.parseWorktreeSettings(data),
 			amend: this.parseAmendSettings(data),
+			budgets: this.parseBudgets(data),
 		};
+	}
+
+	/** `settings.budgets: { max_tokens, max_cost_usd }` (positive numbers, or null for no limit). */
+	private parseBudgets(data: Record<string, unknown>): WorkflowSettings["budgets"] {
+		const raw = data.budgets;
+		if (raw === undefined || raw === null) return null;
+		if (typeof raw !== "object" || Array.isArray(raw)) {
+			throw new WorkflowParseError("settings.budgets must be an object");
+		}
+		for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+			if (!["max_tokens", "max-tokens", "max_cost_usd", "max-cost-usd"].includes(key)) {
+				throw new WorkflowParseError(
+					`Unknown settings.budgets key '${key}'. Use max_tokens or max_cost_usd`,
+				);
+			}
+			if (value !== null && !(typeof value === "number" && Number.isFinite(value) && value > 0)) {
+				throw new WorkflowParseError(`settings.budgets.${key} must be a positive number or null`);
+			}
+		}
+		return parseRunBudgets(raw);
 	}
 
 	/** `settings.amend: { step: <top-level step name> }` (validated against the steps in parseDict). */

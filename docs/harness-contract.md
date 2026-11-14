@@ -204,6 +204,8 @@ Metadata and status of one run. Required: `contract_version`, `id`, `type`, `sta
 | `models`           | object            | Model per role: `{ "<role>": { "model": "...", "effort": "..." } }`, `effort` optional |
 | `budgets_used`     | object            | Budget consumption by name: `{ "<name>": <number >= 0> }`                              |
 
+agentic-forge writes the token usage of a workflow run to `budgets_used`: `tokens` (the sum of the four counts), `input_tokens` (not cached), `cached_input_tokens`, `cache_creation_tokens`, `output_tokens`, and `cost_usd` when a runtime reported a cost. A run whose runtimes reported no usage has none of these keys. The per-call detail is in the optional `steps/<NN-step>/usage.json` file (`{ step, usage, unknown_calls, calls: [{ at, runtime, model, usage, iteration? }] }`, `usage` null when not reported), written by agentic-forge and not required of other writers.
+
 `paused`, `blocked` and `awaiting-human` are not terminal: a run in those statuses can resume.
 
 ## Result Block
@@ -324,6 +326,7 @@ An append-only log, one event per line. Required: `seq`, `at`, `run`, `type`; `d
 - `seq` equals the physical line number, starting at `1`, with no gaps. The file has no blank lines, except the final newline.
 - `run` is the ID of the run the event belongs to.
 - Readers must ignore event types they do not know.
+- `data` holds identifiers, statuses and short strings. agentic-forge cuts every string in `data` to 500 characters when it writes the event, writes the full payload to `event-data/<seq>-<type>.json` in the run directory, and names that file in the optional `data.data_path`. A `step.failed` event also writes the full error text to `steps/<NN-step>/error.txt` and names it in the optional `data.error_path`. Both files are written by agentic-forge, not required of other writers.
 
 | Group      | Types                                                                                                                     |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -331,7 +334,7 @@ An append-only log, one event per line. Required: `seq`, `at`, `run`, `type`; `d
 | Step       | `step.started`, `step.completed`, `step.failed`, `step.retried`, `iteration.started`, `iteration.completed`               |
 | Steering   | `message.queued`, `message.delivered`, `amendment.applied`, `needs_input`, `input.answered`                               |
 | Git/GitHub | `branch.created`, `commit.created`, `pr.opened`, `review.received`, `checks.completed`, `merge.locked`, `merge.completed` |
-| Harness    | `notification.sent`, `supervisor.restarted`, `run.recovered`                                                              |
+| Harness    | `notification.sent`, `supervisor.restarted`, `run.recovered`, `budget.warning`                                            |
 
 `run.completed` covers both `done` and `merged`; `run.json` holds which.
 

@@ -128,7 +128,7 @@ export function overseerMcpConfig(runId: string, invocation = afInvocation()) {
 export function overseerMonitorCommand(dir: string, af = afShellCommand()): string {
 	let cursor = path.join(dir, OVERSEER_SESSION_DIR, "events.cursor");
 	if (process.platform === "win32") cursor = cursor.replace(/\\/g, "/");
-	return `${af} events --follow --new --cursor-file "${cursor}" --types "${OVERSEER_EVENT_TYPES}"`;
+	return `${af} events --follow --compact --new --cursor-file "${cursor}" --types "${OVERSEER_EVENT_TYPES}"`;
 }
 
 /** What `af overseer --open` prints: the run and the commands the skill uses. */

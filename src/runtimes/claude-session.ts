@@ -34,6 +34,7 @@ import {
 	type SessionStartOptions,
 	type SessionState,
 } from "./session.js";
+import { claudeResultUsage } from "./usage.js";
 
 /** Version of `@anthropic-ai/claude-agent-sdk` this driver is tested with (pinned in package.json). */
 export const CLAUDE_AGENT_SDK_VERSION = "0.3.322";
@@ -311,6 +312,7 @@ export class ClaudeSession implements RuntimeSession {
 					result,
 					isError: message.is_error || message.subtype !== "success",
 					messageIds: ids,
+					usage: claudeResultUsage(message as unknown as Record<string, unknown>),
 				});
 				if (this.outstanding.length === 0 && this.pending.size === 0) this.setState("idle");
 				return;

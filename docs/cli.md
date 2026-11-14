@@ -22,6 +22,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `events`        | Print or follow run events                           |
 | `logs`          | Print or follow the live transcript of a run         |
 | `artifacts`     | Show the plan, summary, decisions and review files   |
+| `usage`         | Show the token usage and reported cost of runs       |
 | `input`         | Answer the single pending request of a run           |
 | `init`          | Initialize directory structure                       |
 | `config`        | Get or set configuration values                      |
@@ -77,7 +78,7 @@ af run <workflow> [vars...] [options]
 | `--parent <run>`           | Parent run ID recorded in `run.json` `parent` (for example an overseer run). Defaults to `AF_RUN_ID` inside a run's step. `af list --parent` lists the children. An unknown run, or one past the run tree guards, is refused. |
 | `--item <id>`              | Backlog item of the `--parent` overseer run this run implements. Refused unless the item may start now (see [Backlog](#backlog)); the item becomes `running` and takes the run's outcome.                                     |
 | `--wait`                   | Wait for the run (as [`af wait`](#wait)) and print its wait result as one JSON line on stdout (the queued run ID goes to stderr). Exit code as `af wait`.                                                                     |
-| `--until <condition>`      | With `--wait`: `terminal` (default) or `attention`                                                                                                                                                                            |
+| `--until <condition>`      | With `--wait`: `terminal` (default), `attention` or `boundary`                                                                                                                                                                |
 | `--timeout <seconds>`      | With `--wait`: give up after this many seconds (exit code `124`)                                                                                                                                                              |
 | `--list`                   | List all available workflows (same output as `af workflows`)                                                                                                                                                                  |
 
@@ -111,19 +112,19 @@ af run ./agentic/workflows/my-workflow.yaml --var "key=value"
 
 ## wait
 
-Wait for a run in the supervisor until it ends, or with `--until attention` until it needs someone (a `needs_input` request, a failed step, a pause), and print one compact JSON line: the same result as the [`af_wait`](#waiting-for-a-run) MCP tool. The shell fallback of `af_wait`, for agents without the af MCP server.
+Wait for a run in the supervisor until it ends, with `--until attention` until it needs someone (a `needs_input` request, a failed step, a pause), or with `--until boundary` also until a step ends, and print one compact JSON line: the same result as the [`af_wait`](#waiting-for-a-run) MCP tool. The shell fallback of `af_wait`, for agents without the af MCP server.
 
 ```bash
-af wait <run> [--until terminal|attention] [--timeout <seconds>] [--cursor <cursor>]
+af wait <run> [--until terminal|attention|boundary] [--timeout <seconds>] [--cursor <cursor>]
 ```
 
 | Option                | Description                                                                     |
 | --------------------- | ------------------------------------------------------------------------------- |
-| `--until <condition>` | `terminal` (default) or `attention`                                             |
+| `--until <condition>` | `terminal` (default), `attention` or `boundary`                                 |
 | `--timeout <seconds>` | Give up after this many seconds (default: wait until the condition holds)       |
 | `--cursor <cursor>`   | `cursor` of a previous result: attention events up to it are not reported again |
 
-Exit code: `0` done or merged, `10` awaiting-human, `20` halted, `30` blocked, `1` failed or canceled, `11` attention on a run whose status has no code of its own (paused, or still running after a failed step: read the JSON line), `124` when the timeout ran out first (the result has `state: waiting` and the cursor to wait again).
+Exit code: `0` done or merged, `10` awaiting-human, `20` halted, `30` blocked, `1` failed or canceled, `11` attention on a run whose status has no code of its own (paused, or still running after a failed step: read the JSON line), `0` on a step end (`boundary`) of a run that goes on, `124` when the timeout ran out first (the result has `state: waiting` and the cursor to wait again).
 
 A first wait (no `--cursor`) only looks at the run's current status: attention events from before the call, such as a question already answered or a step already retried, do not wake it. Ctrl+C ends the wait at once: it prints the last result and exits with its code (`124` while the run is still waiting).
 
@@ -153,9 +154,13 @@ af resume <run_id> [options]
 
 ### Options
 
-| Option         | Description                                                  |
-| -------------- | ------------------------------------------------------------ |
-| `--foreground` | Stream the run's events until it ends (Ctrl+C detaches only) |
+| Option               | Description                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `--foreground`       | Stream the run's events until it ends (Ctrl+C detaches only)                            |
+| `--max-tokens <n>`   | Raise the run's token budget (see [budgets](configuration.md#runs)), stored in run.json |
+| `--max-cost-usd <n>` | Raise the run's cost budget in USD                                                      |
+
+A run paused at a budget (`run.paused` with `data.reason: budget`) pauses again at the next boundary unless its budget is raised.
 
 ### Examples
 
@@ -165,6 +170,9 @@ af resume 2026-11-10-dark-mode
 
 # Resume and follow it
 af resume 2026-11-10-dark-mode --foreground
+
+# Continue a run paused at its token budget, with a higher limit
+af resume 2026-11-10-dark-mode --max-tokens 4000000
 ```
 
 ## status
@@ -404,20 +412,24 @@ af events [options]
 
 A cursor records the last event seen in each run. When the command ends, it prints the cursor on stderr (`Cursor: c1....`); passing it back with `--cursor` continues exactly after it, without gaps or duplicates, even across runs that started in between. `--cursor-file` reads the cursor at start and rewrites it after every batch, which is the way to run a resumable background monitor. Type filters never hold the cursor back: a filtered-out event is skipped, not delivered later.
 
-With `--follow`, the command long-polls the supervisor (`--wait` seconds per request) and prints events as they arrive until Ctrl+C.
+With `--follow`, the command long-polls the supervisor (`--wait` seconds per request) and prints events as they arrive until Ctrl+C. With `--until`, it follows and exits after the first event that meets the condition; the cursor (and `--cursor-file`) stops just after that event, so the next command starts with the following one.
+
+An agent's background Monitor prints every line into the agent's context: use `--compact` and a `--types` filter there, so each event costs one short line.
 
 ### Options
 
-| Option                 | Description                                                                                    |
-| ---------------------- | ---------------------------------------------------------------------------------------------- |
-| `--run <run>`          | Only events of this run                                                                        |
-| `--types <types>`      | Comma-separated event types. A trailing `*` matches a prefix: `run.*`, `step.*`, `iteration.*` |
-| `--follow`             | Keep streaming new events until Ctrl+C                                                         |
-| `--cursor <cursor>`    | Start after this cursor                                                                        |
-| `--cursor-file <path>` | Read the start cursor from this file and keep it updated                                       |
-| `--new`                | Skip the existing events and only print new ones (ignored with a cursor)                       |
-| `--json`               | Print events as JSON lines instead of one readable line per event                              |
-| `--wait <seconds>`     | Long-poll length per request with `--follow` (default 30, max 120)                             |
+| Option                 | Description                                                                                                                                                       |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--run <run>`          | Only events of this run                                                                                                                                           |
+| `--types <types>`      | Comma-separated event types. A trailing `*` matches a prefix: `run.*`, `step.*`, `iteration.*`                                                                    |
+| `--follow`             | Keep streaming new events until Ctrl+C                                                                                                                            |
+| `--cursor <cursor>`    | Start after this cursor                                                                                                                                           |
+| `--cursor-file <path>` | Read the start cursor from this file and keep it updated                                                                                                          |
+| `--new`                | Skip the existing events and only print new ones (ignored with a cursor)                                                                                          |
+| `--json`               | Print events as JSON lines instead of one readable line per event                                                                                                 |
+| `--compact`            | One short line per event: time, run, type, then the step, status and request id when present                                                                      |
+| `--until <condition>`  | Follow, and exit after the first event of a run end (`terminal`), also of a `needs_input`, failed step or pause (`attention`), or also of a step end (`boundary`) |
+| `--wait <seconds>`     | Long-poll length per request with `--follow` (default 30, max 120)                                                                                                |
 
 ### Event types
 
@@ -427,9 +439,9 @@ With `--follow`, the command long-polls the supervisor (`--wait` seconds per req
 | Step     | `step.started`, `step.completed`, `step.failed`, `step.retried`, `iteration.started`, `iteration.completed`           |
 | Steering | `message.queued`, `message.delivered`, `amendment.applied`, `needs_input`, `input.answered`                           |
 | Git      | `branch.created`, `pr.opened`, `review.received`, `checks.completed`, `merge.locked`, `merge.completed`               |
-| Harness  | `supervisor.restarted`, `run.recovered`                                                                               |
+| Harness  | `supervisor.restarted`, `run.recovered`, `budget.warning`                                                             |
 
-`run.queued` is also emitted when a stopped run is queued again (`data.reason: resumed`, from `af resume`, `af answer` or `af retry-step`). `step.retried` carries `data.reason`: `retry` (automatic retry after a failed attempt), `operator` (`af retry-step`), `message` (`af send --mode now`) or `resume-failed` (a resumed session failed and the step restarts from its start; `data.session_id` names it). `iteration.completed` carries `data.outcome`: `continue`, `complete`, `failed`, `error` or `max_iterations`. A supervisor that takes over runs left `running` or `queued` by a previous one emits `supervisor.restarted` once in each of them. `branch.created` is emitted when the run's worktree and branch are created, `pr.opened` when a step first reports a pull request for the run (its result block `pr`), `review.received` once per reviewer and head commit (`wait-for-review`), `checks.completed` when `wait-for-checks` ends (`data.conclusion`), and `merge.locked` and `merge.completed` by a native `merge` step (a merge skill emits its own).
+`step.completed` carries `data.usage` when the step ran a runtime: `{ tokens, input_tokens, cached_input_tokens, cache_creation_tokens, output_tokens, cost_usd }`, or `null` when the runtime reported no usage. `budget.warning` is emitted once per budget at 80% of `max_tokens` or `max_cost_usd` (`data.budget`, `used`, `limit`, `ratio`, `step`); at the limit the run pauses at the next boundary with `run.paused` `data.reason: budget`. `run.queued` is also emitted when a stopped run is queued again (`data.reason: resumed`, from `af resume`, `af answer` or `af retry-step`). `step.retried` carries `data.reason`: `retry` (automatic retry after a failed attempt), `operator` (`af retry-step`), `message` (`af send --mode now`) or `resume-failed` (a resumed session failed and the step restarts from its start; `data.session_id` names it). `iteration.completed` carries `data.outcome`: `continue`, `complete`, `failed`, `error` or `max_iterations`. A supervisor that takes over runs left `running` or `queued` by a previous one emits `supervisor.restarted` once in each of them. `branch.created` is emitted when the run's worktree and branch are created, `pr.opened` when a step first reports a pull request for the run (its result block `pr`), `review.received` once per reviewer and head commit (`wait-for-review`), `checks.completed` when `wait-for-checks` ends (`data.conclusion`), and `merge.locked` and `merge.completed` by a native `merge` step (a merge skill emits its own).
 
 ### Examples
 
@@ -440,8 +452,11 @@ af events --json
 # Follow one run
 af events --run 2026-11-10-dark-mode --follow
 
-# Background monitor: wake on questions and run status changes, resumable
-af events --follow --types needs_input,run.*,step.failed --cursor-file ~/.af-monitor-cursor
+# Background monitor of an agent: one short line per question, failure and run status change, resumable
+af events --follow --compact --types needs_input,run.*,step.failed --cursor-file ~/.af-monitor-cursor
+
+# Wait in a script until a run needs someone, then stop
+af events --run 2026-11-10-dark-mode --compact --until attention
 ```
 
 ## logs
@@ -519,6 +534,36 @@ af artifacts 2026-11-10-dark-mode
 
 # The current plan
 af artifacts 2026-11-10-dark-mode --kind plan --content
+```
+
+## usage
+
+Show the token usage of a run, with the runs it dispatched (child runs through `parent`), or of all runs. Reads the `steps/<NN-step>/usage.json` files of the run directories directly (no supervisor needed).
+
+```bash
+af usage [run] [options]
+```
+
+### Options
+
+| Option           | Description                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| `--since <when>` | Only runs created since an ISO date or a duration (`30m`, `2h`, `7d`) |
+| `--by <group>`   | Group by `run` (default), `step`, `runtime`, `model` or `workflow`    |
+| `--json`         | Print the report as JSON (`{ by, runs, rows, total }`)                |
+
+Columns: calls (runtime calls: attempts and ralph-loop iterations), tokens (every token: input, cached input, cache writes, output), input (not cached), cached (cache reads), cache_write (Claude cache writes), output (reasoning included) and cost_usd. `unknown` means the runtime reported no usage for the call; it is never counted as zero. Costs come from the runtime (Claude reports one, Codex does not) and are estimates: on a subscription login they are notional list prices.
+
+The MCP tool `af_usage` returns the same report (at most 30 rows), and with `scope: "mcp"` the bytes each tool returned in the current MCP session, with an estimate of tokens (bytes / 4). That is the overseer's tool-result load, written to `<global dir>/mcp-sessions/<session>.json`.
+
+### Examples
+
+```bash
+# Usage of a run and its child runs, per step
+af usage 2026-11-10-dark-mode --by step
+
+# What every runtime used this week
+af usage --since 7d --by runtime
 ```
 
 ## input
@@ -771,37 +816,43 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 | Tool                | Inputs                                                                                                                             | Supervisor endpoint                                      | CLI equivalent  |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------- |
 | `af_dispatch`       | `workflow`, `repo?`, `vars?`, `runtime?`, `slug?`, `priority?`, `parent?`, `item?`, `wait?`, `timeout_seconds?`                    | `POST /v1/runs`                                          | `af run`        |
-| `af_wait`           | `run`, `until?` (`terminal` or `attention`), `timeout_seconds?`, `cursor?`                                                         | `GET /v1/runs/:id/wait`                                  | `af wait`       |
-| `af_status`         | `run?` (without it: the active runs)                                                                                               | `GET /v1/runs/:id`, `GET /v1/runs`                       | `af status`     |
+| `af_wait`           | `run` or `runs`, `until?` (`terminal`, `attention` or `boundary`), `timeout_seconds?`, `cursor?`                                   | `GET /v1/runs/:id/wait`                                  | `af wait`       |
+| `af_digest`         | `cursor?`                                                                                                                          | `GET /v1/runs`, `GET /v1/runs/:id`, `GET /v1/events`     | none            |
+| `af_usage`          | `scope?` (`runs` or `mcp`), `run?`, `since?`, `by?` (`run`, `step`, `runtime`, `model` or `workflow`)                              | none (reads the run directories)                         | `af usage`      |
+| `af_status`         | `run?` (without it: the active runs), `verbose?`                                                                                   | `GET /v1/runs/:id`, `GET /v1/runs`                       | `af status`     |
 | `af_list_runs`      | `status?` (one or a list), `repo?`, `since?`, `parent?`, `tree?`, `limit?`                                                         | `GET /v1/runs`                                           | `af list`       |
-| `af_events`         | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_now?`                                                     | `GET /v1/events`                                         | `af events`     |
+| `af_events`         | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_start?`                                                   | `GET /v1/events`                                         | `af events`     |
 | `af_logs`           | `run`, `step?`, `cursor?`, `limit?`, `max_chars?`, `wait_seconds?` (0 to 120)                                                      | `GET /v1/runs/:id/logs`                                  | `af logs`       |
 | `af_send`           | `run`, `text`, `mode?` (`next` or `now`), `step?`, `from?`                                                                         | `POST /v1/runs/:id/messages`                             | `af send`       |
 | `af_amend`          | `run`, `text`, `affects?`, `from?`                                                                                                 | `POST /v1/runs/:id/amend`                                | `af amend`      |
 | `af_answer`         | `run`, `answer`, `request_id?`, `from?`                                                                                            | `POST /v1/runs/:id/answer`                               | `af answer`     |
 | `af_ask`            | `question`, `options?`, `recommended?`, `context?`, `kind?`, `risk?`, `blocking?`, `wait_seconds?`, `request_id?`, `run?`, `step?` | `POST /v1/runs/:id/ask`, `GET /v1/runs/:id/ask/:request` | none            |
 | `af_pause`          | `run`, `now?`                                                                                                                      | `POST /v1/runs/:id/pause`                                | `af pause`      |
-| `af_resume`         | `run`                                                                                                                              | `POST /v1/runs/:id/resume`                               | `af resume`     |
+| `af_resume`         | `run`, `max_tokens?`, `max_cost_usd?`                                                                                              | `POST /v1/runs/:id/resume`                               | `af resume`     |
 | `af_cancel`         | `run`                                                                                                                              | `POST /v1/runs/:id/cancel`                               | `af cancel`     |
 | `af_retry_step`     | `run`, `step`, `context?`, `from?`                                                                                                 | `POST /v1/runs/:id/retry`                                | `af retry-step` |
 | `af_notify`         | `text`, `level?` (`info`, `warning`, `error`), `run?`, `title?`                                                                    | `POST /v1/notifications`                                 | `af notify`     |
-| `af_artifacts`      | `run`, `kind?` (`plan`, `summary`, `decisions`, `review`), `content?`                                                              | none (reads the run registry and directory)              | `af artifacts`  |
+| `af_artifacts`      | `run`, `kind?`, `content?`, `max_chars?`, `offset?`, `section?`, `frontmatter_only?`                                               | none (reads the run registry and directory)              | `af artifacts`  |
 | `af_backlog_list`   | `run` (an overseer run), `status?` (comma-separated)                                                                               | `GET /v1/overseer/:id/backlog`                           | none            |
 | `af_backlog_add`    | `run`, `items` (see [Backlog](#backlog))                                                                                           | `POST /v1/overseer/:id/backlog`                          | none            |
 | `af_backlog_update` | `run`, `id`, `fields`                                                                                                              | `POST /v1/overseer/:id/backlog/:item`                    | none            |
 
-- `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. `parent` records the run that dispatched it (an overseer passes its own run); `item` dispatches a backlog item of that overseer (409 with the reason when it cannot start now). Called by an agent inside a run, `parent` defaults to that run (`AF_RUN_ID`, else the overseer's `AF_OVERSEER_RUN`). Returns `{ run_id, status, dir, workflow, parent, warnings }`; with `wait: true`, also `wait`: the [`af_wait`](#waiting-for-a-run) result after up to `timeout_seconds`
-- `af_status`: with `run`, adds `tree` (`parent`, `depth`, `root`, `children` with their workflow, status and runtime); without, every active run carries `parent` and `depth`
-- `af_list_runs`: newest first, cut to `limit` (default 50); returns `{ runs, total }`, each run with `parent` and `depth` (0 for a root run). `tree: <run>` lists that run and every run below it, depth first
-- `af_events`: returns `{ events, cursor, more, status }`; pass `cursor` back to resume without duplicates. `wait_seconds` long-polls until a new event arrives or the wait ends. `types` takes exact types or prefixes such as `run.*`
+- `af_dispatch`: `workflow` is a name (looked up in `<repo>/agentic/workflows`, then the user-global and bundled workflows) or a path to a YAML file (absolute, or relative to `repo`). `repo` defaults to the server's working directory. `vars` values are strings; numbers and booleans are converted to strings. `parent` records the run that dispatched it (an overseer passes its own run); `item` dispatches a backlog item of that overseer (409 with the reason when it cannot start now). Called by an agent inside a run, `parent` defaults to that run (`AF_RUN_ID`, else the overseer's `AF_OVERSEER_RUN`). Returns `{ run_id, status, dir, workflow, parent, warnings, cursor }`, where `cursor` is an `af_events` cursor placed before the run's first event (start following the run from it); with `wait: true`, also `wait`: the [`af_wait`](#waiting-for-a-run) result after up to `timeout_seconds`
+- `af_status`: with `run`, returns a slim view: `id`, `workflow`, `status`, `repo`, `dir`, `branch`, `worktree`, `pr`, `max_risk`, `current_step`, `parent`, `depth`, the number of `children`, the open `needs_input` requests (question cut to 300 characters) and per step `name`, `status`, `result_status`, a `summary` (the step output cut to 300 characters, less when the run has many steps) and `error: true` for a failed step. `verbose: true` returns the full payload: `entry`, `run` (`run.json`), `steps` (step records) and `tree` (`parent`, `depth`, `root`, `children` with their workflow, status and runtime). Without `run`, returns `{ runs, total }`: the active runs, newest first, at most 20, each with `parent` and `depth`
+- `af_list_runs`: newest first, cut to `limit` (default 20); returns `{ runs, total }`, each run with `parent` and `depth` (0 for a root run). `tree: <run>` lists that run and every run below it, depth first
+- `af_events`: returns `{ events, cursor, more, status }`; pass `cursor` back to resume without duplicates. The cursor keeps a position for the active runs and the runs with recent events; ended runs leave it once their events are older than its watermark, so its size follows the active runs, not the whole run history. Without a `cursor` it starts from now and returns no history; `from_start: true` replays the existing events. Start following a new run from the `cursor` `af_dispatch` returned, so its first events are never missed. A default page holds at most 50 events within about 6 KB (`more: true` when more are ready); an explicit `limit` (up to 500) lifts the size cap. `wait_seconds` long-polls until a new event arrives or the wait ends. `types` takes exact types or prefixes such as `run.*`: filter on what you act on (`needs_input`, `run.*`, `step.failed`). To wait for runs, use `af_wait`; to catch up after a compaction or in a new session, `af_digest`
+- `af_usage`: returns `{ by, runs, rows, total }`, the [`af usage`](#usage) report of a run and the runs it dispatched (or of all runs since `since`), at most 30 rows (`truncated: true` and `more_rows` past it: narrow with `run`, `since` or a coarser `by`). Each row: `key`, `calls`, `unknown_calls` (calls with no reported usage), `tokens` (null when unknown), `input`, `cached`, `cache_write`, `output`, `cost_usd` (an estimate; `cost_note: estimate`). `scope: "mcp"` returns `{ session, client, calls, bytes, est_tokens, tools: [{ tool, calls, errors, bytes, max_bytes, est_tokens }], path }`: the bytes every tool returned in this MCP session, the load the results put on the client context (`est_tokens` is bytes / 4, an estimate)
+- `af_digest`: returns `{ runs, changes, cursor }`. `runs` holds one line per active run, newest first, at most 20 (`more_runs` counts the others): `<id> <workflow> <status> [step=<current step>] [needs_input=<open requests>]`. With a `cursor` (from a previous `af_digest`, `af_dispatch` or `af_events`), `changes` lists the `needs_input` requests, failed steps and ended runs since it (`run`, `seq`, `type`, `step`, `id`, `status`, and the question or error cut to 200 characters), at most 20 within about 4 KB (`truncated: true` when more are ready: call again with the returned cursor). Without a cursor, `changes` is empty and `cursor` starts from now
 - `af_logs`: the live transcript of a run (see [logs](#logs)), as compact JSON `{ run, step, entries, cursor, more, truncated, active, status }`. Without `cursor`, the last `limit` entries (default 20); with it, only newer ones. Each entry's text is cut to 500 characters and the page to about 8 KB, with `truncated: true`; an explicit `max_chars` (up to 20,000) lifts the page budget. `active` is false once the step (or run) ended; `wait_seconds` long-polls for new entries while it is active
-- `af_artifacts`: `content: true` needs a `kind` and returns the latest file of that kind (cut at 20,000 characters)
+- `af_artifacts`: without `content`, returns the artifact paths. `content: true` needs a `kind` and returns `{ run, kind, path, content, offset, total_chars, truncated, next_offset? }` for the latest file of that kind: `max_chars` characters (default 6,000, at most 100,000) from `offset`. A cut text has `truncated: true` and `next_offset`, the `offset` of the next page. `section` returns only the markdown section under that heading (exact title first, then a title that contains it, case-insensitive; an unknown heading is an error listing the headings), paged the same way. `frontmatter_only: true` (with `kind: summary`) returns `{ run, kind, path, frontmatter }`, the parsed YAML frontmatter of `summary.md` without the body. Passing `max_chars`, `offset` or `section` implies `content: true`
 - `af_notify`: returns `{ sent, errors, event }` (`event` is the `seq` of `notification.sent` in the run, or null without a run); `hint` says when no channel is enabled
 - `af_backlog_list`: returns `{ items, runnable, waiting, running, max_parallel, halt, budgets, budgets_used }` (items without timestamps, nulls or empty lists)
 - `af_backlog_add` / `af_backlog_update`: return the added items (`added`) or the item, and the new `runnable` list
 - `af_ask`: see [Asking from a step](#asking-from-a-step)
 - `from` (steering tools) is `user` or `overseer` (default `overseer`). An `af_answer` with `from: overseer` on a run the overseer dispatched is refused (409) outside its [answer policy](#answer-policy); `from` is declared by the caller, not authenticated
 - `af_answer` (and `af answer`) called from inside a run's step (`AF_RUN_ID` set) only answers requests of runs below that run in its [run tree](#run-trees), and never a `permission` request: anything else is refused (403) with the reason. The operator and the overseer have no such limit
+
+Tool results are compact JSON and small by default: each stays under about 8 KB (about 2k tokens) unless a parameter asks for more (`limit`, `max_chars`, `verbose`), and a cut result says so (`truncated: true`, `more: true`) and names the parameter that returns the rest. The defaults are constants in `src/mcp/budgets.ts`.
 
 The MCP SDK client's default request timeout is 60 seconds, below the `wait_seconds` cap of 120. Use shorter waits (for example 30) unless your client sets a longer timeout.
 
@@ -820,7 +871,7 @@ Keep `wait_seconds` under the client's MCP tool timeout: Codex stops a tool call
 
 ### Waiting for a run
 
-`af_wait` waits until a run ends (`until: terminal`, the default) or needs attention (`until: attention`: also a new `needs_input` request, a failed step or a pause), for at most `timeout_seconds` (default 50, max 3600; the supervisor holds each request at most 120 seconds and the tool loops). It returns compact JSON:
+`af_wait` waits until a run ends (`until: terminal`, the default), needs attention (`until: attention`: also a new `needs_input` request, a failed step or a pause) or ends a step (`until: boundary`: also a `step.completed`), for at most `timeout_seconds` (max 3600; the supervisor holds each request at most 120 seconds and the tool loops). With `run` it returns compact JSON:
 
 ```json
 {
@@ -840,9 +891,11 @@ Keep `wait_seconds` under the client's MCP tool timeout: Codex stops a tool call
 }
 ```
 
-- `state` is `ended` (final status), `attention` (the run waits for someone: `needs_input` lists the open requests with `id`, `step`, `kind`, `risk`, `question` and `recommended`; answer with `af_answer`) or `waiting` (the wait ran out). Loop with the returned `cursor` until `state` is `ended`: an attention event up to the cursor is not reported again. A first call (no `cursor`) only looks at the current status: attention events from before it (a question already answered, a step already retried) are not reported
+- `state` is `ended` (final status), `attention` (the run waits for someone: `needs_input` lists the open requests with `id`, `step`, `kind`, `risk`, `question` and `recommended`; answer with `af_answer`), `boundary` (a step ended, with `until: boundary`) or `waiting` (the wait ran out). Loop with the returned `cursor` until `state` is `ended`: an event up to the cursor is not reported again. An `ended` result also carries `ended_seq`, the seq of the final run event (a later event, such as a notification, moves `cursor` but not `ended_seq`). A first call (no `cursor`) only looks at the current status: attention events from before it (a question already answered, a step already retried) are not reported
+- `cursor` with `run` is the number of a previous `af_wait` result; the first call can also take the `cursor` `af_dispatch` returned
 - `result` is the last step's result block, with `summary` cut to 1,000 characters (`truncated: true`; the full block is at `result_path`). `error` holds the error of a failed run or step, cut to 500 characters
-- Keep `timeout_seconds` under the client's MCP tool timeout, as for [`af_ask`](#asking-from-a-step): the default stays under the 60 seconds of Codex and MCP SDK clients. Codex sessions started by the supervisor give the af server a 900 second tool timeout
+- `runs` (up to 20 run ids) waits for the first of several runs and returns `{ state, cursor, woke, waiting, ended }`: `woke` holds the single-run results of the runs that met the condition (at most 3; `more: true` when others did too: call again at once), `waiting` the runs still waited on, and `ended` the runs whose final status an earlier call already reported (drop them from `runs`). The `cursor` is a string holding the runs' positions: pass it back with the same `runs`, so each event and each final status is reported once
+- **Default timeout**: 240 seconds on clients whose tool timeout allows it (Claude Code, and Codex with the af server entry of `af setup codex` or of a run's Codex sessions, which set `tool_timeout_sec` to 900), else 50 seconds, under the 60 second default of MCP SDK clients. 240 seconds keeps each wake-up inside a 5 minute prompt cache lifetime: a turn that resumes after the cache expired re-reads the whole agent context at full price. While it waits, `af_wait` sends a progress notification every 20 seconds when the client asked for progress, which keeps clients that reset their timeout on progress from cutting the call
 
 ### Run trees
 
@@ -958,7 +1011,7 @@ The 409 guards against overseer mistakes; it is not an access control. Known lim
 The overseer skill starts this as a background Monitor, so the session wakes on the events that need it:
 
 ```bash
-af events --follow --new --cursor-file "<run dir>/overseer/events.cursor" --types "needs_input,run.*,step.failed,merge.completed"
+af events --follow --compact --new --cursor-file "<run dir>/overseer/events.cursor" --types "needs_input,run.*,step.failed,merge.completed"
 ```
 
 The cursor file keeps the position across sessions: after `--resume`, the monitor continues after the last event the previous session saw.

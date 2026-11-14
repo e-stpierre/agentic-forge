@@ -22,7 +22,7 @@ Do the work yourself instead when it is quick and read-only, and no other runtim
 
 1. Write the task as a self-contained instruction: the agent sees none of this conversation. Name the files, the expected outcome and the result to report (for a review: the findings; for a check: pass or fail with reasons). Say whether it may change files
 2. Dispatch with `af_dispatch`: `workflow`, `repo` (the absolute repository path), `runtime`, `vars` (`{ "instruction": "<task>" }` for `instruction`), `wait: true`. Inside an af run or an overseer session the parent is set for you; from an overseer session pass `parent: <overseer run id>`
-3. Read the returned `wait` object. While its `state` is not `ended`, call `af_wait` (`run`, `until: attention`, `cursor` = the last returned `cursor`) again. Tell the user the run id once, at the start, and keep each wait short (the default `timeout_seconds` is right)
+3. Read the returned `wait` object. While its `state` is not `ended`, call `af_wait` (`run`, `until: attention`, `cursor` = the last returned `cursor`) again. Tell the user the run id once, at the start, and leave `timeout_seconds` at its default (sized to your client's tool timeout)
 4. When `state` is `attention` and `needs_input` lists an open request, handle it (see Questions), then wait again
 5. When `state` is `ended`, report `result.status` and `result.summary` to the user in a few lines. Read more only when needed: `af_artifacts` (`run`) for the summary or review file, `af_logs` (`run`, a small `limit`) for what the agent did. A run that `failed` or `halted` has a reason in `error` or the summary: report it and propose a retry with a clearer instruction, `af_retry_step`, or doing it yourself
 

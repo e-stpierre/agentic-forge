@@ -37,6 +37,7 @@ import type {
 	ThreadResumeParams,
 	ThreadStartParams,
 	ThreadStartResponse,
+	ThreadTokenUsageUpdatedNotification,
 	ToolRequestUserInputParams,
 	ToolRequestUserInputResponse,
 	TurnCompletedNotification,
@@ -60,6 +61,7 @@ import {
 	type SessionStartOptions,
 	type SessionState,
 } from "./session.js";
+import { type Usage, codexBreakdown, subtractUsage } from "./usage.js";
 import { getExecutable, resolveCmdScript } from "./utils.js";
 
 export { CODEX_PROTOCOL_VERSION };
@@ -404,6 +406,10 @@ export class CodexSession implements RuntimeSession {
 	private readonly spawnServer: (options: AppServerSpawnOptions) => AppServerTransport;
 	private readonly pending = new Map<string, (decision: SessionDecision) => void>();
 	private readonly queue: QueuedMessage[] = [];
+	/** Latest thread token total (`thread/tokenUsage/updated`) not yet given to a turn. */
+	private usageTotal: Usage | null = null;
+	/** Thread token total when the previous turn ended (or before this process's first call). */
+	private usageBaseline: Usage | null = null;
 	/** Turns whose `turn/completed` arrived (it can precede the `turn/start` response). */
 	private readonly completedTurns = new Set<string>();
 	/** Requests for secret answers: their `request.resolved` event carries no answer text. */
@@ -737,6 +743,18 @@ export class CodexSession implements RuntimeSession {
 				for (const event of codexItemEvents(item, done)) this.emit(event);
 				return;
 			}
+			case "thread/tokenUsage/updated": {
+				if (threadId !== this.sessionId) return;
+				const { tokenUsage } = params as ThreadTokenUsageUpdatedNotification;
+				const total = codexBreakdown(tokenUsage.total);
+				// A resumed thread's total includes the turns of earlier processes: the
+				// first update of this process starts from its total minus its last call
+				if (!this.usageBaseline) {
+					this.usageBaseline = subtractUsage(total, codexBreakdown(tokenUsage.last));
+				}
+				this.usageTotal = total;
+				return;
+			}
 			case "turn/completed": {
 				const { turn } = params as TurnCompletedNotification;
 				// Only the current turn, or the one being started (completed before its response)
@@ -750,6 +768,7 @@ export class CodexSession implements RuntimeSession {
 					result,
 					isError: failed || (turn.status === "interrupted" && !this.turnText),
 					messageIds: [],
+					usage: this.takeTurnUsage(),
 				});
 				this.turnText = null;
 				this.afterTurn();
@@ -758,6 +777,15 @@ export class CodexSession implements RuntimeSession {
 			default:
 				return;
 		}
+	}
+
+	/** Tokens since the previous turn ended (thread total minus baseline), null if none were reported. */
+	private takeTurnUsage(): Usage | null {
+		if (!this.usageTotal) return null;
+		const usage = subtractUsage(this.usageTotal, this.usageBaseline);
+		this.usageBaseline = this.usageTotal;
+		this.usageTotal = null;
+		return usage;
 	}
 
 	private afterTurn(): void {

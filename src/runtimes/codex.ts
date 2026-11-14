@@ -17,6 +17,7 @@ import type {
 	StreamEvent,
 } from "./types.js";
 import { SessionOutput } from "./types.js";
+import { codexExecUsage } from "./usage.js";
 import { getAgenticSystemPrompt, getExecutable } from "./utils.js";
 
 /**
@@ -225,6 +226,7 @@ export class CodexAdapter implements RuntimeAdapter {
 		if (eventType === "turn.completed") {
 			return {
 				type: "result",
+				usage: codexExecUsage(data),
 			};
 		}
 
@@ -275,7 +277,15 @@ export function codexStreamEvents(data: Record<string, unknown>): SessionEvent[]
 		return [{ type: "session.started", sessionId: data.thread_id, model: null, authSource: null }];
 	}
 	if (type === "turn.completed") {
-		return [{ type: "turn.completed", result: "", isError: false, messageIds: [] }];
+		return [
+			{
+				type: "turn.completed",
+				result: "",
+				isError: false,
+				messageIds: [],
+				usage: codexExecUsage(data),
+			},
+		];
 	}
 	if (type === "turn.failed" || type === "error") {
 		const error = data.error as { message?: unknown } | undefined;

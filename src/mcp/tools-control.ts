@@ -43,7 +43,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Send an operator message to a run",
 			description:
-				"Queues an operator message for a run that has not ended (queued, running, paused, blocked or awaiting-human) and returns { id, message, steered } with the queued message. The message is injected as an ## Operator Messages section at the start of the next step prompt (`mode: next`, the default), or of the named `step` only. `mode: now` delivers the message into the live session of a step on the session driver (steered: true, it reaches the agent at its next tool call, no restart); on the cli driver it kills the running step and restarts it at once with the message (on a run that is not executing it waits for the next step). With `mode: next`, a live session step gets the message as its next turn. An unknown `step` is rejected with the list of step names; a finished run returns a 409. Use af_amend instead to change the plan, af_answer to reply to a needs_input question. Next: follow the run with af_events.",
+				"Queues an operator message for a run that has not ended; returns { id, message, steered }. mode next (default): injected as ## Operator Messages at the next step (or the named `step`), or as the next turn of a live session. mode now: steers the live session at its next tool call, or restarts a cli-driver step with it. Use af_amend to change the plan, af_answer for a needs_input.",
 			inputSchema: {
 				run: runId("Run id"),
 				text: nonEmpty("text", "Message text"),
@@ -74,7 +74,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Amend a run's plan",
 			description:
-				"Records an amendment (a change of scope or plan) for a run that has not ended and returns { id, amendment (A001, A002, ...), delivery, step, message }. When the workflow sets settings.amend.step, delivery is amend-step: that step runs again at the next step boundary to rewrite the plan, then the later steps read the new plan. Otherwise delivery is message: the amendment is recorded at once and delivered to the next step as an operator message. `affects` lists the milestone IDs it changes (for example M2). Use af_send for guidance that does not change the plan. Next: follow the run with af_events (amendment.applied), then af_artifacts kind plan.",
+				"Records a plan amendment for a run that has not ended; returns { id, amendment, delivery, step, message }. With settings.amend.step, that step reruns at the next boundary to rewrite the plan (delivery amend-step); otherwise it is delivered as an operator message. `affects` lists milestone IDs (M2). Use af_send for guidance that keeps the plan.",
 			inputSchema: {
 				run: runId("Run id"),
 				text: nonEmpty("text", "What changes in the plan"),
@@ -103,7 +103,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Answer a run's question",
 			description:
-				"Answers the pending needs_input question of a run in awaiting-human status and resumes it; returns { id, request, message, status }. `request_id` is the question id from the needs_input event (af_events) or from the run['x-af-needs-input'] list in af_status; it is required when several requests are pending (parallel steps). `answer` for a permission request (needs_input event with live: true and a tool) is allow or deny. `answer` is an option id of the question (for example a) or free text. A request raised by a live session (live: true) goes straight to the waiting session (message: null, status running once no request is left). Otherwise the asking step runs again with the answer in its ## Operator Messages section (status: queued), resuming its session when it ran on the session driver. A run that is not awaiting-human returns a 409. Called from inside a run, it only answers requests of runs that run dispatched (and their children), never a permission request. Next: follow the run with af_events.",
+				"Answers an open needs_input request of an awaiting-human run and resumes it; returns { id, request, message, status }. `answer` is an option id or free text (allow or deny for a permission request). `request_id` (from af_wait, af_status or the event) is required when several are open. A live session gets the answer directly; otherwise the asking step reruns with it. From inside a run, only requests of runs it dispatched.",
 			inputSchema: {
 				run: runId("Run id"),
 				answer: nonEmpty("answer", "Option id of the question, or free text"),
@@ -132,7 +132,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Pause a run",
 			description:
-				"Pauses a queued or running run and returns { id, status }. A queued run is paused at once (status paused). A running run stops at its next step or ralph-loop iteration boundary (status pausing); with `now: true` the running step is killed and reruns on resume. Any other status returns a 409. Next: af_events until run.paused, then af_resume to continue or af_cancel to stop for good.",
+				"Pauses a queued or running run; returns { id, status }. A running run stops at its next step or iteration boundary (pausing); `now: true` kills the running step, which reruns on resume. Next: af_resume to continue, af_cancel to stop for good.",
 			inputSchema: {
 				run: runId("Run id"),
 				now: z
@@ -151,12 +151,28 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Resume a run",
 			description:
-				"Re-queues a paused, awaiting-human, blocked or failed run and returns { id, status: queued }; it continues from the step that did not complete. Resuming an awaiting-human run without an answer reruns the asking step (prefer af_answer). Any other status (queued, running or a final one) returns a 409. Use af_retry_step to rerun an earlier step. Next: follow the run with af_events.",
+				"Re-queues a paused, awaiting-human, blocked or failed run from the step that did not complete; returns { id, status: queued }. A run paused at a budget (reason budget) pauses again unless `max_tokens` or `max_cost_usd` raises it. For an awaiting-human run prefer af_answer; to rerun an earlier step use af_retry_step. Next: af_wait.",
 			inputSchema: {
 				run: runId("Run id"),
+				max_tokens: z
+					.number({ error: "max_tokens must be a positive number" })
+					.positive({ error: "max_tokens must be a positive number" })
+					.optional()
+					.describe("New token budget of the run"),
+				max_cost_usd: z
+					.number({ error: "max_cost_usd must be a positive number" })
+					.positive({ error: "max_cost_usd must be a positive number" })
+					.optional()
+					.describe("New cost budget of the run in USD"),
 			},
 		},
-		async (input) => jsonResult(await control(ctx, input.run, "resume", {})),
+		async (input) => {
+			const budgets: Record<string, number> = {};
+			if (input.max_tokens !== undefined) budgets.max_tokens = input.max_tokens;
+			if (input.max_cost_usd !== undefined) budgets.max_cost_usd = input.max_cost_usd;
+			const body = Object.keys(budgets).length > 0 ? { budgets } : {};
+			return jsonResult(await control(ctx, input.run, "resume", body));
+		},
 	);
 
 	register(
@@ -165,7 +181,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Cancel a run",
 			description:
-				"Cancels a run that has not ended (queued, running, paused, blocked or awaiting-human) and returns { id, status }: canceled at once for a run that is not executing, canceling for a running run (its step is killed, then the safety commit and the worktree policy apply). Canceled is final: the run cannot be resumed. A finished run returns a 409. Use af_pause to stop a run you may continue. Next: af_status to confirm the canceled status.",
+				"Cancels a run that has not ended; returns { id, status } (canceled, or canceling while its step is killed). Final: a canceled run cannot be resumed. Use af_pause to stop a run you may continue.",
 			inputSchema: {
 				run: runId("Run id"),
 			},
@@ -179,7 +195,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Retry a step of a run",
 			description:
-				"Reruns a top-level step of a stopped run (failed, paused, blocked or awaiting-human): that step and every later one run again, even when they completed, and the run is re-queued; returns { id, step, message, status: queued }. `context` is extra guidance queued as an operator message for that step (message is its id, or null). A step that is not top-level is rejected with the list of step names; a queued, running or finished run returns a 409. Next: follow the run with af_events.",
+				"Reruns a top-level step of a failed, paused, blocked or awaiting-human run, and every later step; returns { id, step, message, status: queued }. `context` is queued as an operator message for that step. Next: af_wait.",
 			inputSchema: {
 				run: runId("Run id"),
 				step: nonEmpty("step", "Name of the top-level step to rerun"),
@@ -203,7 +219,7 @@ export function registerControlTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Notify the user",
 			description:
-				"Sends a message to the user's enabled notification channels (desktop, ntfy, Slack, Discord, and with a run that has a pull request, a GitHub comment) and returns { sent, errors, event }. With `run`, the run's config picks the channels and the run gets a notification.sent event (event is its seq); without it, the supervisor's global config is used and no event is written. A result with hint means no channel is enabled. Use it when the user must act and may be away; needs_input, run.failed and run.halted are already notified by the supervisor.",
+				"Sends a message to the user's enabled notification channels (desktop, ntfy, Slack, Discord, GitHub comment on the run's PR); returns { sent, errors, event }. With `run`, its config picks the channels and it gets a notification.sent event. Use it when the user must act; needs_input, run.failed and run.halted are already notified.",
 			inputSchema: {
 				text: nonEmpty("text", "Message text"),
 				level: z

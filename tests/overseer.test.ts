@@ -661,7 +661,7 @@ describe("overseer flow over MCP", () => {
 		expect(sent.isError).toBe(false);
 		release();
 
-		let cursor: string | undefined;
+		let cursor: string | undefined = dispatched.json.cursor;
 		let status = "";
 		for (let i = 0; i < 20 && status !== "run.completed"; i++) {
 			const page = await callTool(mcp, "af_events", {

@@ -97,7 +97,7 @@ export function registerBacklogTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "List an overseer backlog",
 			description:
-				"Returns the backlog of an overseer run: { items, runnable, waiting, running, max_parallel, halt, budgets, budgets_used }. Items whose run ended already carry its outcome (done, failed, halted, canceled). `runnable` lists the ready items af_dispatch accepts now (dependencies done, no conflict zone overlap with a running item, max_parallel); `waiting` says why each other ready item waits; `halt` is set when halt_epic_on stops new dispatches (ask the user). `status` filters the items (comma-separated statuses). Next: af_dispatch with item for a runnable id.",
+				"Returns an overseer run's backlog: { items, runnable, waiting, running, max_parallel, halt, budgets, budgets_used }. `runnable` lists the ready items af_dispatch accepts now; `waiting` says why other ready items wait; `halt` is set when halt_epic_on stops dispatches (ask the user). `status` filters items (comma-separated). Next: af_dispatch with item.",
 			inputSchema: {
 				run: runId("Overseer run id"),
 				status: nonEmpty(
@@ -123,7 +123,7 @@ export function registerBacklogTools(server: McpServer, ctx: ToolContext): void 
 		"af_backlog_add",
 		{
 			title: "Add items to an overseer backlog",
-			description: `Adds tasks to the backlog of an open overseer run and returns { added, runnable }. Ids are assigned in order (T01, T02, ...); in one call, depends_on may name the ids the earlier items of the batch get. New items are proposed (the user approves them) unless status is ready (needs track and track_reason) or logged (recorded, never scheduled). source is ${ITEM_SOURCES.filter((s) => s !== "discovered").join(", ")} (default user). Unknown dependencies, cycles and items past budgets.max_tasks are refused. Discovered items of child runs are added by the harness. Next: af_backlog_update to triage and approve, then af_backlog_list.`,
+			description: `Adds tasks to an open overseer run's backlog; returns { added, runnable }. Ids are assigned in order (T01, T02, ...), and depends_on may name ids of earlier items of the batch. New items are proposed unless status is ready (needs track and track_reason) or logged. source: ${ITEM_SOURCES.filter((s) => s !== "discovered").join(", ")} (default user). Next: af_backlog_update to triage.`,
 			inputSchema: {
 				run: runId("Overseer run id"),
 				items: z
@@ -159,7 +159,7 @@ export function registerBacklogTools(server: McpServer, ctx: ToolContext): void 
 		{
 			title: "Update an overseer backlog item",
 			description:
-				"Changes fields of one backlog item and returns { item, runnable }. Triage: track with track_reason. Approve: status ready (needs a track). Retry a failed, halted or canceled item: status ready. Drop or log it: dropped or logged. running and the run outcomes are set by the harness (af_dispatch with item starts an item), a done item cannot change, and a running item keeps its conflict zones. Next: af_backlog_list or af_dispatch with item.",
+				"Changes fields of one backlog item; returns { item, runnable }. Triage: track and track_reason. Approve or retry: status ready. Drop: dropped or logged. The harness sets running and run outcomes; a done item cannot change. Next: af_dispatch with item.",
 			inputSchema: {
 				run: runId("Overseer run id"),
 				id: nonEmpty("id", "Item id (for example T03)"),

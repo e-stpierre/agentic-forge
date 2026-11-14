@@ -87,6 +87,11 @@ export interface WorkflowSettings {
 	worktree: WorktreeSettings;
 	/** `settings.amend`: the step `af amend` runs before the next step boundary. */
 	amend?: AmendSettings | null;
+	/**
+	 * `settings.budgets`: per-run `max_tokens` and `max_cost_usd`, over the
+	 * config's `runs.budgets` (a key set to null removes the config limit).
+	 */
+	budgets?: { maxTokens?: number | null; maxCostUsd?: number | null } | null;
 }
 
 /** Amend step settings (`settings.amend.step`). */

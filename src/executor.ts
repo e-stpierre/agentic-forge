@@ -107,6 +107,8 @@ export interface ExecutorOptions {
 	sessionHost?: ((step: string) => SessionHost) | null;
 	/** See `StepContext.recordResult`. */
 	recordResult?: ((step: string, block: ResultBlock) => Promise<ResultBlock | null>) | null;
+	/** See `StepContext.recordUsage` (tokens of each runtime call). */
+	recordUsage?: StepContext["recordUsage"];
 	/** See `StepContext.emitEvent` (ralph-loop iterations, prompt retries). */
 	emitEvent?: StepEventEmitter | null;
 	/** See `StepContext.inputAnswer` (human-input steps). */
@@ -817,6 +819,7 @@ export class WorkflowExecutor {
 			operatorMessages: this.options.operatorMessages ?? null,
 			sessionHost: this.options.sessionHost ?? null,
 			recordResult: this.options.recordResult ?? null,
+			recordUsage: this.options.recordUsage ?? null,
 			emitEvent: this.options.emitEvent ?? null,
 			inputAnswer: this.options.inputAnswer ?? null,
 			lastSession: this.options.lastSession ?? null,
