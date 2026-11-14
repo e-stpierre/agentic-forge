@@ -596,7 +596,9 @@ export function registerRunTools(server: McpServer, ctx: ToolContext): void {
 						error: "cursor must be the cursor of a previous af_wait result",
 					})
 					.optional()
-					.describe("Cursor of a previous af_wait result, or the cursor af_dispatch returned (events up to it are not reported again)"),
+					.describe(
+						"Cursor of a previous af_wait result, or the cursor af_dispatch returned (events up to it are not reported again)",
+					),
 			},
 		},
 		async (input, extra) => {

@@ -243,7 +243,12 @@ describe("af_wait", () => {
 		let res: ToolOutput;
 		let next: string | number = cursor;
 		do {
-			res = await call(mcp, "af_wait", { run, until: "terminal", cursor: next, timeout_seconds: 30 });
+			res = await call(mcp, "af_wait", {
+				run,
+				until: "terminal",
+				cursor: next,
+				timeout_seconds: 30,
+			});
 			expect(res.isError, res.text).toBe(false);
 			next = res.json.cursor;
 			calls += 1;

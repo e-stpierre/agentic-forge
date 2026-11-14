@@ -22,12 +22,12 @@ import {
 	TOOLS_LIST_BUDGET_BYTES,
 } from "../src/mcp/budgets.js";
 import { createMcpServer } from "../src/mcp/index.js";
-import { WORKER_AF_TOOLS } from "../src/runtimes/af-mcp.js";
 import { summaryChars } from "../src/mcp/views.js";
 import { EVENT_STRING_MAX, boundEventData, cutText } from "../src/runs/event-data.js";
 import { encodeCursor } from "../src/runs/events.js";
 import { RunManager, STEP_ERROR_FILE } from "../src/runs/manager.js";
 import { type RunEvent, RunStore } from "../src/runs/run-store.js";
+import { WORKER_AF_TOOLS } from "../src/runtimes/af-mcp.js";
 import type { RuntimeResult, RuntimeRunOptions } from "../src/runtimes/types.js";
 import { SessionOutput } from "../src/runtimes/types.js";
 import { Supervisor, SupervisorClient } from "../src/supervisor/index.js";
@@ -514,7 +514,9 @@ describe("tool result sizes", () => {
 		const list = await mcp.listTools();
 		const names = list.tools.map((t) => t.name);
 		for (const tool of WORKER_AF_TOOLS) expect(names, tool).toContain(tool);
-		const worker = list.tools.filter((t) => (WORKER_AF_TOOLS as readonly string[]).includes(t.name));
+		const worker = list.tools.filter((t) =>
+			(WORKER_AF_TOOLS as readonly string[]).includes(t.name),
+		);
 		const bytes = Buffer.byteLength(JSON.stringify({ tools: worker }), "utf-8");
 		sizes["tools/list (worker)"] = bytes;
 		expect(bytes).toBeLessThan(TOOLS_LIST_BUDGET_BYTES / 2);
