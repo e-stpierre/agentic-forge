@@ -47,6 +47,7 @@ Runtime adapter layer for coding agent integrations:
 - `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
 - `af-mcp.ts` — `afInvocation()` (node with this CLI), `AF_MCP_SERVER`, `codexAfMcpConfig()` (the af MCP server in the thread config of every Codex session inside a run), `afMcpEnv()`
 - `skill-inline.ts` — `resolveSkill()` (plugin and skill directory lookup) and `inlineSkillPrompt()` (`SKILL.md` with absolute paths and arguments) for runtimes without skill loading
+- `usage.ts` — `Usage` (token counts and reported cost, null when a runtime reports none), `addUsage()`, `totalTokens()`, the parsers `claudeResultUsage()`, `codexExecUsage()`, `codexBreakdown()`; adapters attach usage to `StreamEvent` and `turn.completed`, the runners sum it into `RuntimeResult.usage`. Fixtures in `tests/runtimes/fixtures/`
 - `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
 - `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
 
@@ -98,6 +99,7 @@ Runs owned by the supervisor:
 - `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
 - `transcript.ts` — per-step live transcripts (`steps/<NN-step>/transcript.jsonl`, `TranscriptWriter`, `transcriptEntries()`, `readTranscriptPage()` with its own cursor and caps) and `session.json` (`readStepSession()`, read by crash recovery to resume a session); `stepDirName()`
+- `usage.ts` — `steps/<NN-step>/usage.json` (`recordStepUsage()` per runtime call, through `StepContext.recordUsage`), `usageBudgetsUsed()` (`run.json` `budgets_used`), `buildUsageReport()` / `selectUsageRuns()` behind `af usage` and `af_usage`. `RunManager.recordUsage()` checks the run budgets (`getRunBudgets()` in `config.ts`: `runs.budgets`, `settings.budgets`, `x-af-budgets` raised by `resume`): `budget.warning` at 80%, a pause with reason `budget` at the limit. Tests in `tests/usage.test.ts`
 - `scheduler.ts` — `pickRunnable()` (global and per-repo limits, one run per checkout)
 - `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment), `buildDispatchPayload()` (shared by `af run` and `af_dispatch`)
 - `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`; `fetchLogs()`, `followLogs()` used by `af logs` and `af_logs`
@@ -125,6 +127,7 @@ The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 - `tools-backlog.ts` — backlog tools (`af_backlog_list`, `af_backlog_add`, `af_backlog_update`) over `/v1/overseer/:id/backlog`; tests in `tests/backlog.test.ts`
 - `tools-ask.ts` — `af_ask` (asks, then waits up to `wait_seconds` with long-polls, `pending` past it); tests in `tests/ask.test.ts` (fake SDK sessions calling the tool)
 - `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) and `af_notify` over the `/v1/runs/:id/*` control endpoints
+- `tools-usage.ts` — `af_usage` (run usage reports, `scope: mcp` from `session-usage.ts`: `McpSessionUsage` counts the bytes of every tool result in `register()`, per tool, written to `<global dir>/mcp-sessions/`)
 - `budgets.ts` — the Token Budget constants of the tool results (`RESULT_BUDGET_BYTES`, default limits and caps, `TOOLS_LIST_BUDGET_BYTES`); `views.ts` — slim views (`slimRunDetails()`, `slimEntry()`) behind `af_status` and `af_list_runs`. Size tests in `tests/mcp-budgets.test.ts`
 - `errors.ts` — `jsonResult()` (compact JSON), `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)

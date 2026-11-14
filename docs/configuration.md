@@ -35,9 +35,13 @@ af config set outputDirectory local --local
 
 Where run directories are created. Every run, worktree or not, writes to `<runs.root>/YYYY-MM-DD-<slug>/` (see [harness-contract.md](harness-contract.md)).
 
-| Key         | Type           | Default | Description                                                                            |
-| ----------- | -------------- | ------- | -------------------------------------------------------------------------------------- |
-| `runs.root` | string or null | `null`  | Runs root: absolute, or relative to the repository. `null` means `<global dir>/runs/`. |
+| Key                         | Type           | Default | Description                                                                                         |
+| --------------------------- | -------------- | ------- | --------------------------------------------------------------------------------------------------- |
+| `runs.root`                 | string or null | `null`  | Runs root: absolute, or relative to the repository. `null` means `<global dir>/runs/`.              |
+| `runs.budgets.max_tokens`   | number or null | `null`  | Per-run token budget: every token the runtimes reported (input, cached input, cache writes, output) |
+| `runs.budgets.max_cost_usd` | number or null | `null`  | Per-run cost budget in USD (only runtimes that report a cost count: Claude)                         |
+
+A workflow's `settings.budgets` (same keys) wins over `runs.budgets`, and `af resume --max-tokens` / `--max-cost-usd` (or `af_resume`) raises a run's budget. At 80% of a budget the run gets one `budget.warning` event (a default notification trigger); at the limit it pauses at the next step or ralph-loop iteration boundary with reason `budget`. Usage is recorded per step in `steps/<NN-step>/usage.json` and summed into `run.json` `budgets_used` (see [`af usage`](cli.md#usage)). These are per-run harness limits; `overseer.budgets` are per-epic limits of the overseer backlog and do not overlap.
 
 ### outputDirectory (deprecated)
 
@@ -237,17 +241,17 @@ The merge lock is `<global dir>/locks/merge-<hash>.lock`, keyed by the repositor
 
 Notifications the supervisor sends when a run event matches a trigger, so a user who walked away learns that a run needs them. Every channel is off until enabled. Each run uses the `notifications` section of the config it was dispatched with (global, then project-local); `af notify` without a run uses the supervisor's global config.
 
-| Key                                    | Type    | Default                                                                   | Description                                                                                                                      |
-| -------------------------------------- | ------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `notifications.enabled`                | boolean | `true`                                                                    | Master switch                                                                                                                    |
-| `notifications.triggers`               | array   | `needs_input`, `run.halted`, `run.failed`, `run.completed` of overseers   | Event types (`run.*` prefixes work), or `{ "event": ..., "run_type": "overseer", "kind": ..., "risk": ... }` entries (see below) |
-| `notifications.templates.<event>`      | object  | `{}`                                                                      | `{ title, body }` with `{{placeholders}}` for one event type                                                                     |
-| `notifications.channels.desktop`       | object  | `{ enabled: false }`                                                      | Desktop toast (Windows toast through PowerShell, `osascript` on macOS, `notify-send` on Linux)                                   |
-| `notifications.channels.ntfy`          | object  | `{ enabled: false, server: "https://ntfy.sh", topic: null, token: null }` | ntfy topic; `token` is sent as a bearer token                                                                                    |
-| `notifications.channels.slack`         | object  | `{ enabled: false, webhook_url: null }`                                   | Slack incoming webhook                                                                                                           |
-| `notifications.channels.discord`       | object  | `{ enabled: false, webhook_url: null }`                                   | Discord webhook                                                                                                                  |
-| `notifications.channels.github`        | object  | `{ enabled: false }`                                                      | Comment on the run's pull request (outward-facing: opt-in; skipped for a run without a PR)                                       |
-| `notifications.channels.<id>.triggers` | array   | none                                                                      | Replaces `notifications.triggers` for one channel                                                                                |
+| Key                                    | Type    | Default                                                                                   | Description                                                                                                                      |
+| -------------------------------------- | ------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `notifications.enabled`                | boolean | `true`                                                                                    | Master switch                                                                                                                    |
+| `notifications.triggers`               | array   | `needs_input`, `run.halted`, `run.failed`, `budget.warning`, `run.completed` of overseers | Event types (`run.*` prefixes work), or `{ "event": ..., "run_type": "overseer", "kind": ..., "risk": ... }` entries (see below) |
+| `notifications.templates.<event>`      | object  | `{}`                                                                                      | `{ title, body }` with `{{placeholders}}` for one event type                                                                     |
+| `notifications.channels.desktop`       | object  | `{ enabled: false }`                                                                      | Desktop toast (Windows toast through PowerShell, `osascript` on macOS, `notify-send` on Linux)                                   |
+| `notifications.channels.ntfy`          | object  | `{ enabled: false, server: "https://ntfy.sh", topic: null, token: null }`                 | ntfy topic; `token` is sent as a bearer token                                                                                    |
+| `notifications.channels.slack`         | object  | `{ enabled: false, webhook_url: null }`                                                   | Slack incoming webhook                                                                                                           |
+| `notifications.channels.discord`       | object  | `{ enabled: false, webhook_url: null }`                                                   | Discord webhook                                                                                                                  |
+| `notifications.channels.github`        | object  | `{ enabled: false }`                                                                      | Comment on the run's pull request (outward-facing: opt-in; skipped for a run without a PR)                                       |
+| `notifications.channels.<id>.triggers` | array   | none                                                                                      | Replaces `notifications.triggers` for one channel                                                                                |
 
 A trigger entry can narrow `needs_input` events by request `kind` (`question`, `permission`, `decision`; a request without a kind is a `decision`) and `risk` (`low`, `medium`, `high`, or `none` for a request without one), each a value or a list. For example `{ "event": "needs_input", "kind": "permission" }` and `{ "event": "needs_input", "risk": ["medium", "high"] }` notify permission requests and risky questions only.
 

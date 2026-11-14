@@ -91,6 +91,15 @@ settings:
   amend:
     step: generate-plan
 
+  # Budgets (optional): per-run limits over the config's runs.budgets. Tokens
+  # count input, cached input, cache writes and output of every runtime call;
+  # the cost is what the runtime reports (Claude only, an estimate). At 80% the
+  # run gets a budget.warning event; at the limit it pauses at the next step
+  # boundary (af resume <run> --max-tokens N continues with a higher limit).
+  budgets:
+    max_tokens: 5000000
+    max_cost_usd: 20
+
 # Optional: Input variables for the workflow
 variables:
   # Required string variable

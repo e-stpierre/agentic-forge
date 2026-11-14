@@ -141,7 +141,7 @@ af setup claude   # the af-overseer plugin, user scope
 af setup codex    # config.toml and the skills
 ```
 
-Tool results are compact and small by default (about 8 KB), so an overseer session stays cheap: `af_status` returns a slim view (`verbose: true` for the full one), `af_events` starts from now, `af_wait` returns only when runs end or need you (`runs` waits on several, 240 seconds per call on Claude Code and Codex), `af_digest` catches up after a compaction, and `af_artifacts` pages content (`max_chars`, `offset`, `section`, `frontmatter_only`). See the [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md#mcp) for the tools and other clients.
+Tool results are compact and small by default (about 8 KB), so an overseer session stays cheap: `af_status` returns a slim view (`verbose: true` for the full one), `af_events` starts from now, `af_wait` returns only when runs end or need you (`runs` waits on several, 240 seconds per call on Claude Code and Codex), `af_digest` catches up after a compaction, `af_usage` reports run tokens and this session's tool-result bytes, and `af_artifacts` pages content (`max_chars`, `offset`, `section`, `frontmatter_only`). See the [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md#mcp) for the tools and other clients.
 
 ### Overseer
 

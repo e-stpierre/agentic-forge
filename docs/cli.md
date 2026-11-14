@@ -22,6 +22,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `events`        | Print or follow run events                           |
 | `logs`          | Print or follow the live transcript of a run         |
 | `artifacts`     | Show the plan, summary, decisions and review files   |
+| `usage`         | Show the token usage and reported cost of runs       |
 | `input`         | Answer the single pending request of a run           |
 | `init`          | Initialize directory structure                       |
 | `config`        | Get or set configuration values                      |
@@ -153,9 +154,13 @@ af resume <run_id> [options]
 
 ### Options
 
-| Option         | Description                                                  |
-| -------------- | ------------------------------------------------------------ |
-| `--foreground` | Stream the run's events until it ends (Ctrl+C detaches only) |
+| Option               | Description                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `--foreground`       | Stream the run's events until it ends (Ctrl+C detaches only)                            |
+| `--max-tokens <n>`   | Raise the run's token budget (see [budgets](configuration.md#runs)), stored in run.json |
+| `--max-cost-usd <n>` | Raise the run's cost budget in USD                                                      |
+
+A run paused at a budget (`run.paused` with `data.reason: budget`) pauses again at the next boundary unless its budget is raised.
 
 ### Examples
 
@@ -165,6 +170,9 @@ af resume 2026-11-10-dark-mode
 
 # Resume and follow it
 af resume 2026-11-10-dark-mode --foreground
+
+# Continue a run paused at its token budget, with a higher limit
+af resume 2026-11-10-dark-mode --max-tokens 4000000
 ```
 
 ## status
@@ -431,9 +439,9 @@ An agent's background Monitor prints every line into the agent's context: use `-
 | Step     | `step.started`, `step.completed`, `step.failed`, `step.retried`, `iteration.started`, `iteration.completed`           |
 | Steering | `message.queued`, `message.delivered`, `amendment.applied`, `needs_input`, `input.answered`                           |
 | Git      | `branch.created`, `pr.opened`, `review.received`, `checks.completed`, `merge.locked`, `merge.completed`               |
-| Harness  | `supervisor.restarted`, `run.recovered`                                                                               |
+| Harness  | `supervisor.restarted`, `run.recovered`, `budget.warning`                                                             |
 
-`run.queued` is also emitted when a stopped run is queued again (`data.reason: resumed`, from `af resume`, `af answer` or `af retry-step`). `step.retried` carries `data.reason`: `retry` (automatic retry after a failed attempt), `operator` (`af retry-step`), `message` (`af send --mode now`) or `resume-failed` (a resumed session failed and the step restarts from its start; `data.session_id` names it). `iteration.completed` carries `data.outcome`: `continue`, `complete`, `failed`, `error` or `max_iterations`. A supervisor that takes over runs left `running` or `queued` by a previous one emits `supervisor.restarted` once in each of them. `branch.created` is emitted when the run's worktree and branch are created, `pr.opened` when a step first reports a pull request for the run (its result block `pr`), `review.received` once per reviewer and head commit (`wait-for-review`), `checks.completed` when `wait-for-checks` ends (`data.conclusion`), and `merge.locked` and `merge.completed` by a native `merge` step (a merge skill emits its own).
+`step.completed` carries `data.usage` when the step ran a runtime: `{ tokens, input_tokens, cached_input_tokens, cache_creation_tokens, output_tokens, cost_usd }`, or `null` when the runtime reported no usage. `budget.warning` is emitted once per budget at 80% of `max_tokens` or `max_cost_usd` (`data.budget`, `used`, `limit`, `ratio`, `step`); at the limit the run pauses at the next boundary with `run.paused` `data.reason: budget`. `run.queued` is also emitted when a stopped run is queued again (`data.reason: resumed`, from `af resume`, `af answer` or `af retry-step`). `step.retried` carries `data.reason`: `retry` (automatic retry after a failed attempt), `operator` (`af retry-step`), `message` (`af send --mode now`) or `resume-failed` (a resumed session failed and the step restarts from its start; `data.session_id` names it). `iteration.completed` carries `data.outcome`: `continue`, `complete`, `failed`, `error` or `max_iterations`. A supervisor that takes over runs left `running` or `queued` by a previous one emits `supervisor.restarted` once in each of them. `branch.created` is emitted when the run's worktree and branch are created, `pr.opened` when a step first reports a pull request for the run (its result block `pr`), `review.received` once per reviewer and head commit (`wait-for-review`), `checks.completed` when `wait-for-checks` ends (`data.conclusion`), and `merge.locked` and `merge.completed` by a native `merge` step (a merge skill emits its own).
 
 ### Examples
 
@@ -526,6 +534,36 @@ af artifacts 2026-11-10-dark-mode
 
 # The current plan
 af artifacts 2026-11-10-dark-mode --kind plan --content
+```
+
+## usage
+
+Show the token usage of a run, with the runs it dispatched (child runs through `parent`), or of all runs. Reads the `steps/<NN-step>/usage.json` files of the run directories directly (no supervisor needed).
+
+```bash
+af usage [run] [options]
+```
+
+### Options
+
+| Option           | Description                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| `--since <when>` | Only runs created since an ISO date or a duration (`30m`, `2h`, `7d`) |
+| `--by <group>`   | Group by `run` (default), `step`, `runtime`, `model` or `workflow`    |
+| `--json`         | Print the report as JSON (`{ by, runs, rows, total }`)                |
+
+Columns: calls (runtime calls: attempts and ralph-loop iterations), tokens (every token: input, cached input, cache writes, output), input (not cached), cached (cache reads), cache_write (Claude cache writes), output (reasoning included) and cost_usd. `unknown` means the runtime reported no usage for the call; it is never counted as zero. Costs come from the runtime (Claude reports one, Codex does not) and are estimates: on a subscription login they are notional list prices.
+
+The MCP tool `af_usage` returns the same report (at most 30 rows), and with `scope: "mcp"` the bytes each tool returned in the current MCP session, with an estimate of tokens (bytes / 4). That is the overseer's tool-result load, written to `<global dir>/mcp-sessions/<session>.json`.
+
+### Examples
+
+```bash
+# Usage of a run and its child runs, per step
+af usage 2026-11-10-dark-mode --by step
+
+# What every runtime used this week
+af usage --since 7d --by runtime
 ```
 
 ## input
@@ -780,6 +818,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 | `af_dispatch`       | `workflow`, `repo?`, `vars?`, `runtime?`, `slug?`, `priority?`, `parent?`, `item?`, `wait?`, `timeout_seconds?`                    | `POST /v1/runs`                                          | `af run`        |
 | `af_wait`           | `run` or `runs`, `until?` (`terminal`, `attention` or `boundary`), `timeout_seconds?`, `cursor?`                                   | `GET /v1/runs/:id/wait`                                  | `af wait`       |
 | `af_digest`         | `cursor?`                                                                                                                          | `GET /v1/runs`, `GET /v1/runs/:id`, `GET /v1/events`     | none            |
+| `af_usage`          | `scope?` (`runs` or `mcp`), `run?`, `since?`, `by?` (`run`, `step`, `runtime`, `model` or `workflow`)                              | none (reads the run directories)                         | `af usage`      |
 | `af_status`         | `run?` (without it: the active runs), `verbose?`                                                                                   | `GET /v1/runs/:id`, `GET /v1/runs`                       | `af status`     |
 | `af_list_runs`      | `status?` (one or a list), `repo?`, `since?`, `parent?`, `tree?`, `limit?`                                                         | `GET /v1/runs`                                           | `af list`       |
 | `af_events`         | `cursor?`, `run?`, `types?`, `wait_seconds?` (0 to 120), `limit?`, `from_start?`                                                   | `GET /v1/events`                                         | `af events`     |
@@ -789,7 +828,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 | `af_answer`         | `run`, `answer`, `request_id?`, `from?`                                                                                            | `POST /v1/runs/:id/answer`                               | `af answer`     |
 | `af_ask`            | `question`, `options?`, `recommended?`, `context?`, `kind?`, `risk?`, `blocking?`, `wait_seconds?`, `request_id?`, `run?`, `step?` | `POST /v1/runs/:id/ask`, `GET /v1/runs/:id/ask/:request` | none            |
 | `af_pause`          | `run`, `now?`                                                                                                                      | `POST /v1/runs/:id/pause`                                | `af pause`      |
-| `af_resume`         | `run`                                                                                                                              | `POST /v1/runs/:id/resume`                               | `af resume`     |
+| `af_resume`         | `run`, `max_tokens?`, `max_cost_usd?`                                                                                              | `POST /v1/runs/:id/resume`                               | `af resume`     |
 | `af_cancel`         | `run`                                                                                                                              | `POST /v1/runs/:id/cancel`                               | `af cancel`     |
 | `af_retry_step`     | `run`, `step`, `context?`, `from?`                                                                                                 | `POST /v1/runs/:id/retry`                                | `af retry-step` |
 | `af_notify`         | `text`, `level?` (`info`, `warning`, `error`), `run?`, `title?`                                                                    | `POST /v1/notifications`                                 | `af notify`     |
@@ -802,6 +841,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 - `af_status`: with `run`, returns a slim view: `id`, `workflow`, `status`, `repo`, `dir`, `branch`, `worktree`, `pr`, `max_risk`, `current_step`, `parent`, `depth`, the number of `children`, the open `needs_input` requests (question cut to 300 characters) and per step `name`, `status`, `result_status`, a `summary` (the step output cut to 300 characters, less when the run has many steps) and `error: true` for a failed step. `verbose: true` returns the full payload: `entry`, `run` (`run.json`), `steps` (step records) and `tree` (`parent`, `depth`, `root`, `children` with their workflow, status and runtime). Without `run`, returns `{ runs, total }`: the active runs, newest first, at most 20, each with `parent` and `depth`
 - `af_list_runs`: newest first, cut to `limit` (default 20); returns `{ runs, total }`, each run with `parent` and `depth` (0 for a root run). `tree: <run>` lists that run and every run below it, depth first
 - `af_events`: returns `{ events, cursor, more, status }`; pass `cursor` back to resume without duplicates. Without a `cursor` it starts from now and returns no history; `from_start: true` replays the existing events. Start following a new run from the `cursor` `af_dispatch` returned, so its first events are never missed. A default page holds at most 50 events within about 6 KB (`more: true` when more are ready); an explicit `limit` (up to 500) lifts the size cap. `wait_seconds` long-polls until a new event arrives or the wait ends. `types` takes exact types or prefixes such as `run.*`: filter on what you act on (`needs_input`, `run.*`, `step.failed`). To wait for runs, use `af_wait`; to catch up after a compaction or in a new session, `af_digest`
+- `af_usage`: returns `{ by, runs, rows, total }`, the [`af usage`](#usage) report of a run and the runs it dispatched (or of all runs since `since`), at most 30 rows (`truncated: true` and `more_rows` past it: narrow with `run`, `since` or a coarser `by`). Each row: `key`, `calls`, `unknown_calls` (calls with no reported usage), `tokens` (null when unknown), `input`, `cached`, `cache_write`, `output`, `cost_usd` (an estimate; `cost_note: estimate`). `scope: "mcp"` returns `{ session, client, calls, bytes, est_tokens, tools: [{ tool, calls, errors, bytes, max_bytes, est_tokens }], path }`: the bytes every tool returned in this MCP session, the load the results put on the client context (`est_tokens` is bytes / 4, an estimate)
 - `af_digest`: returns `{ runs, changes, cursor }`. `runs` holds one line per active run, newest first, at most 20 (`more_runs` counts the others): `<id> <workflow> <status> [step=<current step>] [needs_input=<open requests>]`. With a `cursor` (from a previous `af_digest`, `af_dispatch` or `af_events`), `changes` lists the `needs_input` requests, failed steps and ended runs since it (`run`, `seq`, `type`, `step`, `id`, `status`, and the question or error cut to 200 characters), at most 20 within about 4 KB (`truncated: true` when more are ready: call again with the returned cursor). Without a cursor, `changes` is empty and `cursor` starts from now
 - `af_logs`: the live transcript of a run (see [logs](#logs)), as compact JSON `{ run, step, entries, cursor, more, truncated, active, status }`. Without `cursor`, the last `limit` entries (default 20); with it, only newer ones. Each entry's text is cut to 500 characters and the page to about 8 KB, with `truncated: true`; an explicit `max_chars` (up to 20,000) lifts the page budget. `active` is false once the step (or run) ended; `wait_seconds` long-polls for new entries while it is active
 - `af_artifacts`: without `content`, returns the artifact paths. `content: true` needs a `kind` and returns `{ run, kind, path, content, offset, total_chars, truncated, next_offset? }` for the latest file of that kind: `max_chars` characters (default 6,000, at most 100,000) from `offset`. A cut text has `truncated: true` and `next_offset`, the `offset` of the next page. `section` returns only the markdown section under that heading (exact title first, then a title that contains it, case-insensitive; an unknown heading is an error listing the headings), paged the same way. `frontmatter_only: true` (with `kind: summary`) returns `{ run, kind, path, frontmatter }`, the parsed YAML frontmatter of `summary.md` without the body. Passing `max_chars`, `offset` or `section` implies `content: true`
