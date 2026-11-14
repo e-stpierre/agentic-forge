@@ -30,6 +30,12 @@ import { SessionOutput } from "../../src/runtimes/types.js";
 import { driverOptions } from "../../src/steps/base.js";
 import { fakeCodex, inputText, resultBlock } from "../helpers/fake-app-server.js";
 
+// The cli driver command resolves the codex executable; CI has none on PATH
+vi.mock("../../src/runtimes/utils.js", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../../src/runtimes/utils.js")>();
+	return { ...original, getExecutable: (name: string) => `/usr/bin/${name}` };
+});
+
 const adapter = new CodexAdapter();
 
 function run(prompt: string, host: SessionHost = {}, extra: Record<string, unknown> = {}) {
