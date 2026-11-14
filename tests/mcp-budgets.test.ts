@@ -22,6 +22,7 @@ import {
 	TOOLS_LIST_BUDGET_BYTES,
 } from "../src/mcp/budgets.js";
 import { createMcpServer } from "../src/mcp/index.js";
+import { WORKER_AF_TOOLS } from "../src/runtimes/af-mcp.js";
 import { summaryChars } from "../src/mcp/views.js";
 import { EVENT_STRING_MAX, boundEventData, cutText } from "../src/runs/event-data.js";
 import { encodeCursor } from "../src/runs/events.js";
@@ -506,5 +507,16 @@ describe("tool result sizes", () => {
 		for (const tool of list.tools) {
 			expect(tool.description?.length, tool.name).toBeLessThanOrEqual(600);
 		}
+	});
+
+	it("gives worker sessions a registered subset of the tools, well under the full list", async () => {
+		const { mcp } = await setup();
+		const list = await mcp.listTools();
+		const names = list.tools.map((t) => t.name);
+		for (const tool of WORKER_AF_TOOLS) expect(names, tool).toContain(tool);
+		const worker = list.tools.filter((t) => (WORKER_AF_TOOLS as readonly string[]).includes(t.name));
+		const bytes = Buffer.byteLength(JSON.stringify({ tools: worker }), "utf-8");
+		sizes["tools/list (worker)"] = bytes;
+		expect(bytes).toBeLessThan(TOOLS_LIST_BUDGET_BYTES / 2);
 	});
 });
