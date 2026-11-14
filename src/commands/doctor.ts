@@ -6,7 +6,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { loadConfig } from "../config.js";
@@ -14,6 +14,19 @@ import { CONTRACT_VERSION } from "../contract/index.js";
 import { WorkflowParser } from "../parser.js";
 import { getClaudeConfigDir, resolveRunsRoot } from "../paths.js";
 import { checkRequires } from "../requires.js";
+import { AF_MCP_SERVER } from "../runtimes/af-mcp.js";
+import {
+	type ClientDirs,
+	type McpServerEntry,
+	OVERSEER_PLUGIN_KEY,
+	codexConfigPath,
+	entryScript,
+	getClientDirs,
+	readClaudeUserMcp,
+	readOverseerPluginInstall,
+	readPluginMcp,
+} from "../setup/clients.js";
+import { readCodexMcp } from "../setup/codex-toml.js";
 import {
 	type SkillPack,
 	detectClaudePlugins,
@@ -59,6 +72,8 @@ export interface DoctorOptions {
 	version?: string;
 	/** Claude config dir for plugin auto-detection. */
 	claudeDir?: string;
+	/** Client config locations for the MCP registration checks (tests use temp dirs). */
+	clientDirs?: Partial<ClientDirs>;
 	/** Supervisor lookup (defaults to `findSupervisor()`). */
 	findSupervisor?: () => Promise<{ version: string; pid: number } | null>;
 }
@@ -196,6 +211,92 @@ function checkGhAuth(probe: Probe): DoctorCheck {
 			};
 }
 
+/** Warns when a registered af MCP server starts an af CLI script that no longer exists. */
+function missingScript(entry: McpServerEntry | null): string | null {
+	const script = entry ? entryScript(entry) : null;
+	return script && !existsSync(script) ? script : null;
+}
+
+/** The af MCP server in Claude Code: the af-overseer plugin, else a user-scope server. */
+export function checkClaudeMcp(dirs: ClientDirs, version: string): DoctorCheck {
+	const name = "claude mcp";
+	const hint =
+		"Run 'af setup claude' (the overseer in Claude Desktop and af_* tools in Claude Code)";
+	const plugin = readOverseerPluginInstall(dirs);
+	const user = readClaudeUserMcp(dirs);
+	if (plugin && !plugin.disabled) {
+		const missing = missingScript(readPluginMcp(plugin.installPath));
+		if (missing) {
+			return {
+				name,
+				status: "warn",
+				detail: `${OVERSEER_PLUGIN_KEY} starts a missing af CLI: ${missing}`,
+				hint,
+			};
+		}
+		if (plugin.version !== version) {
+			return {
+				name,
+				status: "warn",
+				detail: `${OVERSEER_PLUGIN_KEY} ${plugin.version ?? "(unknown version)"} installed, this af is ${version}`,
+				hint: "Run 'af setup claude' to update the plugin",
+			};
+		}
+		return {
+			name,
+			status: "pass",
+			detail: `${OVERSEER_PLUGIN_KEY} ${plugin.version} (MCP server ${AF_MCP_SERVER}, skills overseer and af-delegate)${user ? "; a user-scope server is also registered (tools twice)" : ""}`,
+		};
+	}
+	if (user) {
+		const missing = missingScript(user);
+		return missing
+			? {
+					name,
+					status: "warn",
+					detail: `user-scope ${AF_MCP_SERVER} starts a missing af CLI: ${missing}`,
+					hint: "Run 'af setup claude --mode mcp'",
+				}
+			: {
+					name,
+					status: "pass",
+					detail: `user-scope MCP server ${AF_MCP_SERVER} (${dirs.claudeUserConfig})`,
+				};
+	}
+	return {
+		name,
+		status: "warn",
+		detail: plugin?.disabled
+			? `${OVERSEER_PLUGIN_KEY} is installed but disabled`
+			: "the af MCP server is not registered",
+		hint: plugin?.disabled ? `Run 'claude plugin enable ${OVERSEER_PLUGIN_KEY}'` : hint,
+	};
+}
+
+/** The af MCP server in the Codex `config.toml`. */
+export function checkCodexMcp(dirs: ClientDirs): DoctorCheck {
+	const name = "codex mcp";
+	const file = codexConfigPath(dirs);
+	const entry = existsSync(file) ? readCodexMcp(readFileSync(file, "utf-8")) : null;
+	if (!entry) {
+		return {
+			name,
+			status: "warn",
+			detail: `the af MCP server is not in ${file}`,
+			hint: "Run 'af setup codex' (af_* tools and the af skills in Codex)",
+		};
+	}
+	const missing = missingScript(entry);
+	return missing
+		? {
+				name,
+				status: "warn",
+				detail: `[mcp_servers.${AF_MCP_SERVER}] starts a missing af CLI: ${missing}`,
+				hint: "Run 'af setup codex'",
+			}
+		: { name, status: "pass", detail: `[mcp_servers.${AF_MCP_SERVER}] in ${file}` };
+}
+
 /** Contract and version compatibility of every workflow in a pack. */
 function checkPack(pack: SkillPack, version: string): DoctorCheck {
 	const name = `skill pack ${pack.name}`;
@@ -287,6 +388,11 @@ export async function runDoctorChecks(options: DoctorOptions = {}): Promise<Doct
 	);
 	checks.push(claude.check);
 	if (claude.found) checks.push(...checkClaudeAuth(probe, env));
+	const clientDirs = getClientDirs(env, {
+		...(options.claudeDir ? { claudeDir: options.claudeDir } : {}),
+		...options.clientDirs,
+	});
+	if (claude.found) checks.push(checkClaudeMcp(clientDirs, version));
 
 	const codex = checkTool(
 		probe,
@@ -295,7 +401,7 @@ export async function runDoctorChecks(options: DoctorOptions = {}): Promise<Doct
 		"Optional runtime. Install it with: npm install -g @openai/codex",
 	);
 	checks.push(codex.check);
-	if (codex.found) checks.push(checkCodexAuth(probe));
+	if (codex.found) checks.push(checkCodexAuth(probe), checkCodexMcp(clientDirs));
 
 	const gh = checkTool(
 		probe,

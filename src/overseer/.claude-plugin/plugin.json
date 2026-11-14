@@ -1,9 +1,9 @@
 {
   "name": "af-overseer",
   "version": "0.11.0",
-  "description": "agentic-forge overseer: one interactive session that dispatches, follows and steers af runs through the af MCP server",
+  "description": "agentic-forge overseer and af-delegate: dispatch, follow, steer and answer af runs on any runtime through the af MCP server",
   "author": {
     "name": "agentic-forge"
   },
-  "skills": ["./skills/overseer"]
+  "skills": ["./skills/overseer", "./skills/af-delegate"]
 }

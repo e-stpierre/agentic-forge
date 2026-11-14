@@ -46,6 +46,12 @@ export interface OverseerOptions {
 	model?: string;
 	/** Prints the claude command instead of starting it (the run is still opened). */
 	printCommand?: boolean;
+	/**
+	 * `--open`: opens the run and prints it as one JSON line, without starting
+	 * claude (the overseer skill calls it from an existing session, for example
+	 * in Claude Desktop).
+	 */
+	open?: boolean;
 	/** Extra arguments passed to claude (after `--`). */
 	claudeArgs?: string[];
 }
@@ -115,6 +121,28 @@ export function overseerMcpConfig(runId: string, invocation = afInvocation()) {
 				env: { AF_OVERSEER_RUN: runId },
 			},
 		},
+	};
+}
+
+/** Bash command of the overseer's event monitor (cursor file in the run dir). */
+export function overseerMonitorCommand(dir: string, af = afShellCommand()): string {
+	let cursor = path.join(dir, OVERSEER_SESSION_DIR, "events.cursor");
+	if (process.platform === "win32") cursor = cursor.replace(/\\/g, "/");
+	return `${af} events --follow --new --cursor-file "${cursor}" --types "${OVERSEER_EVENT_TYPES}"`;
+}
+
+/** What `af overseer --open` prints: the run and the commands the skill uses. */
+export function overseerSessionInfo(open: OverseerOpenResult, af = afShellCommand()) {
+	mkdirSync(path.join(open.dir, OVERSEER_SESSION_DIR), { recursive: true });
+	return {
+		run: open.run.id,
+		dir: open.dir,
+		session: open.session,
+		mode: open.mode,
+		epic: open.epic ?? null,
+		rehydrate: open.mode !== "created",
+		af,
+		monitor: overseerMonitorCommand(open.dir, af),
 	};
 }
 
@@ -234,10 +262,15 @@ export async function cmdOverseer(
 	if (options.resume && options.epic) {
 		throw new CliExitError("Error: --resume keeps the run's epic: drop --epic");
 	}
+	if (options.open && (options.printCommand || options.model || options.claudeArgs?.length)) {
+		throw new CliExitError(
+			"Error: --open starts no claude session: drop --print-command, --model and claude arguments",
+		);
+	}
 
 	const { epic, source } = readEpic(options.epic, cwd);
 	let executable = deps.claude;
-	if (!executable && !options.printCommand) {
+	if (!executable && !options.printCommand && !options.open) {
 		try {
 			executable = getExecutable("claude");
 		} catch {
@@ -264,6 +297,10 @@ export async function cmdOverseer(
 		throw new CliExitError(`Error: ${(err as Error).message}`);
 	}
 	for (const warning of open.warnings ?? []) process.stderr.write(`Warning: ${warning}\n`);
+	if (options.open) {
+		out(`${JSON.stringify(overseerSessionInfo(open))}\n`);
+		return 0;
+	}
 	const verb = {
 		created: "created",
 		reused: "reused (open run of this repository)",

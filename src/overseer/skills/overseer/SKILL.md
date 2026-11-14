@@ -1,7 +1,7 @@
 ---
 name: overseer
 description: Oversee agentic-forge runs from one interactive session - turn an epic into a backlog, schedule and dispatch its items, follow their events, relay the user's corrections, answer low-risk questions and escalate the rest
-argument-hint: --run <id> --run-dir <dir> --af <command> [--session <n>] [--epic <file>] [--rehydrate]
+argument-hint: "[--epic <file>] [--resume <run>] [--new] | --run <id> --run-dir <dir> --af <command> [--session <n>] [--epic <file>] [--rehydrate]"
 disable-model-invocation: true
 ---
 
@@ -15,7 +15,17 @@ You are stateless by design. Everything you need is in the harness: your oversee
 
 ## Arguments
 
-`af overseer` starts this skill with:
+There are two ways to start this skill.
+
+From Claude Desktop (Code tab) or any Claude Code session with the `af-overseer` plugin (installed by `af setup claude`), the user runs the skill with at most:
+
+- `--epic <file>`: the epic to work on (a new overseer run)
+- `--resume <run>`: reopen this overseer run
+- `--new`: a new overseer run even when one is open for the repository
+
+Without `--run`, open your run first (see Startup). The user may also give the epic or the run in plain words: map them to these options.
+
+`af overseer` (the terminal launcher) starts this skill with:
 
 - `--run <id>`: your overseer run id. Pass it as `parent` to every `af_dispatch`, and as `run` to `af_notify`
 - `--run-dir <dir>`: your overseer run directory. `epic.md` (the epic, when given) and `summary.md` (written when you finish) live there
@@ -26,14 +36,17 @@ You are stateless by design. Everything you need is in the harness: your oversee
 
 ## Startup
 
-1. If `--rehydrate` is set, or `--session` is greater than 1, run Rehydration first.
-2. Start the event monitor (see Event Monitor). Start it once per session.
-3. If `--epic` is set and the backlog is empty, run Intake (see Backlog).
-4. Otherwise, greet the user with one line of state (items running, questions waiting, what is runnable) and ask what to run.
+1. If `--run` is not set, open your run in Bash, in the repository: `af overseer --open` with the user's `--epic`, `--resume` or `--new`. It prints one JSON line: `run` (your run id), `dir` (your run directory), `session`, `epic` (the epic file, or null), `rehydrate`, `af` (the af CLI command to use as `<af>` from now on) and `monitor` (the event monitor command). Use them as the arguments above. If `af` is not found, tell the user to install agentic-forge (`npm install -g agentic-forge`) and run `af setup claude`, then stop
+2. If `--rehydrate` (or `rehydrate: true`) is set, or the session is greater than 1, run Rehydration first
+3. Start the event monitor (see Event Monitor). Start it once per session
+4. If there is an epic and the backlog is empty, run Intake (see Backlog)
+5. Otherwise, greet the user with one line of state (items running, questions waiting, what is runnable) and ask what to run
+
+The af MCP server only knows your run when `af overseer` started this session: always pass your run id as `parent` (`af_dispatch`) and `run` (`af_notify`, `af_backlog_*`).
 
 ## Event Monitor
 
-Run this as a background Monitor (the Monitor tool; if it is not available, a background Bash command), so you wake on run events and stay responsive to the user:
+Run this as a background Monitor (the Monitor tool; if it is not available, a background Bash command), so you wake on run events and stay responsive to the user. It is the `monitor` command printed by `af overseer --open`:
 
 ```bash
 <af> events --follow --new --cursor-file "<run-dir>/overseer/events.cursor" --types "needs_input,run.*,step.failed,merge.completed"
@@ -55,7 +68,7 @@ On each line:
 | `merge.completed`                         | Report the merge, then `af_backlog_list`: items that depended on it may be runnable now                                                       |
 | other `run.*`                             | No action unless the user asked to follow that run                                                                                            |
 
-Without a monitor (no Monitor and no background Bash), poll with `af_events` (`types` as above, `wait_seconds` 30, pass back the `cursor` it returns) between user turns.
+Without a monitor (no Monitor and no background Bash, for example the Chat tab), poll with `af_events` (`types` as above, `wait_seconds` 30, pass back the `cursor` it returns) between user turns, and follow one run with `af_wait` (`run`, `until: attention`) when the user waits for it.
 
 ## Backlog
 
@@ -108,6 +121,7 @@ The harness merge lock serializes merges in one repository (the `merge` step and
 - **Native subagents** (your own Agent or Task tool): quick read-only work whose result you need now and nobody else watches: explore code, summarize a file or a diff, compare two options. They run inside your session, on your model, and end with it
 - **af runs** (`af_dispatch`): work that changes code, that the user may want to watch, steer or answer, that must survive a crash or the end of your session, or that runs on another runtime or model (Codex). They have a run directory, events, a transcript and a result block
 - When unsure, use an af run: the user can follow it in `af status` and the run tree, and you can answer its questions
+- To delegate one task outside the backlog and bring its result back into the conversation (a Codex review of a plan, for example), follow the `af-delegate` skill of this plugin, with `parent: <your run id>`
 
 ## Relaying the User
 
@@ -128,7 +142,7 @@ Confirm each relay in one line with the message or amendment id it returns.
 A `needs_input` request is a question from a run: a step that ended with it, or an agent that asked with `af_ask` while its step keeps running (`via: af_ask`). Its event carries `kind` (`question`, `decision` or `permission`) and `risk` (`low`, `medium`, `high`, or null). When the run is yours, it also carries `overseer_policy`:
 
 - `within: true`: the request is inside `answer_policy` (by default: low risk and a recommended option). Answer it yourself with `af_answer` (`run`, `request_id`, `answer` = `overseer_policy.answer`, `from: overseer`), unless something the user told you contradicts the recommendation: then ask. Tell the user in one line what you answered; the harness logs it as a policy decision
-- Otherwise (`within: false`, or no `overseer_policy`): ask the user with AskUserQuestion: the question, its context in one sentence, and its options with the recommended one first and marked. Then answer with `af_answer` (`run`, `request_id`, `answer` = the option id or the user's own text, `from: user`)
+- Otherwise (`within: false`, or no `overseer_policy`): ask the user with AskUserQuestion: the question, its context in one sentence, and its options with the recommended one first and marked. Then answer with `af_answer` (`run`, `request_id`, `answer` = the option id or the user's own text, `from: user`). AskUserQuestion also reaches the user through Remote Control on their phone; when it is not available, ask in plain text
 
 The harness refuses an `af_answer` with `from: overseer` outside the policy (409): ask the user then. The harness cannot tell who sent `from: user`, so use it only for an answer the user gave you, never to get around a 409. Permission requests (`kind: permission`) and high-risk requests are always asked; tell the user when a high-risk question is waiting even if they are busy with something else.
 

@@ -28,6 +28,7 @@ Agentic Forge provides two CLI aliases: `agentic-forge` and `af`. All examples b
 | `configure`     | Display current configuration                        |
 | `workflows`     | List available workflows with descriptions           |
 | `doctor`        | Check runtimes, auth, runs root and skill packs      |
+| `setup`         | Register the af MCP server and skills in a client    |
 | `paths`         | Show resolved directory and config paths             |
 | `serve`         | Run, start, inspect or stop the supervisor           |
 | `mcp`           | Run a stdio MCP server to dispatch and steer runs    |
@@ -675,6 +676,7 @@ af doctor [--json]
 | `claude`, `claude auth`                 | Claude Code is installed, and its auth method (`Claude plan login (<plan>)`, or the API key)                                    |
 | `ANTHROPIC_API_KEY`                     | Warns when it is set: Claude steps then bill the API key instead of the Claude plan                                             |
 | `codex`, `codex auth`                   | Codex CLI (optional: a missing or logged-out codex is a warning) and its login method (ChatGPT login or API key)                |
+| `claude mcp`, `codex mcp`               | The af MCP server registration (`af setup`): warns when it is missing, outdated, disabled or points at a missing af CLI         |
 | `gh`, `gh auth`                         | GitHub CLI (optional: a missing or logged-out gh is a warning) and whether it is logged in                                      |
 | `supervisor`                            | Running or not (started on demand); warns when it runs another version than the CLI                                             |
 | `runs root`                             | Where run directories go (also printed at the top, for example to add to esp-skills `recap.roots`)                              |
@@ -682,6 +684,26 @@ af doctor [--json]
 | `skill pack <name>`                     | Each discovered pack: fails when a workflow needs another contract or does not parse, warns when it needs a newer agentic-forge |
 
 The command exits with `1` when a check fails. `--json` prints the report (version, contract version, runs root, checks and discovered skill packs) as JSON.
+
+## setup
+
+Register the af MCP server and install the af skills (`overseer`, `af-delegate`) in a coding agent client, so it can dispatch, wait for, steer and answer af runs. See [Overseer](./overseer.md) for the Claude Desktop setup.
+
+```bash
+af setup claude [--mode plugin|mcp] [--dry-run] [--json]
+af setup codex [--dry-run] [--json]
+```
+
+| Client                              | What it does                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `claude` (`--mode plugin`, default) | Writes a local marketplace in the af global dir (`claude-marketplace/`: the bundled `af-overseer` plugin plus a generated `.mcp.json` that starts this af CLI with node), then runs `claude plugin marketplace add` and `claude plugin install af-overseer@agentic-forge --scope user`. Skills: `/af-overseer:overseer`, `/af-overseer:af-delegate` |
+| `claude --mode mcp`                 | Registers a user-scope MCP server (`claude mcp add-json agentic-forge ... --scope user`) and copies the skills to `<claude config dir>/skills/af-overseer` and `af-delegate`                                                                                                                                                                        |
+| `codex`                             | Writes the `[mcp_servers.agentic-forge]` table of `$CODEX_HOME/config.toml` (default `~/.codex`; `tool_timeout_sec = 900`, the rest of the file is kept) and copies the skills to `$CODEX_HOME/skills/af-overseer` and `af-delegate`                                                                                                                |
+
+- **Idempotent**: each step reads the current state first and only acts on a difference. Run it again after updating agentic-forge: an outdated plugin is reinstalled, a server that points at another af CLI is replaced
+- `--dry-run` prints the steps (`planned`) and changes nothing, including the claude commands it would run
+- Claude Code config: `CLAUDE_CONFIG_DIR` (default `~/.claude`; user-scope MCP servers in `~/.claude.json`). Codex: `CODEX_HOME`
+- Restart the client (or start a new Codex session) to load the changes. `af doctor` checks the registration
 
 ## paths
 
@@ -843,7 +865,7 @@ When the supervisor becomes unreachable (for example after a restart on a new po
 
 ### Setup
 
-Claude Code:
+`af setup claude` and `af setup codex` register the server for you, with the af skills (see [setup](#setup)). To register it by hand in Claude Code:
 
 ```bash
 claude mcp add agentic-forge -- af mcp
@@ -881,18 +903,21 @@ af overseer [options] [-- <claude args>]
 
 When the session ends, the overseer run stays open: reopen it later with `--resume`, or end it with `--finish`.
 
+To use the overseer from Claude Desktop instead of a terminal, install the plugin with [`af setup claude`](#setup) and run `/af-overseer:overseer` there (see [Overseer](./overseer.md)).
+
 ### Options
 
-| Option                | Description                                                                                                         |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `--epic <file\|text>` | The epic to work on: an existing file is read, anything else is taken as the text. Always starts a new overseer run |
-| `--resume <run>`      | Reopen this overseer run in a new session from its repository (409 elsewhere); it rehydrates (`--rehydrate`)        |
-| `--new`               | Create a new overseer run even when one is open for this repository                                                 |
-| `--model <model>`     | Model of the claude session                                                                                         |
-| `--print-command`     | Open the run, print the claude command and exit (start it yourself, for example in another terminal)                |
-| `--finish <run>`      | End an overseer run: writes `summary.md` and emits `run.completed` (or `run.halted`, `run.failed`)                  |
-| `--status <status>`   | With `--finish`: `done` (default), `halted` or `failed`                                                             |
-| `--summary <text>`    | With `--finish`: the summary text                                                                                   |
+| Option                | Description                                                                                                                                                                                                     |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--epic <file\|text>` | The epic to work on: an existing file is read, anything else is taken as the text. Always starts a new overseer run                                                                                             |
+| `--resume <run>`      | Reopen this overseer run in a new session from its repository (409 elsewhere); it rehydrates (`--rehydrate`)                                                                                                    |
+| `--new`               | Create a new overseer run even when one is open for this repository                                                                                                                                             |
+| `--model <model>`     | Model of the claude session                                                                                                                                                                                     |
+| `--print-command`     | Open the run, print the claude command and exit (start it yourself, for example in another terminal)                                                                                                            |
+| `--open`              | Open the run and print it as one JSON line (`run`, `dir`, `session`, `mode`, `epic`, `rehydrate`, `af`, `monitor`), without starting claude. The overseer skill runs it in an existing session (Claude Desktop) |
+| `--finish <run>`      | End an overseer run: writes `summary.md` and emits `run.completed` (or `run.halted`, `run.failed`)                                                                                                              |
+| `--status <status>`   | With `--finish`: `done` (default), `halted` or `failed`                                                                                                                                                         |
+| `--summary <text>`    | With `--finish`: the summary text                                                                                                                                                                               |
 
 Arguments after `--` go to `claude` unchanged.
 

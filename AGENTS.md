@@ -24,7 +24,7 @@ Interactive authoring skills for users to create and manage workflows (e.g., `wo
 
 #### `commands/`
 
-CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, `overseer`, etc.). `overseer.ts` holds `cmdOverseer()` (opens the overseer run, writes `<run dir>/overseer/mcp.json`, starts `claude` through the injectable `launch`), `buildOverseerCommand()`, `overseerPrompt()` and `getOverseerPluginDir()`. `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`).
+CLI command implementations (`run`, `init`, `update`, `authoring-dir`, `workflows`, `doctor`, `mcp`, `overseer`, `setup`, etc.). `overseer.ts` holds `cmdOverseer()` (opens the overseer run, writes `<run dir>/overseer/mcp.json`, starts `claude` through the injectable `launch`; `--open` prints `overseerSessionInfo()` instead), `buildOverseerCommand()`, `overseerPrompt()` and `getOverseerPluginDir()`. `setup.ts` holds `cmdSetup()` over `src/setup/`. `run.ts` holds workflow discovery (`getWorkflowSearchLocations()`, `discoverWorkflow()`, `listAvailableWorkflows()`); `doctor.ts` holds `runDoctorChecks()` (commands through an injectable `Probe`; `checkClaudeMcp()` / `checkCodexMcp()` read the client configs through `src/setup/clients.ts`).
 
 #### `prompts/`
 
@@ -130,7 +130,17 @@ MCP tests (`tests/mcp-server.test.ts`) connect an SDK `Client` to `createMcpServ
 
 #### `overseer/`
 
-The bundled `af-overseer` Claude Code plugin (`.claude-plugin/plugin.json`, version kept equal to `package.json`, and `skills/overseer/SKILL.md`), copied to `dist/overseer` and loaded by `af overseer` with `--plugin-dir`. Tests: `tests/overseer.test.ts`.
+The bundled `af-overseer` Claude Code plugin (`.claude-plugin/plugin.json`, version kept equal to `package.json`, `skills/overseer/SKILL.md` and `skills/af-delegate/SKILL.md`), copied to `dist/overseer` and loaded by `af overseer` with `--plugin-dir`. It has no `.mcp.json`: `af overseer` passes `--mcp-config`, and `af setup claude` generates one in its marketplace copy. Tests: `tests/overseer.test.ts`.
+
+#### `setup/`
+
+`af setup claude|codex` and the client config readers shared with `af doctor`:
+
+- `clients.ts` — `getClientDirs()` (`CLAUDE_CONFIG_DIR`, `~/.claude.json`, `CODEX_HOME`, af global dir), readers that never throw: `readClaudeUserMcp()`, `readAfMarketplace()`, `readOverseerPluginInstall()`, `readPluginMcp()`, `entryScript()`
+- `setup.ts` — `runSetup()` (compare first, then act; `dryRun`), the generated marketplace (`<global dir>/claude-marketplace/`), `defaultClaudeCli` (the `claude` CLI; `claudeCli` is the test seam), `AF_SKILLS` (standalone names `af-overseer`, `af-delegate`)
+- `codex-toml.ts` — `readCodexMcp()` / `writeCodexMcp()`: the `[mcp_servers.agentic-forge]` table edited as text, the rest of `config.toml` kept
+
+Tests (`tests/setup.test.ts`) use temp config dirs and a fake `claude` CLI that writes the files the real one writes; never point them at the user's real config.
 
 #### `workflows/`
 
@@ -166,6 +176,7 @@ User-facing documentation, linked from the README via GitHub `blob/main/` URLs. 
 - `workflows.md` — Bundled workflows with use cases, variables, and examples
 - `coding-agents.md` — Supported runtimes, per-step configuration, and model names
 - `configuration.md` — All configuration options, defaults, and layering behavior
+- `overseer.md` — The overseer in Claude Desktop: `af setup`, event delivery, durability, locality, limits
 - `harness-contract.md` — Harness contract v1 specification (owned by agentic-forge): run directory layout, artifacts, exit codes, compliance levels, versioning rules
 
 ### `agentic/`

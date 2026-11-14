@@ -134,10 +134,11 @@ Then use `/af-workflow-builder` to create, validate, explain, or debug workflows
 
 ### MCP Server
 
-`af mcp` is a stdio MCP server that lets an agent dispatch, follow and steer runs (`af_dispatch`, `af_events`, `af_send`, ...). Add it to Claude Code:
+`af mcp` is a stdio MCP server that lets an agent dispatch, follow and steer runs (`af_dispatch`, `af_wait`, `af_send`, ...). Register it, with the `overseer` and `af-delegate` skills, in Claude Code or Codex:
 
 ```bash
-claude mcp add agentic-forge -- af mcp
+af setup claude   # the af-overseer plugin, user scope
+af setup codex    # config.toml and the skills
 ```
 
 See the [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md#mcp) for the tools and other clients.
@@ -152,6 +153,8 @@ af overseer --epic docs/epics/search.md
 
 The runs keep going when the session closes; `af overseer --resume <run>` reopens it and the overseer rebuilds its picture from the harness. See the [CLI Reference](https://github.com/e-stpierre/agentic-forge/blob/main/docs/cli.md#overseer).
 
+To run the overseer from Claude Desktop (Code tab, and from your phone through Remote Control), install the plugin with `af setup claude` and run `/af-overseer:overseer` there. See [Overseer](https://github.com/e-stpierre/agentic-forge/blob/main/docs/overseer.md).
+
 ## Documentation
 
 | Document                                                                                           | Description                                                                     |
@@ -162,6 +165,7 @@ The runs keep going when the session closes; `af overseer --resume <run>` reopen
 | [Coding Agents](https://github.com/e-stpierre/agentic-forge/blob/main/docs/coding-agents.md)       | Supported runtimes, per-step configuration, and model names                     |
 | [Configuration](https://github.com/e-stpierre/agentic-forge/blob/main/docs/configuration.md)       | All configuration options, defaults, and layering behavior                      |
 | [Harness Contract](https://github.com/e-stpierre/agentic-forge/blob/main/docs/harness-contract.md) | Contract v1 for skill packs: run directories, result blocks, events, exit codes |
+| [Overseer](https://github.com/e-stpierre/agentic-forge/blob/main/docs/overseer.md)                 | The overseer in Claude Desktop: setup, locality and limits                      |
 
 ## Contributing
 

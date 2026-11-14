@@ -43,6 +43,7 @@ import {
 	cmdRun,
 	cmdSend,
 	cmdServe,
+	cmdSetup,
 	cmdStatus,
 	cmdVersion,
 	cmdWait,
@@ -486,6 +487,28 @@ program
 		await cmdDoctor({ json: optBool(opts.json) });
 	});
 
+// setup command
+program
+	.command("setup")
+	.description(
+		"Register the af MCP server and install the af skills (overseer, af-delegate) in Claude Code or Codex",
+	)
+	.argument("<client>", "claude or codex")
+	.option(
+		"--mode <mode>",
+		"claude only: plugin (default, installs the af-overseer plugin) or mcp (user-scope MCP server and skills)",
+	)
+	.option("--dry-run", "show what would change without changing anything")
+	.option("--json", "print the report as JSON")
+	.action(async (client: string, opts: Record<string, unknown>) => {
+		await cmdSetup({
+			client,
+			mode: optString(opts.mode),
+			dryRun: optBool(opts.dryRun),
+			json: optBool(opts.json),
+		});
+	});
+
 // serve command
 program
 	.command("serve")
@@ -526,6 +549,10 @@ program
 	.option("--new", "create a new overseer run even when one is open for this repository")
 	.option("--model <model>", "model of the claude session")
 	.option("--print-command", "open the run and print the claude command instead of starting it")
+	.option(
+		"--open",
+		"open the run and print it as one JSON line, without starting claude (for an existing session, such as Claude Desktop)",
+	)
 	.option("--finish <run>", "end this overseer run (writes summary.md, emits run.completed)")
 	.option("--status <status>", "with --finish: done (default), halted or failed")
 	.option("--summary <text>", "with --finish: summary text")
@@ -536,6 +563,7 @@ program
 			new: optBool(opts.new),
 			model: optString(opts.model),
 			printCommand: optBool(opts.printCommand),
+			open: optBool(opts.open),
 			finish: optString(opts.finish),
 			status: optString(opts.status),
 			summary: optString(opts.summary),

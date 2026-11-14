@@ -24,6 +24,8 @@ After installation, two CLI aliases are available: `agentic-forge` and `af`.
 
 Run `af doctor` to check the setup: it reports each runtime and how it is authenticated (Claude plan login or API key, Codex login), the GitHub CLI, the runs root and any installed skill packs, with a fix for every failed check.
 
+To let Claude Code (and Claude Desktop) or Codex dispatch and steer af runs, register the af MCP server and skills with `af setup claude` or `af setup codex`. See [Overseer](./overseer.md).
+
 ## Quick Tour
 
 Agentic Forge is a YAML-based workflow engine for coding agents. You define multi-step workflows in YAML, and the engine orchestrates Claude Code (or Codex CLI) sessions to execute them autonomously. The default runtime is Claude; Codex is opt-in via config or the `--runtime` flag.

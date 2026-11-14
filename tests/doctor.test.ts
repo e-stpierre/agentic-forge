@@ -74,6 +74,7 @@ async function doctor(responses: Record<string, ProbeResult>, env: NodeJS.Proces
 		probe: probeFrom(responses),
 		version: "0.11.0",
 		claudeDir,
+		clientDirs: { codexHome: path.join(base, "codex") },
 		findSupervisor: async () => null,
 	});
 }
@@ -176,6 +177,7 @@ describe("af doctor", () => {
 			probe: probeFrom(allGood),
 			version: "0.11.0",
 			claudeDir,
+			clientDirs: { codexHome: path.join(base, "codex") },
 			findSupervisor: async () => ({ version: "0.10.0", pid: 42 }),
 		});
 		expect(check(report.checks, "supervisor")).toMatchObject({ status: "warn" });
