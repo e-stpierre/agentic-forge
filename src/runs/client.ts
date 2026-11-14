@@ -289,6 +289,8 @@ export function formatTranscriptEntry(entry: TranscriptEntry, withStep = true): 
 			return `${head} answer ${entry.id}: ${entry.option ?? entry.text ?? ""}`;
 		case "turn":
 			return `${head} turn ${entry.is_error ? "failed" : "completed"}`;
+		case "notice":
+			return `${head} ${one(entry.text)}`;
 		case "error":
 			return `${head} error: ${one(entry.text)}`;
 		default:

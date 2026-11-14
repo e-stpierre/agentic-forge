@@ -186,7 +186,7 @@ Invoke a skill by namespace (`<plugin>:<skill>`, or a plain skill name) on any r
 /<skill> <args> --run-dir <run dir> --config-snapshot <run dir>/skill-config/<pack>.json
 ```
 
-`<pack>` is the plugin of `<plugin>:<skill>` (or the skill name). The snapshot holds af config `skill_config.<pack>` (`{}` when unset). On `codex`, the prompt is the skill's `SKILL.md` inline instead (found in `skill_packs.paths`, `runtimes.claude.plugins`, the installed Claude plugins, `.claude/skills/` or `~/.claude/skills/`; frontmatter dropped, `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_SKILL_DIR}` and relative links made absolute, `$ARGUMENTS` filled with the same arguments; `runtimes.codex.inline_references: true` appends the linked files). A skill that is not found fails the step. Pending operator messages follow the slash command (or the inlined skill) instead of preceding it. The `outputs` object of the skill's result block becomes `{{ outputs.<step>.<key> }}` for later steps.
+`<pack>` is the plugin of `<plugin>:<skill>` (or the skill name). The snapshot holds af config `skill_config.<pack>` (`{}` when unset). On `codex`, the session driver (default) first sends the skill natively when Codex lists it (`skills/list`: `.agents/skills/`, `.codex/skills/`, `~/.codex/skills/`, Codex plugins). Otherwise, and always on the `cli` driver, the prompt is the skill's `SKILL.md` inline instead (found in `skill_packs.paths`, `runtimes.claude.plugins`, the installed Claude plugins, `.claude/skills/` or `~/.claude/skills/`; frontmatter dropped, `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_SKILL_DIR}` and relative links made absolute, `$ARGUMENTS` filled with the same arguments; `runtimes.codex.inline_references: true` appends the linked files). A skill that is not found fails the step. Pending operator messages follow the slash command (or the inlined skill) instead of preceding it. The `outputs` object of the skill's result block becomes `{{ outputs.<step>.<key> }}` for later steps.
 
 **Specific properties:**
 
@@ -540,7 +540,7 @@ Under the supervisor, `af send` queues messages in the run's `inbox/`. Before ea
 
 Prompts need no placeholder for it. Write prompts so that an instruction in this section takes precedence over the step's defaults.
 
-On the Claude session driver (default), `af send --mode now` delivers the message into the running session, and `--mode next` sends it as the session's next turn. On the `cli` driver, `--mode now` kills the running step, safety-commits the worktree, and resumes the step's session (`claude --resume`, `codex exec resume`) with the message; when that fails, the step starts over. `af answer` and `af retry-step --context` also reach the step through this section.
+On the session driver (default on Claude and Codex), `af send --mode now` delivers the message into the running session (Codex: `turn/steer`), and `--mode next` sends it as the session's next turn. On the `cli` driver, `--mode now` kills the running step, safety-commits the worktree, and resumes the step's session (`claude --resume`, `codex exec resume`) with the message; when that fails, the step starts over. `af answer` and `af retry-step --context` also reach the step through this section.
 
 ## Step Results
 
@@ -646,7 +646,7 @@ agentic-forge configure
 
 ## Skills
 
-agentic-forge bundles no execution skills. Workflows call the skills the user installed (Claude Code plugins, `~/.claude/skills/`, the repo's `.claude/skills/`), with a `skill` step (`skill: <plugin>:<skill>`, preferred: it passes `--run-dir` and `--config-snapshot` and chains the result block `outputs`) or a slash command in a prompt step. Slash commands only work with `runtime: claude` (the default); `skill` steps also run on `codex`, with the skill inlined.
+agentic-forge bundles no execution skills. Workflows call the skills the user installed (Claude Code plugins, `~/.claude/skills/`, the repo's `.claude/skills/`), with a `skill` step (`skill: <plugin>:<skill>`, preferred: it passes `--run-dir` and `--config-snapshot` and chains the result block `outputs`) or a slash command in a prompt step. Slash commands only work with `runtime: claude` (the default); `skill` steps also run on `codex`, with Codex's own skill when it has it, else with the skill inlined.
 
 Use fully qualified `<plugin>:<skill>` names for plugin skills. For example, with the esp-skills plugin installed (`/plugin install esp-skills@esp`):
 

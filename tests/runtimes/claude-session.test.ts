@@ -341,10 +341,10 @@ describe("Claude session driver", () => {
 });
 
 describe("driver selection", () => {
-	it("defaults Claude to the session driver and Codex to cli", () => {
+	it("defaults Claude and Codex to the session driver", () => {
 		const config = getDefaultConfig();
 		expect(getRuntimeDriver(config, "claude")).toBe("session");
-		expect(getRuntimeDriver(config, "codex")).toBe("cli");
+		expect(getRuntimeDriver(config, "codex")).toBe("session");
 		expect(getRuntimeDriver({}, "claude")).toBe("session");
 		expect(getRuntimeDriver({ runtimes: { claude: { driver: "cli" } } }, "claude")).toBe("cli");
 		expect(getRuntimeDriver({ runtimes: { claude: { driver: "bogus" } } }, "claude")).toBe(
@@ -386,6 +386,6 @@ describe("driver selection", () => {
 			},
 			"s",
 		);
-		expect(codex).toEqual({ driver: "cli" });
+		expect(codex.driver).toBe("session");
 	});
 });

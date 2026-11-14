@@ -16,6 +16,6 @@
 	},
 	"files": {
 		"include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.js", "vitest.config.ts"],
-		"ignore": ["node_modules", "dist", "src/agentic_forge"]
+		"ignore": ["node_modules", "dist", "src/agentic_forge", "src/runtimes/codex-protocol"]
 	}
 }

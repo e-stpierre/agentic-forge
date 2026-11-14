@@ -40,7 +40,9 @@ Runtime adapter layer for coding agent integrations:
 - `claude-stream.ts` — Claude stream message to `SessionEvent` items, shared by the session driver and `ClaudeAdapter.parseTranscriptLine()` (`cli`); Codex maps its JSONL in `codexStreamEvents()`
 - `claude-session.ts` — `ClaudeSession`, the Claude Agent SDK session driver (streaming input, `canUseTool` permission and `AskUserQuestion` requests); SDK pinned in `CLAUDE_AGENT_SDK_VERSION`
 - `session-runner.ts` — `runSession()`: one step on a session (`runRuntime` delegates to it with `driver: session`)
-- `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming)
+- `codex.ts` — `CodexAdapter` (Codex CLI with JSONL streaming; `createSession()` and `sessionOptions()` for the session driver)
+- `codex-session.ts` — `CodexSession`, the `codex app-server` session driver (JSON-RPC over stdio: threads, turns, `turn/steer`, `turn/interrupt`, approvals and `requestUserInput` as session requests, native `skill` inputs from `skills/list`); `codexAppServer.spawn` is the test seam, `commandAllowed()` / `editsAllowed()` apply the allowlist to approvals
+- `codex-protocol/` — generated app-server bindings (`scripts/codex-bindings.js`, never edit by hand), Codex version in `CODEX_PROTOCOL_VERSION`
 - `process-runner.ts` — `runRuntime()` shared process spawning (`options.signal` kills the process tree)
 - `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
 - `skill-inline.ts` — `resolveSkill()` (plugin and skill directory lookup) and `inlineSkillPrompt()` (`SKILL.md` with absolute paths and arguments) for runtimes without skill loading
@@ -96,7 +98,7 @@ Runs owned by the supervisor:
 - `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment), `buildDispatchPayload()` (shared by `af run` and `af_dispatch`)
 - `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`; `fetchLogs()`, `followLogs()` used by `af logs` and `af_logs`
 
-Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthropic-ai/claude-agent-sdk`; never mock `runRuntime` there). Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
+Session driver tests use `tests/helpers/fake-sdk.ts` (`fakeSdk`, mocks `@anthropic-ai/claude-agent-sdk`; never mock `runRuntime` there) and, for Codex, `tests/helpers/fake-app-server.ts` (`fakeCodex`, set `codexAppServer.spawn = fakeCodex.spawn`). Workflow tests that run through the supervisor use `tests/helpers/fake-runtime.ts` (`fakeRuntime`, a `runRuntime` replacement) with an in-process `Supervisor` and `RunManager`.
 
 #### `notifications/`
 

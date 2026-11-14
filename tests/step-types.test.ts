@@ -418,9 +418,11 @@ steps:
 		expect(stepResult(res.dir, "plan")).toMatchObject({ status: "done", summary: "Plan ready." });
 	});
 
-	it("fails a skill step on Codex when the skill is not found", async () => {
+	it("fails a skill step on the Codex cli driver when the skill is not found", async () => {
 		const { manager, client } = await startSupervisor();
 		const config = codexConfig();
+		// The session driver may still find it in Codex's own skills (run-codex-sessions)
+		(config.runtimes as Record<string, Record<string, unknown>>).codex.driver = "cli";
 		const res = await dispatchRun(
 			client,
 			payload(

@@ -7,8 +7,8 @@ import { getInlineReferences } from "../config.js";
 import { getClaudeConfigDir } from "../paths.js";
 import { inlineSkillPrompt, resolveSkill } from "../runtimes/skill-inline.js";
 import type { StepDefinition } from "../types.js";
-import { type StepContext, buildTemplateContext } from "./base.js";
-import { PromptStepExecutor } from "./prompt-step.js";
+import { type StepContext, buildTemplateContext, driverOptions } from "./base.js";
+import { type PreparedPrompt, PromptStepExecutor } from "./prompt-step.js";
 
 /**
  * Runtimes that load skills natively (`/<plugin>:<skill>`). Every other
@@ -69,14 +69,61 @@ export function skillPrompt(
  * become `{{ outputs.<step>.<key> }}` for later steps. On a runtime that does
  * not load skills (Codex), the prompt is the skill's `SKILL.md`, inlined.
  */
+/**
+ * Runtimes whose session driver can load a skill natively (Codex
+ * `skills/list` and `skill` inputs); the inlined `SKILL.md` is the fallback.
+ */
+export const SESSION_SKILL_RUNTIMES = new Set(["codex"]);
+
+/**
+ * Runs `/<skill>` like a prompt step (same drivers, retries, result block and
+ * steering). `skill` and `args` are templates. The result block's `outputs`
+ * become `{{ outputs.<step>.<key> }}` for later steps. On a runtime that does
+ * not load skills natively (Codex), the prompt is the skill's `SKILL.md`,
+ * inlined; on the Codex session driver, a skill Codex has (`skills/list`) is
+ * sent as a native `skill` input instead.
+ */
 export class SkillStepExecutor extends PromptStepExecutor {
 	/** The slash command must start the message: operator messages follow it. */
 	protected override withMessages(section: string, prompt: string): string {
-		return section ? `${prompt}\n\n${section.trimEnd()}\n` : prompt;
+		return section
+			? `${prompt}
+
+${section.trimEnd()}
+`
+			: prompt;
 	}
 
 	protected override buildPrompt(step: StepDefinition, context: StepContext): string {
+		return this.prepare(step, context).prompt;
+	}
+
+	protected override prepare(step: StepDefinition, context: StepContext): PreparedPrompt {
 		const runtime = context.runtimeAdapter.id;
+		const { skill, args } = this.invocation(step, context);
+		if (NATIVE_SKILL_RUNTIMES.has(runtime)) {
+			// The slash command must start the prompt: no `agent:` file here
+			return { prompt: `/${skill} ${args}` };
+		}
+		const native =
+			SESSION_SKILL_RUNTIMES.has(runtime) && driverOptions(context, step.name).driver === "session";
+		try {
+			return {
+				prompt: this.inline(skill, args, context),
+				...(native ? { skill: { id: skill, text: args } } : {}),
+			};
+		} catch (err) {
+			// Not on disk: the session may still find it in Codex's own skills
+			if (!native) throw err;
+			return {
+				prompt: "",
+				skill: { id: skill, text: args, fallbackError: (err as Error).message },
+			};
+		}
+	}
+
+	/** The skill id and its arguments (`<args> --run-dir <dir> --config-snapshot <file>`). */
+	private invocation(step: StepDefinition, context: StepContext): { skill: string; args: string } {
 		const templateContext = buildTemplateContext(context);
 		const render = (value: string): string =>
 			context.renderer.hasVariables(value)
@@ -89,21 +136,21 @@ export class SkillStepExecutor extends PromptStepExecutor {
 		const runDir = context.outputDir ?? context.repoRoot;
 		const snapshot = writeConfigSnapshot(runDir, context.config, skill);
 		const args = step.args ? render(step.args) : null;
-		if (!NATIVE_SKILL_RUNTIMES.has(runtime)) {
-			// Found on disk where Claude Code would load it (the dispatch env's config dir)
-			const claudeDir = context.env?.CLAUDE_CONFIG_DIR
-				? path.resolve(context.env.CLAUDE_CONFIG_DIR)
-				: getClaudeConfigDir();
-			const resolved = resolveSkill(skill, {
-				config: context.config,
-				repoRoot: context.repoRoot,
-				claudeDir,
-			});
-			return inlineSkillPrompt(resolved, skillArgs(args, runDir, snapshot), {
-				inlineReferences: getInlineReferences(context.config, runtime),
-			});
-		}
-		// The slash command must start the prompt: no `agent:` file here
-		return skillPrompt(skill, args, runDir, snapshot);
+		return { skill, args: skillArgs(args, runDir, snapshot) };
+	}
+
+	/** The skill's `SKILL.md`, found where Claude Code would load it (the dispatch env's config dir). */
+	private inline(skill: string, args: string, context: StepContext): string {
+		const claudeDir = context.env?.CLAUDE_CONFIG_DIR
+			? path.resolve(context.env.CLAUDE_CONFIG_DIR)
+			: getClaudeConfigDir();
+		const resolved = resolveSkill(skill, {
+			config: context.config,
+			repoRoot: context.repoRoot,
+			claudeDir,
+		});
+		return inlineSkillPrompt(resolved, args, {
+			inlineReferences: getInlineReferences(context.config, context.runtimeAdapter.id),
+		});
 	}
 }

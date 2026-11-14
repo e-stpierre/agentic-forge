@@ -2,7 +2,13 @@
 
 import path from "node:path";
 
-import type { SessionEvent } from "./session.js";
+import { CodexSession } from "./codex-session.js";
+import type {
+	RuntimeSession,
+	SessionEvent,
+	SessionListener,
+	SessionStartOptions,
+} from "./session.js";
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -64,6 +70,39 @@ export class CodexAdapter implements RuntimeAdapter {
 		} catch {
 			return false;
 		}
+	}
+
+	/** Session driver on `codex app-server` (`runtimes.codex.driver: session`). */
+	createSession(listener: SessionListener): RuntimeSession {
+		return new CodexSession(listener);
+	}
+
+	/**
+	 * Same sandbox, write roots, model and system prompt as `buildCommand`. The
+	 * system prompt goes in the thread's developer instructions instead of
+	 * being prepended to the prompt.
+	 */
+	sessionOptions(options: RuntimeRunOptions): SessionStartOptions {
+		const directories = new Set<string>();
+		for (const dir of [options.cwd, options.outputDir]) {
+			if (dir) directories.add(path.resolve(dir));
+		}
+		const env: NodeJS.ProcessEnv = { ...(options.env ?? process.env) };
+		if (options.workflowId) env.OTEL_RESOURCE_ATTRIBUTES = `session=${options.workflowId}`;
+		return {
+			prompt: options.prompt,
+			cwd: options.cwd ?? null,
+			model: options.model ?? this.defaultModel,
+			additionalDirectories: [...directories],
+			appendSystemPrompt:
+				options.appendSystemPrompt === false ? null : getAgenticSystemPrompt() || null,
+			allowedTools: options.allowedTools ?? null,
+			bypassPermissions: options.skipPermissions === true,
+			env,
+			resume: options.resumeSessionId ?? null,
+			sandbox: options.sandbox ?? "workspace-write",
+			skill: options.skill ?? null,
+		};
 	}
 
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {

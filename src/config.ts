@@ -81,11 +81,18 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 			permissions: "allowlist",
 			allow: [...DEFAULT_CLAUDE_ALLOW],
 		},
-		// Codex has no session driver yet (codex app-server comes later). Its
-		// allowlist is the sandbox (`codex.sandbox`); bypass removes it.
-		// Skill steps send the skill's SKILL.md inline; inline_references also
-		// appends the files it links to (otherwise their absolute paths are enough).
-		codex: { driver: "cli", permissions: "allowlist", inline_references: false },
+		// session: `codex app-server` thread (live messages, steering, approvals and
+		// questions). cli: one-shot `codex exec`. Its sandbox is `codex.sandbox`;
+		// approvals outside it ask, unless `allow` approves them (`Bash(git *)`,
+		// `Edit`); bypass removes the sandbox. Skill steps use a native Codex
+		// skill when `skills/list` has it, else send the skill's SKILL.md inline;
+		// inline_references also appends the files it links to.
+		codex: {
+			driver: "session",
+			permissions: "allowlist",
+			allow: [],
+			inline_references: false,
+		},
 	},
 	// GitHub step types (wait-for-review, wait-for-checks, merge). Waiting polls
 	// `gh` from the supervisor: no agent session runs while waiting.
@@ -483,7 +490,8 @@ export function getSandboxMode(config: Record<string, unknown>): string | null {
 
 /**
  * Driver of a runtime (`runtimes.<id>.driver`): `session` or `cli`. Unknown
- * values fall back to the default (`session` for Claude, `cli` otherwise).
+ * values fall back to the default (`session` for Claude and Codex, `cli`
+ * otherwise).
  */
 export function getRuntimeDriver(
 	config: Record<string, unknown>,
@@ -494,7 +502,7 @@ export function getRuntimeDriver(
 		| undefined;
 	const value = runtimes?.[runtimeId]?.driver;
 	if (value === "session" || value === "cli") return value;
-	return runtimeId === "claude" ? "session" : "cli";
+	return runtimeId === "claude" || runtimeId === "codex" ? "session" : "cli";
 }
 
 /** Local plugin directories loaded by the session driver (`runtimes.<id>.plugins`). */

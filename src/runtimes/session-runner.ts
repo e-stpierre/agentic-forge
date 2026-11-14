@@ -116,6 +116,9 @@ export async function runSession(
 				if (event.state === "awaiting-input") pauseTimer();
 				if (event.state === "running") resumeTimer();
 				break;
+			case "notice":
+				console?.info(event.text);
+				break;
 			case "error":
 				lastError = event.message;
 				break;
