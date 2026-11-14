@@ -312,7 +312,8 @@ export interface WaitRequest {
  * Waits for a run (`GET /v1/runs/:id/wait`), in supervisor requests of at
  * most {@link MAX_WAIT_REQUEST_SECONDS}, until it ends (or, with
  * `until: attention`, needs someone) or `timeoutSeconds` runs out. A result
- * with `state: waiting` carries the cursor to wait again.
+ * with `state: waiting` carries the cursor to wait again. `signal` ends the
+ * wait at once with the last result (or the run's current state).
  */
 export async function waitForRun(
 	client: SupervisorClient,
@@ -321,17 +322,25 @@ export async function waitForRun(
 ): Promise<WaitResult> {
 	const deadline = Date.now() + Math.max(request.timeoutSeconds, 0) * 1000;
 	let cursor = request.cursor ?? null;
-	for (;;) {
-		const left = Math.max(0, (deadline - Date.now()) / 1000);
-		const wait = Math.min(left, MAX_WAIT_REQUEST_SECONDS);
+	let last: WaitResult | null = null;
+	const get = (wait: number, signal?: AbortSignal) => {
 		const params = new URLSearchParams({ until: request.until ?? "terminal", wait: String(wait) });
 		if (cursor !== null) params.set("cursor", String(cursor));
-		const result = await client.request<WaitResult>(
+		return client.request<WaitResult>(
 			"GET",
 			`/v1/runs/${encodeURIComponent(runId)}/wait?${params.toString()}`,
 			undefined,
 			(wait + 15) * 1000,
+			signal,
 		);
+	};
+	for (;;) {
+		const left = Math.max(0, (deadline - Date.now()) / 1000);
+		const wait = Math.min(left, MAX_WAIT_REQUEST_SECONDS);
+		const result = await raceAbort(get(wait, request.signal), request.signal);
+		// Interrupted: the last result, else the run's state now (a request that does not wait)
+		if (!result) return last ?? (await get(0));
+		last = result;
 		cursor = result.cursor;
 		if (result.state !== "waiting" || Date.now() >= deadline || request.signal?.aborted) {
 			return result;

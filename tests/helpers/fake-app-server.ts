@@ -223,6 +223,8 @@ export class FakeAppServer implements AppServerTransport {
 	threadMethod: string | null = null;
 	closed = false;
 	killed = false;
+	/** `turn/steer` requests held while `fakeCodex.holdSteers` is set. */
+	readonly heldSteers: Json[] = [];
 	private lineListeners: ((line: string) => void)[] = [];
 	private exitListeners: ((code: number | null, stderr: string) => void)[] = [];
 	private requests = new Map<string, (result: unknown) => void>();
@@ -303,6 +305,27 @@ export class FakeAppServer implements AppServerTransport {
 		if (this.active === turn) this.active = null;
 	}
 
+	/** Resolves when `count` steers are held. */
+	async waitForHeldSteers(count: number): Promise<void> {
+		while (this.heldSteers.length < count) await new Promise((r) => setTimeout(r, 2));
+	}
+
+	/** Answers the held steers now (an error when their turn ended meanwhile). */
+	releaseSteers(): void {
+		for (const message of this.heldSteers.splice(0)) this.steer(message);
+	}
+
+	private steer(message: Json): void {
+		const params = (message.params ?? {}) as Json;
+		const turn = this.active;
+		if (!turn || turn.id !== params.expectedTurnId) {
+			this.send({ id: message.id, error: { code: -32600, message: "no active turn" } });
+			return;
+		}
+		turn.steered(params);
+		this.reply(message.id, { turnId: turn.id });
+	}
+
 	private reply(id: unknown, result: unknown): void {
 		this.send({ id, result });
 	}
@@ -380,16 +403,10 @@ export class FakeAppServer implements AppServerTransport {
 				void script(turn).catch(() => turn.complete("failed", "script error"));
 				return;
 			}
-			case "turn/steer": {
-				const turn = this.active;
-				if (!turn || turn.id !== params.expectedTurnId) {
-					this.send({ id, error: { code: -32600, message: "no active turn" } });
-					return;
-				}
-				turn.steered(params);
-				this.reply(id, { turnId: turn.id });
+			case "turn/steer":
+				if (this.fake.holdSteers) this.heldSteers.push(message);
+				else this.steer(message);
 				return;
-			}
 			case "turn/interrupt": {
 				const turn = this.turns.find((t) => t.id === params.turnId);
 				turn?.interrupt();
@@ -408,6 +425,8 @@ export class FakeCodex {
 	skills: { name: string; path: string }[] = [];
 	/** When set, `thread/start` and `thread/resume` fail with this message. */
 	failThread: string | null = null;
+	/** When set, `turn/steer` waits for `server.releaseSteers()` before its answer. */
+	holdSteers = false;
 	private scripts: [string, FakeTurnScript][] = [];
 	private waiters: { match: string; resolve: (t: FakeTurn) => void }[] = [];
 
@@ -416,6 +435,7 @@ export class FakeCodex {
 		this.servers = [];
 		this.skills = [];
 		this.failThread = null;
+		this.holdSteers = false;
 		this.scripts = [];
 		this.waiters = [];
 	}

@@ -208,7 +208,8 @@ describe("af_ask", () => {
 			answer: "drop",
 			from: "user",
 		});
-		expect(answered).toMatchObject({ request: requestId, message: null, status: "running" });
+		expect(answered).toMatchObject({ request: requestId, status: "running" });
+		expect(answered.message).toBeTruthy();
 		await waitForStatus(manager, res.run.id, "done");
 
 		expect(results[0]).toMatchObject({
@@ -220,13 +221,19 @@ describe("af_ask", () => {
 		});
 		expect(eventsOf(store, "input.answered")[0].data).toMatchObject({
 			id: requestId,
-			message: null,
+			message: answered.message,
 			via: "af_ask",
 		});
-		expect(eventsOf(store, "message.queued")).toHaveLength(0);
+		// The answer's operator message is queued, and consumed by the call that returned it
+		expect(eventsOf(store, "message.queued")).toHaveLength(1);
+		expect(eventsOf(store, "message.delivered")[0]?.data).toMatchObject({
+			id: answered.message,
+			step: "build",
+		});
 		const decision = store.readDecisions().find((d) => d.id === `d-${requestId}`);
 		expect(decision?.rationale).toContain("returned to the waiting af_ask call");
 		expect(fakeSdk.sessions).toHaveLength(1);
+		expect(fakeSdk.sessions[0].received).toHaveLength(1);
 		for (const file of ["run.json", "events.jsonl", "decisions.jsonl"]) {
 			expect(validateContractFile(path.join(res.dir, file)).errors).toEqual([]);
 		}
@@ -365,6 +372,76 @@ describe("af_ask", () => {
 		});
 		await waitForStatus(manager, high.id, "done");
 		expect(results.high[0]).toMatchObject({ status: "answered", option: "drop", from: "user" });
+	});
+
+	it("an answer after the af_ask call was canceled reaches the session as its next turn", async () => {
+		const { manager, client } = await startSupervisor();
+		const controller = new AbortController();
+		let call1: Promise<unknown> | null = null;
+		fakeSdk.on("BUILD", async (s, first) => {
+			s.init();
+			const mcp = await connect(client, s.options.env as NodeJS.ProcessEnv);
+			// The MCP client gives up (its tool timeout) while the call waits
+			call1 = mcp
+				.callTool({ name: "af_ask", arguments: { ...ASK, wait_seconds: 30 } }, undefined, {
+					signal: controller.signal,
+				})
+				.catch((err: unknown) => err);
+			await waitFor(() => controller.signal.aborted, "the canceled call");
+			await call1;
+			s.result("Waiting for the answer.", [first]);
+			let message = await s.nextUser();
+			while (message) {
+				s.result(resultBlock("done", `next turn: ${userText(message)}`), [message]);
+				message = await s.nextUser();
+			}
+		});
+		const res = await dispatchRun(client, payload());
+		const store = new RunStore(res.dir);
+		await waitFor(() => eventsOf(store, "needs_input").length === 1, "needs_input");
+		const requestId = String(eventsOf(store, "needs_input")[0].data?.id);
+		// biome-ignore lint/suspicious/noExplicitAny: private waiter count of the manager
+		const waiters = (manager as any).askWaiters as Map<string, number>;
+		await waitFor(() => waiters.size === 1, "the waiting long-poll");
+		controller.abort();
+		// The supervisor's long-poll leaves at once: no waiter is left to take the answer
+		await waitFor(() => waiters.size === 0, "the long-poll to leave");
+
+		const answered = await manager.answer(res.run.id, {
+			request_id: requestId,
+			answer: "drop",
+			from: "user",
+		});
+		expect(answered.message).toBeTruthy();
+		await waitForStatus(manager, res.run.id, "done");
+		const session = fakeSdk.sessions[0];
+		expect(userText(session.received[1])).toContain(`Answer to ${requestId}`);
+		expect(eventsOf(store, "message.delivered")).toHaveLength(1);
+		const decision = store.readDecisions().find((d) => d.id === `d-${requestId}`);
+		expect(decision?.rationale).toContain("queued for the asking step");
+	});
+
+	it("pauses the step timeout while the agent waits in af_ask for the answer", async () => {
+		const { manager, client } = await startSupervisor();
+		const results: unknown[] = [];
+		fakeSdk.on("BUILD", askingScript(client, { ...ASK, wait_seconds: 20 }, results));
+		// A 0.6 s step timeout, shorter than the time the question stays open
+		const contents = ONE_STEP.replace(
+			'    prompt: "BUILD {{ task }}"',
+			'    prompt: "BUILD {{ task }}"\n    timeout-minutes: 0.01',
+		);
+		const res = await dispatchRun(client, {
+			...payload(),
+			workflow: { path: path.join(repo, "agentic", "workflows", "wf.yaml"), contents },
+		});
+		const store = new RunStore(res.dir);
+		await waitFor(() => eventsOf(store, "needs_input").length === 1, "needs_input");
+		await new Promise((r) => setTimeout(r, 1500));
+		expect(manager.registry.get(res.run.id)?.status).toBe("awaiting-human");
+		const requestId = String(eventsOf(store, "needs_input")[0].data?.id);
+		await manager.answer(res.run.id, { request_id: requestId, answer: "a", from: "user" });
+		await waitForStatus(manager, res.run.id, "done");
+		expect(results[0]).toMatchObject({ status: "answered", option: "a" });
 	});
 
 	it("returns withdrawn when the run is canceled while the call waits", async () => {

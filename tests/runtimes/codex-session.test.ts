@@ -5,7 +5,7 @@
  * the inline fallback. No real Codex session is started.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDefaultConfig, getRuntimeDriver } from "../../src/config.js";
 import {
 	CODEX_PROTOCOL_VERSION,
@@ -259,6 +259,30 @@ describe("Codex session driver", () => {
 		});
 	});
 
+	it("keeps answers to secret questions out of request.resolved", async () => {
+		let answers: unknown;
+		fakeCodex.on("TOKEN", async (turn) => {
+			answers = await turn.ask([
+				{
+					id: "token",
+					header: "Token",
+					question: "API token?",
+					isOther: true,
+					isSecret: true,
+					options: null,
+				},
+			]);
+			turn.message(resultBlock());
+			turn.complete();
+		});
+		const events: SessionEvent[] = [];
+		await run("TOKEN", answering({ option: null, text: "s3cr3t" }, [], events));
+		expect(answers).toEqual({ token: { answers: ["s3cr3t"] } });
+		const resolved = events.find((e) => e.type === "request.resolved");
+		expect(resolved).toMatchObject({ decision: { text: "[secret]" } });
+		expect(JSON.stringify(events)).not.toContain("s3cr3t");
+	});
+
 	it("denies requests when no operator is connected", async () => {
 		const decisions: unknown[] = [];
 		fakeCodex.on("PUBLISH", async (turn) => {
@@ -329,6 +353,111 @@ describe("Codex session driver", () => {
 		expect(fakeCodex.servers[0].turns.map((t) => t.text)).toEqual(["FIRST", "late message"]);
 		session.close();
 		expect(await session.done).toBeNull();
+	});
+
+	it("runs a steer rejected after its turn completed as the next turn", async () => {
+		fakeCodex.holdSteers = true;
+		fakeCodex.on("BUILD", async (turn) => {
+			await turn.server.waitForHeldSteers(1);
+			turn.message(resultBlock("done", "first"));
+			turn.complete();
+			// The steer answer comes after turn/completed: the turn is gone
+			setTimeout(() => turn.server.releaseSteers(), 10);
+		});
+		fakeCodex.on("late steer", async (turn) => {
+			turn.message(resultBlock("done", "second"));
+			turn.complete();
+		});
+		let live: LiveSession | null = null;
+		const pending = run("BUILD", {
+			onLive: (handle) => {
+				live = handle;
+				return () => {
+					live = null;
+				};
+			},
+			nextMessages: async () => "",
+		});
+		await fakeCodex.waitFor("BUILD");
+		await new Promise((r) => setTimeout(r, 10));
+		expect((live as LiveSession | null)?.steer("late steer")).toBe(true);
+		const result = await pending;
+		expect(fakeCodex.servers[0].turns.map((t) => t.text)).toEqual(["BUILD", "late steer"]);
+		expect(result.returncode).toBe(0);
+		expect(result.sessionOutput.result?.summary).toBe("second");
+	});
+
+	it("keeps the session open for a turn started while the host was asked for messages", async () => {
+		fakeCodex.on("BUILD", async (turn) => {
+			turn.message(resultBlock("done", "first"));
+			turn.complete();
+		});
+		fakeCodex.on("missed", async (turn) => {
+			turn.message(resultBlock("done", "second"));
+			turn.complete();
+		});
+		let live: LiveSession | null = null;
+		let calls = 0;
+		const result = await run("BUILD", {
+			onLive: (handle) => {
+				live = handle;
+				return () => {
+					live = null;
+				};
+			},
+			nextMessages: async () => {
+				calls += 1;
+				// A steer that arrives while the turn is over starts a new turn
+				if (calls === 1) (live as LiveSession | null)?.steer("missed the turn");
+				return "";
+			},
+		});
+		expect(fakeCodex.servers[0].turns.map((t) => t.text)).toEqual(["BUILD", "missed the turn"]);
+		expect(result.sessionOutput.result?.summary).toBe("second");
+	});
+
+	it("ignores notifications of other threads", async () => {
+		fakeCodex.on("BUILD", async (turn) => {
+			const other = { threadId: "thread-other", turnId: "turn-other" };
+			turn.server.notify("item/completed", {
+				...other,
+				item: { type: "agentMessage", id: "x", text: "foreign", phase: null, memoryCitation: null },
+			});
+			turn.server.notify("turn/completed", {
+				threadId: "thread-other",
+				turn: { id: "turn-other", items: [], status: "completed", error: null },
+			});
+			// A completion of another turn id on this thread is ignored too
+			turn.server.notify("turn/completed", {
+				threadId: turn.server.threadId,
+				turn: { id: "turn-stale", items: [], status: "completed", error: null },
+			});
+			await new Promise((r) => setTimeout(r, 10));
+			turn.message(resultBlock("done", "mine"));
+			turn.complete();
+		});
+		const events: SessionEvent[] = [];
+		const result = await run("BUILD", { onEvent: (e) => events.push(e) });
+		expect(result.sessionOutput.result?.summary).toBe("mine");
+		expect(events.filter((e) => e.type === "turn.completed")).toHaveLength(1);
+		expect(events.some((e) => e.type === "item" && e.text === "foreign")).toBe(false);
+	});
+
+	it("does not kill the app-server after it exited on close", async () => {
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		try {
+			const session = new CodexSession(() => {}, fakeCodex.spawn);
+			session.start({ prompt: "FIRST" });
+			await vi.advanceTimersByTimeAsync(50);
+			expect(session.state).toBe("idle");
+			session.close();
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(await session.done).toBeNull();
+			expect(fakeCodex.servers[0].closed).toBe(true);
+			expect(fakeCodex.servers[0].killed).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("interrupts the running turn with turn/interrupt", async () => {
@@ -474,6 +603,20 @@ describe("Codex protocol helpers", () => {
 		expect(commandAllowed("npm test --all", ["Bash(npm test)"])).toBe(false);
 		expect(commandAllowed("ls", ["Read", "Edit"])).toBe(false);
 		expect(commandAllowed("ls", null)).toBe(false);
+		// Shell control syntax never matches a prefix or exact rule
+		for (const rule of ["Bash(git *)", "Bash(git:*)"]) {
+			expect(commandAllowed("git status; rm -rf /", [rule])).toBe(false);
+			expect(commandAllowed("git status && x", [rule])).toBe(false);
+			expect(commandAllowed("git $(x)", [rule])).toBe(false);
+			expect(commandAllowed("git status\nx", [rule])).toBe(false);
+			expect(commandAllowed("git log | sh", [rule])).toBe(false);
+			expect(commandAllowed("git log > out", [rule])).toBe(false);
+			expect(commandAllowed("git `x`", [rule])).toBe(false);
+		}
+		expect(commandAllowed("npm test; x", ["Bash(npm test*)"])).toBe(false);
+		expect(commandAllowed("ls; ls", ["Bash(ls; ls)"])).toBe(false);
+		expect(commandAllowed("git status; rm -rf /", ["Bash"])).toBe(true);
+		expect(commandAllowed("git status; rm -rf /", ["Bash(*)"])).toBe(true);
 		expect(editsAllowed(["Read", "Write"])).toBe(true);
 		expect(editsAllowed(["Bash"])).toBe(false);
 	});

@@ -46,7 +46,7 @@ When the `af_*` tools are not available, use the af CLI in Bash (`af`, or `agent
 af dispatch instruction --runtime codex --var instruction="<task>" --no-interactive --wait --until attention --timeout 300
 ```
 
-- It prints the wait result as one JSON line (`run`, `status`, `state`, `cursor`, `result`, `needs_input`) and exits `0` (done), `10` (awaiting human), `20` (halted), `30` (failed), `1` (error) or `124` (still running at the timeout)
-- On `124`, or `10` with an open request, continue with `af wait <run> --until attention --cursor <cursor> --timeout 300`
+- It prints the wait result as one JSON line (`run`, `status`, `state`, `cursor`, `result`, `needs_input`) and exits `0` (done or merged), `10` (awaiting human), `11` (needs attention: paused, or a step failed while the run continues; read the JSON line), `20` (halted), `30` (blocked: a step escalated), `1` (failed or canceled, or an af error: read `status` in the JSON line) or `124` (still running at the timeout)
+- On `124`, or on `10` or `11` once you have handled the request or the failure, continue with `af wait <run> --until attention --cursor <cursor> --timeout 300`
 - Answer a request with `af answer <run> <request-id> "<answer>"`, send a correction with `af send <run> "<text>"`
 - Run long waits in the background when your client supports it, so the user can keep talking to you

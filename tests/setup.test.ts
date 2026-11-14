@@ -370,6 +370,51 @@ model = "gpt-5.5-mini"
 		expect(text).toContain('\n# profiles\n[profiles.fast]\nmodel = "m"\n');
 	});
 
+	it("updates an outdated table in place and keeps the user's other settings", () => {
+		const file = codexConfigPath(dirs);
+		mkdirSync(path.dirname(file), { recursive: true });
+		writeFileSync(
+			file,
+			[
+				"[mcp_servers.agentic-forge]",
+				"# managed by af",
+				"command = 'af'",
+				'env = { A = "b" }',
+				"enabled = false",
+				"startup_timeout_sec = 30",
+				"tool_timeout_sec = 1800",
+				"",
+				"[mcp_servers.agentic-forge.tools.af_wait]",
+				"approval = 'never'",
+				"",
+			].join("\n"),
+		);
+		setup({ client: "codex" });
+		const text = readFileSync(file, "utf-8");
+		const portable = (p: string) => p.replace(/\\/g, "/");
+		expect(readCodexMcp(text)).toEqual({
+			command: portable(process.execPath),
+			args: [portable(cliScript), "mcp"],
+			tool_timeout_sec: 1800,
+		});
+		expect(text).toContain('env = { A = "b" }\nenabled = false\nstartup_timeout_sec = 30\n');
+		expect(text).toContain("# managed by af\n");
+		expect(text).toContain("[mcp_servers.agentic-forge.tools.af_wait]\napproval = 'never'\n");
+		expect(text.match(/^command = /gm)).toHaveLength(1);
+		expect(setup({ client: "codex" }).steps.every((s) => s.status === "ok")).toBe(true);
+		expect(readFileSync(file, "utf-8")).toBe(text);
+	});
+
+	it("raises a tool timeout below the af one", () => {
+		const text = writeCodexMcp(
+			"[mcp_servers.agentic-forge]\ncommand = 'af'\nargs = [\n  'mcp',\n]\ntool_timeout_sec = 60\nenabled = true\n",
+			{ command: "node", args: ["cli.js", "mcp"], tool_timeout_sec: 900 },
+		);
+		expect(text).toBe(
+			'[mcp_servers.agentic-forge]\ncommand = "node"\nargs = ["cli.js", "mcp"]\ntool_timeout_sec = 900\nenabled = true\n',
+		);
+	});
+
 	it("reports a missing registration in af doctor", () => {
 		expect(checkCodexMcp(dirs)).toMatchObject({
 			status: "warn",

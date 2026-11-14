@@ -355,10 +355,12 @@ steps:
     recommended: approved
 
     # Optional (default: true): false lets the harness apply `recommended`
-    # after timeout-minutes (or supervisor.needs_input_timeout)
+    # after timeout-minutes
     blocking: false
 
-    # Optional: only with blocking: false and recommended
+    # Optional: only with blocking: false and recommended. Without it the
+    # request waits for an answer: supervisor.needs_input_timeout only applies
+    # to low-risk requests, and a human-input request has no risk
     timeout-minutes: 120
 
   # ==================== CONDITIONAL STEP (CREATE PR) ====================

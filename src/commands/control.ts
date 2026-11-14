@@ -105,6 +105,8 @@ export async function cmdAnswer(options: {
 				...(options.requestId ? { request_id: options.requestId } : {}),
 				answer: options.answer,
 				from: options.from ?? "user",
+				// From inside a run's step: only its descendants' non-permission requests
+				...(process.env.AF_RUN_ID ? { caller: process.env.AF_RUN_ID } : {}),
 			},
 		);
 		const id = res.request ?? options.requestId;

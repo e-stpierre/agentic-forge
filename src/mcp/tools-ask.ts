@@ -92,7 +92,7 @@ export function registerAskTools(server: McpServer, ctx: ToolContext): void {
 				step: nonEmpty("step", "Asking step (default: AF_STEP)").optional(),
 			},
 		},
-		async (input) => {
+		async (input, { signal }) => {
 			const env = ctx.env ?? process.env;
 			const run = input.run ?? env.AF_RUN_ID;
 			if (!run) {
@@ -132,15 +132,22 @@ export function registerAskTools(server: McpServer, ctx: ToolContext): void {
 							...(step ? { step } : {}),
 						},
 						(wait + 10) * 1000,
+						signal,
 					),
 				);
 				requestId = created.request_id;
 				state = created.status ? (created as AskState) : null;
 			}
 			const route2 = `${route}/${encodeURIComponent(requestId)}`;
-			while (state === null || (state.status === "pending" && Date.now() < end)) {
-				state = await poll(ctx, route2, Math.max(0, (end - Date.now()) / 1000));
+			// A canceled call stops polling: the answer then reaches the step as an
+			// operator message at its next turn
+			while (
+				!signal.aborted &&
+				(state === null || (state.status === "pending" && Date.now() < end))
+			) {
+				state = await poll(ctx, route2, Math.max(0, (end - Date.now()) / 1000), signal);
 			}
+			if (state === null) throw new Error("af_ask was canceled");
 			if (state.status === "pending") {
 				return jsonResult({ ...state, next: state.session ? PENDING_SESSION : PENDING_CLI });
 			}
@@ -150,12 +157,23 @@ export function registerAskTools(server: McpServer, ctx: ToolContext): void {
 }
 
 /** One long-poll of a request's state (at most `POLL_SECONDS`). */
-function poll(ctx: ToolContext, route: string, seconds: number): Promise<AskState> {
+function poll(
+	ctx: ToolContext,
+	route: string,
+	seconds: number,
+	signal: AbortSignal,
+): Promise<AskState> {
 	const wait = Math.min(seconds, POLL_SECONDS);
 	return withClient(
 		ctx.clients,
 		(client: SupervisorClient) =>
-			client.request<AskState>("GET", `${route}?wait=${wait}`, undefined, (wait + 10) * 1000),
+			client.request<AskState>(
+				"GET",
+				`${route}?wait=${wait}`,
+				undefined,
+				(wait + 10) * 1000,
+				signal,
+			),
 		{ idempotent: true },
 	);
 }

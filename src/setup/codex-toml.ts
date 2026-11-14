@@ -1,8 +1,9 @@
 /**
  * The `[mcp_servers.agentic-forge]` table of the Codex `config.toml`, edited
  * as text so the rest of the file (comments, order, other servers) stays as
- * the user wrote it. Only this table and its subtables
- * (`[mcp_servers.agentic-forge.env]`) are read or replaced.
+ * the user wrote it. Reading covers this table and its env subtable
+ * (`[mcp_servers.agentic-forge.env]`); writing changes only the `command`,
+ * `args` and `tool_timeout_sec` keys of the table and keeps every other line.
  */
 
 import { AF_MCP_SERVER } from "../runtimes/af-mcp.js";
@@ -16,6 +17,9 @@ export interface CodexMcpTable extends McpServerEntry {
 const NAME = AF_MCP_SERVER.replace(/[-]/g, "\\-");
 const OWN_HEADER = new RegExp(
 	`^\\s*\\[\\s*mcp_servers\\s*\\.\\s*(?:"${NAME}"|'${NAME}'|${NAME})\\s*(?:\\.[^\\]]*)?\\]\\s*(?:#.*)?$`,
+);
+const OWN_MAIN_HEADER = new RegExp(
+	`^\\s*\\[\\s*mcp_servers\\s*\\.\\s*(?:"${NAME}"|'${NAME}'|${NAME})\\s*\\]\\s*(?:#.*)?$`,
 );
 const ANY_HEADER = /^\s*\[/;
 
@@ -56,9 +60,11 @@ export function readCodexMcp(text: string): CodexMcpTable | null {
 	const values: Record<string, unknown> = {};
 	let env: Record<string, string> | undefined;
 	let inEnv = false;
+	let inMain = OWN_MAIN_HEADER.test(lines[range.start]);
 	for (const line of lines.slice(range.start + 1, range.end)) {
 		if (ANY_HEADER.test(line)) {
 			inEnv = /\.\s*env\s*\]/.test(line);
+			inMain = OWN_MAIN_HEADER.test(line);
 			if (inEnv) env = env ?? {};
 			continue;
 		}
@@ -67,7 +73,7 @@ export function readCodexMcp(text: string): CodexMcpTable | null {
 		const key = match[1].replace(/["']/g, "");
 		const value = parseValue(match[2]);
 		if (inEnv && env && typeof value === "string") env[key] = value;
-		else if (!inEnv) values[key] = value;
+		else if (inMain) values[key] = value;
 	}
 	if (typeof values.command !== "string") return null;
 	const args = Array.isArray(values.args)
@@ -102,15 +108,79 @@ export function formatCodexMcp(table: CodexMcpTable): string[] {
 	return lines;
 }
 
-/** `text` with the af server table replaced by `table` (appended when missing). */
+/** The keys `writeCodexMcp()` sets in an existing table, in insertion order. */
+const OWNED_KEYS = ["command", "args", "tool_timeout_sec"] as const;
+type OwnedKey = (typeof OWNED_KEYS)[number];
+const OWNED_LINE = /^(\s*)["']?(command|args|tool_timeout_sec)["']?\s*=\s*(.*)$/;
+
+/** The TOML line of one owned key, or null when `table` leaves it unset. */
+function ownedLine(table: CodexMcpTable, key: OwnedKey, indent = ""): string | null {
+	if (key === "command") return `${indent}command = ${tomlString(table.command)}`;
+	if (key === "args") return `${indent}args = [${table.args.map(tomlString).join(", ")}]`;
+	return table.tool_timeout_sec === undefined
+		? null
+		: `${indent}tool_timeout_sec = ${table.tool_timeout_sec}`;
+}
+
+/** Index after the last line of a value that starts on `lines[index]` (multi-line arrays). */
+function valueEnd(lines: string[], index: number, value: string): number {
+	if (!value.trimStart().startsWith("[") || value.includes("]")) return index + 1;
+	let end = index + 1;
+	while (end < lines.length && !lines[end].includes("]")) end++;
+	return Math.min(end + 1, lines.length);
+}
+
+/**
+ * Sets `command`, `args` and `tool_timeout_sec` (when given) in the body of an
+ * existing `[mcp_servers.agentic-forge]` table, from `header`, and keeps every
+ * other line: other keys, inline tables, subtables and comments.
+ */
+function editTable(lines: string[], header: number, table: CodexMcpTable): void {
+	let end = header + 1;
+	while (end < lines.length && !ANY_HEADER.test(lines[end])) end++;
+	const seen = new Set<OwnedKey>();
+	let i = header + 1;
+	while (i < end) {
+		const match = OWNED_LINE.exec(lines[i]);
+		if (!match) {
+			i++;
+			continue;
+		}
+		const key = match[2] as OwnedKey;
+		const next = valueEnd(lines, i, match[3]);
+		const replacement = ownedLine(table, key, match[1]);
+		if (!seen.has(key) && replacement === null) {
+			// A key `table` leaves unset keeps the user's value as written.
+			seen.add(key);
+			i = next;
+			continue;
+		}
+		// A repeated key (invalid TOML) is dropped.
+		const added = seen.has(key) || replacement === null ? [] : [replacement];
+		seen.add(key);
+		lines.splice(i, next - i, ...added);
+		end += added.length - (next - i);
+		i += added.length;
+	}
+	const missing = OWNED_KEYS.filter((key) => !seen.has(key))
+		.map((key) => ownedLine(table, key))
+		.filter((line): line is string => line !== null);
+	lines.splice(header + 1, 0, ...missing);
+}
+
+/**
+ * `text` with the af server table set to `table`. An existing table is edited
+ * in place (only `command`, `args` and `tool_timeout_sec` change, see
+ * `editTable()`); a missing one is appended with `formatCodexMcp()`.
+ */
 export function writeCodexMcp(text: string, table: CodexMcpTable): string {
 	const eol = text.includes("\r\n") ? "\r\n" : "\n";
 	const lines = text.length > 0 ? text.split(/\r?\n/) : [];
-	const block = formatCodexMcp(table);
-	const range = findTable(lines);
-	if (range) {
-		lines.splice(range.start, range.end - range.start, ...block);
+	const header = lines.findIndex((line) => OWN_MAIN_HEADER.test(line));
+	if (header >= 0) {
+		editTable(lines, header, table);
 	} else {
+		const block = formatCodexMcp(table);
 		while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
 		if (lines.length > 0) lines.push("");
 		lines.push(...block);

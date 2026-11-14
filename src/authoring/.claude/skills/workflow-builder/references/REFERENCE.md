@@ -357,14 +357,14 @@ Ask a question through the harness contract `needs_input` protocol and wait for 
 
 **Specific properties:**
 
-| Key               | Type   | Default      | Description                                                                                                                |
-| ----------------- | ------ | ------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `message`         | string | **required** | The question (template)                                                                                                    |
-| `context`         | string | null         | Background the answerer needs (template)                                                                                   |
-| `options`         | list   | `[]`         | Strings (the id is the label with spaces as dashes) or `{ id, label, description }`; empty = free text                     |
-| `recommended`     | string | null         | Id of the recommended option                                                                                               |
-| `blocking`        | bool   | `true`       | `false` lets the harness apply `recommended` after the timeout                                                             |
-| `timeout-minutes` | number | null         | Minutes before `recommended` is applied (needs `blocking: false` and `recommended`); else `supervisor.needs_input_timeout` |
+| Key               | Type   | Default      | Description                                                                                                                                                                                                                                |
+| ----------------- | ------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `message`         | string | **required** | The question (template)                                                                                                                                                                                                                    |
+| `context`         | string | null         | Background the answerer needs (template)                                                                                                                                                                                                   |
+| `options`         | list   | `[]`         | Strings (the id is the label with spaces as dashes) or `{ id, label, description }`; empty = free text                                                                                                                                     |
+| `recommended`     | string | null         | Id of the recommended option                                                                                                                                                                                                               |
+| `blocking`        | bool   | `true`       | `false` lets the harness apply `recommended` after the timeout                                                                                                                                                                             |
+| `timeout-minutes` | number | null         | Minutes before `recommended` is applied (needs `blocking: false` and `recommended`). Without it the request waits for an answer: `supervisor.needs_input_timeout` only applies to low-risk requests, and a human-input request has no risk |
 
 Request ids are `input-<step>-<n>` (`n` counts the questions the step asked). Outputs: `{{ outputs.<step>.answer }}` (option id, or the free text), `option` (null for free text), `from` (`user`, `overseer` or `policy`), `request_id`.
 

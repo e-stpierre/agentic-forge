@@ -123,7 +123,9 @@ af wait <run> [--until terminal|attention] [--timeout <seconds>] [--cursor <curs
 | `--timeout <seconds>` | Give up after this many seconds (default: wait until the condition holds)       |
 | `--cursor <cursor>`   | `cursor` of a previous result: attention events up to it are not reported again |
 
-Exit code: `0` done or merged, `10` awaiting-human, `20` halted, `30` blocked, `1` failed or canceled, `124` when the timeout ran out first (the result has `state: waiting` and the cursor to wait again).
+Exit code: `0` done or merged, `10` awaiting-human, `20` halted, `30` blocked, `1` failed or canceled, `11` attention on a run whose status has no code of its own (paused, or still running after a failed step: read the JSON line), `124` when the timeout ran out first (the result has `state: waiting` and the cursor to wait again).
+
+A first wait (no `--cursor`) only looks at the run's current status: attention events from before the call, such as a question already answered or a step already retried, do not wake it. Ctrl+C ends the wait at once: it prints the last result and exits with its code (`124` while the run is still waiting).
 
 ```bash
 # Delegate to Codex and wait for the result block
@@ -698,7 +700,7 @@ af setup codex [--dry-run] [--json]
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `claude` (`--mode plugin`, default) | Writes a local marketplace in the af global dir (`claude-marketplace/`: the bundled `af-overseer` plugin plus a generated `.mcp.json` that starts this af CLI with node), then runs `claude plugin marketplace add` and `claude plugin install af-overseer@agentic-forge --scope user`. Skills: `/af-overseer:overseer`, `/af-overseer:af-delegate` |
 | `claude --mode mcp`                 | Registers a user-scope MCP server (`claude mcp add-json agentic-forge ... --scope user`) and copies the skills to `<claude config dir>/skills/af-overseer` and `af-delegate`                                                                                                                                                                        |
-| `codex`                             | Writes the `[mcp_servers.agentic-forge]` table of `$CODEX_HOME/config.toml` (default `~/.codex`; `tool_timeout_sec = 900`, the rest of the file is kept) and copies the skills to `$CODEX_HOME/skills/af-overseer` and `af-delegate`                                                                                                                |
+| `codex`                             | Writes the `[mcp_servers.agentic-forge]` table of `$CODEX_HOME/config.toml` (default `~/.codex`) and copies the skills to `$CODEX_HOME/skills/af-overseer` and `af-delegate`. A new table gets `command`, `args` and `tool_timeout_sec = 900`. In an existing table only `command`, `args` and `tool_timeout_sec` are set and every other line is kept (`env`, `enabled`, other timeouts, tool lists, comments); a `tool_timeout_sec` below 900 is raised to 900, a higher one is kept. The rest of the file is kept |
 
 - **Idempotent**: each step reads the current state first and only acts on a difference. Run it again after updating agentic-forge: an outdated plugin is reinstalled, a server that points at another af CLI is replaced
 - `--dry-run` prints the steps (`planned`) and changes nothing, including the claude commands it would run
@@ -799,6 +801,7 @@ The server speaks MCP over stdin and stdout and writes nothing else to stdout (w
 - `af_backlog_add` / `af_backlog_update`: return the added items (`added`) or the item, and the new `runnable` list
 - `af_ask`: see [Asking from a step](#asking-from-a-step)
 - `from` (steering tools) is `user` or `overseer` (default `overseer`). An `af_answer` with `from: overseer` on a run the overseer dispatched is refused (409) outside its [answer policy](#answer-policy); `from` is declared by the caller, not authenticated
+- `af_answer` (and `af answer`) called from inside a run's step (`AF_RUN_ID` set) only answers requests of runs below that run in its [run tree](#run-trees), and never a `permission` request: anything else is refused (403) with the reason. The operator and the overseer have no such limit
 
 The MCP SDK client's default request timeout is 60 seconds, below the `wait_seconds` cap of 120. Use shorter waits (for example 30) unless your client sets a longer timeout.
 
@@ -808,8 +811,9 @@ The MCP SDK client's default request timeout is 60 seconds, below the `wait_seco
 
 - `run` and `step` default to the `AF_RUN_ID` and `AF_STEP` environment variables the supervisor sets for every step's agent process (an MCP server the agent starts inherits them). Without `step`, the run's only live session step is used, else its current step
 - `options` are labels or `{ id, label, description }` (ids `a`, `b`, ... when omitted); `recommended` is an option id or label. `kind` is `question` (default), `decision` or `permission`; `risk` (`low`, `medium`, `high`) is the risk of a wrong answer. `blocking: false` lets `supervisor.needs_input_timeout` apply `recommended`, only when `risk` is `low`
-- The call waits up to `wait_seconds` (default 50, max 3600) and returns `{ status: "answered", request_id, answer, option, from }`. When the wait runs out first it returns `{ status: "pending", request_id, next }`: the agent ends its turn, and the answer arrives as an operator message (`Answer to <id> ("<question>"): <answer>`) at the start of its next turn. On the session driver the session stays open while the question is open; on the `cli` driver the agent ends the step with `status: awaiting-human` and the step runs again with the answer
+- The call waits up to `wait_seconds` (default 50, max 3600); the step timeout does not run while the question is open (session driver). It returns `{ status: "answered", request_id, answer, option, from }`. When the wait runs out first it returns `{ status: "pending", request_id, next }`: the agent ends its turn, and the answer arrives as an operator message (`Answer to <id> ("<question>"): <answer>`) at the start of its next turn. On the session driver the session stays open while the question is open; on the `cli` driver the agent ends the step with `status: awaiting-human` and the step runs again with the answer
 - `request_id` alone checks a question asked before (`answered`, `pending`, or `withdrawn` when the run was paused, canceled or ended without an answer)
+- When the client cancels the call (for example at its tool timeout), af stops waiting at once; an answer given later reaches the agent as an operator message at its next turn, as for `pending`
 - A run that is not executing a step returns a 409: end the step with a `needs_input` result block instead
 
 Keep `wait_seconds` under the client's MCP tool timeout: Codex stops a tool call after `tool_timeout_sec` (default 60 seconds), and MCP SDK clients after 60 seconds by default. Claude Code's default MCP tool timeout is far longer (about 27 hours, `MCP_TOOL_TIMEOUT` overrides it), so a Claude agent may wait longer in one call.
@@ -836,7 +840,7 @@ Keep `wait_seconds` under the client's MCP tool timeout: Codex stops a tool call
 }
 ```
 
-- `state` is `ended` (final status), `attention` (the run waits for someone: `needs_input` lists the open requests with `id`, `step`, `kind`, `risk`, `question` and `recommended`; answer with `af_answer`) or `waiting` (the wait ran out). Loop with the returned `cursor` until `state` is `ended`: an attention event up to the cursor is not reported again
+- `state` is `ended` (final status), `attention` (the run waits for someone: `needs_input` lists the open requests with `id`, `step`, `kind`, `risk`, `question` and `recommended`; answer with `af_answer`) or `waiting` (the wait ran out). Loop with the returned `cursor` until `state` is `ended`: an attention event up to the cursor is not reported again. A first call (no `cursor`) only looks at the current status: attention events from before it (a question already answered, a step already retried) are not reported
 - `result` is the last step's result block, with `summary` cut to 1,000 characters (`truncated: true`; the full block is at `result_path`). `error` holds the error of a failed run or step, cut to 500 characters
 - Keep `timeout_seconds` under the client's MCP tool timeout, as for [`af_ask`](#asking-from-a-step): the default stays under the 60 seconds of Codex and MCP SDK clients. Codex sessions started by the supervisor give the af server a 900 second tool timeout
 
@@ -844,7 +848,9 @@ Keep `wait_seconds` under the client's MCP tool timeout: Codex stops a tool call
 
 A run dispatched with a parent is that run's child: an overseer's runs, and the runs an agent dispatches from inside a step with `af_dispatch` (any runtime: a Claude step can run a Codex child and the reverse). `af status`, `af list --tree`, `af_status` and `af_list_runs` show the tree.
 
-- **Guards** (`overseer.budgets` in the [configuration](configuration.md#overseer) of the dispatching repository): `max_dispatch_depth` (default 3, a root run is depth 0), `max_tree_runs` (default 50, the root included) and `max_tree_active` (default 6, runs of the tree that have not ended, an overseer root excluded). A dispatch past one is refused with a 409 `Dispatch refused: <reason>` the agent reads
+- **Guards** (`overseer.budgets` in the [configuration](configuration.md#overseer) of the dispatching repository): `max_dispatch_depth` (default 3, a root run is depth 0), `max_tree_runs` (default 50, the root included) and `max_tree_active` (default 6, runs of the tree that have not ended, an overseer root excluded). A dispatch past one is refused with a 409 `Dispatch refused: <reason>` the agent reads. Parallel dispatches into one tree are checked one at a time, so they cannot pass a guard together
+- **Permissions**: a child run whose workflow or config would bypass permission checks (`bypass-permissions: true` on the workflow or a step, or `runtimes.<id>.permissions: bypass` in its config) is refused with a 409 `Dispatch refused: ...` unless the parent run's current step bypasses them itself, so an agent cannot leave its sandbox or approvals by dispatching a run. Children of an overseer run, and runs dispatched without a parent, are not refused
+- **Answers**: an agent inside a run answers only the non-permission questions of runs below it with `af_answer` (see above)
 - **Scheduling**: a child run is never held back by its running ancestors: they lend it their queue slot and their checkout (the parent usually waits for the child, so queueing behind it would deadlock). Other runs still wait as usual
 - **Environment**: a child run inherits its parent's dispatch environment under its own, so a child dispatched from an agent's MCP server (which gets a small environment) keeps the parent's runtime settings
 - **Codex agents**: every Codex step on the session driver gets the af MCP server in its thread config (`mcp_servers.agentic-forge`, tagged with the run and step, its tools approved without asking), so a Codex agent can dispatch, wait and ask like a Claude agent with the server registered

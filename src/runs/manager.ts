@@ -71,7 +71,12 @@ import {
 } from "./ask.js";
 import { BacklogService } from "./backlog-service.js";
 import { BacklogError, type PolicyVerdict } from "./backlog.js";
-import { type DispatchPayload, validateDispatch } from "./dispatch.js";
+import {
+	type DispatchPayload,
+	dispatchBypass,
+	stepBypassed,
+	validateDispatch,
+} from "./dispatch.js";
 import {
 	CursorError,
 	type EventPage,
@@ -220,6 +225,12 @@ export interface AnswerInput {
 	answer?: string;
 	/** `policy` is used by the needs_input timeout. */
 	from?: "user" | "overseer" | "policy";
+	/**
+	 * Run whose agent answers (af_answer called from inside a run): it may
+	 * only answer requests of its descendant runs, and never a `permission`
+	 * request. Unset for the operator.
+	 */
+	caller?: string | null;
 }
 
 export interface AnswerResult {
@@ -427,8 +438,15 @@ export class RunManager {
 	private readonly inputLocks = new Map<string, Promise<unknown>>();
 	/** `af_ask` long-polls waiting per request (run + request key). */
 	private readonly askWaiters = new Map<string, number>();
+	/** Listeners of a step's open af_ask questions (`SessionHost.onAsks`), by run + step key. */
+	private readonly askListeners = new Map<string, Set<(open: boolean) => void>>();
+	/** Tail of the serialized child dispatches (`serialDispatch()`). */
+	private dispatchChain: Promise<unknown> = Promise.resolve();
 	/** `af_ask` answers handed to a waiting long-poll (run + request key). */
-	private readonly askAnswers = new Map<string, Extract<AskState, { status: "answered" }>>();
+	private readonly askAnswers = new Map<
+		string,
+		{ state: Extract<AskState, { status: "answered" }>; message: string; step: string }
+	>();
 	/** Wake-ups of `af_ask` long-polls and of steps waiting for their questions. */
 	private readonly askWake = new Map<string, Set<() => void>>();
 	private scheduling = false;
@@ -566,12 +584,20 @@ export class RunManager {
 		supervisor.route("POST", "/v1/runs/:id/resume", ({ params }) =>
 			wrap(() => this.resume(params.id))(),
 		);
-		supervisor.route("POST", "/v1/runs/:id/ask", ({ params, body }) =>
-			wrap(() => this.ask(params.id, (body ?? {}) as AskInput), 201)(),
+		// A long-poll whose client went away leaves the waiters at once, so an
+		// answer is never handed to a caller that cannot return it
+		supervisor.route("POST", "/v1/runs/:id/ask", ({ params, body, signal }) =>
+			wrap(() => this.ask(params.id, (body ?? {}) as AskInput, signal), 201)(),
 		);
-		supervisor.route("GET", "/v1/runs/:id/ask/:request", ({ params, query }) =>
+		supervisor.route("GET", "/v1/runs/:id/ask/:request", ({ params, query, signal }) =>
 			wrap(() =>
-				this.askState(params.id, params.request, Number.parseFloat(query.get("wait") ?? "0") || 0),
+				this.askState(
+					params.id,
+					params.request,
+					Number.parseFloat(query.get("wait") ?? "0") || 0,
+					false,
+					signal,
+				),
 			)(),
 		);
 		supervisor.route("POST", "/v1/runs/:id/answer", ({ params, body }) =>
@@ -824,7 +850,10 @@ export class RunManager {
 		const waitMs = Math.min(Math.max(query.waitSeconds, 0), MAX_WAIT_REQUEST_SECONDS) * 1000;
 		const deadline = Date.now() + waitMs;
 		const firstCall = query.cursor === null;
-		let cursor = query.cursor ?? 0;
+		// A first call looks at the current status only: past attention events
+		// (answered questions, retried steps) are not reported.
+		let cursor =
+			query.cursor ?? (store.exists() ? (store.readEvents().at(-1)?.seq ?? 0) : 0);
 		for (;;) {
 			const status = this.registry.get(id)?.status ?? entry.status;
 			const events = store.exists() ? store.readEvents(cursor) : [];
@@ -978,23 +1007,68 @@ export class RunManager {
 		if (invalid) throw new RunError(`Invalid dispatch: ${invalid}`);
 		if (this.closed) throw new RunError("Supervisor is shutting down", 503);
 		const parent = payload.parent ?? null;
-		if (parent) {
-			const parentEntry = this.registry.get(parent);
-			if (!parentEntry) throw new RunError(`Parent run not found: ${parent}`);
-			this.checkTreeGuards(parentEntry, payload);
-			payload = { ...payload, env: { ...this.parentEnv(parentEntry), ...payload.env } };
-		}
 		const item = payload.item ?? null;
-		if (item) {
-			if (!parent) {
+		if (!parent) {
+			if (item) {
 				throw new RunError("item needs parent: the overseer run whose backlog holds the item");
 			}
-			// Under the backlog lock: refused unless the scheduler allows the item now
-			return this.backlogCall(() =>
-				this.backlog.dispatchItem(parent, item, () => this.queueRun(payload, parent)),
-			);
+			return this.queueRun(payload, null);
 		}
-		return this.queueRun(payload, parent);
+		const parentEntry = this.registry.get(parent);
+		if (!parentEntry) throw new RunError(`Parent run not found: ${parent}`);
+		// One child dispatch at a time, from the guards until the run is in the
+		// registry, so parallel dispatches cannot all pass the tree caps
+		return this.serialDispatch(() => {
+			this.checkTreeGuards(parentEntry, payload);
+			this.checkChildBypass(parentEntry, payload);
+			payload = { ...payload, env: { ...this.parentEnv(parentEntry), ...payload.env } };
+			if (item) {
+				// Under the backlog lock: refused unless the scheduler allows the item now
+				return this.backlogCall(() =>
+					this.backlog.dispatchItem(parent, item, () => this.queueRun(payload, parent)),
+				);
+			}
+			return this.queueRun(payload, parent);
+		});
+	}
+
+	/** Runs child dispatches one after the other. */
+	private serialDispatch<T>(fn: () => Promise<T>): Promise<T> {
+		const next = this.dispatchChain.then(fn, fn);
+		this.dispatchChain = next.catch(() => undefined);
+		return next;
+	}
+
+	/**
+	 * Refuses a child run that would bypass permission checks (its workflow or
+	 * config snapshot) when the parent's current step does not bypass them
+	 * itself: an agent must not escape its own sandbox or approvals by
+	 * dispatching a run. A child of an overseer run (the operator's own
+	 * session) is not refused.
+	 */
+	private checkChildBypass(parent: RegistryEntry, payload: DispatchPayload): void {
+		if (isOverseerEntry(parent)) return;
+		const source = dispatchBypass(this.parseWorkflow(payload), payload.config ?? {});
+		if (!source) return;
+		if (this.parentStepBypassed(parent)) return;
+		throw new RunError(
+			`Dispatch refused: the child run would bypass permission checks (${source}) but the dispatching step of run ${parent.id} does not. Remove the bypass from the workflow or config, or ask the operator to dispatch it`,
+			409,
+		);
+	}
+
+	/** Whether the current step of a run bypasses permission checks (from its dispatch.json). */
+	private parentStepBypassed(parent: RegistryEntry): boolean {
+		const file = path.join(parent.dir, "dispatch.json");
+		if (!existsSync(file)) return false;
+		try {
+			const dispatched = JSON.parse(readFileSync(file, "utf-8")) as DispatchPayload;
+			const workflow = this.parseWorkflow(dispatched);
+			const step = loadProgress(parent.id, parent.dir)?.currentStep?.name ?? null;
+			return stepBypassed(workflow, dispatched.config ?? {}, dispatched.runtime ?? null, step);
+		} catch {
+			return false;
+		}
 	}
 
 	/**
@@ -1431,6 +1505,8 @@ export class RunManager {
 	 */
 	async answer(id: string, input: AnswerInput): Promise<AnswerResult> {
 		const entry = this.requireWorkflowRun(id, "answer");
+		const caller = typeof input.caller === "string" && input.caller ? input.caller : null;
+		if (caller) this.checkAnswerScope(caller, id);
 		if (entry.status !== "awaiting-human") {
 			throw new RunError(`Cannot answer a run in '${entry.status}' status`, 409);
 		}
@@ -1448,6 +1524,12 @@ export class RunManager {
 			throw new RunError(`Several requests are pending (${ids}): give a request id`);
 		} else {
 			pending = list[0];
+		}
+		if (caller && pendingKind(pending) === "permission") {
+			throw new RunError(
+				`Request ${pending.request.id} is a permission request: an agent inside run ${caller} cannot answer it. Leave it to the operator (af_notify can alert them)`,
+				403,
+			);
 		}
 		const request = pending.request;
 		const raw = typeof input.answer === "string" ? input.answer.trim() : "";
@@ -1543,6 +1625,22 @@ export class RunManager {
 		return { id, request: request.id, message: message.id, status: "queued" };
 	}
 
+	/** Refuses an answer from inside run `caller` to a run outside its subtree. */
+	private checkAnswerScope(caller: string, id: string): void {
+		const tree = new RunTree(this.registry.list());
+		let current = tree.parentOf(id);
+		const seen = new Set<string>([id]);
+		while (current && !seen.has(current)) {
+			if (current === caller) return;
+			seen.add(current);
+			current = tree.parentOf(current);
+		}
+		throw new RunError(
+			`Run ${id} is not a descendant of run ${caller}: an agent inside a run can only answer the questions of runs it dispatched (and their children). Leave it to the operator`,
+			403,
+		);
+	}
+
 	/**
 	 * `af_ask`: raises a `needs_input` from inside a running step. The run is
 	 * `awaiting-human` while the question is open; the step keeps running.
@@ -1550,7 +1648,11 @@ export class RunManager {
 	 * long-poll waits goes to the step as an operator message, delivered at
 	 * its next turn (session driver) or when it runs again (`cli` driver).
 	 */
-	async ask(id: string, input: AskInput): Promise<AskCreated & Partial<AskState>> {
+	async ask(
+		id: string,
+		input: AskInput,
+		signal?: AbortSignal,
+	): Promise<AskCreated & Partial<AskState>> {
 		const entry = this.requireWorkflowRun(id, "ask in");
 		const status = this.registry.get(id)?.status ?? entry.status;
 		if (!this.executing.has(id) || (status !== "running" && status !== "awaiting-human")) {
@@ -1583,6 +1685,7 @@ export class RunManager {
 			}));
 			await this.registry.update(id, { status: run.status });
 		});
+		this.notifyAsks(id, store, step);
 		const session = this.liveSessions.get(id)?.has(step) === true;
 		// With `wait`, the call waits from before the question is visible, so an
 		// answer can never arrive between the ask and the first long-poll
@@ -1602,19 +1705,22 @@ export class RunManager {
 		this.log(`Run ${id}: ${step} asks ${request.id} (af_ask)`);
 		const created = { run: id, request_id: request.id, step, session };
 		if (wait === 0) return created;
-		return { ...created, ...(await this.askState(id, request.id, wait, true)) };
+		return { ...created, ...(await this.askState(id, request.id, wait, true, signal)) };
 	}
 
 	/**
 	 * State of an `af_ask` request, waiting up to `waitSeconds` (max 120) for
 	 * its answer. An answer that arrives while this call waits is handed to
-	 * it and not queued as an operator message.
+	 * it, and the call consumes its operator message. `signal` (the HTTP
+	 * client went away) ends the wait at once without taking the answer: the
+	 * message then reaches the step at its next turn.
 	 */
 	async askState(
 		id: string,
 		requestId: string,
 		waitSeconds = 0,
 		registered = false,
+		signal?: AbortSignal,
 	): Promise<AskState> {
 		const entry = this.requireWorkflowRun(id, "ask in");
 		const store = new RunStore(entry.dir);
@@ -1633,16 +1739,19 @@ export class RunManager {
 			if (count > 0) this.askWaiters.set(key, count);
 			else this.askWaiters.delete(key);
 		};
-		const handed = (): AskState | null => {
+		const handed = async (): Promise<AskState | null> => {
 			const answer = this.askAnswers.get(key);
-			if (answer) this.askAnswers.delete(key);
-			return answer ?? null;
+			if (!answer || signal?.aborted) return null;
+			this.askAnswers.delete(key);
+			// Returned by this call: its operator message is not delivered again
+			await this.deliverMessages(store, answer.step, [answer.message]);
+			return answer.state;
 		};
 		try {
 			for (;;) {
-				const own = handed();
+				const own = await handed();
 				if (own) return own;
-				const answered = answerOf(store, requestId);
+				const answered = signal?.aborted ? null : answerOf(store, requestId);
 				if (answered) {
 					// Answered while no long-poll waited: the agent gets it here, so its
 					// operator message is consumed instead of delivered again next turn
@@ -1670,11 +1779,11 @@ export class RunManager {
 					};
 				}
 				const now = Date.now();
-				if (now >= deadline || this.closing.signal.aborted) {
+				if (now >= deadline || this.closing.signal.aborted || signal?.aborted) {
 					leave();
 					// An answer handed over in the same tick is still ours
 					return (
-						handed() ?? {
+						(await handed()) ?? {
 							status: "pending",
 							run: id,
 							request_id: requestId,
@@ -1682,7 +1791,7 @@ export class RunManager {
 						}
 					);
 				}
-				await this.waitAsk(key, Math.min(deadline - now, 1000));
+				await this.waitAsk(key, Math.min(deadline - now, 1000), signal);
 			}
 		} finally {
 			leave();
@@ -1715,13 +1824,22 @@ export class RunManager {
 		}
 	}
 
-	/** Waits until `key` is woken or `ms` passed. */
-	private waitAsk(key: string, ms: number): Promise<void> {
+	/** Tells the step's `onAsks` listeners whether it has an open af_ask question. */
+	private notifyAsks(id: string, store: RunStore, step: string): void {
+		const listeners = this.askListeners.get(stepKey(id, `step:${step}`));
+		if (!listeners || listeners.size === 0) return;
+		const open = pendingInputs(store.readRun()).some((p) => p.ask && p.step === step);
+		for (const listener of [...listeners]) listener(open);
+	}
+
+	/** Waits until `key` is woken, `ms` passed or `signal` aborts. */
+	private waitAsk(key: string, ms: number, signal?: AbortSignal): Promise<void> {
 		return new Promise((resolve) => {
 			const set = this.askWake.get(key) ?? new Set<() => void>();
 			this.askWake.set(key, set);
 			const done = () => {
 				clearTimeout(timer);
+				signal?.removeEventListener("abort", done);
 				set.delete(done);
 				if (set.size === 0 && this.askWake.get(key) === set) this.askWake.delete(key);
 				resolve();
@@ -1729,6 +1847,8 @@ export class RunManager {
 			const timer = setTimeout(done, Math.max(0, ms));
 			timer.unref?.();
 			set.add(done);
+			if (signal?.aborted) done();
+			else signal?.addEventListener("abort", done, { once: true });
 		});
 	}
 
@@ -1753,9 +1873,11 @@ export class RunManager {
 	}
 
 	/**
-	 * Answers an `af_ask` request of an executing run: hands the answer to a
-	 * waiting long-poll, else queues it as an operator message for the step.
-	 * The run is `running` again once no request is left.
+	 * Answers an `af_ask` request of an executing run: queues the answer as an
+	 * operator message for the step, and hands it to a waiting long-poll, which
+	 * then consumes the message. A long-poll whose caller went away never
+	 * takes it, so the step still gets the message at its next turn. The run
+	 * is `running` again once no request is left.
 	 */
 	private async answerAsk(
 		entry: RegistryEntry,
@@ -1773,26 +1895,29 @@ export class RunManager {
 		const request = pending.request;
 		const key = stepKey(entry.id, request.id);
 		const from = a.source === "policy" ? "policy" : a.from;
-		// Decided in one tick with the long-poll's own check, so the answer is never lost
+		const message = new Inbox(entry.dir).queue({
+			text: `Answer to ${request.id} ("${request.question}"): ${a.answer}`,
+			from: a.from,
+			mode: "next",
+			step: pending.step,
+		});
+		await store.appendEvent("message.queued", messageEventData(message));
+		// Decided in one tick with the long-poll's own check
 		const toTool = (this.askWaiters.get(key) ?? 0) > 0;
 		if (toTool) {
 			this.askAnswers.set(key, {
-				status: "answered",
-				run: entry.id,
-				request_id: request.id,
-				answer: a.option ?? a.raw,
-				option: a.option,
-				from,
+				state: {
+					status: "answered",
+					run: entry.id,
+					request_id: request.id,
+					answer: a.option ?? a.raw,
+					option: a.option,
+					from,
+				},
+				message: message.id,
+				step: pending.step,
 			});
 		}
-		const message = toTool
-			? null
-			: new Inbox(entry.dir).queue({
-					text: `Answer to ${request.id} ("${request.question}"): ${a.answer}`,
-					from: a.from,
-					mode: "next",
-					step: pending.step,
-				});
 		this.clearTimer(entry.id, request.id);
 		const resumed = await this.withInputLock(entry.id, async () => {
 			const run = await store.updateRunWith((current) => {
@@ -1806,14 +1931,14 @@ export class RunManager {
 			await this.registry.update(entry.id, { status: run.status });
 			return run.status === "running";
 		});
-		if (message) await store.appendEvent("message.queued", messageEventData(message));
+		this.notifyAsks(entry.id, store, pending.step);
 		await store.appendEvent("input.answered", {
 			id: request.id,
 			step: pending.step,
 			answer: a.option ?? a.raw,
 			option: a.option,
 			from,
-			message: message?.id ?? null,
+			message: message.id,
 			via: "af_ask",
 		});
 		const rationale =
@@ -1831,7 +1956,7 @@ export class RunManager {
 			decision: `Answered ${request.id} (${request.question}): ${a.answer}`,
 			rationale,
 			alternatives: request.options.filter((o) => o.id !== a.option).map((o) => o.label),
-			refs: message ? [request.id, message.id] : [request.id],
+			refs: [request.id, message.id],
 		});
 		if (resumed) await store.appendEvent("run.resumed", { reason: "answered" });
 		this.wakeAsk(key);
@@ -1839,7 +1964,7 @@ export class RunManager {
 		return {
 			id: entry.id,
 			request: request.id,
-			message: message?.id ?? null,
+			message: message.id,
 			status: resumed ? "running" : "awaiting-human",
 		};
 	}
@@ -1936,6 +2061,20 @@ export class RunManager {
 			nextMessages: async () => {
 				await this.waitForAsks(entry, store, step);
 				return this.deliverMessages(store, step);
+			},
+			// The step timeout does not run while the step has an open af_ask question
+			onAsks: (listener) => {
+				const key = stepKey(entry.id, `step:${step}`);
+				const listeners = this.askListeners.get(key) ?? new Set<(open: boolean) => void>();
+				this.askListeners.set(key, listeners);
+				listeners.add(listener);
+				listener(pendingInputs(store.readRun()).some((p) => p.ask && p.step === step));
+				return () => {
+					listeners.delete(listener);
+					if (listeners.size === 0 && this.askListeners.get(key) === listeners) {
+						this.askListeners.delete(key);
+					}
+				};
 			},
 			onLive: (handle) => {
 				const sessions = this.liveSessions.get(entry.id) ?? new Map<string, LiveSession>();
@@ -2670,6 +2809,9 @@ export class RunManager {
 			});
 			// Long-polls of dropped af_ask questions return `withdrawn`
 			for (const p of dropped) this.wakeAsk(stepKey(id, p.request.id));
+			for (const step of new Set(dropped.filter((p) => p.ask).map((p) => p.step))) {
+				this.notifyAsks(id, store, step);
+			}
 		});
 	}
 
@@ -3029,7 +3171,8 @@ function answerOf(store: RunStore, requestId: string): InputAnswer | null {
  * timeout deadline: the request's `x-af-timeout-minutes` (human-input
  * `timeout-minutes`, set by the workflow author), else
  * `supervisor.needs_input_timeout`, which also requires risk `low` (the
- * request's `risk`, else `stepRisk`; a missing risk is not low).
+ * request's `risk`, else `stepRisk`; a missing risk is not low). A
+ * `permission` request never gets a deadline.
  */
 function newPendingInput(
 	step: string,
@@ -3041,7 +3184,9 @@ function newPendingInput(
 	const ownMinutes = typeof own === "number" && Number.isFinite(own) && own >= 0 ? own : null;
 	const risk = request.risk ?? stepRisk ?? null;
 	const minutes = ownMinutes ?? (risk === "low" ? needsInputTimeout(config) : null);
-	const autoApply = request.blocking === false && request.recommended != null;
+	// A permission request is never answered by policy
+	const autoApply =
+		request.blocking === false && request.recommended != null && request.kind !== "permission";
 	const now = Date.now();
 	return {
 		step,

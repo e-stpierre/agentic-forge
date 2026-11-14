@@ -429,10 +429,15 @@ function setupCodex(steps: Steps, options: SetupOptions): void {
 	const table = codexMcpTable(options.invocation);
 	const text = readText(file) ?? "";
 	const current = readCodexMcp(text);
-	if (current && sameEntry(current, table) && current.tool_timeout_sec === table.tool_timeout_sec) {
+	// A user tool timeout at or above the af one is kept; a lower or missing one is raised.
+	const timeoutOk = (current?.tool_timeout_sec ?? 0) >= CODEX_AF_TOOL_TIMEOUT_SEC;
+	if (current && sameEntry(current, table) && timeoutOk) {
 		steps.ok(`MCP server ${AF_MCP_SERVER} is in ${file}`);
 	} else {
-		const updated = writeCodexMcp(text, { ...table, env: current?.env });
+		const updated = writeCodexMcp(
+			text,
+			timeoutOk ? { command: table.command, args: table.args } : table,
+		);
 		steps.change(`${current ? "Update" : "Add"} [mcp_servers.${AF_MCP_SERVER}] in ${file}`, () => {
 			mkdirSync(path.dirname(file), { recursive: true });
 			writeFileSync(file, updated, "utf-8");

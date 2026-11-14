@@ -115,15 +115,22 @@ export function spawnAppServer(options: AppServerSpawnOptions): AppServerTranspo
 		onGone(null);
 	});
 	proc.on("close", (code) => onGone(code));
+	// A write after the server died fails with EPIPE; the exit path reports the failure
+	proc.stdin?.on("error", (err) => {
+		stderr = (stderr + err.message).slice(-4000);
+	});
 	const lines = proc.stdout ? readline.createInterface({ input: proc.stdout }) : null;
 	return {
 		write: (line) => {
-			if (proc.stdin?.writable) proc.stdin.write(`${line}\n`);
+			if (!exited && proc.stdin?.writable) proc.stdin.write(`${line}\n`);
 		},
 		onLine: (listener) => lines?.on("line", listener),
 		onExit: (listener) => exitListeners.push(listener),
 		close: () => proc.stdin?.end(),
-		kill: () => killProcessTree(proc.pid),
+		// Once the server exited its pid may belong to another process
+		kill: () => {
+			if (!exited) killProcessTree(proc.pid);
+		},
 	};
 }
 
@@ -218,18 +225,25 @@ const PERMISSIONS_TOOL = "request_permissions";
 const QUESTION_TOOL = "request_user_input";
 const OPTION_IDS = "abcdefghij";
 
+/** Shell control syntax: command separators, pipes, substitutions, redirections. */
+const SHELL_CONTROL = /[;&|\r\n`<>]|\$\(/;
+
 /**
  * True when a shell command is approved by an allowlist rule: `Bash` or
  * `Bash(*)` (every command), `Bash(<prefix> *)` or `Bash(<prefix>:*)` (a
  * prefix), `Bash(<command>)` (exact). `shell` is accepted as an alias.
+ * Prefix and exact rules never match a command with shell control syntax
+ * (`git status; rm -rf /`), so a chained command asks instead.
  */
 export function commandAllowed(command: string, rules: string[] | null | undefined): boolean {
 	const cmd = command.trim();
+	const compound = SHELL_CONTROL.test(cmd);
 	for (const rule of rules ?? []) {
 		const match = /^(Bash|shell)(?:\((.*)\))?$/.exec(rule.trim());
 		if (!match) continue;
 		const pattern = match[2]?.trim();
 		if (!pattern || pattern === "*") return true;
+		if (compound) continue;
 		if (pattern.endsWith(":*") || pattern.endsWith(" *")) {
 			const head = pattern.slice(0, -2).trim();
 			if (cmd === head || cmd.startsWith(`${head} `)) return true;
@@ -392,6 +406,10 @@ export class CodexSession implements RuntimeSession {
 	private readonly queue: QueuedMessage[] = [];
 	/** Turns whose `turn/completed` arrived (it can precede the `turn/start` response). */
 	private readonly completedTurns = new Set<string>();
+	/** Requests for secret answers: their `request.resolved` event carries no answer text. */
+	private readonly secretRequests = new Set<string>();
+	/** `turn/steer` requests not answered yet: the session does not go idle while one is out. */
+	private steering = 0;
 	private transport: AppServerTransport | null = null;
 	private rpc: RpcClient | null = null;
 	private options: SessionStartOptions | null = null;
@@ -445,12 +463,23 @@ export class CodexSession implements RuntimeSession {
 			input: codexUserInput(text),
 			expectedTurnId: turnId,
 		};
-		// The turn may end before the steer arrives: the message then starts the next turn
-		this.rpc.request("turn/steer", params).catch(() => {
-			this.queue.push({ id, text, images: [] });
-			this.pump();
-		});
+		// The turn may end before the steer arrives: the message then starts the next turn.
+		// Until the steer is answered the session stays running, so the step is not closed.
+		this.steering += 1;
+		this.rpc.request("turn/steer", params).then(
+			() => this.steerSettled(),
+			() => {
+				if (!this.closing) this.queue.push({ id, text, images: [] });
+				this.steerSettled();
+			},
+		);
 		return id;
+	}
+
+	private steerSettled(): void {
+		this.steering -= 1;
+		if (this.steering > 0 || this.turnId || this.turnStarting) return;
+		this.afterTurn();
 	}
 
 	async interrupt(): Promise<void> {
@@ -463,7 +492,12 @@ export class CodexSession implements RuntimeSession {
 		const resolve = this.pending.get(requestId);
 		if (!resolve) return;
 		this.pending.delete(requestId);
-		this.emit({ type: "request.resolved", id: requestId, decision });
+		const secret = this.secretRequests.delete(requestId);
+		this.emit({
+			type: "request.resolved",
+			id: requestId,
+			decision: secret ? { ...decision, text: "[secret]" } : decision,
+		});
 		if (this.pending.size === 0 && this.state === "awaiting-input") this.setState("running");
 		resolve(decision);
 	}
@@ -479,7 +513,9 @@ export class CodexSession implements RuntimeSession {
 		}
 		transport.close();
 		// The app-server exits when its input ends; force it after a grace period
-		setTimeout(() => transport.kill(), 2000).unref?.();
+		const timer = setTimeout(() => transport.kill(), 2000);
+		timer.unref?.();
+		transport.onExit(() => clearTimeout(timer));
 	}
 
 	private async run(options: SessionStartOptions): Promise<void> {
@@ -684,6 +720,9 @@ export class CodexSession implements RuntimeSession {
 	}
 
 	private onNotification(method: string, params: unknown): void {
+		// Turn and item notifications of other threads (sub-agents) on this connection
+		const threadId = (params as { threadId?: unknown } | null)?.threadId;
+		if (/^(turn|item)\//.test(method) && threadId !== this.sessionId) return;
 		switch (method) {
 			case "turn/started": {
 				const { turn } = params as TurnStartedNotification;
@@ -700,6 +739,8 @@ export class CodexSession implements RuntimeSession {
 			}
 			case "turn/completed": {
 				const { turn } = params as TurnCompletedNotification;
+				// Only the current turn, or the one being started (completed before its response)
+				if (this.turnId ? turn.id !== this.turnId : !this.turnStarting) return;
 				this.completedTurns.add(turn.id);
 				this.turnId = null;
 				const failed = turn.status === "failed";
@@ -724,6 +765,8 @@ export class CodexSession implements RuntimeSession {
 			this.pump();
 			return;
 		}
+		// A steer still out may fail and start the next turn
+		if (this.steering > 0) return;
 		if (this.pending.size === 0 && !this.closing) this.setState("idle");
 	}
 
@@ -815,29 +858,33 @@ export class CodexSession implements RuntimeSession {
 				label: o.label,
 				...(o.description ? { description: o.description } : {}),
 			}));
-			const decision = await this.request({
-				kind: "question",
-				question: q.question,
-				options,
-				recommended: null,
-				context: [q.header, q.isOther ? "A free-text answer is accepted" : ""]
-					.filter(Boolean)
-					.join(". "),
-				tool: QUESTION_TOOL,
-				input: { id: q.id, header: q.header, secret: q.isSecret },
-			});
+			const decision = await this.request(
+				{
+					kind: "question",
+					question: q.question,
+					options,
+					recommended: null,
+					context: [q.header, q.isOther ? "A free-text answer is accepted" : ""]
+						.filter(Boolean)
+						.join(". "),
+					tool: QUESTION_TOOL,
+					input: { id: q.id, header: q.header, secret: q.isSecret },
+				},
+				q.isSecret === true,
+			);
 			const chosen = options.find((o) => o.id === decision.option);
 			answers[q.id] = { answers: [chosen ? chosen.label : decision.text] };
 		}
 		return { answers };
 	}
 
-	private request(fields: Omit<SessionRequest, "id">): Promise<SessionDecision> {
+	private request(fields: Omit<SessionRequest, "id">, secret = false): Promise<SessionDecision> {
 		// Unique across sessions: parallel steps each raise requests in one run
 		const id = `${fields.kind === "question" ? "ask" : "perm"}-${randomUUID().slice(0, 8)}`;
 		const request: SessionRequest = { id, ...fields };
 		return new Promise((resolve) => {
 			this.pending.set(id, resolve);
+			if (secret) this.secretRequests.add(id);
 			this.setState("awaiting-input");
 			this.emit({ type: "request", request });
 		});

@@ -59,7 +59,7 @@ A `cli` step is a one-shot process, so `af send --mode now` kills its process tr
 Steps never bypass permission checks by default. Each runtime has a permission mode, `runtimes.<id>.permissions` (see [Configuration](configuration.md#runtimes)):
 
 - **`allowlist`** (default): Claude steps may use the tools on `runtimes.claude.allow` and the workflow's `required-tools` without asking, on both drivers (`--settings` on the `cli` driver, auto-approved on the session driver). Anything else asks (session driver) or is denied (`cli` driver). Codex steps run in the `codex.sandbox` mode (`workspace-write` by default) with the run directory as an extra write root.
-- **`bypass`**: `--dangerously-skip-permissions` (Claude) or `--dangerously-bypass-approvals-and-sandbox` (Codex). Every step that runs this way logs a warning. `bypass-permissions: true` on a workflow or step has the same effect for that workflow or step.
+- **`bypass`**: `--dangerously-skip-permissions` (Claude) or `--dangerously-bypass-approvals-and-sandbox` (Codex). Every step that runs this way logs a warning. `bypass-permissions: true` on a workflow or step has the same effect for that workflow or step. An agent cannot opt its child runs into bypass: a dispatch from inside a step whose workflow or config bypasses is refused unless that step bypasses too (see [Run trees](cli.md#run-trees)).
 
 ### Transcripts
 

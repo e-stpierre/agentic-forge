@@ -10,6 +10,11 @@ import { CliExitError } from "./run.js";
 
 /** Exit code when the wait ran out before the condition held (as GNU `timeout`). */
 export const WAIT_TIMEOUT_EXIT = 124;
+/**
+ * Exit code when the wait ends on attention while the run status has no exit
+ * code of its own (paused, or still running after a failed step).
+ */
+export const WAIT_ATTENTION_EXIT = 11;
 
 export interface WaitOptions {
 	/** `terminal` (default) or `attention`. */
@@ -45,7 +50,8 @@ function parseOptions(options: WaitOptions) {
 /**
  * Waits for a run, prints the result as one JSON line on stdout and ends
  * with the run's exit code: 0 done or merged, 10 awaiting-human, 20 halted,
- * 30 blocked, 1 failed or canceled, 124 when the wait ran out.
+ * 30 blocked, 1 failed or canceled, 11 attention on any other status (paused,
+ * or running after a failed step), 124 when the wait ran out.
  */
 export async function waitAndReport(
 	client: SupervisorClient,
@@ -73,7 +79,9 @@ export async function waitAndReport(
 			WAIT_TIMEOUT_EXIT,
 		);
 	}
-	const code = exitCodeForRun(result.status);
+	let code = exitCodeForRun(result.status);
+	// Attention is never a final status: only failed and canceled end a run with 1
+	if (result.state === "attention" && code === 1) code = WAIT_ATTENTION_EXIT;
 	if (code !== 0) {
 		throw new CliExitError(`Run ${runId} is ${result.status} (${result.reason})`, code);
 	}

@@ -51,6 +51,12 @@ export interface ToolContext {
 	env?: NodeJS.ProcessEnv;
 }
 
+/** What a tool handler gets from the MCP request besides its input. */
+export interface ToolCallExtra {
+	/** Aborted when the MCP client cancels the call or the connection closes. */
+	signal: AbortSignal;
+}
+
 /** `withClient()` options of the read tools: a GET is retried once when the supervisor is unreachable. */
 const READ = { idempotent: true } as const;
 
@@ -106,11 +112,14 @@ export function register<Shape extends z.ZodRawShape>(
 	server: McpServer,
 	name: string,
 	config: { title: string; description: string; inputSchema: Shape },
-	handler: (input: z.infer<z.ZodObject<Shape>>) => Promise<CallToolResult>,
+	handler: (input: z.infer<z.ZodObject<Shape>>, extra: ToolCallExtra) => Promise<CallToolResult>,
 ): void {
-	server.registerTool(name, config, (async (input: z.infer<z.ZodObject<Shape>>) => {
+	server.registerTool(name, config, (async (
+		input: z.infer<z.ZodObject<Shape>>,
+		extra: Partial<ToolCallExtra> | undefined,
+	) => {
 		try {
-			return await handler(input);
+			return await handler(input, { signal: extra?.signal ?? new AbortController().signal });
 		} catch (err) {
 			return toolError(name, err);
 		}

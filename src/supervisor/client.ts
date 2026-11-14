@@ -56,8 +56,10 @@ export class SupervisorClient {
 		route: string,
 		body?: unknown,
 		timeoutMs = 5_000,
+		signal?: AbortSignal,
 	): Promise<T> {
 		let response: Response;
+		const timeout = AbortSignal.timeout(timeoutMs);
 		try {
 			response = await fetch(`${this.baseUrl}${route}`, {
 				method,
@@ -66,9 +68,11 @@ export class SupervisorClient {
 					"content-type": "application/json",
 				},
 				body: body === undefined ? undefined : JSON.stringify(body),
-				signal: AbortSignal.timeout(timeoutMs),
+				signal: signal ? AbortSignal.any([timeout, signal]) : timeout,
 			});
 		} catch (err) {
+			// Canceled by the caller: not a supervisor problem
+			if (signal?.aborted) throw signal.reason ?? err;
 			throw new SupervisorUnavailableError(
 				`Supervisor at ${this.baseUrl} is not reachable: ${(err as Error).message}`,
 			);

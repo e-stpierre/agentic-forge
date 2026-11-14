@@ -178,6 +178,14 @@ export interface SessionHost {
 	 */
 	onLive?: (handle: LiveSession) => () => void;
 	/**
+	 * Subscribes to the step's open `af_ask` questions: `listener` is called
+	 * with true when the step has one (its agent may block in the tool call),
+	 * false when none is left, and once at once with the current state. The
+	 * step timeout does not run while one is open. Returns the unsubscribe
+	 * function.
+	 */
+	onAsks?: (listener: (open: boolean) => void) => () => void;
+	/**
 	 * Every normalized event of the step (the live transcript). The `cli`
 	 * driver calls it too, with the events mapped from its stream lines.
 	 */

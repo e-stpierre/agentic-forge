@@ -13,10 +13,12 @@ import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CliExitError } from "../src/commands/run.js";
 import { cmdStatus } from "../src/commands/status.js";
+import { WAIT_ATTENTION_EXIT, waitAndReport } from "../src/commands/wait.js";
 import { deepMerge, getDefaultConfig } from "../src/config.js";
 import { createMcpServer } from "../src/mcp/index.js";
-import { dispatchRun } from "../src/runs/client.js";
+import { dispatchRun, waitForRun } from "../src/runs/client.js";
 import type { DispatchPayload } from "../src/runs/dispatch.js";
 import { RunManager } from "../src/runs/manager.js";
 import { RunStore } from "../src/runs/run-store.js";
@@ -325,6 +327,58 @@ describe("cross-runtime dispatch", () => {
 		});
 		await manager.idle();
 	});
+
+	it("a first af_wait with until attention ignores a question answered before it", async () => {
+		const { manager, client } = await startSupervisor();
+		let release: () => void = () => {};
+		const gate = new Promise<void>((r) => {
+			release = r;
+		});
+		let calls = 0;
+		fakeSdk.on("ASK", async (s, first) => {
+			calls += 1;
+			s.init();
+			s.result(
+				resultBlock("awaiting-human", "Need a choice", {
+					max_risk: "medium",
+					needs_input: {
+						id: "q1",
+						question: "Keep the cache?",
+						options: [
+							{ id: "a", label: "Keep" },
+							{ id: "b", label: "Drop" },
+						],
+						recommended: "a",
+						blocking: true,
+					},
+				}),
+				[first],
+			);
+		});
+		// The rerun (a resumed session) starts with the answer
+		fakeSdk.on("Answer to q1", async (s, first) => {
+			calls += 1;
+			s.init();
+			await gate;
+			s.result(resultBlock("done", "Kept"), [first]);
+		});
+		const res = await dispatchRun(client, payload(workflow("asks", "claude", "ASK")));
+		await waitForStatus(manager, res.run.id, "awaiting-human");
+		await manager.answer(res.run.id, { answer: "a" });
+		await waitFor(() => calls === 2, "the rerun");
+		await waitForStatus(manager, res.run.id, "running");
+
+		const mcp = await connect(client);
+		const waited = await call(mcp, "af_wait", {
+			run: res.run.id,
+			until: "attention",
+			timeout_seconds: 0.3,
+		});
+		expect(waited).toMatchObject({ state: "waiting", status: "running" });
+		release();
+		await waitForStatus(manager, res.run.id, "done");
+		await manager.idle();
+	});
 });
 
 describe("run tree guards", () => {
@@ -385,6 +439,225 @@ describe("run tree guards", () => {
 		).rejects.toThrow(/already has 2 runs \(overseer.budgets.max_tree_runs 2\)/);
 		release();
 		await waitForStatus(manager, root.run.id, "done");
+		await manager.idle();
+	});
+
+	it("parallel dispatches into one tree cannot pass max_tree_active together", async () => {
+		const { manager } = await startSupervisor();
+		let release: () => void = () => {};
+		const gate = new Promise<void>((r) => {
+			release = r;
+		});
+		fakeSdk.on("HOLD", async (s, first) => {
+			s.init();
+			await gate;
+			s.result(resultBlock("done", "held"), [first]);
+		});
+		const hold = workflow("hold", "claude", "HOLD");
+		const active = guarded({ max_tree_active: 2 });
+		const root = await manager.dispatch(payload(hold, {}, active));
+		const results = await Promise.allSettled(
+			[1, 2, 3, 4].map(() => manager.dispatch(payload(hold, { parent: root.run.id }, active))),
+		);
+		expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+		for (const r of results.filter((x) => x.status === "rejected")) {
+			expect(String((r as PromiseRejectedResult).reason)).toMatch(/max_tree_active 2/);
+		}
+		release();
+		await waitForStatus(manager, root.run.id, "done");
+		await manager.idle();
+	});
+});
+
+describe("permission bypass of child runs", () => {
+	const bypassWorkflow = (name: string) =>
+		workflow(name, "claude", "NODE").replace("  max-retry: 0", "  max-retry: 0\n  bypass-permissions: true");
+	const bypassConfig = () =>
+		deepMerge(getDefaultConfig(), {
+			runtimes: { codex: { permissions: "bypass" } },
+		}) as Record<string, unknown>;
+
+	it("refuses a bypass workflow or config for a child of a step that does not bypass", async () => {
+		const { manager, client } = await startSupervisor();
+		const root = await manager.dispatch(payload(workflow("node", "claude", "NODE")));
+		await expect(
+			manager.dispatch(payload(bypassWorkflow("free"), { parent: root.run.id })),
+		).rejects.toThrow(
+			/Dispatch refused: the child run would bypass permission checks \(bypass-permissions: true on the workflow\)/,
+		);
+		await expect(
+			manager.dispatch(
+				payload(workflow("node", "claude", "NODE"), { parent: root.run.id }, bypassConfig()),
+			),
+		).rejects.toThrow(/runtimes.codex.permissions: bypass/);
+		const stepBypass = workflow("node", "claude", "NODE").replace(
+			'    prompt: "NODE"',
+			'    prompt: "NODE"\n    bypass-permissions: true',
+		);
+		await expect(
+			manager.dispatch(payload(stepBypass, { parent: root.run.id })),
+		).rejects.toThrow(/bypass-permissions: true on step work/);
+
+		// An agent of the run gets the refusal as a tool error naming the reason
+		writeFileSync(
+			path.join(repo, "agentic", "workflows", "free.yaml"),
+			bypassWorkflow("free"),
+			"utf-8",
+		);
+		const mcp = await connect(client, { AF_RUN_ID: root.run.id });
+		const refused = await call(mcp, "af_dispatch", { workflow: "free" });
+		expect(refused.isError).toBe(true);
+		expect(refused.text).toContain("would bypass permission checks");
+
+		// Without a parent (the operator), the bypass is the operator's choice
+		const operator = await manager.dispatch(payload(bypassWorkflow("free")));
+		expect(operator.run.parent).toBeNull();
+		await manager.idle();
+	});
+
+	it("allows a bypass child of a run that bypasses permission checks itself", async () => {
+		const { manager } = await startSupervisor();
+		const root = await manager.dispatch(payload(bypassWorkflow("free")));
+		const child = await manager.dispatch(payload(bypassWorkflow("free"), { parent: root.run.id }));
+		expect(child.run.parent).toBe(root.run.id);
+		const viaConfig = deepMerge(getDefaultConfig(), {
+			runtimes: { claude: { permissions: "bypass" } },
+		}) as Record<string, unknown>;
+		const root2 = await manager.dispatch(payload(workflow("node", "claude", "NODE"), {}, viaConfig));
+		const child2 = await manager.dispatch(
+			payload(workflow("node", "claude", "NODE"), { parent: root2.run.id }, viaConfig),
+		);
+		expect(child2.run.parent).toBe(root2.run.id);
+		await manager.idle();
+	});
+});
+
+describe("af_answer from inside a run", () => {
+	/** A run waiting on a result-block question (risk medium, kind as given). */
+	function asking(kind: string): string {
+		const name = `asks-${kind}`;
+		fakeSdk.on(`ASK-${kind}`, async (s, first) => {
+			s.init();
+			s.result(
+				resultBlock("awaiting-human", "Need a choice", {
+					max_risk: "medium",
+					needs_input: {
+						id: "q1",
+						kind,
+						question: "Go on?",
+						options: [
+							{ id: "a", label: "Yes" },
+							{ id: "b", label: "No" },
+						],
+						recommended: "a",
+						blocking: true,
+					},
+				}),
+				[first],
+			);
+		});
+		return workflow(name, "claude", `ASK-${kind}`);
+	}
+
+	it("answers only non-permission requests of descendant runs; the operator answers any", async () => {
+		const { manager, client } = await startSupervisor();
+		const parent = await manager.dispatch(payload(workflow("node", "claude", "NODE")));
+		const child = await manager.dispatch(payload(asking("decision"), { parent: parent.run.id }));
+		const grandchild = await manager.dispatch(
+			payload(asking("question"), { parent: child.run.id }),
+		);
+		const permission = await manager.dispatch(
+			payload(asking("permission"), { parent: parent.run.id }),
+		);
+		const outsider = await manager.dispatch(payload(asking("decision")));
+		for (const r of [child, grandchild, permission, outsider]) {
+			await waitForStatus(manager, r.run.id, "awaiting-human");
+		}
+
+		const agent = await connect(client, { AF_RUN_ID: parent.run.id });
+		const answered = await call(agent, "af_answer", { run: child.run.id, answer: "a" });
+		expect(answered).toMatchObject({ request: "q1", status: "queued" });
+		const deep = await call(agent, "af_answer", { run: grandchild.run.id, answer: "a" });
+		expect(deep).toMatchObject({ request: "q1" });
+
+		const perm = await call(agent, "af_answer", { run: permission.run.id, answer: "a" });
+		expect(perm.isError).toBe(true);
+		expect(perm.text).toContain("is a permission request");
+		const out = await call(agent, "af_answer", { run: outsider.run.id, answer: "a" });
+		expect(out.isError).toBe(true);
+		expect(out.text).toContain(`is not a descendant of run ${parent.run.id}`);
+		// Its own run is not its descendant either
+		const own = await call(agent, "af_answer", {
+			run: parent.run.id,
+			answer: "a",
+		});
+		expect(own.isError).toBe(true);
+
+		const operator = await connect(client);
+		expect(await call(operator, "af_answer", { run: permission.run.id, answer: "a" })).toMatchObject(
+			{ request: "q1" },
+		);
+		expect(await call(operator, "af_answer", { run: outsider.run.id, answer: "a" })).toMatchObject({
+			request: "q1",
+		});
+		await manager.idle();
+	});
+});
+
+describe("af wait", () => {
+	function holding() {
+		let release: () => void = () => {};
+		const gate = new Promise<void>((r) => {
+			release = r;
+		});
+		fakeSdk.on("HOLD", async (s, first) => {
+			s.init();
+			await gate;
+			s.result(resultBlock("done", "held"), [first]);
+		});
+		return () => release();
+	}
+
+	it("exits 11 on attention for a paused run, which has no exit code of its own", async () => {
+		const { manager, client } = await startSupervisor();
+		const release = holding();
+		const res = await dispatchRun(client, payload(workflow("hold", "claude", "HOLD")));
+		await waitForStatus(manager, res.run.id, "running");
+		await manager.pause(res.run.id, { now: true });
+		await waitForStatus(manager, res.run.id, "paused");
+		const out: string[] = [];
+		const err = await waitAndReport(
+			client,
+			res.run.id,
+			{ until: "attention", timeout: "5" },
+			(text) => out.push(text),
+		).catch((e: unknown) => e);
+		expect(err).toBeInstanceOf(CliExitError);
+		expect((err as CliExitError).exitCode).toBe(WAIT_ATTENTION_EXIT);
+		expect(JSON.parse(out[0])).toMatchObject({ state: "attention", status: "paused" });
+		release();
+		await manager.cancel(res.run.id);
+		await manager.idle();
+	});
+
+	it("returns at once when its signal aborts, without waiting for the supervisor request", async () => {
+		const { manager, client } = await startSupervisor();
+		const release = holding();
+		const res = await dispatchRun(client, payload(workflow("hold", "claude", "HOLD")));
+		await waitForStatus(manager, res.run.id, "running");
+		const controller = new AbortController();
+		const started = Date.now();
+		const waiting = waitForRun(client, res.run.id, {
+			timeoutSeconds: 600,
+			signal: controller.signal,
+		});
+		await sleep(200);
+		controller.abort();
+		const result = await waiting;
+		expect(Date.now() - started).toBeLessThan(3000);
+		expect(result).toMatchObject({ run: res.run.id, state: "waiting", status: "running" });
+		release();
+		await waitForStatus(manager, res.run.id, "done");
 		await manager.idle();
 	});
 });

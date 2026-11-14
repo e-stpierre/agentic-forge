@@ -74,6 +74,9 @@ export function toolError(tool: string, err: unknown): CallToolResult {
 		switch (err.status) {
 			case 400:
 				return errorResult(`${problem} ${hintFor400(tool, err.message)}`);
+			case 403:
+				// A refusal to an agent inside a run names its reason and next step itself
+				return errorResult(problem);
 			case 404:
 				return errorResult(`${problem} Use af_list_runs to find run ids.`);
 			case 409:

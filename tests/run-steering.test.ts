@@ -451,6 +451,33 @@ describe("needs_input and af answer", () => {
 		}
 	});
 
+	it("never applies the timeout to a permission request, even at risk low", async () => {
+		const { manager, client } = await startSupervisor();
+		const config = getDefaultConfig();
+		(config.supervisor as Record<string, unknown>).needs_input_timeout = 0.001;
+		fakeRuntime.on("BUILD", (o) =>
+			reply(
+				o,
+				block({
+					status: "awaiting-human",
+					summary: "Permission.",
+					needs_input: { ...QUESTION, blocking: false, risk: "low", kind: "permission" },
+				}),
+			),
+		);
+		const res = await dispatchRun(client, payload(THREE_STEPS, config));
+		await manager.idle();
+		await new Promise((r) => setTimeout(r, 100));
+		const store = new RunStore(res.dir);
+		expect(store.readRun().status).toBe("awaiting-human");
+		expect(pendingInput(store.readRun())?.deadline).toBeNull();
+		expect(store.readEvents().some((e) => e.type === "input.answered")).toBe(false);
+		expect(store.readEvents().find((e) => e.type === "needs_input")?.data).toMatchObject({
+			kind: "permission",
+			risk: "low",
+		});
+	});
+
 	it("re-arms a pending deadline after a supervisor restart", async () => {
 		const first = await startSupervisor();
 		let asks = 0;
