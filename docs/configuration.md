@@ -11,8 +11,6 @@ Agentic Forge uses a 3-layer configuration system. Values merge in order: **buil
 
 Use `af configure` to view the current merged configuration.
 
-Set the `AGENTIC_FORGE_HOME` environment variable to use another directory as `<global-dir>` on every platform (for isolated setups and tests).
-
 ## Managing Configuration
 
 ```bash
@@ -31,30 +29,16 @@ af config set outputDirectory local --local
 
 ## All Configuration Options
 
-### runs
+### outputDirectory
 
-Where run directories are created. Every run, worktree or not, writes to `<runs.root>/YYYY-MM-DD-<slug>/` (see [harness-contract.md](harness-contract.md)).
+Where workflow outputs are stored.
 
-| Key         | Type           | Default | Description                                                                            |
-| ----------- | -------------- | ------- | -------------------------------------------------------------------------------------- |
-| `runs.root` | string or null | `null`  | Runs root: absolute, or relative to the repository. `null` means `<global dir>/runs/`. |
+| Value      | Description                                           |
+| ---------- | ----------------------------------------------------- |
+| `"global"` | Store in global directory under a project-slug folder |
+| `"local"`  | Store in `<project>/agentic/outputs/`                 |
 
-### outputDirectory (deprecated)
-
-Replaced by `runs.root`. `"global"` (the default) maps to `<global dir>/runs/`. `"local"` maps to `<project>/agentic/runs/` and prints a deprecation warning at dispatch. Runs created before the supervisor stay under `outputs/` and are listed read-only by `af status` and `af list`.
-
-### supervisor
-
-Settings of the supervisor (`af serve`) and its scheduler.
-
-| Key                              | Type           | Default | Description                                                                                                                                                                                                            |
-| -------------------------------- | -------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `supervisor.max_parallel_runs`   | integer        | `4`     | Runs executing at once, all repositories together. Read from the global config only.                                                                                                                                   |
-| `supervisor.max_parallel_tasks`  | integer        | `2`     | Runs executing at once in one repository. Read from the dispatching repository's config.                                                                                                                               |
-| `supervisor.env_passthrough`     | string[]       | `[]`    | Extra environment variable names a client forwards to its runs, on top of the built-in allowlist.                                                                                                                      |
-| `supervisor.needs_input_timeout` | number or null | `null`  | Minutes before a non-blocking `needs_input` request (`blocking: false` with a `recommended` option) is answered with its recommended option. `null` never auto-answers. Read from the dispatching repository's config. |
-
-Whatever the limits, two runs never share one checkout: a run without its own worktree waits while another run without a worktree is running on the same repository.
+**Default**: `"global"`
 
 ### logging
 

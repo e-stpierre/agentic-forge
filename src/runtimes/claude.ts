@@ -116,14 +116,7 @@ export class ClaudeAdapter implements RuntimeAdapter {
 		if (!data) {
 			return null;
 		}
-		const event = this.parseStreamData(data);
-		// The session id (system init and result messages) is read from the stream
-		const sessionId = typeof data.session_id === "string" ? data.session_id : undefined;
-		if (!sessionId) return event;
-		return event ? { ...event, sessionId } : { type: "session", sessionId };
-	}
 
-	private parseStreamData(data: Record<string, unknown>): StreamEvent | null {
 		const msgType = data.type;
 
 		// Handle user messages
@@ -179,9 +172,8 @@ export class ClaudeAdapter implements RuntimeAdapter {
 		stdout: string,
 		stderr: string,
 		options: RuntimeRunOptions,
-		sessionId: string | null = null,
 	): RuntimeResult {
-		const sessionOutput = SessionOutput.fromStdout(stdout, sessionId);
+		const sessionOutput = SessionOutput.fromStdout(stdout);
 		return {
 			returncode,
 			stdout,
