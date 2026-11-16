@@ -14,9 +14,6 @@ export interface NeedsInputOption {
 	description?: string;
 }
 
-/** What a `needs_input` request asks for (contract `needs_input.kind`). */
-export type NeedsInputKind = "question" | "permission" | "decision";
-
 /** Contract `needs-input.schema.json`. */
 export interface NeedsInput {
 	id: string;
@@ -25,10 +22,6 @@ export interface NeedsInput {
 	recommended: string | null;
 	context?: string;
 	blocking: boolean;
-	/** Absent means `decision`. */
-	kind?: NeedsInputKind;
-	/** Absent counts as not low (no automatic answer). */
-	risk?: "low" | "medium" | "high";
 	[key: `x-${string}`]: unknown;
 }
 

@@ -50,7 +50,6 @@ export type TranscriptEntryType =
 	| "request"
 	| "answer"
 	| "turn"
-	| "notice"
 	| "error";
 
 /** One line of `transcript.jsonl`. */
@@ -241,8 +240,6 @@ export function transcriptEntries(event: SessionEvent): EntryFields[] {
 			];
 		case "turn.completed":
 			return [{ type: "turn", is_error: event.isError, ...text(event.result) }];
-		case "notice":
-			return [{ type: "notice", ...text(event.text) }];
 		case "error":
 			return [{ type: "error", ...text(event.message) }];
 		default:

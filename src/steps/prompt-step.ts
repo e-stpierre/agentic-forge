@@ -16,7 +16,6 @@ import {
 	updateStepStopped,
 } from "../progress.js";
 import { runRuntime } from "../runtimes/process-runner.js";
-import type { SessionSkill } from "../runtimes/session.js";
 import type { StepDefinition, WorkflowProgress } from "../types.js";
 import {
 	type LastSession,
@@ -29,7 +28,6 @@ import {
 	emitStepEvent,
 	permissionOptions,
 	resolveModel,
-	stepEnv,
 } from "./base.js";
 
 /** Result statuses that stop the run, with the step and workflow status they record. */
@@ -100,19 +98,7 @@ export function withAgent(step: StepDefinition, context: StepContext, prompt: st
 ${prompt}`;
 }
 
-/** A step's prompt, and the native skill a session driver may load instead. */
-export interface PreparedPrompt {
-	prompt: string;
-	/** `text` is the skill arguments; operator messages are appended by the step. */
-	skill?: SessionSkill;
-}
-
 export class PromptStepExecutor extends StepExecutor {
-	/** The prompt (and native skill, for skill steps) before operator messages are added. */
-	protected prepare(step: StepDefinition, context: StepContext): PreparedPrompt {
-		return { prompt: this.buildPrompt(step, context) };
-	}
-
 	/** The step's prompt, rendered, before operator messages are prepended. */
 	protected buildPrompt(step: StepDefinition, context: StepContext): string {
 		let prompt = step.prompt ?? "";
@@ -134,8 +120,7 @@ export class PromptStepExecutor extends StepExecutor {
 		logger: WorkflowLogger,
 		console: ConsoleOutput,
 	): Promise<StepResult> {
-		const prepared = this.prepare(step, context);
-		let prompt = prepared.prompt;
+		let prompt = this.buildPrompt(step, context);
 		const cwd = context.cwdOverride ?? context.repoRoot;
 
 		// Pending operator messages start the prompt (delivered once, reused by retries)
@@ -160,11 +145,6 @@ export class PromptStepExecutor extends StepExecutor {
 		}
 		const freshPrompt = this.withMessages(operatorSection, prompt);
 		prompt = resumed ? `${operatorSection}${resumed.instruction}` : freshPrompt;
-		// A native skill (Codex session) gets the operator messages after its arguments
-		const freshSkill: SessionSkill | null = prepared.skill
-			? { ...prepared.skill, text: this.withMessages(operatorSection, prepared.skill.text) }
-			: null;
-		let skill = resumed ? null : freshSkill;
 
 		const timeout = (step.stepTimeoutMinutes ?? 60) * 60;
 		const defaults = context.config.defaults as Record<string, unknown> | undefined;
@@ -190,11 +170,10 @@ export class PromptStepExecutor extends StepExecutor {
 				workflowId: context.workflowId,
 				outputDir: context.outputDir,
 				sandbox: getSandboxMode(context.config),
-				env: stepEnv(context, step.name),
+				env: context.env ?? null,
 				signal: context.signal ?? null,
 				...driver,
 				resumeSessionId,
-				skill,
 			});
 
 			// Stopped by the supervisor: no retry, the executor records the interruption
@@ -283,7 +262,6 @@ export class PromptStepExecutor extends StepExecutor {
 				});
 				resumeSessionId = null;
 				prompt = freshPrompt;
-				skill = freshSkill;
 				attempt--;
 				continue;
 			}

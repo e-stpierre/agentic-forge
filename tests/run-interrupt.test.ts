@@ -137,7 +137,6 @@ function cliConfig(): Record<string, unknown> {
 	const config = getDefaultConfig();
 	const runtimes = config.runtimes as Record<string, Record<string, unknown>>;
 	runtimes.claude.driver = "cli";
-	runtimes.codex.driver = "cli";
 	return config;
 }
 

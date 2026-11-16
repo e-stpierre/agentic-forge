@@ -24,9 +24,7 @@ export function humanInputRequestId(step: string, n: number): string {
  * reruns the step, which finds the answer and records it as its outputs
  * (`{{ outputs.<step>.answer }}`, `option`, `from`, `request_id`). No runtime
  * runs. A non-blocking request with a `recommended` option is answered by
- * policy after `timeout-minutes`. Without it the request waits for an answer:
- * `supervisor.needs_input_timeout` only applies to low-risk requests, and this
- * request has no risk.
+ * policy after `timeout-minutes` (else `supervisor.needs_input_timeout`).
  */
 export class HumanInputStepExecutor extends StepExecutor {
 	async execute(

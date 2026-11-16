@@ -12,7 +12,6 @@ import { fileURLToPath } from "node:url";
 import { loadConfig } from "../config.js";
 import { filterEnv, getEnvPassthrough } from "../runs/dispatch.js";
 import type { OverseerOpenResult, OverseerPayload } from "../runs/overseer.js";
-import { AF_MCP_SERVER, afInvocation } from "../runtimes/af-mcp.js";
 import { getExecutable, resolveCmdScript } from "../runtimes/utils.js";
 import type { SupervisorClient } from "../supervisor/client.js";
 import { CliExitError } from "./run.js";
@@ -20,8 +19,7 @@ import { CliExitError } from "./run.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Name of the af MCP server in the overseer's MCP config (tools are `mcp__agentic-forge__af_*`). */
-export const OVERSEER_MCP_SERVER = AF_MCP_SERVER;
-export { afInvocation };
+export const OVERSEER_MCP_SERVER = "agentic-forge";
 /** Slash command of the overseer skill inside the bundled plugin. */
 export const OVERSEER_SKILL_COMMAND = "/af-overseer:overseer";
 /** Subdirectory of the overseer run dir for launcher files (MCP config, event cursor). */
@@ -46,12 +44,6 @@ export interface OverseerOptions {
 	model?: string;
 	/** Prints the claude command instead of starting it (the run is still opened). */
 	printCommand?: boolean;
-	/**
-	 * `--open`: opens the run and prints it as one JSON line, without starting
-	 * claude (the overseer skill calls it from an existing session, for example
-	 * in Claude Desktop).
-	 */
-	open?: boolean;
 	/** Extra arguments passed to claude (after `--`). */
 	claudeArgs?: string[];
 }
@@ -83,6 +75,14 @@ export interface OverseerCommand {
 /** Directory of the bundled `af-overseer` plugin (`dist/overseer`, `src/overseer` in tests). */
 export function getOverseerPluginDir(): string {
 	return path.resolve(__dirname, "..", "overseer");
+}
+
+/**
+ * How to run this af CLI from another process: node with the CLI script, so
+ * it works without `af` on PATH and without a Windows `.cmd` shim.
+ */
+export function afInvocation(): { command: string; args: string[] } {
+	return { command: process.execPath, args: [path.resolve(__dirname, "..", "cli.js")] };
 }
 
 function quote(value: string): string {
@@ -121,28 +121,6 @@ export function overseerMcpConfig(runId: string, invocation = afInvocation()) {
 				env: { AF_OVERSEER_RUN: runId },
 			},
 		},
-	};
-}
-
-/** Bash command of the overseer's event monitor (cursor file in the run dir). */
-export function overseerMonitorCommand(dir: string, af = afShellCommand()): string {
-	let cursor = path.join(dir, OVERSEER_SESSION_DIR, "events.cursor");
-	if (process.platform === "win32") cursor = cursor.replace(/\\/g, "/");
-	return `${af} events --follow --new --cursor-file "${cursor}" --types "${OVERSEER_EVENT_TYPES}"`;
-}
-
-/** What `af overseer --open` prints: the run and the commands the skill uses. */
-export function overseerSessionInfo(open: OverseerOpenResult, af = afShellCommand()) {
-	mkdirSync(path.join(open.dir, OVERSEER_SESSION_DIR), { recursive: true });
-	return {
-		run: open.run.id,
-		dir: open.dir,
-		session: open.session,
-		mode: open.mode,
-		epic: open.epic ?? null,
-		rehydrate: open.mode !== "created",
-		af,
-		monitor: overseerMonitorCommand(open.dir, af),
 	};
 }
 
@@ -262,15 +240,10 @@ export async function cmdOverseer(
 	if (options.resume && options.epic) {
 		throw new CliExitError("Error: --resume keeps the run's epic: drop --epic");
 	}
-	if (options.open && (options.printCommand || options.model || options.claudeArgs?.length)) {
-		throw new CliExitError(
-			"Error: --open starts no claude session: drop --print-command, --model and claude arguments",
-		);
-	}
 
 	const { epic, source } = readEpic(options.epic, cwd);
 	let executable = deps.claude;
-	if (!executable && !options.printCommand && !options.open) {
+	if (!executable && !options.printCommand) {
 		try {
 			executable = getExecutable("claude");
 		} catch {
@@ -297,10 +270,6 @@ export async function cmdOverseer(
 		throw new CliExitError(`Error: ${(err as Error).message}`);
 	}
 	for (const warning of open.warnings ?? []) process.stderr.write(`Warning: ${warning}\n`);
-	if (options.open) {
-		out(`${JSON.stringify(overseerSessionInfo(open))}\n`);
-		return 0;
-	}
 	const verb = {
 		created: "created",
 		reused: "reused (open run of this repository)",

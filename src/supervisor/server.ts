@@ -50,8 +50,6 @@ export type RouteHandler = (request: {
 	body: unknown;
 	query: URLSearchParams;
 	params: Record<string, string>;
-	/** Aborted when the client closes the connection before the response is sent. */
-	signal: AbortSignal;
 }) => RouteResult | Promise<RouteResult>;
 
 export interface SupervisorOptions {
@@ -292,16 +290,7 @@ export class Supervisor {
 			this.send(res, 400, { error: `Invalid request body: ${(err as Error).message}` });
 			return;
 		}
-		const closed = new AbortController();
-		res.on("close", () => {
-			if (!res.writableEnded) closed.abort();
-		});
-		const result = await match.handler({
-			body,
-			query: url.searchParams,
-			params: match.params,
-			signal: closed.signal,
-		});
+		const result = await match.handler({ body, query: url.searchParams, params: match.params });
 		this.send(res, result.status ?? 200, result.body);
 	}
 }

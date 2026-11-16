@@ -8,7 +8,6 @@ import type {
 	SessionEvent,
 	SessionHost,
 	SessionListener,
-	SessionSkill,
 	SessionStartOptions,
 } from "./session.js";
 
@@ -51,8 +50,6 @@ export interface RuntimeRunOptions {
 	resumeSessionId?: string | null;
 	/** Session driver: local plugin directories to load (`runtimes.<id>.plugins`). */
 	plugins?: string[];
-	/** Session driver: a skill step that may load the skill natively (Codex). */
-	skill?: SessionSkill | null;
 }
 
 /** Result from runtime execution. */

@@ -5,9 +5,6 @@
  * - at most `maxParallelTasks` runs per repository
  * - two runs never share one checkout: a run without its own worktree waits
  *   while another run without a worktree is running on the same repository
- * - a child run is never held back by its own running ancestors: they lend
- *   it their slot and their checkout (a parent step that dispatched a child
- *   usually waits for it, so waiting behind it would deadlock)
  */
 
 import type { RegistryEntry } from "./registry.js";
@@ -16,8 +13,6 @@ export interface SchedulerLimits {
 	maxParallelRuns: number;
 	/** Per-repo limit; resolved from each queued run's config snapshot. */
 	maxParallelTasks: (entry: RegistryEntry) => number;
-	/** Ancestor run ids of a run (its run tree), nearest first. */
-	ancestors?: (entry: RegistryEntry) => readonly string[];
 }
 
 export const DEFAULT_MAX_PARALLEL_RUNS = 4;
@@ -45,11 +40,9 @@ export function pickRunnable(
 	const active = [...running];
 	const picked: RegistryEntry[] = [];
 	for (const candidate of [...queued].sort(queueOrder)) {
-		const lent = new Set(limits.ancestors?.(candidate) ?? []);
-		const others = active.filter((r) => !lent.has(r.id));
-		if (others.length >= limits.maxParallelRuns) continue;
+		if (active.length >= limits.maxParallelRuns) break;
 		const key = repoKey(candidate.repo);
-		const sameRepo = others.filter((r) => repoKey(r.repo) === key);
+		const sameRepo = active.filter((r) => repoKey(r.repo) === key);
 		if (sameRepo.length >= limits.maxParallelTasks(candidate)) continue;
 		if (!candidate.worktree && sameRepo.some((r) => !r.worktree)) continue;
 		picked.push(candidate);

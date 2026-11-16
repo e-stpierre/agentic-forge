@@ -51,21 +51,14 @@ export async function runSession(
 		deciding = true;
 		try {
 			const open = !stop.signal.aborted && session.state !== "closed";
-			// The step timeout does not run while the host waits (open af_ask questions)
-			pauseTimer();
 			const next = open ? ((await host.nextMessages?.()) ?? "") : "";
-			if (next && session.state !== "closed" && !stop.signal.aborted) {
-				resumeTimer();
+			if (next && session.state !== "closed") {
 				if (console) {
 					console.streamText(next, "user");
 					console.streamComplete();
 				}
 				transcript(userMessageItem(next));
 				session.send(next);
-			} else if (session.state === "running" && !stop.signal.aborted) {
-				// A turn started while the host was asked (a steer that missed its turn):
-				// the session goes idle again when it ends
-				resumeTimer();
 			} else {
 				closeSession();
 			}
@@ -123,9 +116,6 @@ export async function runSession(
 				if (event.state === "awaiting-input") pauseTimer();
 				if (event.state === "running") resumeTimer();
 				break;
-			case "notice":
-				console?.info(event.text);
-				break;
 			case "error":
 				lastError = event.message;
 				break;
@@ -151,10 +141,8 @@ export async function runSession(
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let remainingMs = options.timeout ? options.timeout * 1000 : 0;
 	let timerStart = 0;
-	// An open af_ask question: the agent may wait in the tool call for a human
-	let asking = false;
 	function resumeTimer(): void {
-		if (!options.timeout || timer || stop.signal.aborted || asking) return;
+		if (!options.timeout || timer || stop.signal.aborted) return;
 		timerStart = Date.now();
 		timer = setTimeout(() => {
 			timedOut = true;
@@ -167,12 +155,6 @@ export async function runSession(
 		timer = null;
 		remainingMs = Math.max(0, remainingMs - (Date.now() - timerStart));
 	}
-	const unsubscribeAsks = host.onAsks?.((open) => {
-		asking = open;
-		if (open) pauseTimer();
-		// Resumed only while a turn runs: idle and awaiting-input keep it paused
-		else if (session?.state === "running" && !deciding) resumeTimer();
-	});
 	resumeTimer();
 
 	if (console) {
@@ -185,7 +167,6 @@ export async function runSession(
 	else session.start(start);
 
 	const failure = await session.done;
-	unsubscribeAsks?.();
 	pauseTimer();
 	options.signal?.removeEventListener("abort", onAbort);
 	unregister?.();
