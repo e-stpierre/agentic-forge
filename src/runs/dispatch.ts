@@ -28,8 +28,6 @@ export interface DispatchPayload {
 	terminal_output?: string | null;
 	/** Higher runs first. Defaults to 0. */
 	priority?: number;
-	/** `--ignore-requires`: run despite an unmet agentic-forge version (never the contract). */
-	ignore_requires?: boolean;
 }
 
 /** Variables always forwarded (needed to spawn processes and find tools). */
@@ -128,8 +126,6 @@ export interface BuildDispatchOptions {
 	terminalOutput?: string | null;
 	/** Client environment to filter (defaults to `process.env`). */
 	env?: NodeJS.ProcessEnv;
-	/** Run despite an unmet `requires` version; omitted from the payload when false. */
-	ignoreRequires?: boolean;
 }
 
 /**
@@ -153,7 +149,6 @@ export function buildDispatchPayload(options: BuildDispatchOptions): DispatchPay
 		terminal_output: options.terminalOutput ?? null,
 	};
 	if (options.priority !== undefined) payload.priority = options.priority;
-	if (options.ignoreRequires) payload.ignore_requires = true;
 	return payload;
 }
 

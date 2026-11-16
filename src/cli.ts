@@ -25,12 +25,10 @@ import {
 	cmdCancel,
 	cmdConfig,
 	cmdConfigure,
-	cmdDoctor,
 	cmdEvents,
 	cmdInit,
 	cmdInput,
 	cmdList,
-	cmdLogs,
 	cmdMcp,
 	cmdPaths,
 	cmdPause,
@@ -41,6 +39,7 @@ import {
 	cmdRun,
 	cmdSend,
 	cmdServe,
+	cmdSkillsDir,
 	cmdStatus,
 	cmdVersion,
 	cmdWorkflows,
@@ -68,10 +67,6 @@ program
 	.option("--runtime <runtime>", "override default runtime (claude or codex)")
 	.option("--slug <slug>", "custom slug used in the run ID (YYYY-MM-DD-<slug>)")
 	.option("--foreground", "follow the run until it ends (Ctrl+C detaches, the run continues)")
-	.option(
-		"--ignore-requires",
-		"run even if the workflow requires a newer agentic-forge (never overrides the contract)",
-	)
 	.action(async (workflow: string | undefined, vars: string[], opts: Record<string, unknown>) => {
 		await cmdRun({
 			workflow,
@@ -84,7 +79,6 @@ program
 			runtime: optString(opts.runtime),
 			slug: optString(opts.slug),
 			foreground: optBool(opts.foreground),
-			ignoreRequires: optBool(opts.ignoreRequires),
 		});
 	});
 
@@ -262,29 +256,6 @@ program
 		});
 	});
 
-// logs command
-program
-	.command("logs")
-	.description("Print the live transcript of a run (all steps, or one) and optionally follow it")
-	.argument("<run>", "run ID")
-	.option("--step <step>", "only the transcript of this step")
-	.option("--follow", "keep streaming new entries until the step (or the run) ends")
-	.option("--cursor <cursor>", "start after this cursor (printed on stderr) instead of the tail")
-	.option("--limit <n>", "entries of the tail and of each page", "50")
-	.option("--json", "print entries as JSON lines")
-	.option("--wait <seconds>", "long-poll length per request with --follow", "30")
-	.action(async (runId: string, opts: Record<string, unknown>) => {
-		await cmdLogs({
-			runId,
-			step: optString(opts.step),
-			follow: optBool(opts.follow),
-			cursor: optString(opts.cursor),
-			limit: optString(opts.limit),
-			json: optBool(opts.json),
-			wait: optString(opts.wait),
-		});
-	});
-
 // artifacts command
 program
 	.command("artifacts")
@@ -305,11 +276,10 @@ program
 // input command
 program
 	.command("input")
-	.description("Answer the single pending request of an awaiting-human run (af answer shortcut)")
-	.argument("<run_id>", "run ID")
-	.argument("<response>", "option ID, option label, or free-form answer")
-	.action(async (runId: string, response: string) => {
-		await cmdInput(runId, response);
+	.argument("<workflow_id>", "workflow ID")
+	.argument("<response>", "response to provide")
+	.action((workflowId: string, response: string) => {
+		cmdInput(workflowId, response);
 	});
 
 // configure command
@@ -396,6 +366,14 @@ program
 		cmdPaths();
 	});
 
+// skills-dir command
+program
+	.command("skills-dir")
+	.description("Print path to bundled skills directory")
+	.action(() => {
+		cmdSkillsDir();
+	});
+
 // authoring-dir command
 program
 	.command("authoring-dir")
@@ -413,15 +391,6 @@ program
 		cmdWorkflows({
 			verbose: optBool(opts.verbose),
 		});
-	});
-
-// doctor command
-program
-	.command("doctor")
-	.description("Check runtimes, auth, the supervisor, the runs root and skill pack compatibility")
-	.option("--json", "print the report as JSON")
-	.action(async (opts: Record<string, unknown>) => {
-		await cmdDoctor({ json: optBool(opts.json) });
 	});
 
 // serve command

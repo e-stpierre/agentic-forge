@@ -6,8 +6,6 @@ import path from "node:path";
 
 import type { ConsoleOutput } from "../console.js";
 import { killProcessTree, treeSpawnOptions } from "./kill-tree.js";
-import { runSession } from "./session-runner.js";
-import { type SessionEvent, userMessageItem } from "./session.js";
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions, StreamEvent } from "./types.js";
 import { resolveCmdScript } from "./utils.js";
 
@@ -35,17 +33,11 @@ function spawnDebug(outputDir: string | null | undefined, label: string, data: u
  * - Console output (streaming or silent)
  * - Timeout handling
  * - Result assembly via adapter
- *
- * With `options.driver: "session"` and a runtime that has a session driver,
- * the step runs as a live session instead (see `session-runner.ts`).
  */
 export async function runRuntime(
 	adapter: RuntimeAdapter,
 	options: RuntimeRunOptions,
 ): Promise<RuntimeResult> {
-	if (options.driver === "session" && adapter.createSession) {
-		return runSession(adapter, options);
-	}
 	return new Promise((resolve) => {
 		const command = adapter.buildCommand(options);
 		if (options.signal?.aborted) {
@@ -120,25 +112,6 @@ export async function runRuntime(
 			options.console.streamComplete();
 		}
 
-		// Live transcript: the prompt, then the events mapped from each stream line
-		const onEvent = options.sessionHost?.onEvent;
-		const emit = (event: SessionEvent) => {
-			try {
-				onEvent?.(
-					event.type === "session.started"
-						? { ...event, runtime: adapter.id, driver: "cli" }
-						: event,
-				);
-			} catch {
-				// A transcript error must not break the step
-			}
-		};
-		const transcribe = (line: string) => {
-			if (!onEvent || !adapter.parseTranscriptLine) return;
-			for (const event of adapter.parseTranscriptLine(line)) emit(event);
-		};
-		if (onEvent) emit(userMessageItem(options.prompt));
-
 		const collectedText: string[] = [];
 		const rawStdout: string[] = [];
 		let resultText: string | null = null;
@@ -169,7 +142,6 @@ export async function runRuntime(
 				lineBuffer = lines.pop() ?? "";
 
 				for (const line of lines) {
-					transcribe(line);
 					const event = adapter.parseStreamLine(line);
 					if (!event) {
 						// Accumulate raw stdout for non-streaming output paths
@@ -274,7 +246,6 @@ export async function runRuntime(
 
 			// Process any remaining data in the line buffer
 			if (lineBuffer.trim()) {
-				transcribe(lineBuffer);
 				const event = adapter.parseStreamLine(lineBuffer);
 				if (event?.sessionId) sessionId = event.sessionId;
 				if (event && event.type === "result") {

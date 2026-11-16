@@ -1,7 +1,5 @@
 /** Core types for agentic-forge workflow engine. */
 
-import type { WorkflowRequires } from "./requires.js";
-
 // --- Step types ---
 
 export type StepType =
@@ -10,8 +8,7 @@ export type StepType =
 	| "serial"
 	| "conditional"
 	| "ralph-loop"
-	| "skill"
-	| "human-input";
+	| "wait-for-human";
 
 export const VALID_STEP_TYPES: StepType[] = [
 	"prompt",
@@ -19,14 +16,8 @@ export const VALID_STEP_TYPES: StepType[] = [
 	"serial",
 	"conditional",
 	"ralph-loop",
-	"skill",
-	"human-input",
+	"wait-for-human",
 ];
-
-/** Step types still accepted by the parser, mapped to their replacement. */
-export const STEP_TYPE_ALIASES: Record<string, StepType> = {
-	"wait-for-human": "human-input",
-};
 
 // --- Workflow definition types ---
 
@@ -49,8 +40,7 @@ export interface WorktreeSettings {
 }
 
 export interface WorkflowSettings {
-	/** `settings.max-retry`; null when unset, so `defaults.maxRetry` applies. */
-	maxRetry: number | null;
+	maxRetry: number;
 	timeoutMinutes: number;
 	trackProgress: boolean;
 	autofix: string;
@@ -81,20 +71,9 @@ export interface StepDefinition {
 	elseSteps: StepDefinition[];
 	maxIterations: number | string;
 	completionPromise?: string | null;
-	/** `human-input`: the question asked. */
 	message?: string | null;
-	/** `skill`: skill to invoke, `<plugin>:<skill>` or a plain skill name. */
-	skill?: string | null;
-	/** `skill`: arguments passed after the skill name (rendered as a template). */
-	args?: string | null;
-	/** `human-input`: options offered (empty for a free-form answer). */
-	options?: HumanInputOption[];
-	/** `human-input`: id of the recommended option. */
-	recommended?: string | null;
-	/** `human-input`: false lets the harness apply `recommended` after the timeout. */
-	blocking?: boolean;
-	/** `human-input`: background the answerer needs. */
-	context?: string | null;
+	pollingInterval: number;
+	onTimeout: string;
 	model?: string | null;
 	runtime?: string | null;
 	stepTimeoutMinutes?: number | null;
@@ -105,13 +84,6 @@ export interface StepDefinition {
 	bypassPermissions?: boolean | null;
 	worktree?: boolean | string | null;
 	onFailure?: "fail" | "warn";
-}
-
-/** `human-input` option (contract `needs_input` option). */
-export interface HumanInputOption {
-	id: string;
-	label: string;
-	description?: string;
 }
 
 export interface OutputDefinition {
@@ -125,8 +97,6 @@ export interface WorkflowDefinition {
 	name: string;
 	version: string;
 	description: string;
-	/** `requires`: agentic-forge version range and contract version; null when unset. */
-	requires?: WorkflowRequires | null;
 	settings: WorkflowSettings;
 	variables: Variable[];
 	steps: StepDefinition[];

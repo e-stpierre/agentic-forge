@@ -37,23 +37,20 @@ export async function cmdSend(options: {
 	requireRun(options.runId);
 	const client = await supervisorClient();
 	try {
-		const res = await client.request<{
-			message: { id: string; target: string; step?: string };
-			steered?: boolean;
-		}>("POST", `/v1/runs/${encodeURIComponent(options.runId)}/messages`, {
-			text: options.text,
-			step: options.step ?? null,
-			from: options.from ?? "user",
-			mode: options.mode ?? "next",
-		});
+		const res = await client.request<{ message: { id: string; target: string; step?: string } }>(
+			"POST",
+			`/v1/runs/${encodeURIComponent(options.runId)}/messages`,
+			{
+				text: options.text,
+				step: options.step ?? null,
+				from: options.from ?? "user",
+				mode: options.mode ?? "next",
+			},
+		);
 		const target = res.message.step ? `step '${res.message.step}'` : "the next step";
-		if (options.mode === "now" && res.steered) {
+		if (options.mode === "now") {
 			process.stdout.write(
-				`Message sent: ${res.message.id} (delivered into the live session of ${options.runId})\n`,
-			);
-		} else if (options.mode === "now") {
-			process.stdout.write(
-				`Message sent: ${res.message.id} (a running step of ${options.runId} is interrupted and resumes with it now)\n`,
+				`Message sent: ${res.message.id} (a running step of ${options.runId} restarts with it now)\n`,
 			);
 		} else {
 			process.stdout.write(
@@ -90,28 +87,20 @@ export async function cmdPause(options: { runId: string; now?: boolean }): Promi
 
 export async function cmdAnswer(options: {
 	runId: string;
-	/** Optional when the run has a single pending request. */
-	requestId?: string;
+	requestId: string;
 	answer: string;
 	from?: string;
 }): Promise<void> {
 	requireRun(options.runId);
 	const client = await supervisorClient();
 	try {
-		const res = await client.request<{ request?: string; message: string | null }>(
+		await client.request<{ status: string; message: string }>(
 			"POST",
 			`/v1/runs/${encodeURIComponent(options.runId)}/answer`,
-			{
-				...(options.requestId ? { request_id: options.requestId } : {}),
-				answer: options.answer,
-				from: options.from ?? "user",
-			},
+			{ request_id: options.requestId, answer: options.answer, from: options.from ?? "user" },
 		);
-		const id = res.request ?? options.requestId;
 		process.stdout.write(
-			res.message === null
-				? `Answered ${id}: the live session of ${options.runId} continues with the answer\n`
-				: `Answered ${id}: ${options.runId} resumes and the step runs again with the answer\n`,
+			`Answered ${options.requestId}: ${options.runId} resumes and the step runs again with the answer\n`,
 		);
 	} catch (err) {
 		throw new CliExitError(`Error: ${(err as Error).message}`);

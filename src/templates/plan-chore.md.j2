@@ -1,0 +1,27 @@
+# Chore Plan: {{ title }}
+
+Created: {{ created }}
+Status: {{ status }}
+Workflow: {{ workflow_id }}
+
+## Summary
+
+{{ summary }}
+
+## Tasks
+
+{% for task in tasks %}
+- [{% if task.completed %}x{% else %} {% endif %}] {{ task.description }}
+{% endfor %}
+
+## Affected Files
+
+{% for file in affected_files %}
+- {{ file }}
+{% endfor %}
+
+{% if notes %}
+## Notes
+
+{{ notes }}
+{% endif %}

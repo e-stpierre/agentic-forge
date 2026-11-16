@@ -1,0 +1,35 @@
+# Bug Analysis Report
+
+Generated: {{ generated }}
+Scope: {{ scope }}
+
+## Summary
+
+Found {{ summary.total }} potential issues.
+
+| Severity | Count |
+|----------|-------|
+| Critical | {{ summary.critical }} |
+| Major | {{ summary.major }} |
+| Minor | {{ summary.minor }} |
+
+## Findings
+
+{% for finding in findings %}
+### {{ finding.id }}: {{ finding.title }}
+
+**Severity**: {{ finding.severity }}
+**Category**: {{ finding.category }}
+**File**: {{ finding.file }}:{{ finding.line }}
+
+{{ finding.description }}
+
+**Recommendation**: {{ finding.recommendation }}
+
+---
+
+{% endfor %}
+
+{% if not findings %}
+No potential bugs found.
+{% endif %}

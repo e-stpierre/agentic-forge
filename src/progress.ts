@@ -207,7 +207,6 @@ export function updateStepStopped(
 	outputSummary: string,
 	resultStatus: string,
 	repend = true,
-	sessionId: string | null = null,
 ): void {
 	const runIdx = progress.runningSteps.indexOf(stepName);
 	if (runIdx !== -1) {
@@ -226,7 +225,6 @@ export function updateStepStopped(
 		error: null,
 		humanInput: null,
 		resultStatus,
-		...(sessionId ? { sessionId } : {}),
 	});
 	progress.currentStep = null;
 }
@@ -367,7 +365,6 @@ export function progressToDict(progress: WorkflowProgress): Record<string, unkno
 			error: s.error,
 			human_input: s.humanInput,
 			...(s.resultStatus ? { result_status: s.resultStatus } : {}),
-			...(s.sessionId ? { session_id: s.sessionId } : {}),
 			...(s.superseded ? { superseded: true } : {}),
 		})),
 		pending_steps: progress.pendingSteps,
@@ -399,7 +396,6 @@ export function dictToProgress(data: Record<string, unknown>): WorkflowProgress 
 			error: (s.error as string) ?? null,
 			humanInput: (s.human_input as string) ?? null,
 			...(typeof s.result_status === "string" ? { resultStatus: s.result_status } : {}),
-			...(typeof s.session_id === "string" ? { sessionId: s.session_id } : {}),
 			...(s.superseded === true ? { superseded: true } : {}),
 		}),
 	);

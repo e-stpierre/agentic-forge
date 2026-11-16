@@ -47,19 +47,13 @@ export function getProjectRoot(cwd?: string): string | null {
 
 /**
  * Returns workflow search directories in priority order:
- * project-local > user-global > skill packs (`packDirs`, their `af-workflows/`
- * dirs from `findSkillPacks()`) > bundled
+ * project-local > user-global > bundled
  */
-export function getWorkflowDirs(
-	bundledDir: string,
-	cwd?: string,
-	packDirs: readonly string[] = [],
-): string[] {
+export function getWorkflowDirs(bundledDir: string, cwd?: string): string[] {
 	const cWd = cwd ?? process.cwd();
 	return [
 		path.join(cWd, "agentic", "workflows"),
 		path.join(getGlobalRoot(), "workflows"),
-		...packDirs,
 		path.join(bundledDir, "workflows"),
 	];
 }
@@ -269,10 +263,4 @@ export function getRunIndexPath(root: string = getGlobalRoot()): string {
 /** UTC date prefix (`YYYY-MM-DD`) used by run directory names. */
 export function runDatePrefix(date = new Date()): string {
 	return date.toISOString().slice(0, 10);
-}
-
-/** Claude Code config directory: `CLAUDE_CONFIG_DIR`, else `~/.claude`. */
-export function getClaudeConfigDir(): string {
-	const override = process.env.CLAUDE_CONFIG_DIR;
-	return override ? path.resolve(override) : path.join(homedir(), ".claude");
 }
