@@ -15,7 +15,6 @@ const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src",
 const KEPT = [
 	"claude-demo",
 	"codex-demo",
-	"instruction",
 	"multi-demo",
 	"permission-test-claude",
 	"permission-test-codex",

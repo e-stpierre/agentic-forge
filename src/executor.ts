@@ -13,7 +13,6 @@ import {
 	createWorktree,
 	findExistingWorktree,
 	removeWorktree,
-	runGit,
 	safetyCommit,
 } from "./git/worktree.js";
 import { WorkflowLogger } from "./logging/logger.js";
@@ -38,30 +37,25 @@ import {
 	type InputAnswer,
 	type LastSession,
 	type StepContext,
-	type StepDecision,
 	type StepEventEmitter,
 	type StepResult,
 	resolveModel,
 } from "./steps/base.js";
 import { ConditionalStepExecutor } from "./steps/conditional-step.js";
 import { HumanInputStepExecutor } from "./steps/human-input-step.js";
-import { MergeStepExecutor } from "./steps/merge-step.js";
 import { ParallelStepExecutor } from "./steps/parallel-step.js";
 import { PromptStepExecutor } from "./steps/prompt-step.js";
 import { RalphLoopStepExecutor } from "./steps/ralph-loop-step.js";
 import { SerialStepExecutor } from "./steps/serial-step.js";
 import { SkillStepExecutor } from "./steps/skill-step.js";
-import { WaitForChecksStepExecutor } from "./steps/wait-for-checks-step.js";
-import { WaitForReviewStepExecutor } from "./steps/wait-for-review-step.js";
-import {
-	NO_RUNTIME_STEP_TYPES,
-	type OutputDefinition,
-	type StepDefinition,
-	type StepType,
-	type WorkflowDefinition,
-	type WorkflowProgress,
-	type WorkflowSettings,
-	type WorktreeSettings,
+import type {
+	OutputDefinition,
+	StepDefinition,
+	StepType,
+	WorkflowDefinition,
+	WorkflowProgress,
+	WorkflowSettings,
+	WorktreeSettings,
 } from "./types.js";
 import { resolveStepWorktree, resolveWorktreeEnabled } from "./worktree-settings.js";
 
@@ -113,10 +107,6 @@ export interface ExecutorOptions {
 	inputAnswer?: ((step: string, requestId: string) => Promise<InputAnswer | null>) | null;
 	/** See `StepContext.lastSession` (resume on the `cli` driver). */
 	lastSession?: ((step: string) => LastSession | null) | null;
-	/** See `StepContext.runPr` (GitHub steps). */
-	runPr?: (() => string | null) | null;
-	/** See `StepContext.recordDecision` (merge method). */
-	recordDecision?: ((decision: StepDecision) => Promise<void>) | null;
 	/**
 	 * Called at each top-level step boundary, before the boundary stop check.
 	 * Returns true when an amendment is pending: the executor then runs the
@@ -135,46 +125,16 @@ const KEEP_WORKTREE_STATUSES: readonly string[] = [
 
 /**
  * Worktree cleanup decision for a workflow-level worktree. Paused,
- * awaiting-human, blocked and halted runs always keep it; canceled runs are
- * safety-committed first. `on-merge` removes it once a step reported
- * `merged` (`options.merged`), whatever the run's end.
+ * awaiting-human, blocked and halted runs always keep it; canceled runs are safety-committed first.
  */
 export function shouldRemoveWorktree(
 	cleanup: string,
 	status: string,
-	options: { awaitingHuman?: boolean; merged?: boolean } = {},
+	options: { awaitingHuman?: boolean } = {},
 ): boolean {
 	if (KEEP_WORKTREE_STATUSES.includes(status) || options.awaitingHuman) return false;
 	if (cleanup === "on-complete") return true;
-	if (cleanup === "on-merge") return options.merged === true;
 	return cleanup === "on-success" && status === WORKFLOW_STATUS.COMPLETED;
-}
-
-/** True when a step of the run reported `merged` in its result block. */
-export function runMerged(progress: WorkflowProgress): boolean {
-	return progress.completedSteps.some((s) => s.resultStatus === "merged" && !s.superseded);
-}
-
-/** Type of every step by name, nested steps included. */
-function collectStepTypes(
-	steps: StepDefinition[],
-	into = new Map<string, StepType>(),
-): Map<string, StepType> {
-	for (const step of steps) {
-		into.set(step.name, step.type);
-		collectStepTypes(step.steps ?? [], into);
-		collectStepTypes(step.thenSteps ?? [], into);
-		collectStepTypes(step.elseSteps ?? [], into);
-	}
-	return into;
-}
-
-/** Current branch of a checkout, or null (detached head, missing dir). */
-function currentBranchOf(cwd: string): string | null {
-	if (!existsSync(cwd)) return null;
-	const result = runGit(["rev-parse", "--abbrev-ref", "HEAD"], cwd, false);
-	const branch = result.returncode === 0 ? result.stdout.trim() : "";
-	return branch && branch !== "HEAD" ? branch : null;
 }
 
 export class WorkflowExecutor {
@@ -184,8 +144,6 @@ export class WorkflowExecutor {
 	runtimeOverride: string | null;
 	renderer: TemplateRenderer;
 	workflowSettings: WorkflowSettings | null = null;
-	/** Type of every step of the running workflow, by name (nested steps included). */
-	private stepTypes = new Map<string, StepType>();
 	executors: Record<
 		string,
 		| PromptStepExecutor
@@ -234,9 +192,6 @@ export class WorkflowExecutor {
 		this.ralphLoopExecutor = new RalphLoopStepExecutor();
 		this.skillExecutor = new SkillStepExecutor();
 		this.humanInputExecutor = new HumanInputStepExecutor();
-		const waitForReview = new WaitForReviewStepExecutor();
-		const waitForChecks = new WaitForChecksStepExecutor();
-		const merge = new MergeStepExecutor();
 
 		// Branch executor function for nested steps
 		const branchExecutors: Record<
@@ -255,9 +210,6 @@ export class WorkflowExecutor {
 			"ralph-loop": this.ralphLoopExecutor,
 			skill: this.skillExecutor,
 			"human-input": this.humanInputExecutor,
-			"wait-for-review": waitForReview,
-			"wait-for-checks": waitForChecks,
-			merge,
 		};
 
 		const branchExecute = async (
@@ -288,8 +240,6 @@ export class WorkflowExecutor {
 				sessionHost: this.options.sessionHost ?? null,
 				inputAnswer: this.options.inputAnswer ?? null,
 				lastSession: this.options.lastSession ?? null,
-				runPr: this.options.runPr ?? null,
-				recordDecision: this.options.recordDecision ?? null,
 				shouldStop: this.checkStop,
 				runtimeAdapter: childAdapter,
 			};
@@ -313,9 +263,6 @@ export class WorkflowExecutor {
 			"ralph-loop": this.ralphLoopExecutor,
 			skill: this.skillExecutor,
 			"human-input": this.humanInputExecutor,
-			"wait-for-review": waitForReview,
-			"wait-for-checks": waitForChecks,
-			merge,
 		};
 	}
 
@@ -330,7 +277,6 @@ export class WorkflowExecutor {
 	): Promise<WorkflowProgress> {
 		let vars = variables ? { ...variables } : {};
 		this.workflowSettings = workflow.settings;
-		this.stepTypes = collectStepTypes(workflow.steps);
 
 		// Merge config.worktree defaults under workflow settings.
 		// Layering: hardcoded defaults < config < workflow YAML.
@@ -555,8 +501,7 @@ export class WorkflowExecutor {
 			// Cleanup workflow-level worktree according to the cleanup policy
 			if (workflowWorktree && worktreeSettings) {
 				const cleanup = worktreeSettings.cleanup ?? "on-success";
-				const merged = runMerged(progress);
-				const shouldRemove = shouldRemoveWorktree(cleanup, progress.status, { merged });
+				const shouldRemove = shouldRemoveWorktree(cleanup, progress.status);
 
 				// cancel: commit pending work even when the policy keeps the worktree
 				if (!shouldRemove && progress.status === WORKFLOW_STATUS.CANCELED) {
@@ -571,30 +516,6 @@ export class WorkflowExecutor {
 							`Safety commit failed; preserving worktree to prevent data loss: ${workflowWorktree.path}`,
 						);
 						console.info(`Worktree preserved (safety commit failed): ${workflowWorktree.path}`);
-					} else if (cleanup === "on-merge" && commitResult.committed) {
-						// Changes made after the merge were auto-saved on the branch:
-						// keep the branch so the safety commit is not lost
-						const current = currentBranchOf(workflowWorktree.path) ?? workflowWorktree.branch;
-						removeWorktree(workflowWorktree, this.repoRoot, false);
-						logger.warning(
-							"workflow",
-							`Worktree removed after the merge: ${workflowWorktree.path}; branch ${current} kept with the auto-saved changes`,
-						);
-						console.info(
-							`Branch ${current} kept: it holds changes auto-saved after the merge (${workflowWorktree.path})`,
-						);
-					} else if (cleanup === "on-merge") {
-						// The pull request merged on GitHub: remove the worktree first,
-						// then its local branches (the recorded one and the one checked out)
-						const current = currentBranchOf(workflowWorktree.path);
-						removeWorktree(workflowWorktree, this.repoRoot, true);
-						if (current && current !== workflowWorktree.branch) {
-							runGit(["branch", "-D", current], this.repoRoot, false);
-						}
-						logger.info(
-							"workflow",
-							`Worktree removed after the merge: ${workflowWorktree.path} (branch ${current ?? workflowWorktree.branch} deleted)`,
-						);
 					} else {
 						removeWorktree(workflowWorktree, this.repoRoot, false);
 						logger.info("workflow", `Worktree removed: ${workflowWorktree.path}`);
@@ -820,16 +741,11 @@ export class WorkflowExecutor {
 			emitEvent: this.options.emitEvent ?? null,
 			inputAnswer: this.options.inputAnswer ?? null,
 			lastSession: this.options.lastSession ?? null,
-			runPr: this.options.runPr ?? null,
-			recordDecision: this.options.recordDecision ?? null,
-			stepType: (name) => this.stepTypes.get(name) ?? null,
 			shouldStop: this.checkStop,
 		};
 
-		// Human-input, wait and native merge steps run no runtime: no model to show
-		const noRuntime =
-			NO_RUNTIME_STEP_TYPES.includes(step.type) || (step.type === "merge" && !step.skill);
-		const resolvedModel = noRuntime ? null : resolveModel(context, step.model);
+		// A human-input step runs no runtime: no model to show
+		const resolvedModel = step.type === "human-input" ? null : resolveModel(context, step.model);
 
 		logger.info(step.name, `Starting step: ${step.name}`);
 		console.stepStart(step.name, step.type, resolvedModel);
