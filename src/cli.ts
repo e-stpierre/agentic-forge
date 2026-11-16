@@ -29,7 +29,6 @@ import {
 	cmdInit,
 	cmdInput,
 	cmdList,
-	cmdMcp,
 	cmdPaths,
 	cmdPause,
 	cmdReleaseNotes,
@@ -413,14 +412,6 @@ program
 			force: optBool(opts.force),
 			port: optString(opts.port),
 		});
-	});
-
-// mcp command
-program
-	.command("mcp")
-	.description("Run a stdio MCP server that dispatches and steers runs through the supervisor")
-	.action(async () => {
-		await cmdMcp();
 	});
 
 program.parseAsync().catch((err: unknown) => {
