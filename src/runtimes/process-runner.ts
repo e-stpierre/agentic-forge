@@ -9,7 +9,6 @@ import { killProcessTree, treeSpawnOptions } from "./kill-tree.js";
 import { runSession } from "./session-runner.js";
 import { type SessionEvent, userMessageItem } from "./session.js";
 import type { RuntimeAdapter, RuntimeResult, RuntimeRunOptions, StreamEvent } from "./types.js";
-import { type Usage, addUsage } from "./usage.js";
 import { resolveCmdScript } from "./utils.js";
 
 /** Write a debug entry to spawn-debug.log in the output directory when AF_DEBUG_SPAWN is set. */
@@ -147,7 +146,6 @@ export async function runRuntime(
 		let hasStreamedContent = false;
 		let currentModel: string | null = null;
 		let sessionId: string | null = null;
-		let usage: Usage | null = null;
 		let stderrData = "";
 
 		// Collect stderr
@@ -180,7 +178,6 @@ export async function runRuntime(
 					}
 
 					if (event.sessionId) sessionId = event.sessionId;
-					if (event.usage) usage = addUsage(usage, event.usage);
 
 					// Track model across events
 					if (event.model) {
@@ -280,7 +277,6 @@ export async function runRuntime(
 				transcribe(lineBuffer);
 				const event = adapter.parseStreamLine(lineBuffer);
 				if (event?.sessionId) sessionId = event.sessionId;
-				if (event?.usage) usage = addUsage(usage, event.usage);
 				if (event && event.type === "result") {
 					resultText = event.text ?? null;
 				} else if (lineBuffer.trim()) {
@@ -302,7 +298,6 @@ export async function runRuntime(
 				options,
 				sessionId,
 			);
-			result.usage = usage;
 
 			resolve(result);
 		});

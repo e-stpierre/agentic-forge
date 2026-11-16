@@ -12,7 +12,6 @@
 import { randomUUID } from "node:crypto";
 
 import type { RuntimeId } from "./types.js";
-import type { Usage } from "./usage.js";
 
 /** `runtimes.<id>.driver`: a live session, or the one-shot CLI process. */
 export type RuntimeDriver = "session" | "cli";
@@ -81,14 +80,7 @@ export type SessionEvent =
 	| { type: "diff"; id: string; path: string; change: "add" | "update" | "delete"; patch?: string }
 	| { type: "request"; request: SessionRequest }
 	| { type: "request.resolved"; id: string; decision: SessionDecision }
-	| {
-			type: "turn.completed";
-			result: string;
-			isError: boolean;
-			messageIds: string[];
-			/** Tokens of the turn, when the runtime reported them. */
-			usage?: Usage | null;
-	  }
+	| { type: "turn.completed"; result: string; isError: boolean; messageIds: string[] }
 	/** A choice the driver made that the step log should show (native skill or inlined). */
 	| { type: "notice"; text: string }
 	| { type: "error"; message: string };

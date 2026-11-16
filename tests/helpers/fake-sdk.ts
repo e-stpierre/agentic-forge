@@ -146,12 +146,7 @@ export class FakeSdkSession {
 	}
 
 	/** Ends a turn answering the given user messages. */
-	/** A turn result; `extra` adds fields such as `usage` and `total_cost_usd`. */
-	result(
-		text: string,
-		answered: (SDKUserMessage | null)[] = [],
-		extra: Record<string, unknown> = {},
-	): void {
+	result(text: string, answered: (SDKUserMessage | null)[] = []): void {
 		const ids = answered.map((m) => m?.uuid).filter((u): u is string => typeof u === "string");
 		this.emit({
 			type: "result",
@@ -160,7 +155,6 @@ export class FakeSdkSession {
 			result: text,
 			num_turns: 1,
 			user_message_uuids: ids,
-			...extra,
 		});
 	}
 

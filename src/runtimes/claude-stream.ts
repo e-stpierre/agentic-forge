@@ -6,7 +6,6 @@
  */
 
 import type { SessionEvent } from "./session.js";
-import { claudeResultUsage } from "./usage.js";
 
 type Item = Extract<SessionEvent, { type: "item" }>;
 
@@ -94,7 +93,6 @@ export function claudeStreamEvents(data: Record<string, unknown>): SessionEvent[
 				result: typeof data.result === "string" ? data.result : "",
 				isError: data.is_error === true || data.subtype !== "success",
 				messageIds: [],
-				usage: claudeResultUsage(data),
 			},
 		];
 	}

@@ -36,7 +36,6 @@ const ROOTS = [
 	"v2/ItemCompletedNotification",
 	"v2/TurnStartedNotification",
 	"v2/TurnCompletedNotification",
-	"v2/ThreadTokenUsageUpdatedNotification",
 	"v2/ErrorNotification",
 	"v2/SkillsListParams",
 	"v2/SkillsListResponse",

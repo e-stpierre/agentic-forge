@@ -216,7 +216,7 @@ afterEach(async () => {
 });
 
 describe("server", () => {
-	it("lists the twenty-one dispatch, read, waiting, digest, usage, steering, asking, notification and backlog tools, each with a title and a description", async () => {
+	it("lists the nineteen dispatch, read, waiting, steering, asking, notification and backlog tools, each with a title and a description", async () => {
 		const { mcp } = await setup();
 		const { tools } = await mcp.listTools();
 		expect(tools.map((t) => t.name).sort()).toEqual([
@@ -228,7 +228,6 @@ describe("server", () => {
 			"af_backlog_list",
 			"af_backlog_update",
 			"af_cancel",
-			"af_digest",
 			"af_dispatch",
 			"af_events",
 			"af_list_runs",
@@ -239,7 +238,6 @@ describe("server", () => {
 			"af_retry_step",
 			"af_send",
 			"af_status",
-			"af_usage",
 			"af_wait",
 		]);
 		for (const tool of tools) {
@@ -360,19 +358,15 @@ describe("af_status", () => {
 		expect(active.json.runs[0].status).toBe("running");
 
 		const running = await callTool(mcp, "af_status", { run: id });
-		expect(running.json.status).toBe("running");
+		expect(running.json.entry.status).toBe("running");
 		expect(running.json.current_step).toBe("build");
 
 		release();
 		await waitForStatus(manager, id, "done");
 		const done = await callTool(mcp, "af_status", { run: id });
-		expect(done.json).toMatchObject({ id, workflow: "two-steps", status: "done", depth: 0 });
+		expect(done.json.entry.status).toBe("done");
+		expect(done.json.run.status).toBe("done");
 		expect(done.json.steps.map((s: { name: string }) => s.name)).toEqual(["plan", "build"]);
-		expect(done.json.steps[0]).toMatchObject({ name: "plan", status: "completed" });
-		expect(done.json.run).toBeUndefined();
-		const full = await callTool(mcp, "af_status", { run: id, verbose: true });
-		expect(full.json.entry.status).toBe("done");
-		expect(full.json.run.status).toBe("done");
 		expect((await callTool(mcp, "af_status")).json.runs).toEqual([]);
 	});
 });
@@ -431,7 +425,7 @@ describe("af_events", () => {
 		await fakeRuntime.waitFor("BUILD");
 		// Let the step.started event of build reach the event file
 		for (let i = 0; i < 100; i++) {
-			const page = await callTool(mcp, "af_events", { run: id, cursor: res.json.cursor });
+			const page = await callTool(mcp, "af_events", { run: id });
 			if (
 				page.json.events.some(
 					(e: RunEvent) => e.type === "step.started" && e.data?.step === "build",
@@ -441,7 +435,7 @@ describe("af_events", () => {
 			await new Promise((r) => setTimeout(r, 10));
 		}
 
-		const first = await callTool(mcp, "af_events", { run: id, cursor: res.json.cursor });
+		const first = await callTool(mcp, "af_events", { run: id });
 		expect(first.isError, first.text).toBe(false);
 		expect(first.json.status).toBe("running");
 		expect(first.json.more).toBe(false);
@@ -488,26 +482,16 @@ describe("af_events", () => {
 		const { manager, mcp } = await setup();
 		const res = await callTool(mcp, "af_dispatch", { workflow: "two-steps", vars: { topic: "x" } });
 		await waitForStatus(manager, res.json.run_id, "done");
-		const runEvents = await callTool(mcp, "af_events", { types: ["run.*"], from_start: true });
+		const runEvents = await callTool(mcp, "af_events", { types: ["run.*"] });
 		const types = runEvents.json.events.map((e: RunEvent) => e.type);
 		expect(types).toContain("run.completed");
 		expect(types.every((t: string) => t.startsWith("run."))).toBe(true);
-		const limited = await callTool(mcp, "af_events", { limit: 1, from_start: true });
+		const limited = await callTool(mcp, "af_events", { limit: 1 });
 		expect(limited.json.events).toHaveLength(1);
 		expect(limited.json.more).toBe(true);
-		const fromNow = await callTool(mcp, "af_events", {});
+		const fromNow = await callTool(mcp, "af_events", { from_now: true });
 		expect(fromNow.json.events).toEqual([]);
 		expect(typeof fromNow.json.cursor).toBe("string");
-		// The dispatch cursor sees the new run's first event and no older history
-		const next = await callTool(mcp, "af_dispatch", {
-			workflow: "two-steps",
-			vars: { topic: "y" },
-		});
-		await waitForStatus(manager, next.json.run_id, "done");
-		const fromDispatch = await callTool(mcp, "af_events", { cursor: next.json.cursor });
-		const runs = new Set(fromDispatch.json.events.map((e: RunEvent) => e.run));
-		expect([...runs]).toEqual([next.json.run_id]);
-		expect(fromDispatch.json.events[0]).toMatchObject({ seq: 1, type: "run.queued" });
 	});
 });
 
@@ -703,22 +687,8 @@ describe("af_answer", () => {
 		await waitForStatus(manager, id, "awaiting-human");
 
 		const status = await callTool(mcp, "af_status", { run: id });
-		expect(status.json.needs_input).toEqual([
-			{
-				id: "q1",
-				step: "build",
-				kind: "decision",
-				risk: null,
-				question: "Which token store?",
-				context: "Both exist.",
-				options: ["a: Redis cache", "b: Database table"],
-				recommended: "a",
-				live: false,
-			},
-		]);
-		const requestId = status.json.needs_input[0].id as string;
-		const verbose = await callTool(mcp, "af_status", { run: id, verbose: true });
-		expect(verbose.json.run["x-af-needs-input"][0].request.id).toBe("q1");
+		const requestId = status.json.run["x-af-needs-input"][0].request.id as string;
+		expect(requestId).toBe("q1");
 
 		const wrong = await callTool(mcp, "af_answer", { run: id, request_id: "q9", answer: "a" });
 		expect(wrong.isError).toBe(true);
@@ -856,7 +826,7 @@ describe("end to end", () => {
 		const id = res.json.run_id as string;
 
 		const types: string[] = [];
-		let cursor: string | undefined = res.json.cursor;
+		let cursor: string | undefined;
 		for (let i = 0; i < 20 && !types.includes("run.completed"); i++) {
 			const page = await callTool(mcp, "af_events", {
 				run: id,
@@ -871,7 +841,7 @@ describe("end to end", () => {
 		expect(types).toContain("run.completed");
 
 		const status = await callTool(mcp, "af_status", { run: id });
-		expect(status.json.status).toBe("done");
+		expect(status.json.entry.status).toBe("done");
 		expect(status.json.steps.map((s: { name: string }) => s.name)).toEqual(["plan", "build"]);
 		const artifacts = await callTool(mcp, "af_artifacts", { run: id });
 		expect(artifacts.isError, artifacts.text).toBe(false);

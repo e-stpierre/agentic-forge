@@ -36,7 +36,7 @@ export const TRANSCRIPT_PATCH_MAX = 8_000;
 /** Entries per `af logs` page and default tail of `af_logs`. */
 export const LOGS_DEFAULT_LIMIT = 50;
 export const LOGS_MAX_LIMIT = 500;
-/** `af_logs` defaults: tail length, text cut per entry, result size budget. */
+/** `af_logs` defaults (Token Budget Rules): tail length, text cut per entry, result size budget. */
 export const LOGS_MCP_DEFAULT_LIMIT = 20;
 export const LOGS_MCP_MAX_CHARS = 500;
 export const LOGS_MCP_MAX_BYTES = 8_000;

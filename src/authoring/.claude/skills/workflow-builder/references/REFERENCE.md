@@ -33,23 +33,19 @@ All settings are optional with sensible defaults.
 
 ### Global Settings
 
-| Key                    | Type   | Default    | Valid Values                 | Description                                                         |
-| ---------------------- | ------ | ---------- | ---------------------------- | ------------------------------------------------------------------- |
-| `max-retry`            | int    | `null`     | 0+                           | Max retry attempts for failed steps (unset: `defaults.maxRetry`, 3) |
-| `timeout-minutes`      | int    | `60`       | 1+                           | Max time for entire workflow (minutes)                              |
-| `track-progress`       | bool   | `true`     | true/false                   | Track progress in progress.json                                     |
-| `autofix`              | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                                             |
-| `terminal-output`      | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream)                    |
-| `bypass-permissions`   | bool   | `false`    | true/false                   | Bypass tool permission prompts (warns per step)                     |
-| `strict-mode`          | bool   | `false`    | true/false                   | Fail on undefined template variables                                |
-| `model`                | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                                         |
-| `runtime`              | string | `null`     | claude, codex                | Default coding agent runtime for all steps                          |
-| `required-tools`       | list   | `[]`       | Tool names                   | Added to `runtimes.claude.allow` (no prompting)                     |
-| `amend.step`           | string | none       | A top-level step name        | Step `af amend` runs before the next step                           |
-| `budgets.max_tokens`   | number | none       | Positive number, or null     | Per-run token budget (over config `runs.budgets`; null removes it)  |
-| `budgets.max_cost_usd` | number | none       | Positive number, or null     | Per-run cost budget in USD (runtimes that report a cost: Claude)    |
-
-**Budgets:** every runtime call of a step (each attempt, each ralph-loop iteration) records its tokens in `steps/<NN-step>/usage.json`; the run totals go to `run.json` `budgets_used` and `af usage`. At 80% of a budget the run gets a `budget.warning` event; at the limit it pauses at the next step or iteration boundary (reason `budget`). `af resume <run> --max-tokens N` raises the budget and continues.
+| Key                  | Type   | Default    | Valid Values                 | Description                                                         |
+| -------------------- | ------ | ---------- | ---------------------------- | ------------------------------------------------------------------- |
+| `max-retry`          | int    | `null`     | 0+                           | Max retry attempts for failed steps (unset: `defaults.maxRetry`, 3) |
+| `timeout-minutes`    | int    | `60`       | 1+                           | Max time for entire workflow (minutes)                              |
+| `track-progress`     | bool   | `true`     | true/false                   | Track progress in progress.json                                     |
+| `autofix`            | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                                             |
+| `terminal-output`    | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream)                    |
+| `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts (warns per step)                     |
+| `strict-mode`        | bool   | `false`    | true/false                   | Fail on undefined template variables                                |
+| `model`              | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                                         |
+| `runtime`            | string | `null`     | claude, codex                | Default coding agent runtime for all steps                          |
+| `required-tools`     | list   | `[]`       | Tool names                   | Added to `runtimes.claude.allow` (no prompting)                     |
+| `amend.step`         | string | none       | A top-level step name        | Step `af amend` runs before the next step                           |
 
 **Runtime resolution order:** `step.runtime` > `--runtime` CLI flag > `settings.runtime` > `config.defaults.runtime` > `"claude"`
 

@@ -20,22 +20,6 @@ export const AF_MCP_SERVER = "agentic-forge";
 export const CODEX_AF_TOOL_TIMEOUT_SEC = 900;
 
 /**
- * The af tools a worker step sees (`enabled_tools` of its Codex session):
- * asking, delegating to a child run and following it. The steering, backlog,
- * digest and usage tools are the overseer's; their schemas would add about
- * 16 KB to every turn of every Codex step.
- */
-export const WORKER_AF_TOOLS = [
-	"af_ask",
-	"af_dispatch",
-	"af_wait",
-	"af_status",
-	"af_answer",
-	"af_artifacts",
-	"af_cancel",
-] as const;
-
-/**
  * How to run this af CLI from another process: node with the CLI script, so
  * it works without `af` on PATH and without a Windows `.cmd` shim.
  */
@@ -79,9 +63,8 @@ export function afMcpEnv(env: NodeJS.ProcessEnv): Record<string, string> {
 
 /**
  * Codex thread `config` entry that adds the af MCP server to a step's
- * session, or null outside a run (no `AF_RUN_ID`). Only the worker tools
- * (`WORKER_AF_TOOLS`) are enabled; they are the harness's own, so they are
- * approved without asking.
+ * session, or null outside a run (no `AF_RUN_ID`). The af tools are the
+ * harness's own, so they are approved without asking.
  */
 export function codexAfMcpConfig(
 	env: NodeJS.ProcessEnv | null | undefined,
@@ -95,7 +78,6 @@ export function codexAfMcpConfig(
 			args: [...invocation.args.map(portable), "mcp"],
 			env: afMcpEnv(env),
 			tool_timeout_sec: CODEX_AF_TOOL_TIMEOUT_SEC,
-			enabled_tools: [...WORKER_AF_TOOLS],
 			default_tools_approval_mode: "approve",
 		},
 	};

@@ -18,7 +18,6 @@ import {
 import path from "node:path";
 import { CONTRACT_VERSION, type RunStatus, validateArtifact } from "../contract/index.js";
 import { withLock } from "../supervisor/lock.js";
-import { EVENT_DATA_DIR, boundEventData } from "./event-data.js";
 
 export const RUN_FILE = "run.json";
 export const EVENTS_FILE = "events.jsonl";
@@ -80,8 +79,7 @@ export type EventType =
 	| "checks.completed"
 	| "merge.locked"
 	| "merge.completed"
-	| "notification.sent"
-	| "budget.warning";
+	| "notification.sent";
 
 export interface RunEvent {
 	seq: number;
@@ -225,37 +223,14 @@ export class RunStore {
 		writeAtomic(this.runFile, `${JSON.stringify(run, null, 2)}\n`);
 	}
 
-	/**
-	 * Appends one event with the next `seq` under the contract lock. A string
-	 * of `data` over 500 characters is cut; the full payload goes to
-	 * `event-data/<seq>-<type>.json`, named by `data.data_path`.
-	 */
+	/** Appends one event with the next `seq` under the contract lock. */
 	async appendEvent(type: EventType, data: Record<string, unknown> = {}): Promise<RunEvent> {
 		return withLock(this.eventsFile, async () => {
 			const content = existsSync(this.eventsFile) ? readFileSync(this.eventsFile, "utf-8") : "";
 			// seq follows the last valid line, so a torn line (crash mid-append)
 			// never makes two events share a seq
 			const seq = (parseEvents(content).at(-1)?.seq ?? 0) + 1;
-			const bounded = boundEventData(data);
-			let eventData = bounded.data;
-			if (bounded.cut) {
-				const file = path.join(this.dir, EVENT_DATA_DIR, `${seq}-${type}.json`);
-				mkdirSync(path.dirname(file), { recursive: true });
-				writeFileSync(
-					file,
-					`${JSON.stringify(data, null, 2)}
-`,
-					"utf-8",
-				);
-				eventData = { ...eventData, data_path: file };
-			}
-			const event: RunEvent = {
-				seq,
-				at: new Date().toISOString(),
-				run: this.id,
-				type,
-				data: eventData,
-			};
+			const event: RunEvent = { seq, at: new Date().toISOString(), run: this.id, type, data };
 			const result = validateArtifact("event", event);
 			if (!result.valid) {
 				throw new ContractWriteError(

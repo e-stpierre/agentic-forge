@@ -47,7 +47,6 @@ Runtime adapter layer for coding agent integrations:
 - `kill-tree.ts` — `killProcessTree()` (`taskkill /T /F` on Windows, process group on POSIX), `treeSpawnOptions()`
 - `af-mcp.ts` — `afInvocation()` (node with this CLI), `AF_MCP_SERVER`, `codexAfMcpConfig()` (the af MCP server in the thread config of every Codex session inside a run), `afMcpEnv()`
 - `skill-inline.ts` — `resolveSkill()` (plugin and skill directory lookup) and `inlineSkillPrompt()` (`SKILL.md` with absolute paths and arguments) for runtimes without skill loading
-- `usage.ts` — `Usage` (token counts and reported cost, null when a runtime reports none), `addUsage()`, `totalTokens()`, the parsers `claudeResultUsage()`, `codexExecUsage()`, `codexBreakdown()`; adapters attach usage to `StreamEvent` and `turn.completed`, the runners sum it into `RuntimeResult.usage`. Fixtures in `tests/runtimes/fixtures/`
 - `utils.ts` — `getExecutable()`, `FileNotFoundError`, `getAgenticSystemPrompt()`
 - `index.ts` — `getAdapter()`, `resolveRuntime()`, re-exports
 
@@ -91,7 +90,6 @@ Runs owned by the supervisor:
 - `registry.ts` — `RunRegistry` (`<global dir>/runs/index.json`, entries carry `type: overseer` for overseer runs and `parent`), `filterRuns()` and `parseSince()` (the `af list` / `af_list_runs` filters, `tree` included), `RunTree` (parent links, depth, root, walk) and `withTreeInfo()`
 - `wait.ts` — waiting for a run: `wakeReason()` (`terminal` / `attention`), `latestResult()`, `waitResultBlock()`, the wait defaults; `RunManager.waitRun()` behind `GET /v1/runs/:id/wait`, `waitForRun()` in `client.ts` for `af_wait`, `af_dispatch` `wait`, `af wait` and `af run --wait`. Run tree guards (`overseer.budgets.max_dispatch_depth`, `max_tree_runs`, `max_tree_active`) are checked in `RunManager.dispatch()`; `pickRunnable()` lets a child use its running ancestors' slot and checkout
 - `overseer.ts` — overseer runs (`openOverseer()`: create, reuse or resume; `writeOverseerSummary()`; `isOverseerEntry()`; `overseer.json`, `epic.md`), behind `RunManager.openOverseer()` / `finishOverseer()` and `POST /v1/overseer`. The supervisor never executes them: scheduling, crash recovery and `activeCount()` skip them, and `requireWorkflowRun()` refuses the control operations
-- `event-data.ts` — event payload bounds (`EVENT_STRING_MAX`, `boundEventData()` used by `RunStore.appendEvent()`, the full payload in `event-data/<seq>-<type>.json` named by `data_path`; `fullEventData()` reads it back)
 - `events.ts` — event cursors across runs (`encodeCursor()`, `decodeCursor()`), type filters (`matchesTypes()`, `run.*` prefixes), `readEventPage()` behind `GET /v1/events` (long-poll in `RunManager.events()`)
 - `backlog.ts` — the overseer backlog model (`backlog.json` in the overseer run, harness is the single writer): `addItems()`, `updateItem()` (triage, transitions, dependency cycles, `budgets.max_tasks`), `scheduleBacklog()` (dependencies, conflict zones, `max_parallel`, `epicHalt()`), `acceptDiscovered()` (`accept_discovered_items`), `evaluateAnswerPolicy()`, `updateBacklog()` under the contract lock
 - `backlog-service.ts` — `BacklogService` (`RunManager.backlog`): `/v1/overseer/:id/backlog` operations, `dispatchItem()` (a dispatch with `item` under the backlog lock), item outcomes from their runs (`reconcileItems()`), discovered items of child runs, `policyFor()` (`overseer_policy` on `needs_input`, enforced in `answer()`); config in `getOverseerConfig()`
@@ -99,7 +97,6 @@ Runs owned by the supervisor:
 - `artifacts.ts` — `listArtifacts()` by kind (`plan`, `summary`, `decisions`, `review`) for `af artifacts`
 - `inbox.ts` — `Inbox` (contract `inbox/<timestamp>-<id>.json` messages), `formatOperatorMessages()` (the `## Operator Messages` section)
 - `transcript.ts` — per-step live transcripts (`steps/<NN-step>/transcript.jsonl`, `TranscriptWriter`, `transcriptEntries()`, `readTranscriptPage()` with its own cursor and caps) and `session.json` (`readStepSession()`, read by crash recovery to resume a session); `stepDirName()`
-- `usage.ts` — `steps/<NN-step>/usage.json` (`recordStepUsage()` per runtime call, through `StepContext.recordUsage`), `usageBudgetsUsed()` (`run.json` `budgets_used`), `buildUsageReport()` / `selectUsageRuns()` behind `af usage` and `af_usage`. `RunManager.recordUsage()` checks the run budgets (`getRunBudgets()` in `config.ts`: `runs.budgets`, `settings.budgets`, `x-af-budgets` raised by `resume`): `budget.warning` at 80%, a pause with reason `budget` at the limit. Tests in `tests/usage.test.ts`
 - `scheduler.ts` — `pickRunnable()` (global and per-repo limits, one run per checkout)
 - `dispatch.ts` — `DispatchPayload`, `filterEnv()` (client-resolved repo root, workflow, config snapshot and environment), `buildDispatchPayload()` (shared by `af run` and `af_dispatch`)
 - `client.ts` — `dispatchRun()`, `followRun()` used by `af run`, `af resume`; `fetchEvents()`, `followEvents()` (cursor, long-poll, abort) used by `af events`; `fetchLogs()`, `followLogs()` used by `af logs` and `af_logs`
@@ -123,13 +120,10 @@ The stdio MCP server behind `af mcp`, a thin client of the supervisor:
 
 - `server.ts` — `createMcpServer()` (`McpServer` named `agentic-forge`; `getClient` injected, plus `registryRoot` and `cwd`)
 - `tools.ts` — dispatch and read tools (`af_dispatch`, `af_status`, `af_list_runs`, `af_events`, `af_wait`, `af_logs`, `af_artifacts`); zod input schemas, `register()` (handler errors become `isError` results); `af_dispatch` defaults `parent` to the calling run (`callingRun()`). Cross-runtime dispatch tests in `tests/dispatch-tree.test.ts` (fake SDK and fake app-server sessions dispatching each other)
-- `tools-digest.ts` — `af_digest` (`buildDigest()`: active run lines and the `needs_input`, failure and run end changes since a cursor); `af_wait` with `runs` is `waitForRuns()` in `src/runs/client.ts`. Tests in `tests/wake-economy.test.ts` (also `af_wait` `boundary` and `af events --compact --until`)
 - `tools-backlog.ts` — backlog tools (`af_backlog_list`, `af_backlog_add`, `af_backlog_update`) over `/v1/overseer/:id/backlog`; tests in `tests/backlog.test.ts`
 - `tools-ask.ts` — `af_ask` (asks, then waits up to `wait_seconds` with long-polls, `pending` past it); tests in `tests/ask.test.ts` (fake SDK sessions calling the tool)
 - `tools-control.ts` — steering tools (`af_send`, `af_amend`, `af_answer`, `af_pause`, `af_resume`, `af_cancel`, `af_retry_step`) and `af_notify` over the `/v1/runs/:id/*` control endpoints
-- `tools-usage.ts` — `af_usage` (run usage reports, `scope: mcp` from `session-usage.ts`: `McpSessionUsage` counts the bytes of every tool result in `register()`, per tool, written to `<global dir>/mcp-sessions/`)
-- `budgets.ts` — the Token Budget constants of the tool results (`RESULT_BUDGET_BYTES`, default limits and caps, `TOOLS_LIST_BUDGET_BYTES`); `views.ts` — slim views (`slimRunDetails()`, `slimEntry()`) behind `af_status` and `af_list_runs`. Size tests in `tests/mcp-budgets.test.ts`
-- `errors.ts` — `jsonResult()` (compact JSON), `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
+- `errors.ts` — `jsonResult()`, `toolError()` (hints for 400, 404, 409 and an unreachable supervisor), `ClientCache`, `withClient()` (one retry of the read tools when the supervisor is unreachable; write tools get a hint to check af_status before calling again)
 - `commands/mcp.ts` — `cmdMcp()` (console output to stderr, supervisor started on demand at the first tool call, `StdioServerTransport`)
 
 MCP tests (`tests/mcp-server.test.ts`) connect an SDK `Client` to `createMcpServer()` through `InMemoryTransport.createLinkedPair()`, with an in-process `Supervisor` and `RunManager` and `fakeRuntime`. `tests/mcp-stdio.test.ts` runs the built `dist/cli.js mcp` over real stdio (skipped without a build).
@@ -183,7 +177,6 @@ User-facing documentation, linked from the README via GitHub `blob/main/` URLs. 
 - `coding-agents.md` — Supported runtimes, per-step configuration, and model names
 - `configuration.md` — All configuration options, defaults, and layering behavior
 - `overseer.md` — The overseer in Claude Desktop: `af setup`, event delivery, durability, locality, limits
-- `cost-and-tokens.md` — Where a run's tokens go, the recommended overseer patterns and anti-patterns, what af adds to a worker, `af usage` and budgets, the measured baseline
 - `harness-contract.md` — Harness contract v1 specification (owned by agentic-forge): run directory layout, artifacts, exit codes, compliance levels, versioning rules
 
 ### `agentic/`

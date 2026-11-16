@@ -28,7 +28,6 @@ import {
 	driverOptions,
 	emitStepEvent,
 	permissionOptions,
-	reportUsage,
 	resolveModel,
 	stepEnv,
 } from "./base.js";
@@ -197,8 +196,6 @@ export class PromptStepExecutor extends StepExecutor {
 				resumeSessionId,
 				skill,
 			});
-
-			await reportUsage(context, step.name, result);
 
 			// Stopped by the supervisor: no retry, the executor records the interruption
 			if (context.signal?.aborted) {

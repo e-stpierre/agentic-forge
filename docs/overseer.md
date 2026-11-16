@@ -48,7 +48,7 @@ From there, talk to it:
 
 ### Event delivery
 
-A Claude Desktop session cannot receive pushes from the supervisor. The overseer runs `af events --follow` as a background Monitor (Code tab), so it wakes on `needs_input`, run ends and failed steps while you keep chatting. The monitor prints one short line per event (`--compact`), since every line lands in the session's context. Where no background command is available (the Chat tab), it waits on its runs with `af_wait` (`runs`, `until: attention`), which returns only when a run needs it or ends, and catches up with `af_digest` between your messages. Turn on [notifications](./configuration.md#notifications) to hear about a question or a finished run when the session is closed.
+A Claude Desktop session cannot receive pushes from the supervisor. The overseer runs `af events --follow` as a background Monitor (Code tab), so it wakes on `needs_input`, run ends and failed steps while you keep chatting. Where no background command is available (the Chat tab), it polls with `af_events` between your messages and waits on one run with `af_wait`. Turn on [notifications](./configuration.md#notifications) to hear about a question or a finished run when the session is closed.
 
 ### Durability
 

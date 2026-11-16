@@ -17,7 +17,6 @@ export type { ItemStartedNotification } from "./v2/ItemStartedNotification.js";
 export type { ItemCompletedNotification } from "./v2/ItemCompletedNotification.js";
 export type { TurnStartedNotification } from "./v2/TurnStartedNotification.js";
 export type { TurnCompletedNotification } from "./v2/TurnCompletedNotification.js";
-export type { ThreadTokenUsageUpdatedNotification } from "./v2/ThreadTokenUsageUpdatedNotification.js";
 export type { ErrorNotification } from "./v2/ErrorNotification.js";
 export type { SkillsListParams } from "./v2/SkillsListParams.js";
 export type { SkillsListResponse } from "./v2/SkillsListResponse.js";

@@ -15,17 +15,11 @@ import type { ResultBlock } from "../contract/result.js";
 import type { RunEvent } from "./run-store.js";
 import { stepDirName } from "./transcript.js";
 
-export const WAIT_CONDITIONS = ["terminal", "attention", "boundary"] as const;
+export const WAIT_CONDITIONS = ["terminal", "attention"] as const;
 export type WaitCondition = (typeof WAIT_CONDITIONS)[number];
 
-/** Default wait of one af_wait call (seconds) for an MCP client with the usual 60 s tool timeout. */
+/** Default wait of one af_wait call (seconds): under the 60 s MCP tool timeout of Codex and MCP SDK clients. */
 export const DEFAULT_WAIT_SECONDS = 50;
-/**
- * Default wait of one af_wait call (seconds) for an MCP client whose tool
- * timeout is known to be longer (Claude Code; Codex with the af server
- * config): one wake-up stays inside a 5 minute prompt cache lifetime.
- */
-export const LONG_WAIT_SECONDS = 240;
 /** Longest wait of one af_wait call (an agent on Claude Code, whose tool timeout is far longer, may pass more). */
 export const MAX_WAIT_SECONDS = 3600;
 /** Longest wait of one supervisor request; a longer wait loops on the client. */
@@ -40,26 +34,6 @@ const WAIT_TEXT_MAX = 500;
 const ATTENTION_STATUSES: readonly RunStatus[] = ["awaiting-human", "paused", "blocked"];
 /** Events after the cursor that wake an `attention` waiter. */
 const ATTENTION_EVENTS = new Set(["needs_input", "step.failed", "run.paused"]);
-/** Events after the cursor that wake a `boundary` waiter (attention events and step ends). */
-const BOUNDARY_EVENTS = new Set([...ATTENTION_EVENTS, "step.completed"]);
-/** Run events of a final status. */
-const TERMINAL_EVENTS = new Set(["run.completed", "run.failed", "run.canceled", "run.halted"]);
-
-export type WaitState = "ended" | "attention" | "boundary" | "waiting";
-
-/** Seq of the last final run event (`run.completed`, `run.failed`, ...), or null. */
-export function terminalEventSeq(events: readonly RunEvent[]): number | null {
-	for (let i = events.length - 1; i >= 0; i--) {
-		if (TERMINAL_EVENTS.has(events[i].type)) return events[i].seq;
-	}
-	return null;
-}
-
-/** The state of a woken waiter: `ended`, `boundary` for a step end, else `attention`. */
-export function wokenState(status: string, reason: string): WaitState {
-	if (isTerminal(status)) return "ended";
-	return reason === "step.completed" ? "boundary" : "attention";
-}
 
 export interface WaitResultBlock {
 	status: string;
@@ -75,18 +49,10 @@ export interface WaitResult {
 	run: string;
 	/** Run status now. */
 	status: RunStatus;
-	/**
-	 * `ended` (final status), `attention` (needs the waiter), `boundary` (a
-	 * step ended, with `until: boundary`) or `waiting` (the wait ran out).
-	 */
-	state: WaitState;
+	/** `ended` (final status), `attention` (needs the waiter) or `waiting` (the wait ran out). */
+	state: "ended" | "attention" | "waiting";
 	/** Last event seq seen: pass it back to wait again without seeing the same events. */
 	cursor: number;
-	/**
-	 * Seq of the final run event, when `state` is `ended`. Events written after
-	 * it (`notification.sent`) move `cursor` but not this.
-	 */
-	ended_seq?: number;
 	/** What woke the waiter: the final status, or the attention event type. */
 	reason?: string;
 	/** Last step that reported a result block. */
@@ -116,25 +82,13 @@ export function isTerminal(status: string): boolean {
 	return (TERMINAL_RUN_STATUSES as readonly string[]).includes(status);
 }
 
-/**
- * Whether one event meets a wait condition on its own: a final run event for
- * `terminal`, also an attention event for `attention`, also a step end for
- * `boundary`. Used where only the event stream is read (`af events --until`).
- */
-export function eventMeets(condition: WaitCondition, type: string): boolean {
-	if (TERMINAL_EVENTS.has(type)) return true;
-	if (condition === "attention") return ATTENTION_EVENTS.has(type);
-	if (condition === "boundary") return BOUNDARY_EVENTS.has(type);
-	return false;
-}
-
 function cut(text: string, max: number): string {
 	return text.length > max ? `${text.slice(0, max - 3)}...` : text;
 }
 
 /**
- * Whether a waiter wakes now: on a final status, with `attention` on an
- * attention event after the cursor, with `boundary` also on a step end, or (first call, no cursor) a run that
+ * Whether a waiter wakes now: on a final status, and with `attention` on an
+ * attention event after the cursor, or (first call, no cursor) a run that
  * already waits for someone. Returns the reason, or null to keep waiting.
  */
 export function wakeReason(
@@ -144,9 +98,8 @@ export function wakeReason(
 	firstCall: boolean,
 ): string | null {
 	if (isTerminal(status)) return status;
-	if (condition === "terminal") return null;
-	const wakes = condition === "boundary" ? BOUNDARY_EVENTS : ATTENTION_EVENTS;
-	const event = events.find((e) => wakes.has(e.type));
+	if (condition !== "attention") return null;
+	const event = events.find((e) => ATTENTION_EVENTS.has(e.type));
 	if (event) return event.type;
 	if (firstCall && ATTENTION_STATUSES.includes(status)) return status;
 	return null;

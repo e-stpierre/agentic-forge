@@ -27,7 +27,6 @@ import { dispatchRun, fetchEvents, followEvents, formatEvent } from "../src/runs
 import type { DispatchPayload } from "../src/runs/dispatch.js";
 import {
 	CursorError,
-	WATERMARK_KEY,
 	decodeCursor,
 	encodeCursor,
 	matchesTypes,
@@ -400,8 +399,7 @@ describe("GET /v1/events", () => {
 		const { client } = await startSupervisor();
 		const page = await fetchEvents(client, { waitSeconds: 0.3 });
 		expect(page.events).toEqual([]);
-		// No run positions, only the watermark
-		expect(Object.keys(decodeCursor(page.cursor))).toEqual([WATERMARK_KEY]);
+		expect(decodeCursor(page.cursor)).toEqual({});
 	});
 
 	it("rejects an invalid cursor (400) and an unknown run (404)", async () => {
@@ -596,47 +594,5 @@ describe("readEventPage", () => {
 		const page = readEventPage(manager.registry.list(), { fromNow: true });
 		expect(page.events).toEqual([]);
 		expect(decodeCursor(page.cursor)[res.run.id]).toBe(new RunStore(res.dir).readEvents().length);
-	});
-
-	it("keeps the cursor small: ended runs with old events leave it, and new events still come", () => {
-		const root = mkdtempSync(path.join(tmpdir(), "af-cursor-"));
-		const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
-		const entries: RegistryEntry[] = [];
-		for (let i = 0; i < 300; i++) {
-			const id = `2026-01-01-run-${String(i).padStart(3, "0")}`;
-			const dir = path.join(root, id);
-			mkdirSync(dir, { recursive: true });
-			const events = [1, 2, 3].map((seq) =>
-				JSON.stringify({ seq, at: hourAgo, run: id, type: seq === 3 ? "run.completed" : "x" }),
-			);
-			writeFileSync(path.join(dir, "events.jsonl"), `${events.join("\n")}\n`);
-			entries.push({ id, dir, status: i === 0 ? "running" : "done" } as RegistryEntry);
-		}
-		try {
-			const fresh = readEventPage(entries, { fromNow: true });
-			const positions = decodeCursor(fresh.cursor);
-			// The active run keeps its position; the 299 ended runs are dropped
-			expect(Object.keys(positions).sort()).toEqual([WATERMARK_KEY, entries[0].id].sort());
-			expect(fresh.cursor.length).toBeLessThan(200);
-
-			// A first read from the start reports the history, then drops the ended runs too
-			const all = readEventPage(entries, { limit: 10_000 });
-			expect(all.events).toHaveLength(900);
-			expect(Object.keys(decodeCursor(all.cursor))).toHaveLength(2);
-
-			// An event on a dropped run (a notification, a resume) is still delivered, once
-			const late = JSON.stringify({
-				seq: 4,
-				at: new Date().toISOString(),
-				run: entries[5].id,
-				type: "notification.sent",
-			});
-			appendFileSync(path.join(entries[5].dir, "events.jsonl"), `${late}\n`);
-			const next = readEventPage(entries, { cursor: fresh.cursor });
-			expect(next.events.map((e) => `${e.run}:${e.seq}`)).toEqual([`${entries[5].id}:4`]);
-			expect(readEventPage(entries, { cursor: next.cursor }).events).toEqual([]);
-		} finally {
-			rmSync(root, { recursive: true, force: true });
-		}
 	});
 });

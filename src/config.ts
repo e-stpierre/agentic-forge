@@ -56,15 +56,6 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 	runs: {
 		// null: <global dir>/runs/. Replaces outputDirectory.
 		root: null,
-		// Per-run limits (null: none). A workflow's settings.budgets wins. At 80%
-		// the run gets a budget.warning event; at the limit it pauses at the next
-		// step or iteration boundary (reason budget).
-		budgets: {
-			// Every token the runtimes reported (input, cached input, cache writes, output).
-			max_tokens: null,
-			// Cost the runtimes reported (Claude only; an estimate on a subscription).
-			max_cost_usd: null,
-		},
 	},
 	// Plugin directories with an af-workflows/ dir. auto_detect also reads the
 	// Claude Code installed plugin list (installed_plugins.json).
@@ -136,7 +127,6 @@ const DEFAULT_CONFIG: Record<string, unknown> = {
 			"needs_input",
 			"run.halted",
 			"run.failed",
-			"budget.warning",
 			{ event: "run.completed", run_type: "overseer" },
 		],
 		// Per trigger event type: { title, body } with {{placeholders}}.
@@ -222,46 +212,6 @@ export function getGithubConfig(config: Record<string, unknown>): GithubConfig {
 			lockTimeoutMinutes: num(merge.lock_timeout_minutes, dm.lock_timeout_minutes as number),
 		},
 	};
-}
-
-/** Per-run token and cost limits; null means no limit. */
-export interface RunBudgets {
-	maxTokens: number | null;
-	maxCostUsd: number | null;
-}
-
-/**
- * Reads `max_tokens` and `max_cost_usd` (or `max-tokens`, `max-cost-usd`) of
- * a budgets object; an invalid or missing value is null.
- */
-export function parseRunBudgets(raw: unknown): Partial<RunBudgets> {
-	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
-	const obj = raw as Record<string, unknown>;
-	const read = (snake: string, kebab: string): number | null | undefined => {
-		const value = snake in obj ? obj[snake] : obj[kebab];
-		if (value === undefined) return undefined;
-		return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
-	};
-	const out: Partial<RunBudgets> = {};
-	const tokens = read("max_tokens", "max-tokens");
-	const cost = read("max_cost_usd", "max-cost-usd");
-	if (tokens !== undefined) out.maxTokens = tokens;
-	if (cost !== undefined) out.maxCostUsd = cost;
-	return out;
-}
-
-/**
- * The budgets of a run: `runs.budgets` of the config, overridden by the
- * workflow's `settings.budgets`, then by the limits raised on resume.
- */
-export function getRunBudgets(
-	config: Record<string, unknown>,
-	...overrides: (Partial<RunBudgets> | null | undefined)[]
-): RunBudgets {
-	const runs = (config.runs as Record<string, unknown> | undefined) ?? {};
-	let budgets: RunBudgets = { maxTokens: null, maxCostUsd: null, ...parseRunBudgets(runs.budgets) };
-	for (const o of overrides) if (o) budgets = { ...budgets, ...o };
-	return budgets;
 }
 
 export const DISCOVERED_ITEM_POLICIES = ["auto", "ask", "log"] as const;

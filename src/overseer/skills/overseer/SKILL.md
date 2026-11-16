@@ -49,10 +49,10 @@ The af MCP server only knows your run when `af overseer` started this session: a
 Run this as a background Monitor (the Monitor tool; if it is not available, a background Bash command), so you wake on run events and stay responsive to the user. It is the `monitor` command printed by `af overseer --open`:
 
 ```bash
-<af> events --follow --compact --new --cursor-file "<run-dir>/overseer/events.cursor" --types "needs_input,run.*,step.failed,merge.completed"
+<af> events --follow --new --cursor-file "<run-dir>/overseer/events.cursor" --types "needs_input,run.*,step.failed,merge.completed"
 ```
 
-- It prints one short line per event: time, run, type, then the step, status and request id when the event has them. Every line lands in your context, so never drop `--compact` or the `--types` filter
+- It prints one short line per event: time, run, type, step and details
 - The cursor file keeps your position: after a restart the monitor continues after the last event the previous session saw, so nothing is missed and nothing is replayed twice
 - Ignore the lines of your own overseer run (its `run.started` and `run.resumed`)
 - If the monitor exits (supervisor restarted, network error), start it again with the same command
@@ -61,14 +61,14 @@ On each line:
 
 | Event                                     | What you do                                                                                                                                   |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `needs_input`                             | Read the request (`af_status` of the run: its `needs_input` list), then escalate it to the user (see Questions)                               |
+| `needs_input`                             | Read the request (`af_status` of the run, `x-af-needs-input`), then escalate it to the user (see Questions)                                   |
 | `run.completed`                           | Report the result in one or two lines, then `af_backlog_list`: report new discovered items and dispatch what became runnable (see Scheduling) |
 | `run.failed`, `run.halted`, `step.failed` | Tell the user what failed and the options: `af_retry_step`, `af_resume`, `af_cancel`, a retry of the item or dropping it                      |
 | `run.paused`                              | Note it; a paused run waits for `af_resume`                                                                                                   |
 | `merge.completed`                         | Report the merge, then `af_backlog_list`: items that depended on it may be runnable now                                                       |
 | other `run.*`                             | No action unless the user asked to follow that run                                                                                            |
 
-Without a monitor (no Monitor and no background Bash, for example the Chat tab), wait with `af_wait` (`runs`: your open child runs, `until: attention`, pass back the `cursor` it returns) when the user waits for results; it returns only when a run needs you or ends. Between user turns, catch up with `af_digest` (pass back its `cursor`). Do not poll `af_events` in a loop: every call is a turn that re-reads your whole context.
+Without a monitor (no Monitor and no background Bash, for example the Chat tab), poll with `af_events` (`types` as above, `wait_seconds` 30, pass back the `cursor` it returns) between user turns, and follow one run with `af_wait` (`run`, `until: attention`) when the user waits for it.
 
 ## Backlog
 
@@ -153,7 +153,7 @@ On a new session of an existing overseer run, or when you are unsure of the stat
 1. `af_status` with your run id: your run, its status and session count
 2. Read `<run-dir>/epic.md` if it exists
 3. `af_backlog_list` with your run id: every item with its status and run, what is runnable, and `halt`
-4. `af_digest`: one line per open run and its open questions (keep its `cursor` for the next catch-up); `af_list_runs` with `parent: <your run id>` when you need the runs you dispatched that already ended
+4. `af_list_runs` with `parent: <your run id>`: the runs you dispatched; then `af_status` without `run` for every open run
 5. For each child run that is `awaiting-human`, read its pending request (`af_status` of that run) and handle it (see Questions)
 6. Tell the user, in a short list: each open item with its status and run, what waits for them, and what you propose next (the runnable items)
 
@@ -173,8 +173,5 @@ To reach the user away from the session (a long run finished, a question waits),
 ## Token Rules
 
 - Keep tool results small: `af_status` of one run, `af_backlog_list` with `status` when you need only some items, `af_events` with `types`, `af_logs` with a small `limit`, `af_artifacts` without `content` first
-- Do not read run transcripts or artifacts unless a decision needs them; read a summary with `af_artifacts` `frontmatter_only: true` first, then one `section`
-- Never run `af run --foreground` or `af logs --follow` through Bash: they stream step output into your context. Dispatch with `af_dispatch` and wait with the monitor or `af_wait`
-- To keep a long wait out of your context, hand the `af_wait` loop to a subagent on a small model (Haiku) that returns only the result block
-- `af usage <run> --by step` shows what a run cost; `af_usage` with `scope: mcp` shows what your tool results cost
+- Do not read run transcripts or artifacts unless a decision needs them
 - Report in one or two lines per event; the user asks when they want more

@@ -47,8 +47,7 @@
         "merge.completed",
         "notification.sent",
         "supervisor.restarted",
-        "run.recovered",
-        "budget.warning"
+        "run.recovered"
       ]
     },
     "data": {

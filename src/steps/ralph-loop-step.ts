@@ -25,7 +25,6 @@ import {
 	driverOptions,
 	emitStepEvent,
 	permissionOptions,
-	reportUsage,
 	resolveModel,
 	stepEnv,
 	withOperatorMessages,
@@ -153,8 +152,6 @@ export class RalphLoopStepExecutor extends StepExecutor {
 				signal: context.signal ?? null,
 				...driverOptions(context, step.name),
 			});
-
-			await reportUsage(context, step.name, result, iteration);
 
 			// Stopped by the supervisor: the iteration reruns on resume
 			if (context.signal?.aborted) {

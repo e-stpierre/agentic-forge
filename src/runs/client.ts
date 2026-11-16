@@ -6,16 +6,10 @@
 import { TERMINAL_RUN_STATUSES } from "../contract/index.js";
 import type { SupervisorClient } from "../supervisor/client.js";
 import type { DispatchPayload } from "./dispatch.js";
-import { decodeCursor, encodeCursor } from "./events.js";
 import type { DispatchResult, EventResponse, LogsResponse } from "./manager.js";
 import type { RunEvent } from "./run-store.js";
 import type { TranscriptEntry } from "./transcript.js";
-import {
-	MAX_WAIT_REQUEST_SECONDS,
-	type WaitCondition,
-	type WaitResult,
-	type WaitState,
-} from "./wait.js";
+import { MAX_WAIT_REQUEST_SECONDS, type WaitCondition, type WaitResult } from "./wait.js";
 
 export function dispatchRun(
 	client: SupervisorClient,
@@ -104,25 +98,6 @@ export function formatEvent(event: RunEvent): string {
 	return `[${time}] ${event.type}${step}${extra}`;
 }
 
-/**
- * One short line per event (`af events --compact`): time, run, type, step,
- * status and a request id. No free text, so a Monitor that prints it into an
- * agent context stays small.
- */
-export function formatEventCompact(event: RunEvent, withRun = true): string {
-	const data = event.data ?? {};
-	const str = (key: string) =>
-		typeof data[key] === "string" && data[key] ? (data[key] as string) : null;
-	const parts = [event.at.slice(11, 19)];
-	if (withRun) parts.push(event.run);
-	parts.push(event.type);
-	for (const key of ["step", "status", "id"]) {
-		const value = str(key);
-		if (value) parts.push(value);
-	}
-	return parts.join(" ");
-}
-
 /** Query of `GET /v1/events` from a client. */
 export interface EventsRequest {
 	cursor?: string | null;
@@ -133,8 +108,6 @@ export interface EventsRequest {
 	/** Long-poll: seconds the supervisor waits for a first event (0 returns at once). */
 	waitSeconds?: number;
 	limit?: number;
-	/** Size limit of the returned events in bytes (`EventQuery.maxBytes`). */
-	maxBytes?: number;
 }
 
 export function fetchEvents(
@@ -148,7 +121,6 @@ export function fetchEvents(
 	if (request.fromNow) params.set("from", "now");
 	if (request.waitSeconds) params.set("wait", String(request.waitSeconds));
 	if (request.limit) params.set("limit", String(request.limit));
-	if (request.maxBytes) params.set("max_bytes", String(request.maxBytes));
 	const query = params.toString();
 	return client.request<EventResponse>(
 		"GET",
@@ -168,26 +140,7 @@ export interface FollowEventsOptions extends Omit<EventsRequest, "waitSeconds"> 
 	follow?: boolean;
 	/** With `run`, stop when the run reaches a terminal, paused, blocked or awaiting-human status. */
 	untilStopped?: boolean;
-	/** Stop after the first event for which this returns true (the returned cursor is just after it). */
-	stopWhen?: (event: RunEvent) => boolean;
 	signal?: AbortSignal;
-}
-
-/**
- * The cursor of a page cut after `events[index]`: the runs of the later
- * events are moved back to just before their first unread event.
- */
-export function cursorAfter(
-	pageCursor: string,
-	events: readonly RunEvent[],
-	index: number,
-): string {
-	const positions = decodeCursor(pageCursor);
-	for (const event of events.slice(index + 1)) {
-		const before = event.seq - 1;
-		positions[event.run] = Math.min(positions[event.run] ?? before, before);
-	}
-	return encodeCursor(positions);
 }
 
 /**
@@ -212,14 +165,7 @@ export async function followEvents(
 		const page = await raceAbort(pending, options.signal);
 		if (!page) return cursor;
 		fromNow = false;
-		for (const [index, event] of page.events.entries()) {
-			options.onEvent(event);
-			if (options.stopWhen?.(event)) {
-				cursor = cursorAfter(page.cursor, page.events, index);
-				options.onCursor?.(cursor);
-				return cursor;
-			}
-		}
+		for (const event of page.events) options.onEvent(event);
 		cursor = page.cursor;
 		options.onCursor?.(cursor);
 		if (page.more) continue;
@@ -398,127 +344,6 @@ export async function waitForRun(
 		cursor = result.cursor;
 		if (result.state !== "waiting" || Date.now() >= deadline || request.signal?.aborted) {
 			return result;
-		}
-	}
-}
-
-/** Most runs of one multi-run wait (`af_wait` with `runs`). */
-export const WAIT_MANY_MAX_RUNS = 20;
-/** Most woken runs reported by one multi-run wait; the others wake the next call (`more`). */
-export const WAIT_MANY_MAX_RESULTS = 3;
-
-export interface WaitManyRequest extends Omit<WaitRequest, "cursor"> {
-	/** Cursor of a previous multi-run wait result (omit on the first call). */
-	cursor?: string | null;
-}
-
-export interface WaitManyResult {
-	/** `waiting` when no run woke, else `attention` when one needs the waiter, else `boundary` when one ended a step, else `ended`. */
-	state: WaitState;
-	/** Pass it back with the same runs to wait again without seeing the same events. */
-	cursor: string;
-	/** The runs that woke (at most {@link WAIT_MANY_MAX_RESULTS}), as single-run wait results. */
-	woke: WaitResult[];
-	/** Runs still waited on. */
-	waiting: string[];
-	/** Runs whose final status an earlier call reported: drop them from `runs`. */
-	ended: string[];
-	/** More runs woke than reported: call again at once. */
-	more?: true;
-}
-
-function manyState(woke: readonly WaitResult[]): WaitState {
-	if (woke.length === 0) return "waiting";
-	for (const state of ["attention", "boundary"] as const) {
-		if (woke.some((r) => r.state === state)) return state;
-	}
-	return "ended";
-}
-
-/**
- * Waits for several runs: returns when one of them meets the condition (as
- * {@link waitForRun}), or `timeoutSeconds` runs out. Each run is waited on
- * through `GET /v1/runs/:id/wait`; the cursor holds every run's last seq
- * (an af_events style cursor), so a final status is reported once.
- */
-export async function waitForRuns(
-	client: SupervisorClient,
-	ids: readonly string[],
-	request: WaitManyRequest,
-): Promise<WaitManyResult> {
-	const runs = [...new Set(ids)];
-	const cursors: Record<string, number> = {};
-	const given = decodeCursor(request.cursor);
-	for (const id of runs) if (given[id] !== undefined) cursors[id] = given[id];
-	const deadline = Date.now() + Math.max(request.timeoutSeconds, 0) * 1000;
-	const until = request.until ?? "terminal";
-	const get = (id: string, wait: number, signal?: AbortSignal) => {
-		const params = new URLSearchParams({ until, wait: String(wait) });
-		if (cursors[id] !== undefined) params.set("cursor", String(cursors[id]));
-		return client.request<WaitResult>(
-			"GET",
-			`/v1/runs/${encodeURIComponent(id)}/wait?${params.toString()}`,
-			undefined,
-			(wait + 15) * 1000,
-			signal,
-		);
-	};
-	for (;;) {
-		const results = new Map<string, WaitResult>();
-		await Promise.all(runs.map(async (id) => results.set(id, await get(id, 0))));
-		// An ended run was reported when the cursor is at or past its final event
-		// (later events such as notification.sent move the run's cursor)
-		const reported = (id: string) => {
-			const r = results.get(id) as WaitResult;
-			if (r.state !== "ended" || cursors[id] === undefined) return false;
-			return r.ended_seq !== undefined ? r.ended_seq <= cursors[id] : r.cursor === cursors[id];
-		};
-		const fresh = runs.filter((id) => results.get(id)?.state !== "waiting" && !reported(id));
-		// A run with nothing to report is pinned at its last seq: later events are new
-		for (const id of runs)
-			if (!fresh.includes(id)) cursors[id] = (results.get(id) as WaitResult).cursor;
-		const open = runs.filter((id) => results.get(id)?.state !== "ended");
-		const left = Math.max(0, (deadline - Date.now()) / 1000);
-		if (fresh.length > 0 || open.length === 0 || left <= 0 || request.signal?.aborted) {
-			const woke = fresh.slice(0, WAIT_MANY_MAX_RESULTS).map((id) => {
-				const r = results.get(id) as WaitResult;
-				cursors[id] = r.cursor;
-				return r;
-			});
-			const result: WaitManyResult = {
-				state: manyState(woke),
-				cursor: encodeCursor(cursors),
-				woke,
-				waiting: open.filter((id) => !woke.some((r) => r.run === id)),
-				ended: runs.filter(reported),
-			};
-			if (fresh.length > woke.length) result.more = true;
-			return result;
-		}
-		// Long-poll every open run; the first that wakes ends the round
-		const controller = new AbortController();
-		const stop = () => controller.abort();
-		request.signal?.addEventListener("abort", stop, { once: true });
-		const wait = Math.min(left, MAX_WAIT_REQUEST_SECONDS);
-		try {
-			await new Promise<void>((resolve) => {
-				let pending = open.length;
-				controller.signal.addEventListener("abort", () => resolve(), { once: true });
-				for (const id of open) {
-					get(id, wait, controller.signal)
-						.then((r) => {
-							if (r.state !== "waiting") resolve();
-						})
-						.catch(() => {})
-						.finally(() => {
-							pending -= 1;
-							if (pending === 0) resolve();
-						});
-				}
-			});
-		} finally {
-			controller.abort();
-			request.signal?.removeEventListener("abort", stop);
 		}
 	}
 }
