@@ -9,23 +9,11 @@ name: workflow-name # Required. Unique identifier (kebab-case)
 version: "1.0" # Required. Schema version (always "1.0")
 description: | # Optional. Human-readable description
   What this workflow does
-requires: { agentic-forge: ">=0.12", contract: 1 } # Optional. Harness requirements
 settings: {} # Optional. Workflow configuration
 variables: [] # Optional. Input parameters
 steps: [] # Required. Workflow steps (at least one)
 outputs: [] # Optional. Output artifacts
 ```
-
-## Requires
-
-Optional. What the workflow needs from the harness. af refuses an unmet workflow at dispatch, before any step runs, naming the required and installed versions.
-
-| Key             | Type   | Description                                                                                 |
-| --------------- | ------ | ------------------------------------------------------------------------------------------- |
-| `agentic-forge` | string | Version range: `>=0.12`, `^0.12.0`, `~0.12.1`, `0.12` (any 0.12.x), `>=0.12 <1`, `a \|\| b` |
-| `contract`      | int    | Harness contract version (currently `1`)                                                    |
-
-`agentic-forge run --ignore-requires` overrides only the `agentic-forge` range, with a warning; a contract mismatch is always refused. Skill pack workflows (`af-workflows/`) should always declare both.
 
 ## Settings
 
@@ -33,23 +21,18 @@ All settings are optional with sensible defaults.
 
 ### Global Settings
 
-| Key                    | Type   | Default    | Valid Values                 | Description                                                         |
-| ---------------------- | ------ | ---------- | ---------------------------- | ------------------------------------------------------------------- |
-| `max-retry`            | int    | `null`     | 0+                           | Max retry attempts for failed steps (unset: `defaults.maxRetry`, 3) |
-| `timeout-minutes`      | int    | `60`       | 1+                           | Max time for entire workflow (minutes)                              |
-| `track-progress`       | bool   | `true`     | true/false                   | Track progress in progress.json                                     |
-| `autofix`              | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                                             |
-| `terminal-output`      | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream)                    |
-| `bypass-permissions`   | bool   | `false`    | true/false                   | Bypass tool permission prompts (warns per step)                     |
-| `strict-mode`          | bool   | `false`    | true/false                   | Fail on undefined template variables                                |
-| `model`                | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                                         |
-| `runtime`              | string | `null`     | claude, codex                | Default coding agent runtime for all steps                          |
-| `required-tools`       | list   | `[]`       | Tool names                   | Added to `runtimes.claude.allow` (no prompting)                     |
-| `amend.step`           | string | none       | A top-level step name        | Step `af amend` runs before the next step                           |
-| `budgets.max_tokens`   | number | none       | Positive number, or null     | Per-run token budget (over config `runs.budgets`; null removes it)  |
-| `budgets.max_cost_usd` | number | none       | Positive number, or null     | Per-run cost budget in USD (runtimes that report a cost: Claude)    |
-
-**Budgets:** every runtime call of a step (each attempt, each ralph-loop iteration) records its tokens in `steps/<NN-step>/usage.json`; the run totals go to `run.json` `budgets_used` and `af usage`. At 80% of a budget the run gets a `budget.warning` event; at the limit it pauses at the next step or iteration boundary (reason `budget`). `af resume <run> --max-tokens N` raises the budget and continues.
+| Key                  | Type   | Default    | Valid Values                 | Description                                      |
+| -------------------- | ------ | ---------- | ---------------------------- | ------------------------------------------------ |
+| `max-retry`          | int    | `3`        | 0+                           | Max retry attempts for failed steps              |
+| `timeout-minutes`    | int    | `60`       | 1+                           | Max time for entire workflow (minutes)           |
+| `track-progress`     | bool   | `true`     | true/false                   | Track progress in progress.json                  |
+| `autofix`            | string | `"none"`   | none, minor, major, critical | Auto-fix severity level                          |
+| `terminal-output`    | string | `"base"`   | base, all                    | Output mode: base (last message) or all (stream) |
+| `bypass-permissions` | bool   | `false`    | true/false                   | Bypass tool permission prompts                   |
+| `strict-mode`        | bool   | `false`    | true/false                   | Fail on undefined template variables             |
+| `model`              | string | `"sonnet"` | Runtime-dependent (below)    | Default model for all steps                      |
+| `runtime`            | string | `null`     | claude, codex                | Default coding agent runtime for all steps       |
+| `required-tools`     | list   | `[]`       | Tool names                   | Tools Claude can use without prompting           |
 
 **Runtime resolution order:** `step.runtime` > `--runtime` CLI flag > `settings.runtime` > `config.defaults.runtime` > `"claude"`
 
@@ -60,18 +43,18 @@ All settings are optional with sensible defaults.
 
 **Per-runtime default models:** Each runtime resolves its own default model from config (`claude.model` or `codex.model`). Steps that use a non-default runtime do not need an explicit model: `settings.model` is deliberately **not** inherited across runtimes, so a codex step in a claude workflow falls back to `codex.model` or to no `--model` flag at all.
 
-**Note:** slash-command prompts only work with `runtime: claude`. `skill` steps run natively on Claude and inlined on Codex. agentic-forge bundles no execution skills: they come from the user's installed plugins and `.claude/skills/` directories.
+**Note:** Skill invocations (`/sdlc-plan`, `/git-commit`, etc.) only work with `runtime: claude`. Codex does not support bundled skill injection.
 
 ### Worktree Settings
 
 Nested under `settings.worktree`. Controls workflow-level git worktree isolation. When enabled, the entire workflow runs in a dedicated worktree and all steps see that worktree as their working directory.
 
-| Key         | Type        | Default        | Valid Values                              | Description                                               |
-| ----------- | ----------- | -------------- | ----------------------------------------- | --------------------------------------------------------- |
-| `enabled`   | bool/string | `false`        | true/false, Nunjucks template string      | Enable worktree isolation for this workflow               |
-| `location`  | string      | `"sibling"`    | sibling, nested, absolute                 | Where to create the worktree relative to the repository   |
-| `directory` | string/null | `null`         | any absolute path                         | Base directory for `absolute` location (required if used) |
-| `cleanup`   | string      | `"on-success"` | on-success, on-complete, on-merge, manual | When to remove the worktree after the workflow finishes   |
+| Key         | Type        | Default        | Valid Values                         | Description                                               |
+| ----------- | ----------- | -------------- | ------------------------------------ | --------------------------------------------------------- |
+| `enabled`   | bool/string | `false`        | true/false, Nunjucks template string | Enable worktree isolation for this workflow               |
+| `location`  | string      | `"sibling"`    | sibling, nested, absolute            | Where to create the worktree relative to the repository   |
+| `directory` | string/null | `null`         | any absolute path                    | Base directory for `absolute` location (required if used) |
+| `cleanup`   | string      | `"on-success"` | on-success, on-complete, manual      | When to remove the worktree after the workflow finishes   |
 
 **Location modes:**
 
@@ -83,12 +66,11 @@ Nested under `settings.worktree`. Controls workflow-level git worktree isolation
 
 **Cleanup policies:**
 
-| Value           | Behavior                                                                                                                                                   |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `"on-success"`  | Remove worktree on success; preserve on failure                                                                                                            |
-| `"on-complete"` | Always remove worktree after the workflow finishes                                                                                                         |
-| `"on-merge"`    | Remove the worktree, then its local branch, once a step reported `merged` (a `merge` step); the branch is kept when leftover changes were auto-saved on it |
-| `"manual"`      | Never remove automatically; log path for manual inspection                                                                                                 |
+| Value           | Behavior                                                   |
+| --------------- | ---------------------------------------------------------- |
+| `"on-success"`  | Remove worktree on success; preserve on failure            |
+| `"on-complete"` | Always remove worktree after the workflow finishes         |
+| `"manual"`      | Never remove automatically; log path for manual inspection |
 
 **The `enabled` field accepts a Nunjucks template string** so users can toggle worktree mode via a CLI variable:
 
@@ -146,18 +128,18 @@ Reference in templates: `{{ variables.task }}`, `{{ variables.max_iterations }}`
 
 These properties apply to all step types:
 
-| Key                  | Type   | Default      | Valid Values                                                                                                   | Description                                                   |
-| -------------------- | ------ | ------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `name`               | string | **required** | kebab-case                                                                                                     | Unique step identifier                                        |
-| `type`               | string | **required** | prompt, skill, serial, parallel, conditional, ralph-loop, human-input, wait-for-review, wait-for-checks, merge | Step type                                                     |
-| `model`              | string | null         | Runtime-dependent (see Model Names)                                                                            | Override model for this step                                  |
-| `runtime`            | string | null         | claude, codex                                                                                                  | Override runtime for this step (never overridden by CLI flag) |
-| `timeout-minutes`    | int    | null         | 1+                                                                                                             | Override workflow timeout                                     |
-| `max-retry`          | int    | null         | 0+                                                                                                             | Override workflow max-retry                                   |
-| `on-error`           | string | `"retry"`    | retry, skip, fail                                                                                              | Error handling strategy                                       |
-| `checkpoint`         | bool   | `false`      | true/false                                                                                                     | Create checkpoint after step                                  |
-| `depends-on`         | string | null         | step name                                                                                                      | Step dependency                                               |
-| `bypass-permissions` | bool   | null         | true/false                                                                                                     | Override workflow-level permission bypass for this step       |
+| Key                  | Type   | Default      | Valid Values                                                      | Description                                                   |
+| -------------------- | ------ | ------------ | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| `name`               | string | **required** | kebab-case                                                        | Unique step identifier                                        |
+| `type`               | string | **required** | prompt, serial, parallel, conditional, ralph-loop, wait-for-human | Step type                                                     |
+| `model`              | string | null         | Runtime-dependent (see Model Names)                               | Override model for this step                                  |
+| `runtime`            | string | null         | claude, codex                                                     | Override runtime for this step (never overridden by CLI flag) |
+| `timeout-minutes`    | int    | null         | 1+                                                                | Override workflow timeout                                     |
+| `max-retry`          | int    | null         | 0+                                                                | Override workflow max-retry                                   |
+| `on-error`           | string | `"retry"`    | retry, skip, fail                                                 | Error handling strategy                                       |
+| `checkpoint`         | bool   | `false`      | true/false                                                        | Create checkpoint after step                                  |
+| `depends-on`         | string | null         | step name                                                         | Step dependency                                               |
+| `bypass-permissions` | bool   | null         | true/false                                                        | Override workflow-level permission bypass for this step       |
 
 ### prompt
 
@@ -165,10 +147,10 @@ Execute a prompt in a coding agent session. The most common step type.
 
 **Specific properties:**
 
-| Key      | Type   | Required | Description                                                                                                                        |
-| -------- | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `prompt` | string | Yes      | The prompt text, skill invocation, or template                                                                                     |
-| `agent`  | string | No       | Path to an agent file prepended to the prompt, relative to the workflow file, then the repo root (agentic-forge bundles no agents) |
+| Key      | Type   | Required | Description                                     |
+| -------- | ------ | -------- | ----------------------------------------------- |
+| `prompt` | string | Yes      | The prompt text, skill invocation, or template  |
+| `agent`  | string | No       | Path to an agent file to load before the prompt |
 
 ```yaml
 # Simple prompt
@@ -180,35 +162,11 @@ Execute a prompt in a coding agent session. The most common step type.
   timeout-minutes: 30
   on-error: retry
   checkpoint: true
-```
 
-### skill
-
-Invoke a skill by namespace (`<plugin>:<skill>`, or a plain skill name) on any runtime. On `claude` it runs like a prompt step (drivers, retries, result block, steering) with the prompt:
-
-```text
-/<skill> <args> --run-dir <run dir> --config-snapshot <run dir>/skill-config/<pack>.json
-```
-
-`<pack>` is the plugin of `<plugin>:<skill>` (or the skill name). The snapshot holds af config `skill_config.<pack>` (`{}` when unset). On `codex`, the session driver (default) first sends the skill natively when Codex lists it (`skills/list`: `.agents/skills/`, `.codex/skills/`, `~/.codex/skills/`, Codex plugins). Otherwise, and always on the `cli` driver, the prompt is the skill's `SKILL.md` inline instead (found in `skill_packs.paths`, `runtimes.claude.plugins`, the installed Claude plugins, `.claude/skills/` or `~/.claude/skills/`; frontmatter dropped, `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_SKILL_DIR}` and relative links made absolute, `$ARGUMENTS` filled with the same arguments; `runtimes.codex.inline_references: true` appends the linked files). A skill that is not found fails the step. Pending operator messages follow the slash command (or the inlined skill) instead of preceding it. The `outputs` object of the skill's result block becomes `{{ outputs.<step>.<key> }}` for later steps.
-
-**Specific properties:**
-
-| Key     | Type   | Required | Description                                        |
-| ------- | ------ | -------- | -------------------------------------------------- |
-| `skill` | string | Yes      | `<plugin>:<skill>` or `<skill>` (template, no `/`) |
-| `args`  | string | No       | Arguments after the skill name (template)          |
-
-```yaml
-- name: plan
-  type: skill
-  skill: esp-skills:esp-plan
-  args: "{{ variables.task }}"
-  model: opus
-
-- name: build
+# Skill invocation (always use fully qualified names; claude runtime only)
+- name: generate-plan
   type: prompt
-  prompt: "Implement {{ outputs.plan.plan_path }}"
+  prompt: /sdlc-plan --type {{ variables.plan_type }} {{ variables.task }}
 ```
 
 ### serial
@@ -248,7 +206,6 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
 **Constraints:**
 
 - Nested parallel steps are NOT allowed (parallel inside parallel)
-- `human-input` steps are NOT allowed anywhere under a parallel step (a parallel step cannot stop the run `awaiting-human`)
 - `worktree: true` on a parallel step is not supported when workflow-level `settings.worktree.enabled` is true
 - When `worktree: true`, each branch stays independent after completion
 
@@ -259,11 +216,11 @@ Execute nested steps concurrently. Supports git worktrees for isolation.
   steps:
     - name: security-scan
       type: prompt
-      prompt: Review the code for security issues and write them to {{ output_dir }}/security.md.
+      prompt: /analyze security
       on-error: skip
     - name: style-check
       type: prompt
-      prompt: Review the code for style issues and write them to {{ output_dir }}/style.md.
+      prompt: /analyze style
       on-error: skip
 ```
 
@@ -295,7 +252,7 @@ Branch execution based on a Nunjucks condition expression.
   then:
     - name: open-pr
       type: prompt
-      prompt: Push the branch and open a pull request with `gh pr create --fill`.
+      prompt: /git-pr
   else:
     - name: skip-pr
       type: prompt
@@ -320,8 +277,6 @@ Iterative prompt execution with completion detection. Each iteration runs in a f
 2. State persists in `{output_dir}/ralph-{step-name}.md`
 3. Loop exits when the agent outputs completion JSON or max iterations reached
 4. Additional template variables: `{{ iteration }}` (current), `{{ max_iterations }}` (max)
-5. Iteration boundaries are safe points: `af pause` stops between two iterations, and operator messages (`af send`) are injected at the start of the next iteration prompt
-6. Each iteration emits `iteration.started` and `iteration.completed` (`data.outcome`: `continue`, `complete`, `failed`, `error`, `max_iterations`) in the run's `events.jsonl`
 
 **Completion JSON format** (agent must output this when done):
 
@@ -355,97 +310,31 @@ The `completion-promise` setting must match the `promise` value in the agent's J
   timeout-minutes: 120
 ````
 
-### human-input
+### wait-for-human
 
-Ask a question through the harness contract `needs_input` protocol and wait for the answer. No coding agent runs. The run stops `awaiting-human` with the request in `run.json` (`x-af-needs-input`) and a `needs_input` event; `af answer` (or `af input` when it is the only pending request) answers it, and the step reruns, finds the answer and completes. `wait-for-human` (before 0.12) is parsed as an alias: `on-timeout: continue` becomes a non-blocking request whose only option, `continue`, is recommended and applied after `timeout-minutes` (stop the run with `af cancel`), any other value waits for an answer; `polling-interval` is ignored.
-
-**Specific properties:**
-
-| Key               | Type   | Default      | Description                                                                                                                                                                                                                                |
-| ----------------- | ------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `message`         | string | **required** | The question (template)                                                                                                                                                                                                                    |
-| `context`         | string | null         | Background the answerer needs (template)                                                                                                                                                                                                   |
-| `options`         | list   | `[]`         | Strings (the id is the label with spaces as dashes) or `{ id, label, description }`; empty = free text                                                                                                                                     |
-| `recommended`     | string | null         | Id of the recommended option                                                                                                                                                                                                               |
-| `blocking`        | bool   | `true`       | `false` lets the harness apply `recommended` after the timeout                                                                                                                                                                             |
-| `timeout-minutes` | number | null         | Minutes before `recommended` is applied (needs `blocking: false` and `recommended`). Without it the request waits for an answer: `supervisor.needs_input_timeout` only applies to low-risk requests, and a human-input request has no risk |
-
-Request ids are `input-<step>-<n>` (`n` counts the questions the step asked). Outputs: `{{ outputs.<step>.answer }}` (option id, or the free text), `option` (null for free text), `from` (`user`, `overseer` or `policy`), `request_id`.
-
-```yaml
-- name: approve-plan
-  type: human-input
-  message: "Ship the plan at {{ plan_path }}?"
-  options:
-    [yes, { id: revise, label: Revise it, description: Send feedback first }]
-  recommended: "yes"
-  blocking: false
-  timeout-minutes: 60
-
-- name: apply
-  type: conditional
-  condition: "{{ outputs['approve-plan'].answer == 'yes' }}"
-  then:
-    - { name: build, type: prompt, prompt: "Build the plan." }
-```
-
-### wait-for-review
-
-Wait until every listed reviewer has reviewed the pull request's current head commit. The supervisor polls GitHub with `gh` (first interval `poll-seconds`, doubling up to `github.max_poll_seconds`); no coding agent runs while it waits. A push (new head) restarts the wait for that head, timeout included. A reviewer has reviewed the head when it submitted a pull request review on that commit, when its Codex summary comment (`codex-review-state:v1` marker) completed on that commit, or when it posted a review result comment (a `## Code review` heading or "No issues found", as the Claude GitHub Action does) after the head was committed and, for a head pushed during the step, after the step first saw that head. Each review emits `review.received`. On timeout the run stops `awaiting-human` with a `needs_input` request `review-timeout-<step>-<n>`: answer `wait` (wait again) or `continue` (go on without the missing reviews).
+Pause workflow execution and wait for human input via CLI.
 
 **Specific properties:**
 
-| Key               | Type          | Default                           | Description                                                                                                        |
-| ----------------- | ------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `reviewers`       | list/string   | **required**                      | Names from `github.reviewers` (`claude`, `codex`) or GitHub logins; a string is comma-separated (template)         |
-| `pr`              | number/string | run `pr`, else the current branch | Pull request number, `#<n>` or URL (template)                                                                      |
-| `trigger`         | bool          | `github.auto_trigger` (`false`)   | Post each missing reviewer's trigger comment (`@codex review`) once per head, after `github.trigger_after_seconds` |
-| `poll-seconds`    | number        | `github.poll_seconds` (30)        | First polling interval                                                                                             |
-| `timeout-minutes` | number        | `github.review_timeout_minutes`   | Time before the run stops `awaiting-human`                                                                         |
+| Key                | Type   | Default      | Description                                     |
+| ------------------ | ------ | ------------ | ----------------------------------------------- |
+| `message`          | string | **required** | Message displayed to the human                  |
+| `polling-interval` | int    | `15`         | Seconds between input checks                    |
+| `on-timeout`       | string | `"abort"`    | "abort" (stop workflow) or "continue" (proceed) |
+| `timeout-minutes`  | int    | `5`          | Minutes to wait before timeout action           |
 
-Outputs: `{{ outputs.<step>.reviews }}` (`reviewer`, `login`, `state`, `source`, `url`), `changes_requested`, `head`, `pr`, `url`, `missing`, `skipped` (true after `continue`).
-
-### wait-for-checks
-
-Wait until no check of the pull request head is pending, then report pass or fail. No coding agent runs. `checks: required` waits for the checks the base branch requires: the step reads the base's rules once (`required_status_checks`); when they require none, it waits for every check until a required check (classic branch protection) shows up on the head. `all` waits for every check. A head with no check passes after 60 seconds, counted from the time the step first saw that head. A failing (or canceled) check fails the step, unless `on-fail: continue`, which completes it with `outputs.<step>.result: fail`. Emits `checks.completed`. On timeout the run stops `awaiting-human` (`checks-timeout-<step>-<n>`, answer `wait` or `continue`).
-
-| Key               | Type          | Default                           | Description                                |
-| ----------------- | ------------- | --------------------------------- | ------------------------------------------ |
-| `pr`              | number/string | run `pr`, else the current branch | Pull request (template)                    |
-| `checks`          | string        | `required`                        | `required` or `all`                        |
-| `on-fail`         | string        | `fail`                            | `fail` or `continue`                       |
-| `poll-seconds`    | number        | `github.poll_seconds`             | First polling interval                     |
-| `timeout-minutes` | number        | `github.checks_timeout_minutes`   | Time before the run stops `awaiting-human` |
-
-Outputs: `result` (`pass`, `fail`, `pending`), `passed`, `scope`, `failed`, `pending`, `total`, `head`, `pr`, `url`.
-
-### merge
-
-Merge the pull request under the per-repository merge lock: every `merge` step of one repository (main checkout and all its worktrees, any run) takes the same lock file, so merges never race. A lock whose holder died (a supervisor crash) goes stale after 30 seconds and is taken over.
-
-- **Native** (no `skill`): the harness takes the lock (`merge.locked`), re-reads the pull request, checks its head against the expected head (`head`, else the `head` output of the run's latest `wait-for-review` or `wait-for-checks` step; no check when neither is set), resolves the method from the repository settings and rulesets (merge queue: enqueue; one method: use it; several: the first in `github.merge.preference`; linear history excludes `merge`; an explicit `method` that is not allowed fails the step), logs it as a decision, and runs `gh pr merge --repo <o/r> --<method> --match-head-commit <expected sha>` from outside the checkout (never `--delete-branch`, so `gh` never checks out the base in a worktree). It then deletes the remote head branch through the API (not for forks; `remote_branch` output `deleted`, `already gone`, or `delete failed: <reason>`) and emits `merge.completed`. A head that moved since it was verified stops the run `awaiting-human` with a `needs_input` request `merge-head-<step>-<short sha>`: answer `merge` (merge the new head anyway) or `stop` (fail the step); to verify the new head instead, `af retry-step` the wait step. A draft, branch protection or any other refusal stops the run `awaiting-human`; nothing is bypassed. An already merged pull request completes `merged`.
-- **Skill** (`skill: esp-skills:esp-merge`): runs like a `skill` step with `AF_MERGE_LOCK` set to the lock file; the skill takes and releases the lock itself.
-
-| Key             | Type          | Default                           | Description                                                       |
-| --------------- | ------------- | --------------------------------- | ----------------------------------------------------------------- |
-| `skill`, `args` | string        | null                              | Merge skill to run instead of the native merge                    |
-| `pr`            | number/string | run `pr`, else the current branch | Pull request (template)                                           |
-| `method`        | string        | `github.merge.method` (`repo`)    | `repo`, `squash`, `rebase` or `merge`                             |
-| `delete-branch` | bool          | `github.merge.delete_branch`      | Delete the remote head branch after the merge                     |
-| `head`          | string        | latest wait step's `head` output  | Head SHA the pull request must have (template, native merge only) |
-
-The lock wait is `github.merge.lock_timeout_minutes` (then `awaiting-human`). The step result is `merged` (or `done` when queued); with `settings.worktree.cleanup: on-merge` the worktree is removed at the end of the run, then its branch.
+Human provides input via: `agentic-forge input <workflow-id> "response"`
 
 ```yaml
-- name: wait-review
-  type: wait-for-review
-  reviewers: [claude, codex]
-  trigger: true
-- { name: wait-checks, type: wait-for-checks }
-- { name: merge, type: merge }
+- name: get-approval
+  type: wait-for-human
+  message: |
+    Review the implementation at {{ output_dir }}/plan.md.
+    Respond with "approved" to continue or provide feedback.
+  polling-interval: 30
+  on-timeout: abort
+  timeout-minutes: 120
 ```
-
-`wait-for-review`, `wait-for-checks` and `merge` are not allowed under a parallel step.
 
 ## Templating
 
@@ -453,16 +342,14 @@ Workflows use Nunjucks for dynamic content in prompts, conditions, and output pa
 
 ### Built-in Variables
 
-| Variable                       | Description                                                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------------- |
-| `{{ workflow_id }}`            | Unique workflow execution ID                                                                |
-| `{{ workflow_name }}`          | Workflow name from YAML                                                                     |
-| `{{ variables.<name> }}`       | User-defined variable                                                                       |
-| `{{ outputs.<step>.<field> }}` | Output from a previous step                                                                 |
-| `{{ iteration }}`              | Current ralph-loop iteration (1-based)                                                      |
-| `{{ max_iterations }}`         | Max iterations for ralph-loop                                                               |
-| `{{ plan_path }}`              | Latest plan in the run directory (`plan.md` or the highest `plan.v<N>.md`), empty when none |
-| `{{ plan_version }}`           | Version of that plan (`plan.md` is 1, none is 0)                                            |
+| Variable                       | Description                            |
+| ------------------------------ | -------------------------------------- |
+| `{{ workflow_id }}`            | Unique workflow execution ID           |
+| `{{ workflow_name }}`          | Workflow name from YAML                |
+| `{{ variables.<name> }}`       | User-defined variable                  |
+| `{{ outputs.<step>.<field> }}` | Output from a previous step            |
+| `{{ iteration }}`              | Current ralph-loop iteration (1-based) |
+| `{{ max_iterations }}`         | Max iterations for ralph-loop          |
 
 ### Nunjucks Filters
 
@@ -516,7 +403,7 @@ Template resolution order:
 2. `agentic/templates/`
 3. Bundled plugin templates
 
-Step prompt template variables: `{{ workflow_id }}`, `{{ output_dir }}` (absolute path to the run directory, `<runs.root>/YYYY-MM-DD-<slug>/`, which also holds `run.json`, `events.jsonl` and `progress.json`), `{{ variables.* }}`, `{{ outputs.* }}`
+Step prompt template variables: `{{ workflow_id }}`, `{{ output_dir }}` (absolute path to the workflow output directory), `{{ variables.* }}`, `{{ outputs.* }}`
 
 Template context variables: `workflow`, `variables`, `outputs`, `progress`, `steps`, `analysis_steps`, `fix_steps`, `files_changed`, `branches`, `pull_requests`, `inputs`
 
@@ -532,51 +419,11 @@ outputs:
     when: failed
 ```
 
-## Operator Messages
-
-Under the supervisor, `af send` queues messages in the run's `inbox/`. Before each step prompt (prompt and ralph-loop steps, nested ones included) and each ralph-loop iteration, pending messages for the run, or for that step when sent with `--step`, are prepended as a section, then marked delivered so they never repeat:
-
-```md
-## Operator Messages
-
-- [user, 2026-11-10T12:00:00Z, m-1a2b3c4d] Reuse the existing theme tokens.
-```
-
-Prompts need no placeholder for it. Write prompts so that an instruction in this section takes precedence over the step's defaults.
-
-On the session driver (default on Claude and Codex), `af send --mode now` delivers the message into the running session (Codex: `turn/steer`), and `--mode next` sends it as the session's next turn. On the `cli` driver, `--mode now` kills the running step, safety-commits the worktree, and resumes the step's session (`claude --resume`, `codex exec resume`) with the message; when that fails, the step starts over. `af answer` and `af retry-step --context` also reach the step through this section.
-
-## Step Results
-
-Every prompt step ends with a contract result block on its last output line (the bundled system prompt asks for it): `{"status": "done", "summary": "..."}`. Its `status` decides what happens next:
-
-| Result status    | Step / run outcome                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------ |
-| `done`, `merged` | Step completed; a run with a `merged` step ends `merged`                             |
-| `failed`         | Step failed (retried up to `max-retry`, then the run fails)                          |
-| `awaiting-human` | Run `awaiting-human`; with `needs_input`, `af answer` resumes it and the step reruns |
-| `halted`         | Run `halted` (terminal); the worktree is kept                                        |
-| `escalate`       | Run `blocked`; `af resume` or `af retry-step` reruns the step                        |
-
-Without a valid block, the process exit code is used: `0` done, `10` awaiting-human, `20` halted, `30` escalate, anything else failed. The supervisor writes the block to `steps/<NN-step>/result.json` in the run directory. Statuses other than `done` and `failed` stop the run only for top-level steps; nested steps report them to their parent as a failure.
-
-## Amendments
-
-`af amend <run> "<text>"` records a requirement change. Name an amend step to apply it to the plan:
-
-```yaml
-settings:
-  amend:
-    step: plan # top-level step that rewrites the plan as plan.v<N>.md
-```
-
-At the next step boundary, the supervisor runs the amend step with the amendment in its `## Operator Messages` section (`Amendment A001 (affects M2): ...`), then continues with the step it was about to run. The amend step writes `plan.v<N>.md` in `{{ output_dir }}`; later steps read the latest plan through `{{ plan_path }}`. Without `settings.amend`, the amendment is delivered to the next step as an `Amendment:` operator message.
-
 ## CLI Commands
 
 ```bash
 # Run a workflow (bare key=value args or --var flag)
-agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex] [--ignore-requires] [--parent <run>]
+agentic-forge run <workflow> key=value [key=value ...] [--var "key=value"] [--slug <slug>] [--from-step <name>] [--no-interactive] [--terminal-output base|all] [--runtime claude|codex]
 
 # Resume a paused/failed workflow
 agentic-forge resume <workflow-id>
@@ -584,60 +431,23 @@ agentic-forge resume <workflow-id>
 # Check workflow status
 agentic-forge status <workflow-id>
 
-# Cancel a run (stops the current step now, safety-commits, applies the worktree cleanup policy)
+# Cancel a running workflow
 agentic-forge cancel <workflow-id>
 
-# Queue an operator message for the next step or iteration (optionally one step)
-agentic-forge send <workflow-id> "text" [--step <name>]
-
-# Pause at the next step or iteration boundary (--now stops the current step)
-agentic-forge pause <workflow-id> [--now]
-
-# Interrupt the current step and resume it with a message
-agentic-forge send <workflow-id> "text" --mode now
-
-# Answer a needs_input request (option id, label or free text) and resume
-agentic-forge answer <workflow-id> <request-id> "answer"
-
-# Record a requirement change (runs settings.amend.step at the next boundary)
-agentic-forge amend <workflow-id> "text" [--affects M2,M3]
-
-# Rerun a step (and every later step) of a stopped run
-agentic-forge retry-step <workflow-id> <step> [--context "text"]
-
-# Change the queue priority of a run
-agentic-forge reprioritize <workflow-id> <priority>
-
-# List runs with filters
-agentic-forge list [--status paused,awaiting-human] [--repo <path>] [--since 2h] [--parent <run>] [--json]
-
-# Print or follow run events (resumable with a cursor)
-agentic-forge events [--run <workflow-id>] [--types needs_input,run.*] [--follow] [--cursor-file <path>] [--json]
-
-# Show a run's plan, summary, decisions and review files
-agentic-forge artifacts <workflow-id> [--kind plan|summary|decisions|review] [--content]
-
-# Run a stdio MCP server that dispatches and steers runs (claude mcp add agentic-forge -- af mcp)
-agentic-forge mcp
-
-# Start an interactive Claude overseer session (dispatches with itself as --parent), or end one
-agentic-forge overseer [--epic <file|text>] [--resume <run>] [--new]
-agentic-forge overseer --finish <run> [--status done|halted|failed] [--summary "text"]
-
-# Answer the single pending request of an awaiting-human run (human-input steps)
+# Provide human input (for wait-for-human steps)
 agentic-forge input <workflow-id> "response text"
 
 # List workflow executions
 agentic-forge list [--status running|completed|failed|paused]
 
-# List available workflows (project, user, skill packs, bundled) with their origin
+# List available workflows with descriptions
 agentic-forge workflows [-v]
-
-# Check runtimes, auth, the runs root and skill pack compatibility
-agentic-forge doctor [--json]
 
 # Copy bundled workflows to local project
 agentic-forge init [--force] [--list]
+
+# Print path to bundled workflow skills directory
+agentic-forge skills-dir
 
 # Print path to interactive authoring skills directory
 agentic-forge authoring-dir
@@ -648,36 +458,43 @@ agentic-forge config set <key> <value>
 agentic-forge configure
 ```
 
-## Skills
+## Available Skills for Prompt Steps
 
-agentic-forge bundles no execution skills. Workflows call the skills the user installed (Claude Code plugins, `~/.claude/skills/`, the repo's `.claude/skills/`), with a `skill` step (`skill: <plugin>:<skill>`, preferred: it passes `--run-dir` and `--config-snapshot` and chains the result block `outputs`) or a slash command in a prompt step. Slash commands only work with `runtime: claude` (the default); `skill` steps also run on `codex`, with Codex's own skill when it has it, else with the skill inlined.
+Skills only work with `runtime: claude` (the default). The Codex runtime does not support bundled skill injection.
 
-Use fully qualified `<plugin>:<skill>` names for plugin skills. For example, with the esp-skills plugin installed (`/plugin install esp-skills@esp`):
+Always use fully qualified names in workflows:
 
-```yaml
-- name: plan
-  type: skill
-  skill: esp-skills:esp-plan
-  args: "{{ variables.task }}"
-```
-
-A skill pack can also ship workflows in an `af-workflows/` directory at its plugin root. af discovers them (Claude Code installed plugins, or `skill_packs.paths` in the af config) after the project and user-global workflows and before the bundled ones, so `agentic-forge run <name>` finds them. Such workflows declare `requires` (see Requires).
-
-When the user has no skill pack, write the instructions in a prompt step instead (the bundled demos do this for git branches and commits).
+| Skill               | Description                   |
+| ------------------- | ----------------------------- |
+| `/sdlc-plan`        | Generate implementation plan  |
+| `/sdlc-review`      | Review implementation quality |
+| `/analyze bug`      | Find bugs and logic errors    |
+| `/analyze debt`     | Identify technical debt       |
+| `/analyze doc`      | Check documentation           |
+| `/analyze security` | Security scan                 |
+| `/analyze style`    | Code style check              |
+| `/git-branch`       | Create git branch             |
+| `/git-commit`       | Create commit                 |
+| `/git-pr`           | Create pull request           |
+| `/orchestrate`      | Workflow state evaluation     |
 
 ## Bundled Workflows
 
-Generic demos only (no skill calls), available via `agentic-forge init` or `agentic-forge run <name>`:
+Available via `agentic-forge init` or `agentic-forge run <name>`:
 
-| Workflow                 | Description                                                   |
-| ------------------------ | ------------------------------------------------------------- |
-| `claude-demo`            | Validation workflow for installation testing (Claude runtime) |
-| `codex-demo`             | Validation workflow for installation testing (Codex runtime)  |
-| `multi-demo`             | Demonstrates mixed-runtime execution at step level            |
-| `ralph-loop`             | Generic iterative loop for any task                           |
-| `plan-loop`              | Build a checkbox plan, then complete one task per iteration   |
-| `permission-test-claude` | Test Claude file permissions with and without worktree        |
-| `permission-test-codex`  | Test Codex file permissions with and without worktree         |
+| Workflow                  | Description                                                             |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `claude-demo`             | Validation workflow for installation testing (Claude runtime)           |
+| `codex-demo`              | Validation workflow for installation testing (Codex runtime)            |
+| `multi-demo`              | Demonstrates mixed-runtime execution at step level                      |
+| `one-shot`                | Complete a single task with optional PR                                 |
+| `plan-build-review`       | Full SDLC: plan -> implement -> review -> fix -> PR                     |
+| `multi-plan-build-review` | Full SDLC with mixed Claude/Codex runtimes per phase                    |
+| `ralph-loop`              | Generic iterative loop for any task                                     |
+| `analyze-codebase`        | Parallel analysis (5 types) with optional autofix, independent branches |
+| `analyze-single`          | Single analysis type with optional autofix                              |
+| `permission-test-claude`  | Test Claude file permissions with and without worktree                  |
+| `permission-test-codex`   | Test Codex file permissions with and without worktree                   |
 
 ## Validation Checklist
 
@@ -687,16 +504,12 @@ When validating a workflow, check for these issues:
 
 - Missing `name` field
 - Missing `steps` field or empty steps list
-- Invalid step type (not one of: prompt, skill, serial, parallel, conditional, ralph-loop, human-input, wait-for-review, wait-for-checks, merge; `wait-for-human` is an alias of human-input)
-- `settings.amend.step` naming a step that is not a top-level step
+- Invalid step type (not one of: prompt, serial, parallel, conditional, ralph-loop, wait-for-human)
 - Nested parallel steps (parallel inside parallel)
-- A `human-input`, `wait-for-review`, `wait-for-checks` or `merge` step under a parallel step
-- `wait-for-review` without `reviewers`; `checks` other than required or all; `on-fail` other than fail or continue; `method` other than repo, squash, rebase or merge; an empty `head`; `poll-seconds` or `timeout-minutes` not positive
 - Prompt step without `prompt` field
 - Conditional step without `condition` field
 - Ralph-loop step without `prompt` field
-- Skill step without `skill` field, or a skill name that is not `<plugin>:<skill>` or `<skill>`
-- Human-input step without `message` field, a `recommended` that is not an option id, duplicate option ids, or `timeout-minutes` without `blocking: false` and `recommended`
+- Wait-for-human step without `message` field
 - Required variable without default and not provided at runtime
 - `settings.worktree.location: "absolute"` without `settings.worktree.directory` set
 - `worktree: true` on a parallel step when `settings.worktree.enabled` is true
@@ -707,8 +520,7 @@ When validating a workflow, check for these issues:
 - `completion-promise` missing on ralph-loop (loop will only stop at max-iterations)
 - No `timeout-minutes` on long-running steps
 - `on-error: fail` without `max-retry` (any failure stops the workflow)
-- Non-qualified plugin skill names (e.g., `skill: esp-plan` instead of `skill: esp-skills:esp-plan`)
-- `agent:` file that does not exist next to the workflow file or in the repo root (it is silently ignored)
+- Non-qualified skill names in prompt steps (e.g., `/sdlc-plan` instead of `/sdlc-plan`)
 - Step name not in kebab-case
 - Variable name not in snake_case
 - Skill invocation used with `runtime: codex` (skills not supported by Codex)

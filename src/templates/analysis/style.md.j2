@@ -1,0 +1,44 @@
+# Style Analysis Report
+
+Generated: {{ generated }}
+Scope: {{ scope }}
+
+## Summary
+
+Found {{ summary.total }} style issues.
+
+| Severity | Count |
+|----------|-------|
+| Major | {{ summary.major }} |
+| Minor | {{ summary.minor }} |
+| Info | {{ summary.info }} |
+
+## Findings
+
+{% for finding in findings %}
+### {{ finding.id }}: {{ finding.title }}
+
+**Severity**: {{ finding.severity }}
+**Category**: {{ finding.category }}
+**File**: {{ finding.file }}:{{ finding.line }}
+
+{{ finding.description }}
+
+**Expected**: `{{ finding.expected }}`
+**Actual**: `{{ finding.actual }}`
+
+---
+
+{% endfor %}
+
+{% if not findings %}
+No style issues found.
+{% endif %}
+
+## Patterns Checked
+
+{% if patterns %}
+{% for pattern in patterns %}
+- [{% if pattern.passed %}x{% else %} {% endif %}] {{ pattern.name }}
+{% endfor %}
+{% endif %}

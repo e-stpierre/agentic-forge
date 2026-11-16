@@ -1,0 +1,41 @@
+# Feature Plan: {{ title }}
+
+Created: {{ created }}
+Status: {{ status }}
+Workflow: {{ workflow_id }}
+
+## Summary
+
+{{ summary }}
+
+## Progress Tracker
+
+{% for milestone in milestones %}
+### Milestone {{ milestone.id }}: {{ milestone.title }}
+
+Complexity: {{ milestone.complexity }}
+
+{% for task in milestone.tasks %}
+- [{% if task.completed %}x{% else %} {% endif %}] {{ task.id }}: {{ task.description }}
+  {%- if task.files %} ({{ task.files | join(", ") }}){% endif %}
+{% endfor %}
+
+{% endfor %}
+
+## Affected Files
+
+{% for file in affected_files %}
+- {{ file }}
+{% endfor %}
+
+## Dependencies
+
+{% for dep in dependencies %}
+- {{ dep }}
+{% endfor %}
+
+## Risks & Considerations
+
+{% for risk in risks %}
+- {{ risk }}
+{% endfor %}

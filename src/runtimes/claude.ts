@@ -1,15 +1,9 @@
 /** Claude runtime adapter. */
 
 import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { ClaudeSession } from "./claude-session.js";
-import { claudeStreamEvents } from "./claude-stream.js";
-import type {
-	RuntimeSession,
-	SessionEvent,
-	SessionListener,
-	SessionStartOptions,
-} from "./session.js";
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -18,7 +12,6 @@ import type {
 	StreamEvent,
 } from "./types.js";
 import { SessionOutput } from "./types.js";
-import { claudeResultUsage } from "./usage.js";
 import {
 	extractModelFromMessage,
 	extractResultText,
@@ -29,14 +22,10 @@ import {
 	parseStreamJsonLine,
 } from "./utils.js";
 
-/**
- * `--settings` JSON for an allowlist: `{ permissions: { allow } }`, merged by
- * Claude Code with the user and project settings. Null without tools.
- */
-export function claudePermissionSettings(allowedTools: string[] | null | undefined): string | null {
-	if (!allowedTools || allowedTools.length === 0) return null;
-	return JSON.stringify({ permissions: { allow: allowedTools } });
-}
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Path to the bundled skills directory for --add-dir. */
+const SKILLS_DIR = path.join(__dirname, "..", "claude");
 
 /** Claude CLI adapter. */
 export class ClaudeAdapter implements RuntimeAdapter {
@@ -53,33 +42,6 @@ export class ClaudeAdapter implements RuntimeAdapter {
 		}
 	}
 
-	/** Session driver on the Claude Agent SDK (`runtimes.claude.driver: session`). */
-	createSession(listener: SessionListener): RuntimeSession {
-		return new ClaudeSession(listener);
-	}
-
-	/** Same directories, model, permissions and system prompt as `buildCommand`. */
-	sessionOptions(options: RuntimeRunOptions): SessionStartOptions {
-		const directories: string[] = [];
-		if (options.outputDir && existsSync(options.outputDir)) directories.push(options.outputDir);
-		if (options.cwd && existsSync(options.cwd)) directories.push(options.cwd);
-		const env: NodeJS.ProcessEnv = { ...(options.env ?? process.env) };
-		if (options.workflowId) env.OTEL_RESOURCE_ATTRIBUTES = `session=${options.workflowId}`;
-		return {
-			prompt: options.prompt,
-			cwd: options.cwd ?? null,
-			model: options.model ?? this.defaultModel,
-			additionalDirectories: directories,
-			appendSystemPrompt:
-				options.appendSystemPrompt === false ? null : getAgenticSystemPrompt() || null,
-			allowedTools: options.allowedTools ?? null,
-			bypassPermissions: options.skipPermissions === true,
-			plugins: options.plugins ?? [],
-			env,
-			resume: options.resumeSessionId ?? null,
-		};
-	}
-
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {
 		const {
 			model = "sonnet",
@@ -89,6 +51,11 @@ export class ClaudeAdapter implements RuntimeAdapter {
 		} = options;
 
 		const args: string[] = ["--print"];
+
+		// Add bundled skills directory for skill discovery
+		if (existsSync(SKILLS_DIR)) {
+			args.push("--add-dir", SKILLS_DIR);
+		}
 
 		// Add output directory so Claude can write workflow outputs there
 		if (outputDir && existsSync(outputDir)) {
@@ -116,17 +83,10 @@ export class ClaudeAdapter implements RuntimeAdapter {
 			args.push("--dangerously-skip-permissions");
 		}
 
-		// The allowlist (`runtimes.claude.allow` + `required-tools`) as permission
-		// rules, the same set the session driver auto-approves
-		const settings = claudePermissionSettings(options.allowedTools);
-		if (settings) {
-			args.push("--settings", settings);
-		}
-
-		// Interrupt and resume: `send --mode now` and `af answer` continue the
-		// killed or stopped session with the message
-		if (options.resumeSessionId) {
-			args.push("--resume", options.resumeSessionId);
+		if (options.allowedTools) {
+			for (const tool of options.allowedTools) {
+				args.push("--allowedTools", tool);
+			}
 		}
 
 		// Append agentic system prompt for standardized output format
@@ -151,29 +111,12 @@ export class ClaudeAdapter implements RuntimeAdapter {
 		};
 	}
 
-	/** Transcript events of a stream-json line (same mapping as the session driver). */
-	parseTranscriptLine(line: string): SessionEvent[] {
-		const data = parseStreamJsonLine(line);
-		return data ? claudeStreamEvents(data) : [];
-	}
-
 	parseStreamLine(line: string): StreamEvent | null {
 		const data = parseStreamJsonLine(line);
 		if (!data) {
 			return null;
 		}
-		let event = this.parseStreamData(data);
-		// The final result message carries the tokens of the call
-		if (data.type === "result") {
-			event = { ...(event ?? { type: "session" }), usage: claudeResultUsage(data) };
-		}
-		// The session id (system init and result messages) is read from the stream
-		const sessionId = typeof data.session_id === "string" ? data.session_id : undefined;
-		if (!sessionId) return event;
-		return event ? { ...event, sessionId } : { type: "session", sessionId };
-	}
 
-	private parseStreamData(data: Record<string, unknown>): StreamEvent | null {
 		const msgType = data.type;
 
 		// Handle user messages
@@ -229,9 +172,8 @@ export class ClaudeAdapter implements RuntimeAdapter {
 		stdout: string,
 		stderr: string,
 		options: RuntimeRunOptions,
-		sessionId: string | null = null,
 	): RuntimeResult {
-		const sessionOutput = SessionOutput.fromStdout(stdout, sessionId);
+		const sessionOutput = SessionOutput.fromStdout(stdout);
 		return {
 			returncode,
 			stdout,

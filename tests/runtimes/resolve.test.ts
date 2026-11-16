@@ -14,6 +14,8 @@ function makeStep(runtime?: string | null): StepDefinition {
 		thenSteps: [],
 		elseSteps: [],
 		maxIterations: 5,
+		pollingInterval: 30,
+		onTimeout: "fail",
 		onError: "fail",
 		checkpoint: false,
 	};

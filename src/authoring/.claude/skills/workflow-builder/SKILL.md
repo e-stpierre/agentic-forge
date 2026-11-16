@@ -30,9 +30,9 @@ Arguments: $ARGUMENTS
 
 - Always produce valid YAML that conforms to the workflow schema
 - Use kebab-case for all YAML keys (e.g., `timeout-minutes`, `max-retry`, `on-error`)
-- Use kebab-case for step names and workflow names (e.g., `review-security`, `implement-feature`)
+- Use kebab-case for step names and workflow names (e.g., `analyze-codebase`, `implement-feature`)
 - Use snake_case for variable names (e.g., `max_iterations`, `fix_severity`)
-- agentic-forge bundles no execution skills: call the user's installed skills with a `skill` step and a fully qualified name (e.g., `skill: esp-skills:esp-plan`), or write plain instructions in a prompt step when they have none
+- Use skill names without prefix in prompt steps (e.g., `/sdlc-plan`)
 - Keep workflows focused: prefer composing simple workflows over one massive workflow
 - Every workflow requires `name`, `version: "1.0"`, and at least one step
 - Include descriptions on the workflow and variables for documentation
@@ -76,20 +76,19 @@ Arguments: $ARGUMENTS
 
 1. Read the workflow YAML and any error output
 2. Check for common issues (undefined variables, incorrect conditions, missing fields)
-3. Check `agentic-forge status <run-id>` or look in the run directory for `run.json`, `events.jsonl` and `progress.json`
+3. Check `agentic-forge status <workflow-id>` or look in the output directory for `progress.json`
 4. Suggest specific fixes
 
 ### Step Type Selection Guide
 
-| Step Type     | Use When                                           |
-| ------------- | -------------------------------------------------- |
-| `prompt`      | Single task or simple operation                    |
-| `skill`       | Invoke a skill by namespace (`<plugin>:<skill>`)   |
-| `serial`      | Multiple tasks that must run in sequence           |
-| `parallel`    | Independent tasks that can run concurrently        |
-| `conditional` | Branching logic based on variables or outputs      |
-| `ralph-loop`  | Iterative work with unknown iteration count        |
-| `human-input` | Ask a question (needs_input), wait for `af answer` |
+| Step Type        | Use When                                           |
+| ---------------- | -------------------------------------------------- |
+| `prompt`         | Single task, skill invocation, or simple operation |
+| `serial`         | Multiple tasks that must run in sequence           |
+| `parallel`       | Independent tasks that can run concurrently        |
+| `conditional`    | Branching logic based on variables or outputs      |
+| `ralph-loop`     | Iterative work with unknown iteration count        |
+| `wait-for-human` | Pause for human review, approval, or input         |
 
 ### Model Selection Strategy
 
@@ -118,7 +117,7 @@ Priority: step `model` > `settings.model` > config default (`claude.model` / `co
 
 **Iterative Implementation**: ralph-loop with completion-promise, reading a plan file each iteration
 
-**Gated Deployment**: implement -> review -> human-input approval -> conditional deploy
+**Gated Deployment**: implement -> review -> wait-for-human approval -> conditional deploy
 
 ### Common Debugging Issues
 

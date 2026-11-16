@@ -50,6 +50,8 @@ function makeStepDef(
 		thenSteps: [],
 		elseSteps: [],
 		maxIterations: 5,
+		pollingInterval: 30,
+		onTimeout: "fail",
 		onError: "fail",
 		checkpoint: false,
 		...overrides,

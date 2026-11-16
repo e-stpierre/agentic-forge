@@ -1,0 +1,81 @@
+# Implementation Report
+
+Generated: {{ workflow.completed_at }}
+Workflow: {{ workflow.name }}
+ID: {{ workflow.id | default(workflow.workflow_id, true) }}
+
+## Summary
+
+**Status**: {{ workflow.status | default('completed') }}
+**Started**: {{ workflow.started_at }}
+**Completed**: {{ workflow.completed_at }}
+
+## Task
+
+{% if inputs.task %}
+{{ inputs.task }}
+{% elif inputs.feature_name %}
+Feature: {{ inputs.feature_name }}
+{% elif inputs.description %}
+{{ inputs.description }}
+{% else %}
+_No task description provided_
+{% endif %}
+
+## Steps Completed
+
+| Step | Status | Summary |
+|------|--------|---------|
+{% for step_name, step in steps.items() %}
+| {{ step_name }} | {{ step.status }} | {{ step.output_summary | default('-') | truncate(50) }} |
+{% endfor %}
+
+## Files Changed
+
+{% if files_changed %}
+{% for file in files_changed %}
+- `{{ file }}`
+{% endfor %}
+{% else %}
+No files were changed during this workflow.
+{% endif %}
+
+{% if branches %}
+## Branches
+
+{% for branch in branches %}
+- `{{ branch }}`
+{% endfor %}
+{% endif %}
+
+{% if pull_requests %}
+## Pull Requests
+
+{% for pr in pull_requests %}
+- [#{{ pr.number }}]({{ pr.url }})
+{% endfor %}
+{% endif %}
+
+## Detailed Results
+
+{% for step_name, step in steps.items() %}
+### {{ step_name }}
+
+**Status**: {{ step.status }}
+{% if step.started_at %}**Started**: {{ step.started_at }}{% endif %}
+{% if step.completed_at %}**Completed**: {{ step.completed_at }}{% endif %}
+
+{% if step.output_summary %}
+{{ step.output_summary }}
+{% endif %}
+
+{% if step.files_changed %}
+Files changed:
+{% for file in step.files_changed %}
+- `{{ file }}`
+{% endfor %}
+{% endif %}
+
+---
+
+{% endfor %}

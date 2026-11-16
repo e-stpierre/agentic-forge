@@ -6,11 +6,7 @@ import { fileURLToPath } from "node:url";
 import confirm from "@inquirer/confirm";
 import input from "@inquirer/input";
 
-import { loadConfig } from "../config.js";
-import { exitCodeForRun } from "../contract/index.js";
 import { getGlobalRoot } from "../paths.js";
-import { buildDispatchPayload } from "../runs/dispatch.js";
-import { findSkillPacks } from "../skill-packs.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,85 +29,46 @@ export function getUserWorkflowsDir(): string {
 	return path.join(getGlobalRoot(), "workflows");
 }
 
-/** Project workflows of the repository at `cwd` (`<cwd>/agentic/workflows`). */
-export function getProjectWorkflowsDir(cwd = process.cwd()): string {
-	return path.join(cwd, "agentic", "workflows");
+export function getProjectWorkflowsDir(): string {
+	return path.join(process.cwd(), "agentic", "workflows");
 }
 
-/** Where a discovered workflow comes from, in search order. */
-export type WorkflowLocation = "project-local" | "user-global" | "skill-pack" | "bundled";
-
-export interface WorkflowSearchLocation {
-	dir: string;
-	location: WorkflowLocation;
-	/** Skill pack name, for `skill-pack` locations. */
-	pack?: string;
-}
-
-/**
- * Workflow search order for the repository at `cwd`: project
- * (`<cwd>/agentic/workflows`) > user-global > skill packs (`af-workflows/`,
- * see `findSkillPacks()`) > bundled demos.
- */
-export function getWorkflowSearchLocations(
-	cwd = process.cwd(),
-	config?: Record<string, unknown>,
-): WorkflowSearchLocation[] {
-	let resolved = config;
-	if (!resolved) {
-		try {
-			resolved = loadConfig(cwd);
-		} catch {
-			// A malformed config must not hide the other workflow sources.
-			resolved = {};
-		}
-	}
-	return [
-		{ dir: getProjectWorkflowsDir(cwd), location: "project-local" },
-		{ dir: getUserWorkflowsDir(), location: "user-global" },
-		...findSkillPacks(resolved, cwd).map(
-			(pack): WorkflowSearchLocation => ({
-				dir: pack.workflowsDir,
-				location: "skill-pack",
-				pack: pack.name,
-			}),
-		),
-		{ dir: getBundledWorkflowsDir(), location: "bundled" },
-	];
-}
-
-/** Finds a workflow by name, in `getWorkflowSearchLocations()` order. */
-export function discoverWorkflow(name: string, cwd = process.cwd()): [string | null, string] {
+export function discoverWorkflow(name: string): [string | null, string] {
 	const fileName = name.endsWith(".yaml") ? name : `${name}.yaml`;
 
-	for (const { dir, location } of getWorkflowSearchLocations(cwd)) {
-		const workflowPath = path.join(dir, fileName);
+	const searchLocations: [string, string][] = [
+		[getProjectWorkflowsDir(), "project-local"],
+		[getUserWorkflowsDir(), "user-global"],
+		[getBundledWorkflowsDir(), "bundled"],
+	];
+
+	for (const [directory, locationType] of searchLocations) {
+		const workflowPath = path.join(directory, fileName);
 		if (existsSync(workflowPath)) {
-			return [workflowPath, location];
+			return [workflowPath, locationType];
 		}
 	}
 
 	return [null, "not found"];
 }
 
-/**
- * Every workflow file in `getWorkflowSearchLocations()` order, as
- * `[name, path, location, pack]` (`pack` is set for skill pack workflows).
- * A name found in several locations is listed in each; the first one wins.
- */
-export function listAvailableWorkflows(
-	cwd = process.cwd(),
-): [string, string, WorkflowLocation, string | undefined][] {
-	const workflows: [string, string, WorkflowLocation, string | undefined][] = [];
+export function listAvailableWorkflows(): [string, string, string][] {
+	const workflows: [string, string, string][] = [];
 
-	for (const { dir, location, pack } of getWorkflowSearchLocations(cwd)) {
-		if (existsSync(dir)) {
-			const files = readdirSync(dir)
+	const searchLocations: [string, string][] = [
+		[getProjectWorkflowsDir(), "project-local"],
+		[getUserWorkflowsDir(), "user-global"],
+		[getBundledWorkflowsDir(), "bundled"],
+	];
+
+	for (const [directory, locationType] of searchLocations) {
+		if (existsSync(directory)) {
+			const files = readdirSync(directory)
 				.filter((f) => f.endsWith(".yaml"))
 				.sort();
 			for (const file of files) {
 				const name = path.basename(file, ".yaml");
-				workflows.push([name, path.join(dir, file), location, pack]);
+				workflows.push([name, path.join(directory, file), locationType]);
 			}
 		}
 	}
@@ -119,29 +76,28 @@ export function listAvailableWorkflows(
 	return workflows;
 }
 
-/** Resolves a workflow argument (absolute path, path relative to `cwd`, or name) to a file. */
-export function resolveWorkflowPath(workflowArg: string, cwd = process.cwd()): [string, string] {
+export function resolveWorkflowPath(workflowArg: string): [string, string] {
 	// Check if it's an absolute path
 	if (path.isAbsolute(workflowArg)) {
 		return [workflowArg, "absolute"];
 	}
 
 	// Check if it exists as a relative path from cwd
-	const localPath = path.resolve(cwd, workflowArg);
+	const localPath = path.resolve(process.cwd(), workflowArg);
 	if (existsSync(localPath)) {
 		return [localPath, "relative"];
 	}
 
 	// If the input looks like a bare name (no path separators), try discovery
 	if (!workflowArg.includes("/") && !workflowArg.includes("\\")) {
-		const [discovered, locationType] = discoverWorkflow(workflowArg, cwd);
+		const [discovered, locationType] = discoverWorkflow(workflowArg);
 		if (discovered) {
 			return [discovered, locationType];
 		}
 	}
 
 	// Fallback: return the resolved path (will fail with appropriate error)
-	return [path.resolve(cwd, workflowArg), "not found"];
+	return [path.resolve(workflowArg), "not found"];
 }
 
 /**
@@ -176,25 +132,43 @@ export async function cmdRun(options: {
 	terminalOutput?: string;
 	runtime?: string;
 	slug?: string;
-	/** Attach to the run until it ends (Ctrl+C detaches). */
-	foreground?: boolean;
-	/** Run despite an unmet `requires` agentic-forge version (never the contract). */
-	ignoreRequires?: boolean;
-	/** Parent run id (`run.json` `parent`). */
-	parent?: string;
-	/** Backlog item of the parent overseer run. */
-	item?: string;
-	/** Wait for the run (`af wait`) and print its wait result as JSON. */
-	wait?: boolean;
-	/** With `wait`: `terminal` (default) or `attention`. */
-	until?: string;
-	/** With `wait`: seconds before giving up (exit 124). */
-	timeout?: string;
 }): Promise<void> {
 	// Handle --list flag
 	if (options.listWorkflows) {
-		const { cmdWorkflows } = await import("./workflows.js");
-		cmdWorkflows({});
+		process.stdout.write("Available workflows:\n\n");
+		const workflows = listAvailableWorkflows();
+
+		if (workflows.length === 0) {
+			process.stdout.write("No workflows found.\n");
+			process.stdout.write("\nSearched locations:\n");
+			process.stdout.write(`  - Project: ${getProjectWorkflowsDir()}\n`);
+			process.stdout.write(`  - User:    ${getUserWorkflowsDir()}\n`);
+			process.stdout.write(`  - Bundled: ${getBundledWorkflowsDir()}\n`);
+			return;
+		}
+
+		// Group by location
+		const byLocation: Record<string, [string, string][]> = {};
+		for (const [name, wfPath, location] of workflows) {
+			if (!byLocation[location]) {
+				byLocation[location] = [];
+			}
+			byLocation[location].push([name, wfPath]);
+		}
+
+		for (const location of ["project-local", "user-global", "bundled"]) {
+			if (byLocation[location]) {
+				const label = location.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+				process.stdout.write(`${label}:\n`);
+				for (const [name] of byLocation[location]) {
+					process.stdout.write(`  ${name}\n`);
+				}
+				process.stdout.write("\n");
+			}
+		}
+
+		process.stdout.write(`Total: ${workflows.length} workflow(s)\n`);
+		process.stdout.write("\nUsage: agentic-forge run <workflow> [key=value ...]\n");
 		return;
 	}
 
@@ -205,6 +179,7 @@ export async function cmdRun(options: {
 		);
 	}
 
+	const { WorkflowExecutor } = await import("../executor.js");
 	const { WorkflowParser, WorkflowParseError } = await import("../parser.js");
 	const [workflowPath, locationType] = resolveWorkflowPath(options.workflow);
 
@@ -229,7 +204,7 @@ export async function cmdRun(options: {
 	}
 
 	// Show which workflow is being used
-	if (["project-local", "user-global", "skill-pack", "bundled"].includes(locationType)) {
+	if (["project-local", "user-global", "bundled"].includes(locationType)) {
 		process.stdout.write(`Using ${locationType} workflow: ${path.basename(workflowPath)}\n`);
 	}
 
@@ -292,90 +267,36 @@ export async function cmdRun(options: {
 		}
 	}
 
-	// Resolve terminal_output: CLI override > workflow settings > default "base"
-	let terminalOutput = "base";
-	if (options.terminalOutput != null) {
-		terminalOutput = options.terminalOutput;
-	} else if (workflow.settings?.terminalOutput) {
-		terminalOutput = workflow.settings.terminalOutput;
-	}
-
-	// The client resolves every input; the supervisor never reads its own cwd.
-	const payload = buildDispatchPayload({
-		workflowPath,
-		repoRoot: process.cwd(),
-		variables,
-		runtime: options.runtime,
-		fromStep: options.fromStep,
-		slug: options.slug,
-		terminalOutput,
-		ignoreRequires: options.ignoreRequires,
-		parent: options.parent ?? (process.env.AF_RUN_ID || undefined),
-		item: options.item,
-	});
-
-	const { ensureSupervisor } = await import("../supervisor/client.js");
-	const { dispatchRun, followRun, formatEvent } = await import("../runs/client.js");
-	const { getVersion } = await import("./version.js");
-
-	let result: import("../runs/manager.js").DispatchResult;
-	let client: import("../supervisor/client.js").SupervisorClient;
+	const executor = new WorkflowExecutor(undefined, false, options.runtime);
 	try {
-		const found = await ensureSupervisor({
-			version: getVersion(),
-			onWarn: (message) => process.stderr.write(`Warning: ${message}\n`),
-		});
-		client = found.client;
-		result = await dispatchRun(client, payload);
+		// Resolve terminal_output: CLI override > workflow settings > default "base"
+		let terminalOutput = "base";
+		if (options.terminalOutput != null) {
+			terminalOutput = options.terminalOutput;
+		} else if (workflow.settings?.terminalOutput) {
+			terminalOutput = workflow.settings.terminalOutput;
+		}
+
+		const progress = await executor.run(
+			workflow,
+			variables,
+			options.fromStep ?? null,
+			terminalOutput,
+			path.resolve(workflowPath),
+			null,
+			options.slug,
+		);
+		process.stdout.write(`\nWorkflow ${progress.status}: ${progress.workflowId}\n`);
+		if (progress.errors && progress.errors.length > 0) {
+			process.stdout.write("\nErrors:\n");
+			for (const error of progress.errors) {
+				process.stdout.write(
+					`  - ${(error as Record<string, string>).step}: ${(error as Record<string, string>).error}\n`,
+				);
+			}
+		}
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
 		throw new CliExitError(`Error running workflow: ${msg}`);
-	}
-	for (const warning of result.warnings ?? []) {
-		process.stderr.write(`\x1b[33mWarning: ${warning}\x1b[0m\n`);
-	}
-	if (options.wait) {
-		// stdout carries only the JSON wait result (read by agents through Bash)
-		process.stderr.write(`Run queued: ${result.run.id} (${result.dir})\n`);
-		const { waitAndReport } = await import("./wait.js");
-		await waitAndReport(client, result.run.id, {
-			until: options.until,
-			timeout: options.timeout,
-		});
-		return;
-	}
-	process.stdout.write(`Run queued: ${result.run.id}\n`);
-	process.stdout.write(`Run dir:    ${result.dir}\n`);
-
-	if (!options.foreground) {
-		process.stdout.write(
-			`\nFollow it with 'agentic-forge status ${result.run.id}' or rerun with --foreground.\n`,
-		);
-		return;
-	}
-
-	// Attach: stream the run's events until it ends. Ctrl+C detaches only.
-	const controller = new AbortController();
-	const onSigint = () => controller.abort();
-	process.on("SIGINT", onSigint);
-	let finalStatus: string;
-	try {
-		finalStatus = await followRun(client, result.run.id, {
-			signal: controller.signal,
-			onEvent: (event) => process.stdout.write(`${formatEvent(event)}\n`),
-		});
-	} finally {
-		process.off("SIGINT", onSigint);
-	}
-	if (finalStatus === "detached") {
-		process.stdout.write(
-			`\nDetached. The run continues in the supervisor: agentic-forge status ${result.run.id}\n`,
-		);
-		return;
-	}
-	process.stdout.write(`\nWorkflow ${finalStatus}: ${result.run.id}\n`);
-	const exitCode = exitCodeForRun(finalStatus);
-	if (exitCode !== 0) {
-		throw new CliExitError(`Run ${result.run.id} ended with status '${finalStatus}'`, exitCode);
 	}
 }

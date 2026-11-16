@@ -2,13 +2,6 @@
 
 import path from "node:path";
 
-import { CodexSession } from "./codex-session.js";
-import type {
-	RuntimeSession,
-	SessionEvent,
-	SessionListener,
-	SessionStartOptions,
-} from "./session.js";
 import type {
 	RuntimeAdapter,
 	RuntimeCommand,
@@ -17,15 +10,7 @@ import type {
 	StreamEvent,
 } from "./types.js";
 import { SessionOutput } from "./types.js";
-import { codexExecUsage } from "./usage.js";
 import { getAgenticSystemPrompt, getExecutable } from "./utils.js";
-
-/**
- * Longest prompt passed as a command-line argument; a longer one goes on
- * stdin (`codex exec -`). Leaves room for the other arguments under the
- * 32,767 character command line of Windows.
- */
-export const CODEX_ARG_PROMPT_MAX_CHARS = 8_000;
 
 /** Parse a single JSONL line from Codex output. */
 function parseCodexJsonLine(line: string): Record<string, unknown> | null {
@@ -73,52 +58,14 @@ export class CodexAdapter implements RuntimeAdapter {
 		}
 	}
 
-	/** Session driver on `codex app-server` (`runtimes.codex.driver: session`). */
-	createSession(listener: SessionListener): RuntimeSession {
-		return new CodexSession(listener);
-	}
-
-	/**
-	 * Same sandbox, write roots, model and system prompt as `buildCommand`. The
-	 * system prompt goes in the thread's developer instructions instead of
-	 * being prepended to the prompt.
-	 */
-	sessionOptions(options: RuntimeRunOptions): SessionStartOptions {
-		const directories = new Set<string>();
-		for (const dir of [options.cwd, options.outputDir]) {
-			if (dir) directories.add(path.resolve(dir));
-		}
-		const env: NodeJS.ProcessEnv = { ...(options.env ?? process.env) };
-		if (options.workflowId) env.OTEL_RESOURCE_ATTRIBUTES = `session=${options.workflowId}`;
-		return {
-			prompt: options.prompt,
-			cwd: options.cwd ?? null,
-			model: options.model ?? this.defaultModel,
-			additionalDirectories: [...directories],
-			appendSystemPrompt:
-				options.appendSystemPrompt === false ? null : getAgenticSystemPrompt() || null,
-			allowedTools: options.allowedTools ?? null,
-			bypassPermissions: options.skipPermissions === true,
-			env,
-			resume: options.resumeSessionId ?? null,
-			sandbox: options.sandbox ?? "workspace-write",
-			skill: options.skill ?? null,
-		};
-	}
-
 	buildCommand(options: RuntimeRunOptions): RuntimeCommand {
 		const { model, skipPermissions = false, cwd, outputDir } = options;
 		const sandbox = options.sandbox ?? "workspace-write";
 
-		const resume = options.resumeSessionId ?? null;
-
 		const args: string[] = ["exec", "--sandbox", sandbox];
-		// On resume, the `exec` options (sandbox, working dir, write roots) stay
-		// before the `resume` subcommand, which takes the session flags
-		const sessionArgs: string[] = resume ? [] : args;
 
 		if (options.printOutput) {
-			sessionArgs.push("--json");
+			args.push("--json");
 		}
 
 		if (cwd) {
@@ -126,11 +73,11 @@ export class CodexAdapter implements RuntimeAdapter {
 		}
 
 		if (skipPermissions) {
-			sessionArgs.push("--dangerously-bypass-approvals-and-sandbox");
+			args.push("--dangerously-bypass-approvals-and-sandbox");
 		}
 
 		if (model) {
-			sessionArgs.push("--model", model);
+			args.push("--model", model);
 		}
 
 		// Grant explicit write roots for Codex workspace-write runs. The workflow
@@ -154,36 +101,19 @@ export class CodexAdapter implements RuntimeAdapter {
 			env.OTEL_RESOURCE_ATTRIBUTES = `session=${options.workflowId}`;
 		}
 
-		// System prompt is prepended to the user prompt (Codex has no --append-system-prompt
-		// flag); a resumed session already has it
-		const systemPrompt = options.appendSystemPrompt && !resume ? getAgenticSystemPrompt() : null;
+		// System prompt is prepended to the user prompt (Codex has no --append-system-prompt flag)
+		const systemPrompt = options.appendSystemPrompt ? getAgenticSystemPrompt() : null;
 		const prompt = systemPrompt ? `${systemPrompt}\n\n${options.prompt}` : options.prompt;
 
-		// Interrupt and resume: `codex exec resume <thread id> <prompt>` continues the
-		// killed session; when it fails (unknown thread), the prompt step restarts cold
-		if (resume) {
-			args.push("resume", ...sessionArgs, resume);
-		}
-
-		// The prompt is a positional argument; a large one (an inlined skill with
-		// its references) goes on stdin with `-`, which `codex exec` and
-		// `codex exec resume` read as the prompt, so the command line stays
-		// under the OS limits (32,767 characters on Windows)
-		const onStdin = prompt.length > CODEX_ARG_PROMPT_MAX_CHARS;
-		args.push(onStdin ? "-" : prompt);
+		// Codex exec takes the prompt as a positional argument, not via stdin
+		args.push(prompt);
 
 		return {
 			executable: getExecutable(this.executableName),
 			args,
 			env: Object.keys(env).length > 0 ? env : undefined,
-			stdinInput: onStdin ? prompt : "",
+			stdinInput: "",
 		};
-	}
-
-	/** Transcript events of a `codex exec --json` line (see `codexStreamEvents`). */
-	parseTranscriptLine(line: string): SessionEvent[] {
-		const data = parseCodexJsonLine(line);
-		return data ? codexStreamEvents(data) : [];
 	}
 
 	parseStreamLine(line: string): StreamEvent | null {
@@ -193,11 +123,6 @@ export class CodexAdapter implements RuntimeAdapter {
 		}
 
 		const eventType = data.type;
-
-		// The thread id is the session id used by `codex exec resume`
-		if (eventType === "thread.started" && typeof data.thread_id === "string") {
-			return { type: "session", sessionId: data.thread_id };
-		}
 
 		// Handle item completion with agent message
 		if (eventType === "item.completed") {
@@ -226,7 +151,6 @@ export class CodexAdapter implements RuntimeAdapter {
 		if (eventType === "turn.completed") {
 			return {
 				type: "result",
-				usage: codexExecUsage(data),
 			};
 		}
 
@@ -247,9 +171,8 @@ export class CodexAdapter implements RuntimeAdapter {
 		stdout: string,
 		stderr: string,
 		options: RuntimeRunOptions,
-		sessionId: string | null = null,
 	): RuntimeResult {
-		const sessionOutput = SessionOutput.fromStdout(stdout, sessionId);
+		const sessionOutput = SessionOutput.fromStdout(stdout);
 		return {
 			returncode,
 			stdout,
@@ -260,91 +183,5 @@ export class CodexAdapter implements RuntimeAdapter {
 			success: returncode === 0,
 			sessionOutput,
 		};
-	}
-}
-
-const FILE_CHANGES = new Set(["add", "update", "delete"]);
-
-/**
- * Normalized events of one `codex exec --json` line: `thread.started` starts
- * the session, `agent_message` items are messages, command and MCP tool items
- * are tool calls (`item.started`) and results (`item.completed`), and
- * `file_change` items give one diff per changed file.
- */
-export function codexStreamEvents(data: Record<string, unknown>): SessionEvent[] {
-	const type = data.type;
-	if (type === "thread.started" && typeof data.thread_id === "string") {
-		return [{ type: "session.started", sessionId: data.thread_id, model: null, authSource: null }];
-	}
-	if (type === "turn.completed") {
-		return [
-			{
-				type: "turn.completed",
-				result: "",
-				isError: false,
-				messageIds: [],
-				usage: codexExecUsage(data),
-			},
-		];
-	}
-	if (type === "turn.failed" || type === "error") {
-		const error = data.error as { message?: unknown } | undefined;
-		const message = error?.message ?? data.message ?? "Unknown error";
-		return [{ type: "error", message: String(message) }];
-	}
-	if (type !== "item.started" && type !== "item.completed") return [];
-	const item = data.item as Record<string, unknown> | undefined;
-	if (!item || typeof item !== "object") return [];
-	const id = String(item.id ?? "");
-	const done = type === "item.completed";
-	switch (item.type) {
-		case "agent_message":
-			if (!done || typeof item.text !== "string") return [];
-			return [
-				{
-					type: "item",
-					id,
-					kind: "message",
-					status: "completed",
-					role: "assistant",
-					text: item.text,
-				},
-			];
-		case "command_execution":
-		case "mcp_tool_call": {
-			const tool = item.type === "command_execution" ? "shell" : String(item.tool ?? "mcp");
-			const input =
-				item.type === "command_execution"
-					? { command: item.command }
-					: { server: item.server, ...((item.arguments as Record<string, unknown>) ?? {}) };
-			if (!done) return [{ type: "item", id, kind: "tool_call", status: "started", tool, input }];
-			const output = item.aggregated_output ?? item.result ?? "";
-			const failed =
-				item.status === "failed" || (typeof item.exit_code === "number" && item.exit_code !== 0);
-			return [
-				{
-					type: "item",
-					id,
-					kind: "tool_result",
-					status: "completed",
-					tool,
-					text: typeof output === "string" ? output : JSON.stringify(output),
-					isError: failed,
-				},
-			];
-		}
-		case "file_change": {
-			if (!done || !Array.isArray(item.changes)) return [];
-			return (item.changes as Record<string, unknown>[]).map((change, index) => ({
-				type: "diff" as const,
-				id: `${id}:${index}`,
-				path: String(change.path ?? ""),
-				change: FILE_CHANGES.has(String(change.kind))
-					? (String(change.kind) as "add" | "update" | "delete")
-					: "update",
-			}));
-		}
-		default:
-			return [];
 	}
 }

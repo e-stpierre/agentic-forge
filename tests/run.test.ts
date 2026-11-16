@@ -8,18 +8,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CliExitError, parseVars } from "../src/commands/run.js";
 import { generateWorkflowId } from "../src/progress.js";
 
-// cmdRun dispatches to the supervisor: mock the client so no supervisor starts.
+// Top-level mock so it's properly hoisted
 const mockExecutorRun = vi.fn();
-vi.mock("../src/supervisor/client.js", () => ({
-	ensureSupervisor: vi.fn().mockResolvedValue({ client: {}, info: {} }),
-}));
-vi.mock("../src/runs/client.js", () => ({
-	dispatchRun: (_client: unknown, payload: Record<string, unknown>) => {
-		mockExecutorRun(payload);
-		return Promise.resolve({ run: { id: "test-id" }, dir: "/tmp/test-id", warnings: [] });
+vi.mock("../src/executor.js", () => ({
+	WorkflowExecutor: class {
+		run = mockExecutorRun;
 	},
-	followRun: vi.fn(),
-	formatEvent: vi.fn(),
 }));
 
 const mockConfirm = vi.fn();
@@ -313,10 +307,13 @@ steps:
 
 		expect(mockInput).toHaveBeenCalledWith({ message: "The task to perform:" });
 		expect(mockExecutorRun).toHaveBeenCalledWith(
-			expect.objectContaining({
-				variables: expect.objectContaining({ task: "user-provided-value" }),
-				terminal_output: "base",
-			}),
+			expect.anything(),
+			expect.objectContaining({ task: "user-provided-value" }),
+			null,
+			"base",
+			expect.any(String),
+			null,
+			undefined,
 		);
 	});
 
@@ -354,10 +351,13 @@ steps:
 			default: false,
 		});
 		expect(mockExecutorRun).toHaveBeenCalledWith(
-			expect.objectContaining({
-				variables: expect.objectContaining({ create_pr: "true" }),
-				terminal_output: "base",
-			}),
+			expect.anything(),
+			expect.objectContaining({ create_pr: "true" }),
+			null,
+			"base",
+			expect.any(String),
+			null,
+			undefined,
 		);
 	});
 

@@ -2,11 +2,7 @@
 
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import {
-	CODEX_ARG_PROMPT_MAX_CHARS,
-	CodexAdapter,
-	buildWritableRootsConfig,
-} from "../../src/runtimes/codex.js";
+import { CodexAdapter, buildWritableRootsConfig } from "../../src/runtimes/codex.js";
 import type { RuntimeRunOptions } from "../../src/runtimes/types.js";
 
 vi.mock("../../src/runtimes/utils.js", async (importOriginal) => {
@@ -65,47 +61,6 @@ describe("CodexAdapter.buildCommand", () => {
 	it("adds --dangerously-bypass-approvals-and-sandbox when skipPermissions is true", () => {
 		const cmd = adapter.buildCommand({ prompt: "hello", skipPermissions: true });
 		expect(cmd.args).toContain("--dangerously-bypass-approvals-and-sandbox");
-	});
-
-	it("resumes the recorded thread with codex exec resume", () => {
-		const cmd = adapter.buildCommand({
-			prompt: "Use pnpm.",
-			resumeSessionId: "thread-1",
-			printOutput: true,
-			model: "gpt-5",
-			cwd: "/repo",
-			appendSystemPrompt: true,
-		});
-		const resume = cmd.args.indexOf("resume");
-		expect(cmd.args.slice(0, 3)).toEqual(["exec", "--sandbox", "workspace-write"]);
-		// exec options before the subcommand, session flags after it
-		expect(cmd.args.indexOf("--cd")).toBeLessThan(resume);
-		expect(cmd.args.indexOf("--add-dir")).toBeLessThan(resume);
-		expect(cmd.args.indexOf("--json")).toBeGreaterThan(resume);
-		expect(cmd.args.indexOf("--model")).toBeGreaterThan(resume);
-		// thread id then the prompt alone (the resumed session has the system prompt)
-		expect(cmd.args.slice(-2)).toEqual(["thread-1", "Use pnpm."]);
-	});
-
-	it("sends a large prompt on stdin with -", () => {
-		const big = "x".repeat(CODEX_ARG_PROMPT_MAX_CHARS + 1);
-		const cmd = adapter.buildCommand({ prompt: big });
-		expect(cmd.args.at(-1)).toBe("-");
-		expect(cmd.args).not.toContain(big);
-		expect(cmd.stdinInput).toBe(big);
-		const resumed = adapter.buildCommand({ prompt: big, resumeSessionId: "thread-1" });
-		expect(resumed.args.slice(-2)).toEqual(["thread-1", "-"]);
-		expect(resumed.stdinInput).toBe(big);
-		// A short prompt stays an argument
-		const small = adapter.buildCommand({ prompt: "hello" });
-		expect(small.args.at(-1)).toBe("hello");
-		expect(small.stdinInput).toBe("");
-	});
-
-	it("keeps exec without resume when no session is recorded", () => {
-		const cmd = adapter.buildCommand({ prompt: "hello", printOutput: true });
-		expect(cmd.args).not.toContain("resume");
-		expect(cmd.args.indexOf("--json")).toBe(3);
 	});
 
 	it("does not add bypass flag by default", () => {
@@ -337,22 +292,5 @@ describe("CodexAdapter identity", () => {
 
 	it("has executableName codex", () => {
 		expect(adapter.executableName).toBe("codex");
-	});
-});
-
-describe("CodexAdapter session id", () => {
-	it("reads the thread id of thread.started as the session id", () => {
-		expect(
-			adapter.parseStreamLine(JSON.stringify({ type: "thread.started", thread_id: "t-1" })),
-		).toEqual({ type: "session", sessionId: "t-1" });
-		const result = adapter.buildFinalResult(
-			0,
-			JSON.stringify({ status: "escalate", summary: "Need a decision." }),
-			"",
-			{ prompt: "p" },
-			"t-1",
-		);
-		expect(result.sessionOutput).toMatchObject({ sessionId: "t-1", isSuccess: false });
-		expect(result.sessionOutput.result?.status).toBe("escalate");
 	});
 });

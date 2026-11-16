@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "{{ workflow_id }}",
+  "workflow_name": "{{ workflow_name }}",
+  "status": "{{ status }}",
+  "started_at": "{{ started_at }}",
+  "completed_at": {{ completed_at | tojson if completed_at else "null" }},
+  "current_step": {{ current_step | tojson if current_step else "null" }},
+  "completed_steps": {{ completed_steps | tojson }},
+  "pending_steps": {{ pending_steps | tojson }},
+  "running_steps": {{ running_steps | tojson }},
+  "parallel_branches": {{ parallel_branches | tojson }},
+  "errors": {{ errors | tojson }},
+  "variables": {{ variables | tojson }},
+  "step_outputs": {{ step_outputs | tojson }}
+}

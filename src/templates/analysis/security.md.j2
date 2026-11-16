@@ -1,0 +1,35 @@
+# Security Analysis Report
+
+Generated: {{ generated }}
+Scope: {{ scope }}
+
+## Summary
+
+| Severity | Count |
+|----------|-------|
+| Critical | {{ summary.critical }} |
+| Major | {{ summary.major }} |
+| Minor | {{ summary.minor }} |
+| **Total** | {{ summary.total }} |
+
+## Findings
+
+{% for finding in findings %}
+### {{ finding.id }}: {{ finding.title }}
+
+**Severity**: {{ finding.severity | upper }}
+**Category**: {{ finding.category }}
+**File**: {{ finding.file }}:{{ finding.line }}
+{% if finding.cwe %}**CWE**: {{ finding.cwe }}{% endif %}
+
+{{ finding.description }}
+
+**Recommendation**: {{ finding.recommendation }}
+
+---
+
+{% endfor %}
+
+{% if not findings %}
+No security issues found.
+{% endif %}

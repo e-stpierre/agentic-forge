@@ -11,8 +11,6 @@ Agentic Forge uses a 3-layer configuration system. Values merge in order: **buil
 
 Use `af configure` to view the current merged configuration.
 
-Set the `AGENTIC_FORGE_HOME` environment variable to use another directory as `<global-dir>` on every platform (for isolated setups and tests).
-
 ## Managing Configuration
 
 ```bash
@@ -31,34 +29,16 @@ af config set outputDirectory local --local
 
 ## All Configuration Options
 
-### runs
+### outputDirectory
 
-Where run directories are created. Every run, worktree or not, writes to `<runs.root>/YYYY-MM-DD-<slug>/` (see [harness-contract.md](harness-contract.md)).
+Where workflow outputs are stored.
 
-| Key                         | Type           | Default | Description                                                                                         |
-| --------------------------- | -------------- | ------- | --------------------------------------------------------------------------------------------------- |
-| `runs.root`                 | string or null | `null`  | Runs root: absolute, or relative to the repository. `null` means `<global dir>/runs/`.              |
-| `runs.budgets.max_tokens`   | number or null | `null`  | Per-run token budget: every token the runtimes reported (input, cached input, cache writes, output) |
-| `runs.budgets.max_cost_usd` | number or null | `null`  | Per-run cost budget in USD (only runtimes that report a cost count: Claude)                         |
+| Value      | Description                                           |
+| ---------- | ----------------------------------------------------- |
+| `"global"` | Store in global directory under a project-slug folder |
+| `"local"`  | Store in `<project>/agentic/outputs/`                 |
 
-A workflow's `settings.budgets` (same keys) wins over `runs.budgets`, and `af resume --max-tokens` / `--max-cost-usd` (or `af_resume`) raises a run's budget. At 80% of a budget the run gets one `budget.warning` event (a default notification trigger); at the limit it pauses at the next step or ralph-loop iteration boundary with reason `budget`. Usage is recorded per step in `steps/<NN-step>/usage.json` and summed into `run.json` `budgets_used` (see [`af usage`](cli.md#usage)). These are per-run harness limits; `overseer.budgets` are per-epic limits of the overseer backlog and do not overlap.
-
-### outputDirectory (deprecated)
-
-Replaced by `runs.root`. `"global"` (the default) maps to `<global dir>/runs/`. `"local"` maps to `<project>/agentic/runs/` and prints a deprecation warning at dispatch. Runs created before the supervisor stay under `outputs/` and are listed read-only by `af status` and `af list`.
-
-### supervisor
-
-Settings of the supervisor (`af serve`) and its scheduler.
-
-| Key                              | Type           | Default | Description                                                                                                                                                                                                                                                                                                                                                                                                             |
-| -------------------------------- | -------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `supervisor.max_parallel_runs`   | integer        | `4`     | Runs executing at once, all repositories together. Read from the global config only.                                                                                                                                                                                                                                                                                                                                    |
-| `supervisor.max_parallel_tasks`  | integer        | `2`     | Runs executing at once in one repository. Read from the dispatching repository's config.                                                                                                                                                                                                                                                                                                                                |
-| `supervisor.env_passthrough`     | string[]       | `[]`    | Extra environment variable names a client forwards to its runs, on top of the built-in allowlist.                                                                                                                                                                                                                                                                                                                       |
-| `supervisor.needs_input_timeout` | number or null | `null`  | Minutes before a non-blocking `needs_input` request (`blocking: false` with a `recommended` option) of risk `low` (the request's `risk`, else the asking step's `max_risk`; a request without a risk is never auto-answered) is answered with its recommended option. `null` never auto-answers. A `human-input` step's own `timeout-minutes` applies whatever the risk. Read from the dispatching repository's config. |
-
-Whatever the limits, two runs never share one checkout: a run without its own worktree waits while another run without a worktree is running on the same repository.
+**Default**: `"global"`
 
 ### logging
 
@@ -73,11 +53,11 @@ Controls workflow execution logging.
 
 Default worktree settings applied when a workflow enables worktree isolation. Individual workflows can override these via `settings.worktree`.
 
-| Key                  | Type   | Default        | Description                                                                            |
-| -------------------- | ------ | -------------- | -------------------------------------------------------------------------------------- |
-| `worktree.location`  | string | `"sibling"`    | Where to create worktrees: `"sibling"`, `"nested"`, or `"absolute"`                    |
-| `worktree.directory` | string | `null`         | Base directory for `"absolute"` location mode (required when location is absolute)     |
-| `worktree.cleanup`   | string | `"on-success"` | When to remove worktrees: `"on-success"`, `"on-complete"`, `"on-merge"`, or `"manual"` |
+| Key                  | Type   | Default        | Description                                                                        |
+| -------------------- | ------ | -------------- | ---------------------------------------------------------------------------------- |
+| `worktree.location`  | string | `"sibling"`    | Where to create worktrees: `"sibling"`, `"nested"`, or `"absolute"`                |
+| `worktree.directory` | string | `null`         | Base directory for `"absolute"` location mode (required when location is absolute) |
+| `worktree.cleanup`   | string | `"on-success"` | When to remove worktrees: `"on-success"`, `"on-complete"`, or `"manual"`           |
 
 **Location modes:**
 
@@ -89,12 +69,11 @@ Default worktree settings applied when a workflow enables worktree isolation. In
 
 **Cleanup policies:**
 
-| Value           | Behavior                                                                          |
-| --------------- | --------------------------------------------------------------------------------- |
-| `"on-success"`  | Remove worktree on success; preserve on failure                                   |
-| `"on-complete"` | Always remove worktree after workflow finishes                                    |
-| `"on-merge"`    | Once a `merge` step reported `merged`: remove the worktree, then its local branch |
-| `"manual"`      | Never remove automatically; log path for inspection                               |
+| Value           | Behavior                                            |
+| --------------- | --------------------------------------------------- |
+| `"on-success"`  | Remove worktree on success; preserve on failure     |
+| `"on-complete"` | Always remove worktree after workflow finishes      |
+| `"manual"`      | Never remove automatically; log path for inspection |
 
 ### defaults
 
@@ -134,179 +113,6 @@ On native Windows, Codex also applies its Windows OS sandbox. When `codex.sandbo
 > **Backward compatibility:** `defaults.model` is still honored as a fallback for the `claude` runtime only, since it predates per-runtime keys and always held a Claude alias. Other runtimes ignore it and fall back to their own key (`codex.model`). Per-runtime keys always take priority.
 >
 > **Upgrading:** if an earlier release wrote `codex.model` into your `config.json`, that value still applies and overrides the new CLI-selected default. Delete the `codex.model` key from your global or local `config.json` to let Codex CLI choose its own model.
-
-### runtimes
-
-Per-runtime driver settings. See [Coding Agents](coding-agents.md#drivers).
-
-| Key                                | Type     | Default       | Description                                                                                                                                                     |
-| ---------------------------------- | -------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `runtimes.claude.driver`           | string   | `"session"`   | `"session"` (Claude Agent SDK session) or `"cli"` (one-shot `claude -p`)                                                                                        |
-| `runtimes.claude.plugins`          | string[] | `[]`          | Local plugin directories the session driver loads (skills, agents, hooks)                                                                                       |
-| `runtimes.claude.permissions`      | string   | `"allowlist"` | `"allowlist"`: tools on `allow` run without asking. `"bypass"`: skip every check                                                                                |
-| `runtimes.claude.allow`            | string[] | see below     | Claude permission rules allowed on every step (`Read`, `Bash(git *)`, ...)                                                                                      |
-| `runtimes.codex.driver`            | string   | `"session"`   | `"session"` (`codex app-server` thread) or `"cli"` (one-shot `codex exec`)                                                                                      |
-| `runtimes.codex.permissions`       | string   | `"allowlist"` | `"allowlist"`: the `codex.sandbox` mode applies, and approvals outside it ask (session driver) unless `allow` covers them. `"bypass"`: no sandbox, no approvals |
-| `runtimes.codex.allow`             | string[] | `[]`          | Session driver: approval requests approved without asking (`Bash`, `Bash(git *)`, `Bash(<command>)` for commands; `Edit` or `Write` for file changes)           |
-| `runtimes.codex.inline_references` | boolean  | `false`       | `skill` steps on Codex also append the files `SKILL.md` links to (see [Skills on Codex](coding-agents.md#skills-on-codex))                                      |
-
-Installed Claude plugins and skills load on both Claude drivers through your Claude settings, as with `claude -p`; `plugins` adds directories that are not installed.
-
-The default `runtimes.claude.allow` is `Read`, `Glob`, `Grep`, `Edit`, `MultiEdit`, `Write`, `NotebookEdit`, `TodoWrite`, `Skill` and `Task`: shell commands are not on it. A workflow's `required-tools` adds to the list for its steps (the bundled workflows add `Bash`). Setting `allow` replaces the default list. The same list drives both Claude drivers: the `cli` driver passes it as `--settings '{"permissions":{"allow":[...]}}'`, and the session driver auto-approves it. A call outside the list (and outside your own Claude settings) becomes a permission `needs_input` on the session driver, and is denied on the `cli` driver.
-
-On Codex, the sandbox is the first allowlist: commands and edits inside it never ask. On the session driver, a request to go outside it (a command that needs more access, a file change outside the write roots, extra permissions) is approved when `runtimes.codex.allow` or the workflow's `required-tools` covers it, and becomes a permission `needs_input` otherwise (see [Codex sessions](coding-agents.md#codex-sessions)). The `cli` driver runs `codex exec`, which never asks.
-
-`"bypass"` passes `--dangerously-skip-permissions` (Claude) or `--dangerously-bypass-approvals-and-sandbox` (Codex `cli` driver; `danger-full-access` with no approvals on the session driver), and every step that runs with it logs a warning. A workflow or step `bypass-permissions: true` does the same for that workflow or step.
-
-```json
-{
-  "runtimes": {
-    "claude": {
-      "allow": [
-        "Read",
-        "Edit",
-        "Write",
-        "Glob",
-        "Grep",
-        "Bash(git *)",
-        "Bash(pnpm *)"
-      ]
-    }
-  }
-}
-```
-
-### skill_config
-
-Configuration snapshots for skill packs, keyed by pack (the plugin of `<plugin>:<skill>`, or the skill name). A `skill` step writes `skill_config.<pack>` to `<run dir>/skill-config/<pack>.json` and passes it as `--config-snapshot` (see [harness contract](harness-contract.md#invocation)). The format belongs to the skill pack; its values win over the pack's own config files. Unset packs get `{}`.
-
-| Key                   | Type   | Default | Description                          |
-| --------------------- | ------ | ------- | ------------------------------------ |
-| `skill_config.<pack>` | object | unset   | Snapshot passed to the pack's skills |
-
-```json
-{ "skill_config": { "esp-skills": { "plan": { "depth": "deep" } } } }
-```
-
-### skill_packs
-
-Where af finds skill packs: plugin directories that ship agentic-forge workflows in an `af-workflows/` directory. Their workflows come after the project and user-global workflows and before the bundled demos (see `af workflows`). A directory without `af-workflows/` is skipped.
-
-| Key                       | Type     | Default | Description                                                                                     |
-| ------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------- |
-| `skill_packs.paths`       | string[] | `[]`    | Plugin root directories (absolute, or relative to the repository), searched first               |
-| `skill_packs.auto_detect` | boolean  | `true`  | Also use the Claude Code plugins listed in `<claude config dir>/plugins/installed_plugins.json` |
-
-Auto-detection reads Claude Code's installed plugin list (`CLAUDE_CONFIG_DIR`, else `~/.claude`), not the plugin cache directory, so only the installed version of each plugin is used. It includes user-scope installs, and project or local installs whose project is the dispatching repository. A plugin disabled in Claude Code (`enabledPlugins` set to `false` in the user `settings.json`, or the repository's `.claude/settings.json` or `.claude/settings.local.json`, the later overriding the earlier) is skipped. When Claude Code moves that file, `af doctor` warns, and `skill_packs.paths` still works. A plain array (`"skill_packs": ["../my-pack"]`) is read as `paths` with auto-detection on.
-
-```json
-{ "skill_packs": { "paths": ["C:/src/my-pack"], "auto_detect": true } }
-```
-
-### github
-
-Settings of the GitHub step types (`wait-for-review`, `wait-for-checks`, `merge`). The supervisor calls `gh` (it must be installed and logged in; `af doctor` checks it); no coding agent runs while these steps wait.
-
-| Key                                 | Type     | Default                         | Description                                                                                              |
-| ----------------------------------- | -------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `github.reviewers`                  | object   | `claude`, `codex` (see below)   | Reviewer names usable in `reviewers:`, each `{ login, trigger }`; entries add to the defaults            |
-| `github.auto_trigger`               | boolean  | `false`                         | Post the reviewers' trigger comments when a step does not set `trigger`                                  |
-| `github.trigger_after_seconds`      | number   | `120`                           | Time a reviewer gets on a new head before its trigger comment is posted                                  |
-| `github.poll_seconds`               | number   | `30`                            | First polling interval (a step's `poll-seconds` overrides it); must be above 0, else the default applies |
-| `github.max_poll_seconds`           | number   | `300`                           | The interval doubles up to this value                                                                    |
-| `github.review_timeout_minutes`     | number   | `30`                            | `wait-for-review` timeout, then `awaiting-human`                                                         |
-| `github.checks_timeout_minutes`     | number   | `30`                            | `wait-for-checks` timeout, then `awaiting-human`                                                         |
-| `github.merge.method`               | string   | `"repo"`                        | `repo` resolves the method from the repository settings and rulesets, else `squash`, `rebase`, `merge`   |
-| `github.merge.preference`           | string[] | `["squash", "rebase", "merge"]` | Order used when the repository allows several methods                                                    |
-| `github.merge.delete_branch`        | boolean  | `true`                          | Delete the remote head branch after a native merge (never a fork branch)                                 |
-| `github.merge.lock_timeout_minutes` | number   | `30`                            | Wait for a busy merge lock, then `awaiting-human`                                                        |
-
-Default reviewers, verified on real pull requests: `claude` is `claude[bot]` (the Claude Code GitHub Action, with no trigger: when it reviews depends on the repository's workflow, `pull_request` events or an `@claude` mention), and `codex` is `chatgpt-codex-connector[bot]` with the trigger `@codex review` (Codex reviews on its own when a pull request is opened or marked ready, and needs the trigger for a later head).
-
-```json
-{
-  "github": {
-    "reviewers": {
-      "bot": { "login": "my-review-bot[bot]", "trigger": "/review" }
-    },
-    "auto_trigger": true,
-    "merge": { "preference": ["rebase", "squash"] }
-  }
-}
-```
-
-The merge lock is `<global dir>/locks/merge-<hash>.lock`, keyed by the repository's git common dir, so the main checkout and all its worktrees share it.
-
-### notifications
-
-Notifications the supervisor sends when a run event matches a trigger, so a user who walked away learns that a run needs them. Every channel is off until enabled. Each run uses the `notifications` section of the config it was dispatched with (global, then project-local); `af notify` without a run uses the supervisor's global config.
-
-| Key                                    | Type    | Default                                                                                   | Description                                                                                                                      |
-| -------------------------------------- | ------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `notifications.enabled`                | boolean | `true`                                                                                    | Master switch                                                                                                                    |
-| `notifications.triggers`               | array   | `needs_input`, `run.halted`, `run.failed`, `budget.warning`, `run.completed` of overseers | Event types (`run.*` prefixes work), or `{ "event": ..., "run_type": "overseer", "kind": ..., "risk": ... }` entries (see below) |
-| `notifications.templates.<event>`      | object  | `{}`                                                                                      | `{ title, body }` with `{{placeholders}}` for one event type                                                                     |
-| `notifications.channels.desktop`       | object  | `{ enabled: false }`                                                                      | Desktop toast (Windows toast through PowerShell, `osascript` on macOS, `notify-send` on Linux)                                   |
-| `notifications.channels.ntfy`          | object  | `{ enabled: false, server: "https://ntfy.sh", topic: null, token: null }`                 | ntfy topic; `token` is sent as a bearer token                                                                                    |
-| `notifications.channels.slack`         | object  | `{ enabled: false, webhook_url: null }`                                                   | Slack incoming webhook                                                                                                           |
-| `notifications.channels.discord`       | object  | `{ enabled: false, webhook_url: null }`                                                   | Discord webhook                                                                                                                  |
-| `notifications.channels.github`        | object  | `{ enabled: false }`                                                                      | Comment on the run's pull request (outward-facing: opt-in; skipped for a run without a PR)                                       |
-| `notifications.channels.<id>.triggers` | array   | none                                                                                      | Replaces `notifications.triggers` for one channel                                                                                |
-
-A trigger entry can narrow `needs_input` events by request `kind` (`question`, `permission`, `decision`; a request without a kind is a `decision`) and `risk` (`low`, `medium`, `high`, or `none` for a request without one), each a value or a list. For example `{ "event": "needs_input", "kind": "permission" }` and `{ "event": "needs_input", "risk": ["medium", "high"] }` notify permission requests and risky questions only.
-
-A `needs_input` message names the run, its workflow, repository and step, the kind of request (in the title, and `Question`, `Decision` or `Permission` in the body, with the risk when set), the question and its options (the recommended one marked), and both ways to answer: `af answer <run> <request> <option>` and `af_answer(run, request_id, answer)`. A failed or halted run's message says how to inspect and resume it; for an overseer run, which cannot be resumed once ended, it points to its summary (`af artifacts <run> --kind summary`) and to `af overseer --new`. The Slack channel escapes `&`, `<` and `>`, so text from agents and review comments shows literally and cannot mention anyone. An overseer run's notifications follow the config of its latest session. Each delivery appends `notification.sent` to the run (`event_seq`, `trigger`, `channels`, and `errors` for the channels that failed); a channel that fails never stops the others.
-
-Template placeholders: `run`, `workflow`, `repo`, `status`, `run_type`, `pr`, `event`, `step`, `reason` (error or reason of the event), `request_id`, `kind`, `kind_label`, `risk`, `risk_suffix`, `question`, `context`, `options`, `recommended`, `answer_cli`, `answer_mcp`. Empty lines are dropped and the body is cut at 1,800 characters.
-
-```json
-{
-  "notifications": {
-    "triggers": ["needs_input", "run.failed", "merge.completed"],
-    "channels": {
-      "desktop": { "enabled": true },
-      "ntfy": { "enabled": true, "topic": "my-af-runs" },
-      "slack": {
-        "enabled": true,
-        "webhook_url": "https://hooks.slack.com/services/...",
-        "triggers": ["needs_input"]
-      }
-    },
-    "templates": {
-      "needs_input": {
-        "title": "{{repo}} needs you",
-        "body": "{{question}}\n{{answer_cli}}"
-      }
-    }
-  }
-}
-```
-
-Webhook URLs and tokens are secrets: keep them in the global config, and note that each run stores its config snapshot in its run directory (`dispatch.json`). The supervisor reads new events every 2 seconds and keeps its read positions in `<global dir>/notifications/positions.json`, so a restarted supervisor sends nothing twice.
-
-### overseer
-
-The backlog, scheduling and answer policy of `af overseer`. The overseer run uses the config of the repository it was opened in (refreshed each time a session opens it). See [overseer](cli.md#overseer).
-
-| Key                                       | Type    | Default                            | Description                                                                                                                   |
-| ----------------------------------------- | ------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `overseer.max_parallel`                   | number  | `2`                                | Backlog items running at once (only items without a dependency or a conflict zone overlap run in parallel)                    |
-| `overseer.accept_discovered_items`        | string  | `"ask"`                            | Discovered items of child runs: `auto` (ready, untriaged), `ask` (proposed, the user approves), `log` (recorded only)         |
-| `overseer.halt_epic_on`                   | array   | `["halted", "critical", "budget"]` | What stops new dispatches: `failed` or `halted` items, an open `critical` discovered item, a spent `budget`                   |
-| `overseer.budgets.max_tasks`              | number  | `20`                               | Backlog items (dropped and logged ones excluded); more are refused, discovered ones are logged                                |
-| `overseer.budgets.max_retries`            | number  | `1`                                | Extra dispatches of one item after its first run                                                                              |
-| `overseer.budgets.max_run_minutes`        | number  | `480`                              | Total minutes of the overseer's child runs (parallel runs add up); `budget` halts the epic when reached                       |
-| `overseer.budgets.max_dispatch_depth`     | number  | `3`                                | Deepest run of a [run tree](cli.md#run-trees) (a root run is 0); a deeper dispatch is refused                                 |
-| `overseer.budgets.max_tree_runs`          | number  | `50`                               | Runs in one run tree, its root and ended runs included; more dispatches are refused                                           |
-| `overseer.budgets.max_tree_active`        | number  | `6`                                | Runs of one run tree that have not ended (an overseer root excluded); more dispatches are refused                             |
-| `overseer.answer_policy.enabled`          | boolean | `true`                             | Let the overseer answer some `needs_input` requests itself                                                                    |
-| `overseer.answer_policy.max_risk`         | string  | `"low"`                            | Highest risk of the request (its `risk`, else the asking step's `max_risk`: `low`, `medium`, `high`); no risk is always asked |
-| `overseer.answer_policy.recommended_only` | boolean | `true`                             | Only the recommended option (a request without one is asked)                                                                  |
-| `overseer.answer_policy.blocking`         | boolean | `true`                             | Also blocking requests (requests of kind `permission` are always asked)                                                       |
-
-The run tree guards apply to every dispatch with a parent (an overseer's runs and the runs an agent dispatches from a step with `af_dispatch`) and are read from the dispatching repository's config.
-
-Review rounds are not an overseer budget: the workflows bound their own rounds (for example the esp-skills `fix-review` settings).
 
 ### execution
 
